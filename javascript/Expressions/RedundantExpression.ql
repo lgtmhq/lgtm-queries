@@ -1,0 +1,108 @@
+// Copyright 2016 Semmle Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software distributed under
+// the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
+/**
+ * @name Identical operands
+ * @description Passing identical, or seemingly identical, operands to an
+ *              operator such as subtraction or conjunction may indicate a typo;
+ *              even if it is intentional, it makes the code hard to read.
+ * @kind problem
+ * @problem.severity warning
+ */
+
+import Clones
+
+/**
+ * Abstract super class for clone detectors that find redundant expressions.
+ */
+abstract class RedundantOperand extends StructurallyCompared {
+  RedundantOperand() {
+    exists (BinaryExpr parent | this = parent.getLeftOperand())
+  }
+
+  Expr candidate() {
+    result = getParent().(BinaryExpr).getRightOperand()
+  }
+
+  Expr toReport() {
+    result = getParent()
+  }
+}
+
+/**
+ * Clone detector for idemnecant operators.
+ *
+ * An idemnecant operator is an operator that yields a trivial result when applied to
+ * identical operands (disregarding overflow and special floating point values).
+ * 
+ * For instance, subtraction is idemnecant (since e-e=0), and so is division (since e/e=1).
+ */
+class IdemnecantExpr extends BinaryExpr {
+  IdemnecantExpr() {
+    this instanceof SubExpr or
+    this instanceof DivExpr or
+    this instanceof ModExpr or
+    this instanceof XOrExpr
+  }
+}
+
+class RedundantIdemnecantOperand extends RedundantOperand {
+  RedundantIdemnecantOperand() {
+    exists (IdemnecantExpr parent |
+      parent = getParent() and
+      // exclude trivial cases like `1-1`
+      not parent.getRightOperand().stripParens() instanceof Literal
+    )
+  }
+}
+
+/**
+ * Clone detector for idempotent expressions.
+ * 
+ * Note that '&amp;' and '|' are not really idempotent in JavaScript, since they coerce their
+ * arguments to integers. For example, 'x&amp;x' is a common idiom for converting 'x' to an integer.
+ */
+class RedundantIdempotentOperand extends RedundantOperand {
+  RedundantIdempotentOperand() {
+    getParent() instanceof LogicalBinaryExpr
+  }
+}
+
+/**
+ * An expression of the form (e + f)/2.
+ */
+class AverageExpr extends DivExpr {
+  AverageExpr() {
+    getLeftOperand().stripParens() instanceof AddExpr and
+    getRightOperand().getIntValue() = 2
+  }
+}
+
+/**
+ * Clone detector for redundant expressions of the form (e + e)/2.
+ */
+class RedundantAverageOperand extends RedundantOperand {
+  RedundantAverageOperand() {
+    exists (AverageExpr aver |
+      (AddExpr)getParent() = aver.getLeftOperand().stripParens()
+    )
+  }
+
+  AverageExpr toReport() {
+    getParent() = result.getLeftOperand().stripParens()
+  }
+}
+
+from RedundantOperand e, Expr f
+where e.same(f)
+select e.toReport(), "Operands $@ and $@ are identical.", e, e.toString(), f, f.toString()

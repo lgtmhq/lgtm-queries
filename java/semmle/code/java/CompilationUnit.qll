@@ -1,0 +1,50 @@
+// Copyright 2016 Semmle Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software distributed under
+// the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
+/**
+ * A library for working with Java compilation units.
+ */
+
+import Element
+import Package
+import semmle.code.FileSystem
+
+/**
+ * A compilation unit is a `.java` or `.class` file.
+ */
+class CompilationUnit extends Element, File {
+  CompilationUnit() {
+    cupackage(this,_)
+  }
+
+  /** The name of the compilation unit (not including its extension). */
+  string getName() {
+    result = Element.super.getName()
+  }
+
+  /**
+   * Whether this compilation unit has the specified `name`,
+   * which must not include the file extension.
+   */
+  predicate hasName(string name) {
+    Element.super.hasName(name)
+  }
+
+  /** A printable representation of this compilation unit. */
+  string toString() {
+    result = Element.super.toString()
+  }
+
+  /** The declared package of this compilation unit. */
+  Package getPackage() { cupackage(this,result) }
+}
