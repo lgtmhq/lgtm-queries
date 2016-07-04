@@ -1,0 +1,81 @@
+// Copyright 2016 Semmle Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software distributed under
+// the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
+/**
+ * @name Import of deprecated module
+ * @description Import of a deprecated module
+ * @kind problem
+ * @problem.severity warning
+ */
+
+import python
+
+
+predicate deprecated_module(string name, string instead, int major, int minor) {
+    name = "posixfile" and instead = "email" and major = 1 and minor = 5
+    or
+    name = "gopherlib" and instead = "no replacement" and major = 2 and minor = 5
+    or
+    name = "rgbimgmodule" and instead = "no replacement" and major = 2 and minor = 5
+    or
+    name = "pre" and instead = "re" and major = 1 and minor = 5
+    or
+    name = "whrandom" and instead = "random" and major = 2 and minor = 1
+    or
+    name = "rfc822" and instead = "email" and major = 2 and minor = 3
+    or
+    name = "mimetools" and instead = "email" and major = 2 and minor = 3
+    or
+    name = "MimeWriter" and instead = "email" and major = 2 and minor = 3
+    or
+    name = "mimify" and instead = "email" and major = 2 and minor = 3
+    or
+    name = "rotor" and instead = "no replacement" and major = 2 and minor = 4
+    or
+    name = "statcache"  and instead = "no replacement" and major = 2 and minor = 2
+    or
+    name = "mpz"  and instead = "a third party" and major = 2 and minor = 2
+    or
+    name = "xreadlines" and instead = "no replacement" and major = 2 and minor = 3
+    or
+    name = "multifile" and instead = "email" and major = 2 and minor = 5
+    or
+    name = "sets"  and instead = "builtins" and major = 2 and minor = 6
+    or
+    name = "buildtools" and instead = "no replacement" and major = 2 and minor = 3
+    or
+    name = "cfmfile" and instead = "no replacement" and major = 2  and minor = 4
+    or
+    name = "macfs" and instead = "no replacement" and major = 2 and minor = 3
+    or
+    name = "md5"  and instead = "hashlib" and major = 2  and minor = 5
+    or
+    name = "sha"  and instead = "hashlib" and major = 2  and minor = 5
+}
+
+string deprecation_message(string mod) {
+		exists(int major, int minor | deprecated_module(mod, _, major, minor) |
+			  	 result = "The " + mod  + " module was deprecated in version " + major.toString() + "." + minor.toString() + ".")
+}
+
+string replacement_message(string mod) {
+		exists(string instead | deprecated_module(mod, instead, _, _) |
+		       result =  " Use " + instead + " module instead." and not instead = "no replacement"
+		       or
+		       result =  "" and instead = "no replacement"
+		)
+}
+
+from ImportExpr imp, Stmt s, Expr e
+where s.getASubExpression() = e and (e = imp or e.contains(imp))
+select s, deprecation_message(imp.getName()) + replacement_message(imp.getName())
