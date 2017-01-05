@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@
  *              confusing and hard to maintain.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
  */
 
-import default
+import javascript
 
 from DeclStmt vds, VariableDeclarator vd1, int i, VariableDeclarator vd2, int j, Variable v
 where vd1 = vds.getDecl(i) and

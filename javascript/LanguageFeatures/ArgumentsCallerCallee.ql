@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              make code non-modular and hard to maintain. Consequently, they should not be used.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from PropAccess acc, ArgumentsObject args
 where acc.getBase() = args.getAnAccess() and

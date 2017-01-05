@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,14 +81,14 @@ predicate guardedAgainstOverflow(ArithExpr e, VarAccess use) {
   use = e.getAnOperand() and
   (
     // overflow possible if large
-	  (e instanceof AddExpr and guardedLesser(e, priorAccess(use))) or
-	  // overflow unlikely with subtraction
-	  (e instanceof SubExpr) or
-	  // overflow possible if large or small
-	  (e instanceof MulExpr and guardedLesser(e, priorAccess(use)) and
-	    guardedGreater(e, priorAccess(use))) or
-	  // overflow possible if MIN_VALUE
-	  (e instanceof DivExpr and guardedGreater(e, priorAccess(use)))
+    (e instanceof AddExpr and guardedLesser(e, priorAccess(use))) or
+    // overflow unlikely with subtraction
+    (e instanceof SubExpr) or
+    // overflow possible if large or small
+    (e instanceof MulExpr and guardedLesser(e, priorAccess(use)) and
+      guardedGreater(e, priorAccess(use))) or
+    // overflow possible if MIN_VALUE
+    (e instanceof DivExpr and guardedGreater(e, priorAccess(use)))
   )
 }
 
@@ -99,11 +99,11 @@ predicate guardedAgainstUnderflow(ArithExpr e, VarAccess use) {
     // underflow unlikely for addition
     (e instanceof AddExpr) or
     // underflow possible if use is left operand and small
-	  (e instanceof SubExpr and (use = e.getRightOperand() or guardedGreater(e, priorAccess(use)))) or
-	  // underflow possible if large or small
-	  (e instanceof MulExpr and guardedLesser(e, priorAccess(use)) and
-	    guardedGreater(e, priorAccess(use))) or
-	  // underflow possible if MAX_VALUE
-	  (e instanceof DivExpr and guardedLesser(e, priorAccess(use)))
+    (e instanceof SubExpr and (use = e.getRightOperand() or guardedGreater(e, priorAccess(use)))) or
+    // underflow possible if large or small
+    (e instanceof MulExpr and guardedLesser(e, priorAccess(use)) and
+      guardedGreater(e, priorAccess(use))) or
+    // underflow possible if MAX_VALUE
+    (e instanceof DivExpr and guardedLesser(e, priorAccess(use)))
   )
 }

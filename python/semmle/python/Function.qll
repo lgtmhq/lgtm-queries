@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 import python
 
 /** A function, independent of defaults and binding.
-    It is the the syntactic entity that is compiled to a code object. */
+    It is the syntactic entity that is compiled to a code object. */
 class Function extends Function_, Scope, AstNode {
 
     /** The expression defining this function */
@@ -136,7 +136,7 @@ class Function extends Function_, Scope, AstNode {
     }
 
     /** Gets the qualified name for this function.
-     * Should return the same name as the `__qualname__` attribute on functions in in Python 3.
+     * Should return the same name as the `__qualname__` attribute on functions in Python 3.
      */
     string getQualifiedName() {
         this.getScope() instanceof Module and result = this.getName()
@@ -214,7 +214,7 @@ class Parameter extends Parameter_ {
     Tuple asTuple() {
         result = this
     }
-    
+
     Expr getDefault() {
         exists(Function f, int n, int c, int d, Arguments args |
             args = f.getDefinition().getArgs() |
@@ -222,6 +222,16 @@ class Parameter extends Parameter_ {
             c = count(f.getAnArg()) and
             d = count(args.getADefault()) and
             result = args.getDefault(d-c+n)
+        )
+    }
+
+    Variable getVariable() {
+        result.getAnAccess() = this.asName()
+    }
+
+    int getPosition() {
+        exists(Function f |
+            f.getArg(result) = this
         )
     }
 

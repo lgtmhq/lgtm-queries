@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,14 @@
  * @description A collection or map whose contents are never queried or accessed is useless.
  * @kind problem
  * @problem.severity error
- * @cwe 561
+ * @tags maintainability
+ *       useless-code
+ *       external/cwe/cwe-561
  */
 
-import default
+import java
 import semmle.code.java.Reflection
+import semmle.code.java.frameworks.Lombok
 import Containers
 
 from Variable v
@@ -31,7 +34,9 @@ where v.fromSource() and
       // Exclude fields that may be read from reflectively.
       not reflectivelyRead(v) and
       // Exclude fields annotated with `@SuppressWarnings("unused")`.
-      not ((SuppressWarningsAnnotation)v.getAnAnnotation()).getASuppressedWarning() = "\"unused\"" and
+      not v.getAnAnnotation().(SuppressWarningsAnnotation).getASuppressedWarning() = "\"unused\"" and
+      // Exclude fields with relevant Lombok annotations.
+      not v instanceof LombokGetterAnnotatedField and
       // Every access to `v` is either...
       forex (VarAccess va | va = v.getAnAccess() |
         // ...an assignment storing a new container into `v`,

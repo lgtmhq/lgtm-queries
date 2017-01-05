@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,6 +110,13 @@ class TypeRuntimeException extends Class {
   }
 }
 
+/** The class `java.lang.ClassCastException`. */
+class TypeClassCastException extends Class {
+  TypeClassCastException() {
+    this.hasQualifiedName("java.lang", "ClassCastException")
+  }
+}
+
 /**
  * The class `java.lang.Class`.
  *
@@ -154,6 +161,8 @@ class NumericType extends Type {
 class ImmutableType extends Type {
   ImmutableType() {
        this instanceof PrimitiveType
+    or this instanceof NullType
+    or this instanceof VoidType
     or this instanceof BoxedType
     or this instanceof TypeString
   }
@@ -249,6 +258,16 @@ class MethodSystemGetProperty extends Method {
   MethodSystemGetProperty() {
     hasName("getProperty")
     and getDeclaringType() instanceof TypeSystem
+  }
+}
+
+/**
+ * Any method named `exit` on class `java.lang.Runtime` or `java.lang.System`.
+ */
+class MethodExit extends Method {
+  MethodExit() {
+    hasName("exit") and
+    (getDeclaringType() instanceof TypeRuntime or getDeclaringType() instanceof TypeSystem)
   }
 }
 

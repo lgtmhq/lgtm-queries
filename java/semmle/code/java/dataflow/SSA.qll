@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,9 +26,47 @@ private predicate variableUpdate(LocalScopeVariable v, ControlFlowNode n, BasicB
   exists(VariableUpdate a | a = n | a.getDestVar() = v) and b.getNode(i) = n
 }
 
-/** A `VarAccess` `n` of `v` in `b` at index `i`. */
-private predicate variableUse(LocalScopeVariable v, RValue n, BasicBlock b, int i) {
-  v.getAnAccess() = n and b.getNode(i) = n
+/** The definition point of a nested class in the parent scope. */
+private ControlFlowNode parentDef(NestedClass nc) {
+  nc.(AnonymousClass).getClassInstanceExpr() = result or
+  nc.(LocalClass).getLocalClassDeclStmt() = result
+}
+
+/**
+ * The enclosing type of a nested class.
+ *
+ * Differs from `RefType.getEnclosingType()` by including anonymous classes defined by lambdas.
+ */
+private RefType desugaredGetEnclosingType(NestedClass inner) {
+  exists(ControlFlowNode node |
+    node = parentDef(inner) and
+    node.getEnclosingCallable().getDeclaringType() = result
+  )
+}
+
+/**
+ * The control flow node at which the variable is read to get the value for
+ * a `VarAccess` inside a closure.
+ */
+private ControlFlowNode parentAccess(VarAccess va) {
+  exists(LocalScopeVariable v, Callable inner, Callable outer, NestedClass innerclass |
+    va.getVariable() = v and
+    inner = va.getEnclosingCallable() and
+    (outer = v.(LocalVariableDecl).getCallable() or outer = v.(Parameter).getCallable()) and
+    inner != outer and
+    inner.getDeclaringType() = innerclass and
+    result = parentDef(desugaredGetEnclosingType*(innerclass)) and
+    result.getEnclosingStmt().getEnclosingCallable() = outer
+  )
+}
+
+/** A `VarAccess` `use` of `v` in `b` at index `i`. */
+private predicate variableUse(LocalScopeVariable v, RValue use, BasicBlock b, int i) {
+  exists(ControlFlowNode n |
+    v.getAnAccess() = use and b.getNode(i) = n
+    |
+    n = use or n = parentAccess(use)
+  )
 }
 
 /*
@@ -202,6 +240,10 @@ class SsaDefinition extends ControlFlowNode {
     result = this and result.getDestVar() = v
   }
 
+  predicate isLiveAtEndOfBlock(LocalScopeVariable v, BasicBlock b) {
+    ssaDefReachesEndOfBlock(v, this, b)
+  }
+
   /** The reflexive, transitive closure of `getAPhiInput`. */
   SsaDefinition getAPhiInputStar(LocalScopeVariable v) {
     result = this and v = this.getAVariable() or
@@ -212,6 +254,23 @@ class SsaDefinition extends ControlFlowNode {
   SsaDefinition getAnUltimateDefinition(LocalScopeVariable v) {
     result = this.getAPhiInputStar(v) and not result.isPhiNode(v)
   }
+}
+
+library class RefTypeCastExpr extends CastExpr {
+  RefTypeCastExpr() { this.getType() instanceof RefType }
+}
+
+/**
+ * An expression that has the same value as the given SSA variable.
+ *
+ * The `VarAccess` represents the access to `v` that `result` has the same value as.
+ */
+Expr sameValue(SsaDefinition ssa, LocalScopeVariable v, VarAccess va) {
+  result = ssa.getAUse(v) and result = va or
+  result.(AssignExpr).getDest() = va and result = ssa.getDefiningExpr(v) or
+  result.(AssignExpr).getSource() = sameValue(ssa, v, va) or
+  result.(ParExpr).getExpr() = sameValue(ssa, v, va) or
+  result.(RefTypeCastExpr).getExpr() = sameValue(ssa, v, va)
 }
 
 /**

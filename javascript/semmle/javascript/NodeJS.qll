@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import DataFlow
  */
 class NodeModule extends Module {
   NodeModule() {
-    exists (ModuleScope ms | ms.getScopeElement() = this) and
+    isModule(this) and
     isNodejs(this)
   }
 
@@ -28,7 +28,7 @@ class NodeModule extends Module {
     result.getScopeElement() = this
   }
 
-  /** Get a <code>require</code> import in this module. */
+  /** Get a `require` import in this module. */
   Require getAnImport() {
     result.getTopLevel() = this
   }
@@ -87,7 +87,7 @@ class NodeModule extends Module {
     )
   }
 
-  /** Get a reference to <code>module.exports</code> in this module. */
+  /** Get a reference to `module.exports` in this module. */
   ExportsAccess getAnExportsAccess() {
     result.getTopLevel() = this
   }
@@ -132,12 +132,28 @@ private predicate findNodeModulesFolder(Folder f, Folder nodeModules, int distan
 }
 
 /**
- * A <code>require</code> import.
+ * A Node.js `require` variable.
+ */
+library class RequireVariable extends Variable {
+  RequireVariable() {
+    exists (ModuleScope m | this = m.getVariable("require"))
+  }
+}
+
+/**
+ * Helper predicate relating node modules and the files in which they occur.
+ */
+private predicate nodeModuleFile(NodeModule nm, File f) {
+  nm.getFile() = f
+}
+
+/**
+ * A `require` import.
  */
 class Require extends CallExpr, Import {
   Require() {
-    exists (ModuleScope m |
-      this.getCallee() = m.getVariable("require").getAnAccess()
+    exists (RequireVariable req |
+      this.getCallee() = req.getAnAccess()
     )
   }
 
@@ -149,19 +165,8 @@ class Require extends CallExpr, Import {
     this = result.getAnImport()
   }
 
-  /**
-   * Get the module that is imported by this `require`.
-   *
-   * The result is either an externs file for a module, or an actual source module;
-   * in cases of ambiguity, the former are preferred. This models the runtime
-   * behavior of `require`, which prefers core modules such as `fs` over any
-   * source module of the same name.
-   */
-  NodeModule getImportedModule() {
-    if exists (getImportedExterns()) then
-      result = getImportedExterns()
-    else
-      result = getImportedModule(min(int prio | exists(getImportedModule(prio))))
+  NodeModule resolveImportedPath() {
+    nodeModuleFile(result, load(min(int prio | nodeModuleFile(_, load(prio)))))
   }
 
   /**
@@ -172,24 +177,6 @@ class Require extends CallExpr, Import {
    */
   File getImportedFile() {
     result = load(min(int prio | exists(load(prio))))
-  }
-
-  /**
-   * Resolve this `require` to an externs file for a module by looking
-   * for an externs file with the exact name that is being imported.
-   */
-  private NodeModule getImportedExterns() {
-    result.isExterns() and result.getName() = getImportedPath().getValue()
-  }
-
-  /**
-   * Resolve this `require` to a source module, not taking resolution order
-   * into account; `priority` is bound to an integer value reflecting the
-   * result's ranking in the resolution order such that the module that
-   * is actually imported is the one with the numerically smallest priority.
-   */
-  private NodeModule getImportedModule(int priority) {
-    result.getFile() = load(priority)
   }
 
   /**
@@ -285,15 +272,28 @@ private File tryExtensions(Folder dir, string basename, int priority) {
   result = dir.getFile(basename + ".node") and priority = 2
 }
 
-/** A literal path expression appearing in a <code>require</code> import. */
-library class LiteralRequiredPath extends PathExpr, StringLiteral {
+/** A literal path expression appearing in a `require` import. */
+library class LiteralRequiredPath extends PathExpr {
   LiteralRequiredPath() {
+    this instanceof StringLiteral and
     exists (Require req | this.getParentExpr*() = req.getArgument(0))
   }
 
-  string getValue() { result = StringLiteral.super.getValue() }
-  predicate isImpure() { StringLiteral.super.isImpure() }
-  string getStringValue() { result = StringLiteral.super.getStringValue() }
+  string getValue() { result = this.(StringLiteral).getValue() }
+}
+
+/** A literal path expression appearing in a call to `require.resolve`. */
+library class LiteralRequireResolvePath extends PathExpr {
+  LiteralRequireResolvePath() {
+    this instanceof StringLiteral and
+    exists (RequireVariable req, MethodCallExpr reqres |
+      reqres.getReceiver() = req.getAnAccess() and
+      reqres.getMethodName() = "resolve" and
+      this.getParentExpr*() = reqres.getArgument(0)
+    )
+  }
+
+  string getValue() { result = this.(StringLiteral).getValue() }
 }
 
 /** A __dirname path expression. */
@@ -325,28 +325,30 @@ library class FileNamePath extends PathExpr, VarAccess {
 }
 
 /**
- * A path expression of the form <code>path.join(p, "...")</code> where
- * <code>p</code> is also a path expression.
+ * A path expression of the form `path.join(p, "...")` where
+ * `p` is also a path expression.
  */
-library class JoinedPath extends PathExpr, CallExpr {
+library class JoinedPath extends PathExpr {
   JoinedPath() {
-    exists (PropAccess pacc | pacc = getCallee() |
-      pacc.getBase().(VarAccess).getName() = "path" and
-      pacc.getPropertyName() = "join" and
-      getNumArgument() = 2 and
-      getArgument(0) instanceof PathExpr and
-      getArgument(1) instanceof StringLiteral
+    exists (MethodCallExpr call | call = this |
+      call.getReceiver().(VarAccess).getName() = "path" and
+      call.getMethodName() = "join" and
+      call.getNumArgument() = 2 and
+      call.getArgument(0) instanceof PathExpr and
+      call.getArgument(1) instanceof StringLiteral
     )
   }
 
   string getValue() {
-    result = getArgument(0).(PathExpr).getValue() + "/" + getArgument(1).(StringLiteral).getValue()
+    exists (CallExpr call, PathExpr left, StringLiteral right |
+      call = this and
+      left = call.getArgument(0) and right = call.getArgument(1) |
+      result = left.getValue() + "/" + right.getValue()
+    )
   }
-
-  CFGNode getFirstCFGNode() { result = CallExpr.super.getFirstCFGNode() }
 }
 
-/** A reference to the special <code>module</code> variable. */
+/** A reference to the special `module` variable. */
 class ModuleAccess extends VarAccess {
   ModuleAccess() {
     exists (ModuleScope ms | this = ms.getVariable("module").getAnAccess())
@@ -354,7 +356,7 @@ class ModuleAccess extends VarAccess {
 }
 
 /**
- * A reference to the <code>exports</code> property, either through <code>module</code> or through its
+ * A reference to the `exports` property, either through `module` or through its
  * variable alias.
  */
 class ExportsAccess extends Expr {

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,13 @@
  * @name Conditional comments
  * @description Conditional comments are an IE-specific feature and not portable.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
+ * @tags portability
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from Comment c
 where c.getText().trim().substring(0, 6) = "@cc_on"

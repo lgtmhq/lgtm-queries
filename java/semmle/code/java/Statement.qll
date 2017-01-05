@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -788,6 +788,9 @@ class ThisConstructorInvocationStmt extends Stmt, ConstructorCall, @constructori
 
   /** The immediately enclosing callable of this constructor invocation. */
   Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
+
+  /** The immediately enclosing statement of this constructor invocation. */
+  Stmt getEnclosingStmt() { result = this }
   
   /** A printable representation of this statement. May include more detail than `toString()`. */
   string pp() {
@@ -829,6 +832,9 @@ class SuperConstructorInvocationStmt extends Stmt, ConstructorCall, @superconstr
 
   /** The immediately enclosing callable of this constructor invocation. */
   Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
+
+  /** The immediately enclosing statement of this constructor invocation. */
+  Stmt getEnclosingStmt() { result = this }
   
   /** A printable representation of this statement. May include more detail than `toString()`. */
   string pp() {

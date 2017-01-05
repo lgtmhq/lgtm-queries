@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,15 @@
 /**
  * @name Explicit export is not defined
  * @description Including an undefined attribute in __all__ causes an exception when
- *  the module is imported using '*'
+ *              the module is imported using '*'
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       maintainability
  */
 
 import python
-  
+
 /** Whether name is declared in the __all__ list of this module */
 predicate declaredInAll(Module m, StrConst name)
 {

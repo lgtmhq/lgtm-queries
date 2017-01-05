@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,12 +11,12 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-
 /**
  * @name Redundant comparison
- * @description The result of a comparison is implied by a previous comparison. 
+ * @description The result of a comparison is implied by a previous comparison.
  * @kind problem
  * @problem.severity warning
+ * @tags useless-code
  */
 
 import python

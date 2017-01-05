@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,4 +11,22 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import javascript
+/**
+ * @name Classify files
+ * @description This query produces a list of all files in a snapshot
+ *              that are classified as generated code or test code.
+ * @kind fileclassifier
+ */
+
+import python
+import semmle.python.filters.GeneratedCode
+import semmle.python.filters.Tests
+
+predicate classify(File f, string tag) {
+  f instanceof GeneratedFile and tag = "generated" or
+  exists (TestScope t | t.getLocation().getFile() = f) and tag = "test"
+}
+
+from File f, string tag
+where classify(f, tag)
+select f, tag

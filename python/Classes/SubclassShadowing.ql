@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
  *              method, hides the method in the subclass.
  * @kind problem
  * @problem.severity error
+ * @tags maintainability
+ *       correctness
  */
 
 /* Determine if a class defines a method that is shadowed by an attribute

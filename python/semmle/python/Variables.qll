@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,9 @@ class Variable extends @py_variable {
 
     /** Gets an access (load or store) of this variable */
     Name getAnAccess() {
-        result.getVariable() = this
+        result = this.getALoad()
+        or
+        result = this.getAStore()
     }
 
     /** Gets a load of this variable */

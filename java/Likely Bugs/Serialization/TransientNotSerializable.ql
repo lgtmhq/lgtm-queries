@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,11 @@
  * @description Using the 'transient' field modifier in non-serializable classes has no effect.
  * @kind problem
  * @problem.severity recommendation
+ * @tags reliability
+ *       maintainability
+ *       language-features
  */
-import default
+import java
 
 from TypeSerializable serializable, Class c, Field f
 where not c.hasSupertype+(serializable) and 

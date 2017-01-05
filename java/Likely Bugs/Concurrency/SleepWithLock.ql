@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@
 
 /**
  * @name Sleep with lock held
- * @description Calling 'Thread.sleep' with a lock held may lead to very poor 
+ * @description Calling 'Thread.sleep' with a lock held may lead to very poor
  *              performance or even deadlock.
  * @kind problem
  * @problem.severity error
- * @cwe 833
+ * @tags reliability
+ *       correctness
+ *       concurrency
+ *       external/cwe/cwe-833
  */
-import default
+import java
 
 from MethodAccess ma, Method sleep
 where ma.getMethod() = sleep and

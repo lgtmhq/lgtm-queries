@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@
  * @description Iterating through the values of a map using the key set is inefficient.
  * @kind problem
  * @problem.severity recommendation
+ * @tags efficiency
+ *       maintainability
  */
-import default
+import java
 
 /** A local variable that is initialized using a key-set iterator. */
 class KeySetIterator extends LocalVariableDecl {

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import java
 
 /**
  * The type `t` is a parameterization of `g`, where the `i`-th type parameter of
@@ -68,38 +68,38 @@ predicate indirectlyInstantiates(RefType t, GenericType g, int i, RefType arg) {
 
 /** A reference type that extends a parameterization of `java.util.Collection`. */
 class CollectionType extends RefType {
-	CollectionType() {
-		exists(ParameterizedInterface coll |
-			coll.getSourceDeclaration().hasQualifiedName("java.util", "Collection") |
-			this.hasSupertype*(coll)
-		)
-	}
-	
-	/** The type of elements stored in this collection. */
-	RefType getElementType() {
-		exists (GenericInterface coll | coll.hasQualifiedName("java.util", "Collection") |
-			indirectlyInstantiates(this, coll, 0, result)
-		)
-	}
+  CollectionType() {
+    exists(ParameterizedInterface coll |
+      coll.getSourceDeclaration().hasQualifiedName("java.util", "Collection") |
+      this.hasSupertype*(coll)
+    )
+  }
+  
+  /** The type of elements stored in this collection. */
+  RefType getElementType() {
+    exists (GenericInterface coll | coll.hasQualifiedName("java.util", "Collection") |
+      indirectlyInstantiates(this, coll, 0, result)
+    )
+  }
 }
 
 /** A method declared in a collection type. */
 class CollectionMethod extends Method {
-	CollectionMethod() {
-		this.getDeclaringType() instanceof CollectionType
-	}
-	
-	/** The type of elements of the collection to which this method belongs. */
-	RefType getReceiverElementType() {
-		result = ((CollectionType)this.getDeclaringType()).getElementType()
-	}
+  CollectionMethod() {
+    this.getDeclaringType() instanceof CollectionType
+  }
+  
+  /** The type of elements of the collection to which this method belongs. */
+  RefType getReceiverElementType() {
+    result = ((CollectionType)this.getDeclaringType()).getElementType()
+  }
 }
 
 /** The `size` method on `java.util.Collection`. */
 class CollectionSizeMethod extends CollectionMethod {
-	CollectionSizeMethod() {
-		this.hasName("size") and this.hasNoParameters()
-	}
+  CollectionSizeMethod() {
+    this.hasName("size") and this.hasNoParameters()
+  }
 }
 
 /** A method that mutates the collection it belongs to. */

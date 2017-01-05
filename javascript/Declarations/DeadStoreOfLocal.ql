@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
  *              overwritten, has no effect.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
  */
 
 import javascript
@@ -29,7 +30,9 @@ predicate deadStoreOfLocal(VarDef vd, PurelyLocalVariable v) {
 
 predicate isNullOrUndef(Expr e) {
   // `null` or `undefined`
-  e instanceof NullLiteral or e.(VarAccess).getName() = "undefined" or
+  e instanceof NullLiteral or
+  e.(VarAccess).getName() = "undefined" or
+  e instanceof VoidExpr or
   // recursive case to catch multi-assignments of the form `x = y = null`
   isNullOrUndef(e.(AssignExpr).getRhs())
 }
@@ -40,6 +43,10 @@ predicate isDefaultInit(Expr e) {
   e.(NegExpr).getOperand().(NumberLiteral).getValue() = "1" or
   e.(StringLiteral).getValue() = "" or
   e.(BooleanLiteral).getValue() = "false" or
+  // initialising to an empty array or object literal, even if unnecessary,
+  // can convey useful type information to the reader
+  e.(ArrayExpr).getSize() = 0 or
+  e.(ObjectExpr).getNumProperty() = 0 or
   // recursive case
   isDefaultInit(e.(AssignExpr).getRhs())
 }
@@ -53,5 +60,7 @@ where deadStoreOfLocal(dead, v) and
       // don't flag overwrites with `null` or `undefined`
       not isNullOrUndef(dead.getSource()) and
       // don't flag default inits that are later overwritten
-      not (isDefaultInit(dead.getSource()) and localDefinitionOverwrites(v, dead, _))
+      not (isDefaultInit(dead.getSource()) and localDefinitionOverwrites(v, dead, _)) and
+      // don't flag assignments in externs
+      not dead.(ASTNode).inExternsFile()
 select dead, "This statement assigns a value to " + v.getName() + " that is never read."

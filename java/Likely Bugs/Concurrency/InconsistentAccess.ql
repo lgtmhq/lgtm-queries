@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,13 @@
  *              conditions.
  * @kind problem
  * @problem.severity error
- * @cwe 662
+ * @tags reliability
+ *       correctness
+ *       concurrency
+ *       language-features
+ *       external/cwe/cwe-662
  */
-import default
+import java
 
 predicate withinInitializer(Expr e) {
   e.getEnclosingCallable().hasName("<clinit>") or
@@ -55,15 +59,15 @@ class MyField extends Field {
   }
   
   int getNumSynchedAccesses() {
-  	result = count(Expr synched | synched = this.getAnAccess() and withinLocalSynchronization(synched))
+    result = count(Expr synched | synched = this.getAnAccess() and withinLocalSynchronization(synched))
   }
   
   int getNumAccesses() {
-  	result = count(this.getAnAccess())
+    result = count(this.getAnAccess())
   }
   
   float getPercentSynchedAccesses() {
-  	result = (float)this.getNumSynchedAccesses() / this.getNumAccesses()
+    result = (float)this.getNumSynchedAccesses() / this.getNumAccesses()
   }
 }
 

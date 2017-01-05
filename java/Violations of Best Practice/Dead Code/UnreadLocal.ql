@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +16,16 @@
  * @description A local variable that is never read is redundant.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 561
+ * @tags maintainability
+ *       useless-code
+ *       external/cwe/cwe-561
  */
 
-import default
+import java
 
 VarAccess getARead(LocalVariableDecl v) {
-	v.getAnAccess() = result and
-	not exists(Assignment assign | assign.getDest() = result)
+  v.getAnAccess() = result and
+  not exists(Assignment assign | assign.getDest() = result)
 }
 
 predicate readImplicitly(LocalVariableDecl v) {

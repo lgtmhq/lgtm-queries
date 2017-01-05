@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
  *              may be unintentional and could lead to unexpected behavior.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       maintainability
  */
 
 import javascript
@@ -40,15 +42,15 @@ GlobalVariable accidentalGlobalIn(Function f) {
 }
 
 /**
- * Find accidental globals in `f` that are accessed at least once in reachable
+ * Find accidental globals in `f` that are read at least once in reachable
  * code.
  *
- * This prevents duplication of results between this query and the (simpler)
- * 'Unused variable' query.
+ * This prevents duplication of results between this query and 'Useless assignment
+ * to global variable'.
  */
 GlobalVariable candidateVariable(Function f) {
   result = accidentalGlobalIn(f) and
-  f.getEntryBB().getASuccessor*().getANode() = result.getAnAccess()
+  f.getEntryBB().getASuccessor*().useAt(_, result, _)
 }
 
 /**

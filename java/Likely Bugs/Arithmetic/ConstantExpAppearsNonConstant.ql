@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description An expression that always evaluates to the same value, but which has a non-constant subexpression, indicates a mistake.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       useless-code
  */
 import java
 
@@ -93,7 +95,10 @@ predicate isConstantExp (Expr e) {
 
 from Expr e
 where isConstantExp(e)
-  and exists(Expr child | e.getAChildExpr() = child | not isConstantExp(child))
+  and exists(Expr child | e.getAChildExpr() = child |
+        not isConstantExp(child) and
+        not child instanceof Annotation
+      )
   and not e instanceof CompileTimeConstantExpr
   // Exclude expressions that appear to be disabled deliberately (e.g. `false && ...`).
   and not e.(AndLogicalExpr).getAnOperand().(Literal).getLiteral() = "false"

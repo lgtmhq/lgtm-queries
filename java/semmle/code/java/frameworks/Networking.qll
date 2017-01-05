@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,29 +18,29 @@
 import semmle.code.java.Type
 
 class TypeUrlConnection extends RefType {
-	TypeUrlConnection() {
-		hasQualifiedName("java.net", "URLConnection")
-	}
+  TypeUrlConnection() {
+    hasQualifiedName("java.net", "URLConnection")
+  }
 }
 
 class TypeSocket extends RefType {
-	TypeSocket() {
-		hasQualifiedName("java.net", "Socket")
-	}
+  TypeSocket() {
+    hasQualifiedName("java.net", "Socket")
+  }
 }
 
 class URLConnectionGetInputStreamMethod extends Method {
-	URLConnectionGetInputStreamMethod() {
-		getDeclaringType() instanceof TypeUrlConnection and
-		hasName("getInputStream") and
-		hasNoParameters()
-	}
+  URLConnectionGetInputStreamMethod() {
+    getDeclaringType() instanceof TypeUrlConnection and
+    hasName("getInputStream") and
+    hasNoParameters()
+  }
 }
 
 class SocketGetInputStreamMethod extends Method {
-	SocketGetInputStreamMethod() {
-		getDeclaringType() instanceof TypeSocket and
-		hasName("getInputStream") and
-		hasNoParameters()
-	}
+  SocketGetInputStreamMethod() {
+    getDeclaringType() instanceof TypeSocket and
+    hasName("getInputStream") and
+    hasNoParameters()
+  }
 }

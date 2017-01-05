@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,19 +11,33 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import java
 
 class SSLClass extends RefType {
   SSLClass() {
     exists(Class c | this.getASupertype*() = c |
-	    (c.hasQualifiedName("javax.net.ssl", _)
-	    or c.hasQualifiedName("javax.rmi.ssl", _))
+      (c.hasQualifiedName("javax.net.ssl", _)
+      or c.hasQualifiedName("javax.rmi.ssl", _))
     )
   }
 }
 
+pragma[inline]
+private string algorithmRegex(string algorithmString) {
+  // Algorithms usually appear in names surrounded by characters that are not
+  // alphabetical characters in the same case. This handles the upper and lower
+  // case cases.
+  result = "((^|.*[^A-Z])(" + algorithmString + ")([^A-Z].*|$))"
+  // or...
+  + "|" +
+  // For lowercase, we want to be careful to avoid being confused by camelCase
+  // hence we require two preceding uppercase letters to be sure of a case switch,
+  // or a preceding non-alphabetic character
+  "((^|.*[A-Z]{2}|.*[^a-zA-Z])(" + algorithmString.toLowerCase() + ")([^a-z].*|$))"
+}
+
 /** A blacklist of algorithms that are known to be insecure. */
-string algorithmBlacklist() {
+private string algorithmBlacklist() {
   result = "DES" or
   result = "RC2" or
   result = "RC4" or 
@@ -32,29 +46,30 @@ string algorithmBlacklist() {
 }
 
 // These are only bad if they're being used for encryption.
-string hashAlgorithmBlacklist() {
+private string hashAlgorithmBlacklist() {
   result = "SHA1" or
   result = "MD5"
 }
 
-/** A regex for matching strings that look like they contain a blacklisted algorithm. */
-string algorithmBlacklistRegex() {
+private string rankedAlgorithmBlacklist(int i) {
   // In this case we know these are being used for encryption, so we want to match
   // weak hash algorithms too.
-  exists(string s | s = algorithmBlacklist() or s = hashAlgorithmBlacklist() |
-	  // Algorithms usually appear in names surrounded by characters that are not
-	  // alphabetical characters in the same case. This handles the upper and lower
-	  // case cases.
-    result = "(^|.*[^A-Z])" + s + "([^A-Z].*|$)"
-    // For lowercase, we want to be careful to avoid being confused by camelCase
-	  // hence we require two preceding uppercase letters to be sure of a case switch,
-	  // or a preceding non-alphabetic character
-	  or result = "(^|.*[A-Z]{2}|.*[^a-zA-Z])" + s.toLowerCase() + "([^a-z].*|$)"
-  )
+  result = rank[i](string s | s = algorithmBlacklist() or s = hashAlgorithmBlacklist())
+}
+
+private string algorithmBlacklistString(int i) {
+  i = 1 and result = rankedAlgorithmBlacklist(i)
+  or
+  result = rankedAlgorithmBlacklist(i) + "|" + algorithmBlacklistString(i-1)
+}
+
+/** A regex for matching strings that look like they contain a blacklisted algorithm. */
+string algorithmBlacklistRegex() {
+  result = algorithmRegex(algorithmBlacklistString(max(int i | exists(rankedAlgorithmBlacklist(i)))))
 }
 
 /** A whitelist of algorithms that are known to be secure. */
-string algorithmWhitelist() {
+private string algorithmWhitelist() {
   result = "RSA" or
   result = "SHA256" or
   result = "CCM" or
@@ -64,19 +79,19 @@ string algorithmWhitelist() {
   result = "ECIES"
 }
 
+private string rankedAlgorithmWhitelist(int i) {
+  result = rank[i](algorithmWhitelist())
+}
+
+private string algorithmWhitelistString(int i) {
+  i = 1 and result = rankedAlgorithmWhitelist(i)
+  or
+  result = rankedAlgorithmWhitelist(i) + "|" + algorithmWhitelistString(i-1)
+}
+
 /** A regex for matching strings that look like they contain a whitelisted algorithm. */
 string algorithmWhitelistRegex() {
-  // The implementation of this is a duplicate of `algorithmBlacklistRegex`, as it isn't 
-  // possible to have string -> string functions at the moment.
-  
-  // Algorithms usually appear in names surrounded by characters that are not
-  // alphabetical characters in the same case. This handles the upper and lower
-  // case cases.
-  result = "(^|.*[^A-Z])" + algorithmWhitelist() + "([^A-Z].*|$)"
-  // For lowercase, we want to be careful to avoid being confused by camelCase
-  // hence we require two preceding uppercase letters to be sure of a case switch,
-  // or a preceding non-alphabetic character
-  or result = "(^|.*[A-Z]{2}|.*[^a-zA-Z])" + algorithmWhitelist().toLowerCase() + "([^a-z].*|$)"
+  result = algorithmRegex(algorithmWhitelistString(max(int i | exists(rankedAlgorithmWhitelist(i)))))
 }
 
 /**
@@ -94,8 +109,8 @@ abstract class JavaxCryptoAlgoSpec extends CryptoAlgoSpec {}
 class JavaxCryptoCipher extends JavaxCryptoAlgoSpec {
   JavaxCryptoCipher() {
     exists(Method m | m.getAReference() = this |
-	    m.getDeclaringType().getQualifiedName() = "javax.crypto.Cipher" and
-	    m.getName() = "getInstance"
+      m.getDeclaringType().getQualifiedName() = "javax.crypto.Cipher" and
+      m.getName() = "getInstance"
     )
   }
   

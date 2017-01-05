@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
  * @description Unused parameters make functions hard to read and hard to use, and should be removed.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
  */
 
 import javascript
@@ -64,5 +65,9 @@ where isUnused(f, p, pv, i) and
       // and f is not marked as abstract
       not f.getDocumentation().getATag().getTitle() = "abstract" and
       // this case is checked by a different query
-      not f.(FunctionExpr).isSetter()
+      not f.(FunctionExpr).isSetter() and
+      // `p` isn't used in combination with a rest property pattern to filter out unwanted properties
+      not exists (ObjectPattern op | exists(op.getRest()) |
+        op.getAPropertyPattern().getValuePattern() = pv.getADeclaration()
+      )
 select p, "Unused parameter " + pv.getName() + "."

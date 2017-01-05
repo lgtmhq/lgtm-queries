@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,17 @@
 
 /**
  * @name Inconsistent synchronization for writeObject()
- * @description Classes with a synchronized 'writeObject' method but no other 
+ * @description Classes with a synchronized 'writeObject' method but no other
  *              synchronized methods usually lack a sufficient level of synchronization.
  * @kind problem
  * @problem.severity warning
- * @cwe 662
+ * @tags reliability
+ *       correctness
+ *       concurrency
+ *       language-features
+ *       external/cwe/cwe-662
  */
-import default
+import java
 
 from Method m
 where m.getDeclaringType().getASupertype*() instanceof TypeSerializable and

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,66 +20,148 @@
  */
 
 import AbstractValues
-import InferredTypes
+private import InferredTypes
 
-// the concrete encoding of our definite abstract values as integers
-int theAbstractNullValue()        { result =  0 }  // represents `null`
-int theAbstractUndefinedValue()   { result =  1 }  // represents `undefined`
-int theAbstractFalseValue()       { result =  2 }  // represents `false`
-int theAbstractTrueValue()        { result =  3 }  // represents `true`
-int theAbstractZeroValue()        { result =  4 }  // represents `0`
-int theAbstractNonZeroValue()     { result =  5 }  // represents non-zero numbers
-int theAbstractEmptyValue()       { result =  6 }  // represents `""`
-int theAbstractNumStringValue()   { result =  7 }  // represents strings that coerce to a number
-int theAbstractOtherStringValue() { result =  8 }  // represents all other strings
-int theAbstractFunctionValue()    { result =  9 }  // represents functions
-int theAbstractClassValue()       { result = 10 }  // represents classes
-int theAbstractDateValue()        { result = 11 }  // represents Date objects
-int theAbstractObjectValue()      { result = 12 }  // represents non-Date objects
+newtype TAbstractValue =
+  /** Abstract representation of `null`. */
+  TAbstractNull() or
+  /** Abstract representation of `undefined`. */
+  TAbstractUndefined() or
+  /** Abstract representation of Boolean values `true` and `false`. */
+  TAbstractBoolean(boolean b) { b = true or b = false } or
+  /** Abstract representation of the number zero. */
+  TAbstractZero() or
+  /** Abstract representation of non-zero numbers. */
+  TAbstractNonZero() or
+  /** Abstract representation of the empty string. */
+  TAbstractEmpty() or
+  /** Abstract representation of strings that coerce to a number. */
+  TAbstractNumString() or
+  /** Abstract representation of non-empty strings that do not coerce to a number. */
+  TAbstractOtherString() or
+  /** Abstract representation of function objects. */
+  TAbstractFunction(Function f) or
+  /** Abstract representation of class objects. */
+  TAbstractClass(Class c) or
+  /** Abstract representation of Date objects. */
+  TAbstractDate() or
+  /** Abstract representation of arguments objects. */
+  TAbstractArguments() or
+  /** Abstract representation of objects other than functions, classes, dates or arguments. */
+  TAbstractObject() or
+  /** Abstract representation of indefinite values that represent a function or class. */
+  TIndefiniteFunctionOrClass(DataFlowIncompleteness cause) or
+  /*** Abstract representation of indefinite values that represent any value. */
+  TIndefiniteAbstractValue(DataFlowIncompleteness cause)
 
-// types and Boolean coercions of definite abstract values
-predicate definiteAbstractValues(int id, InferredType type, boolean toBool) {
-  id = theAbstractNullValue()        and type = "null"      and toBool = false or
-  id = theAbstractUndefinedValue()   and type = "undefined" and toBool = false or
-  id = theAbstractFalseValue()       and type = "boolean"   and toBool = false or
-  id = theAbstractTrueValue()        and type = "boolean"   and toBool = true  or
-  id = theAbstractZeroValue()        and type = "number"    and toBool = false or
-  id = theAbstractNonZeroValue()     and type = "number"    and toBool = true  or
-  id = theAbstractEmptyValue()       and type = "string"    and toBool = false or
-  id = theAbstractNumStringValue()   and type = "string"    and toBool = true  or
-  id = theAbstractOtherStringValue() and type = "string"    and toBool = true  or
-  id = theAbstractFunctionValue()    and type = "function"  and toBool = true  or
-  id = theAbstractClassValue()       and type = "class"     and toBool = true  or
-  id = theAbstractDateValue()        and type = "date"      and toBool = true  or
-  id = theAbstractObjectValue()      and type = "object"    and toBool = true
+library class AbstractNull extends PrimitiveAbstractValue, TAbstractNull {
+  boolean getBooleanValue() { result = false }
+  PrimitiveType getType() { result = TTNull() }
+  predicate isCoercibleToNumber() { none() }
+  string toString() { result = "null" }
 }
 
-// the concrete encoding of our indefinite abstract values as integers
-int indefiniteAbstractValue(DataFlowIncompleteness cause) {
-  result = -1 and cause = "call" or
-  result = -2 and cause = "heap" or
-  result = -3 and cause = "import" or
-  result = -4 and cause = "global" or
-  result = -5 and cause = "yield"
+library class AbstractUndefined extends PrimitiveAbstractValue, TAbstractUndefined {
+  boolean getBooleanValue() { result = false }
+  PrimitiveType getType() { result = TTUndefined() }
+  predicate isCoercibleToNumber() { none() }
+  string toString() { result = "undefined" }
 }
 
-/**
- * Relate abstract values to their type and Boolean coercion.
- */
-predicate abstractValues(int id, InferredType type, boolean toBool) {
-  definiteAbstractValues(id, type, toBool) or
-  id = indefiniteAbstractValue(_) and (toBool = true or toBool = false)
+library class AbstractBoolean extends PrimitiveAbstractValue, TAbstractBoolean {
+  boolean getBooleanValue() { this = TAbstractBoolean(result) }
+  PrimitiveType getType() { result = TTBoolean() }
+  predicate isCoercibleToNumber() { any() }
+  string toString() { result = getBooleanValue().toString() }
 }
 
-/**
- * Domain predicate for the `AbstractValue` class that encompasses all
- * encodings of abstract values.
- */
-cached predicate abstractValueId(int id) { abstractValues(id, _, _) }
+library class AbstractZero extends PrimitiveAbstractValue, TAbstractZero {
+  boolean getBooleanValue() { result = false }
+  PrimitiveType getType() { result = TTNumber() }
+  predicate isCoercibleToNumber() { any() }
+  string toString() { result = "0" }
+}
 
-/**
- * Get a definite abstract value with the given type.
- */
-int abstractValueOfType(string type) {
-  definiteAbstractValues(result, type, _)
+library class AbstractNonZero extends PrimitiveAbstractValue, TAbstractNonZero {
+  boolean getBooleanValue() { result = true }
+  PrimitiveType getType() { result = TTNumber() }
+  predicate isCoercibleToNumber() { any() }
+  string toString() { result = "non-zero value" }
+}
+
+library class AbstractEmpty extends PrimitiveAbstractValue, TAbstractEmpty {
+  boolean getBooleanValue() { result = false }
+  PrimitiveType getType() { result = TTString() }
+  predicate isCoercibleToNumber() { any() }
+  string toString() { result = "\"\"" }
+}
+
+library class AbstractNumString extends PrimitiveAbstractValue, TAbstractNumString {
+  boolean getBooleanValue() { result = true }
+  PrimitiveType getType() { result = TTString() }
+  predicate isCoercibleToNumber() { any() }
+  string toString() { result = "numeric string" }
+}
+
+library class AbstractOtherString extends PrimitiveAbstractValue, TAbstractOtherString {
+  boolean getBooleanValue() { result = true }
+  PrimitiveType getType() { result = TTString() }
+  predicate isCoercibleToNumber() { none() }
+  string toString() { result = "non-empty, non-numeric string" }
+}
+
+library class AbstractFunction extends DefiniteAbstractValue, TAbstractFunction {
+  boolean getBooleanValue() { result = true }
+  InferredType getType() { result = TTFunction() }
+  predicate isCoercibleToNumber() { none() }
+  PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
+  string toString() { result = "function" }
+}
+
+library class AbstractClass extends DefiniteAbstractValue, TAbstractClass {
+  boolean getBooleanValue() { result = true }
+  InferredType getType() { result = TTClass() }
+  predicate isCoercibleToNumber() { none() }
+  PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
+  string toString() { result = "class" }
+}
+
+library class AbstractDate extends DefiniteAbstractValue, TAbstractDate {
+  boolean getBooleanValue() { result = true }
+  InferredType getType() { result = TTDate() }
+  predicate isCoercibleToNumber() { any() }
+  PrimitiveAbstractValue toPrimitive() { result.getType() = TTNumber() }
+  string toString() { result = "date" }
+}
+
+library class AbstractArguments extends DefiniteAbstractValue, TAbstractArguments {
+  boolean getBooleanValue() { result = true }
+  InferredType getType() { result = TTObject() }
+  predicate isCoercibleToNumber() { none() }
+  PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
+  string toString() { result = "arguments" }
+}
+
+library class AbstractObject extends DefiniteAbstractValue, TAbstractObject {
+  boolean getBooleanValue() { result = true }
+  InferredType getType() { result = TTObject() }
+  predicate isCoercibleToNumber() { none() }
+  PrimitiveAbstractValue toPrimitive() { result.getType() = TTString() }
+  string toString() { result = "object" }
+}
+
+library class IndefiniteFunctionOrClass extends AbstractValue, TIndefiniteFunctionOrClass {
+  boolean getBooleanValue() { result = true }
+  InferredType getType() { result = TTFunction() or result = TTClass() }
+  predicate isCoercibleToNumber() { none() }
+  PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
+  string toString() { result = "indefinite value (function or class)" }
+}
+
+library class IndefiniteAbstractValue extends AbstractValue, TIndefiniteAbstractValue {
+  boolean getBooleanValue() { result = true or result = false }
+  InferredType getType() { any() }
+  predicate isCoercibleToNumber() { any() }
+  PrimitiveAbstractValue toPrimitive() { any() }
+  string toString() { result = "indefinite value" }
 }

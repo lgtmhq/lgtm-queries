@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,19 @@
  *              and may indicate badly maintained code.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       readability
+ *       documentation
  */
 
-import default
+import javascript
 
 from Function f, JSDoc doc, JSDocParamTag tag, string parmName
 where doc = f.getDocumentation() and
       tag = doc.getATag() and
       parmName = tag.getName() and
       tag.documentsSimpleName() and
-      not exists (f.getParameter(parmName)) and
+      not exists (f.getParameterByName(parmName)) and
       // don't report a violation in ambiguous cases
       strictcount(JSDoc d | d = f.getDocumentation() and d.getATag() instanceof JSDocParamTag) = 1
 select tag, "@param tag refers to non-existent parameter " + parmName + "."

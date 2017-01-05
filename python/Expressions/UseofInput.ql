@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description The built-in function 'input' is used which can allow arbitrary code to be run.
  * @kind problem
  * @problem.severity error
+ * @tags security
+ *       correctness
  */
 
 import python

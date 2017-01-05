@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  * A library for working with basic blocks in Java.
  */
 
-import default
+import java
 import Dominance
 import semmle.code.java.ControlFlowGraph
 
@@ -29,7 +29,7 @@ class BasicBlock extends ControlFlowNode {
   BasicBlock() {
     not exists(this.getAPredecessor()) and exists(this.getASuccessor())
     or strictcount(this.getAPredecessor()) > 1
-    or strictcount(this.getAPredecessor().getASuccessor()) > 1
+    or exists(ControlFlowNode pred | pred = this.getAPredecessor() | strictcount(pred.getASuccessor()) > 1)
   }
   
   /** An immediate successor of this basic block. */

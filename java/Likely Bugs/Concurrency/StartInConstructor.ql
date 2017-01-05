@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,13 @@
 /**
  * @name Start of thread in constructor
  * @description Starting a thread within a constructor may cause the thread to start before
- *              any subclass constructor has completed its initialization, causing unexpected 
+ *              any subclass constructor has completed its initialization, causing unexpected
  *              results.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
+ *       concurrency
  */
 import java
 

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  * @description Using external input in format strings can lead to exceptions or information leaks.
  * @kind problem
  * @problem.severity error
- * @cwe 134
+ * @tags security
+ *       external/cwe/cwe-134
  */
 
-import default
+import java
 import ExternallyControlledFormatString
 
 from RemoteUserInput source, StringFormat formatCall

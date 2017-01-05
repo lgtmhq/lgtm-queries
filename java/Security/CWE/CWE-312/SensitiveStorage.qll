@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import java
 import semmle.code.java.frameworks.Properties
 import semmle.code.java.frameworks.JAXB
 import semmle.code.java.security.DataFlow
@@ -64,15 +64,16 @@ class Cookie extends Storable, ClassInstanceExpr {
   /** A store, for example `response.addCookie(cookie);`. */
   Expr getAStore() {
     exists(MethodAccess m, Method def | 
-	    m.getMethod() = def
-	    and def.getName() = "addCookie"
-	    and def.getDeclaringType().getQualifiedName() = "javax.servlet.http.HttpServletResponse"
-	    and result = m
-	    and this.flowsTo(m.getAnArgument())
+      m.getMethod() = def
+      and def.getName() = "addCookie"
+      and def.getDeclaringType().getQualifiedName() = "javax.servlet.http.HttpServletResponse"
+      and result = m
+      and this.flowsTo(m.getAnArgument())
     )
   }
   
   Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
   
   string toString() {
     result = ClassInstanceExpr.super.toString()
@@ -104,6 +105,7 @@ class Properties extends Storable, ClassInstanceExpr {
   }
   
   Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
   
   string toString() {
     result = ClassInstanceExpr.super.toString()
@@ -116,6 +118,7 @@ abstract class ClassStore extends Storable, ClassInstanceExpr {
   }
 
   Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
 }
 
 /** The instantiation of a serializable class, which can be stored to disk. */

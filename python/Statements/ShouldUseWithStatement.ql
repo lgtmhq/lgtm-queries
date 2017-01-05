@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
 /**
  * @name Should use a 'with' statement
  * @description Using a 'try-finally' block to ensure only that a resource is closed makes code more
- *  difficult to read.
+ *              difficult to read.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       readability
+ *       convention
  */
 
 import python

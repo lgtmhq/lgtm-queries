@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,11 @@ import Stmt
 import Modules
 
 /**
- * An ECMAScript 6 module.
+ * An ECMAScript 2015 module.
  */
-class ES6Module extends Module {
-  ES6Module() {
-    exists (ModuleScope ms | ms.getScopeElement() = this) and
+class ES2015Module extends Module {
+  ES2015Module() {
+    isModule(this) and
     not isNodejs(this)
   }
   
@@ -76,16 +76,12 @@ class ES6Module extends Module {
 
 /** An import declaration. */
 class ImportDeclaration extends Stmt, Import, @importdeclaration {
-  ES6Module getEnclosingModule() {
+  ES2015Module getEnclosingModule() {
     this = result.getAnImport()
   }
 
   PathExpr getImportedPath() {
     result = getChildExpr(-1)
-  }
-
-  ES6Module getImportedModule() {
-    result.getFile() = getEnclosingModule().resolve(getImportedPath().(PathExpr))
   }
 
   /** Get the i-th import specifier of this import declaration. */
@@ -101,15 +97,14 @@ class ImportDeclaration extends Stmt, Import, @importdeclaration {
   string toString() { result = Stmt.super.toString() }
 }
 
-/** A literal path expression appearing in an <code>import</code> declaration. */
-library class LiteralImportPath extends PathExpr, StringLiteral {
+/** A literal path expression appearing in an `import` declaration. */
+library class LiteralImportPath extends PathExpr {
   LiteralImportPath() {
+    this instanceof StringLiteral and
     exists (ImportDeclaration req | this = req.getChildExpr(-1))
   }
 
-  string getValue() { result = StringLiteral.super.getValue() }
-  predicate isImpure() { StringLiteral.super.isImpure() }
-  string getStringValue() { result = StringLiteral.super.getStringValue() }
+  string getValue() { result = this.(StringLiteral).getValue() }
 }
 
 /**
@@ -197,7 +192,7 @@ class SelectiveImportDeclaration extends ImportDeclaration {
  */
 abstract class ExportDeclaration extends Stmt, @exportdeclaration {
   /** Get the module to which this export declaration belongs. */
-  ES6Module getEnclosingModule() {
+  ES2015Module getEnclosingModule() {
     this = result.getAnExport()
   }
 
@@ -295,26 +290,37 @@ class ExportSpecifier extends Expr, @exportspecifier {
   }
 }
 
+/** A named export specifier. */
+class NamedExportSpecifier extends ExportSpecifier, @namedexportspecifier {
+}
+
+/** A default export specifier. */
+class ExportDefaultSpecifier extends ExportSpecifier, @exportdefaultspecifier {
+}
+
+/** A namespace export specifier. */
+class ExportNamespaceSpecifier extends ExportSpecifier, @exportnamespacespecifier {
+}
+
 /** An export declaration that re-exports declarations from another module. */
 abstract class ReExportDeclaration extends ExportDeclaration {
   /** Get the path of the module from which this declaration re-exports. */
   abstract StringLiteral getImportedPath();
 
   /** Get the module from which this declaration re-exports. */
-  ES6Module getImportedModule() {
+  ES2015Module getImportedModule() {
     result.getFile() = getEnclosingModule().resolve(getImportedPath().(PathExpr))
   }
 }
 
 /** A literal path expression appearing in a re-export declaration. */
-library class LiteralReExportPath extends PathExpr, StringLiteral {
+library class LiteralReExportPath extends PathExpr {
   LiteralReExportPath() {
+    this instanceof StringLiteral and
     exists (ReExportDeclaration bred | this = bred.getImportedPath())
   }
 
-  string getValue() { result = StringLiteral.super.getValue() }
-  predicate isImpure() { StringLiteral.super.isImpure() }
-  string getStringValue() { result = StringLiteral.super.getStringValue() }
+  string getValue() { result = this.(StringLiteral).getValue() }
 }
 
 /** A named export declaration that re-exports symbols imported from another module. */

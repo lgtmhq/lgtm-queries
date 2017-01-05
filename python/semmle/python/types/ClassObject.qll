@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@
 // permissions and limitations under the License.
 
 import python
-import semmle.python.SelfAttribute
+private import semmle.python.pointsto.PointsTo
+private import semmle.python.pointsto.Base
 
-
-private predicate is_c_metaclass(Object o) {
+predicate is_c_metaclass(Object o) {
     py_special_objects(o, "type")
     or
     exists(Object sup | py_cmembers(o, ".super.", sup) and is_c_metaclass(sup))
@@ -27,6 +27,10 @@ library class ObjectOrCfg extends @py_object {
     string toString() {
         /* Not to be displayed */
         none() 
+    }
+    
+    ControlFlowNode getOrigin() {
+        result = this
     }
 
 }
@@ -73,16 +77,8 @@ class ClassObject extends Object {
     }
 
     /** Gets the nth base class of this class */
-    ClassObject getBaseType(int n) {
-        exists(ClassExpr cls | this.getOrigin() = cls |
-            /* To avoid negative recursion, we have to use intermediate_points_to rather than full points. */
-            intermediate_points_to(cls.getBase(n).getAFlowNode(), result, _)
-            or
-            this.isNewStyle() and not exists(cls.getBase(0)) and result = theObjectType() and n = 0
-        )
-        or
-        /* The extractor uses the special name ".super." to indicate the super class of a builtin class */
-        py_cmembers(this, ".super.", result) and n = 0
+    cached ClassObject getBaseType(int n) {
+        result = final_class_base_type(this, n)
     }
 
     /** Gets a base class of this class */
@@ -91,40 +87,27 @@ class ClassObject extends Object {
     }
 
     /** Whether this class has a base class */
-    private predicate hasABase() {
+    predicate hasABase() {
         exists(ClassExpr cls | this.getOrigin() = cls | exists(cls.getABase()))
-    }
-
-    /** Don't expose this predicate as it is easy to misuse if not thinking about multiple inheritance, old-style 
-       classes. Use nextInMro() instead. */
-    private ClassObject getImmediateSuperType() {
-        result = this.getBaseType(_)
+        or
+        /* The extractor uses the special name ".super." to indicate the super class of a builtin class */
+        py_cmembers(this, ".super.", _)
     }
 
     /** Gets a super class of this class (includes transitive super classes) */
     cached ClassObject getASuperType() {
-        result = this.getImmediateSuperType+()
+        result = final_get_a_super_type(this)
     }
 
     /** Gets a super class of this class (includes transitive super classes) or this class */
     cached ClassObject getAnImproperSuperType() {
-        result = this.getImmediateSuperType*()
+        result = final_get_an_improper_super_type(this)
     }
 
     /** Whether this class is a new style class. 
         A new style class is one that implicitly or explicitly inherits from `object`. */
-    cached predicate isNewStyle() {
-        this.newStyle()
-        or
-        this.getABaseType().isNewStyle()
-    }
-
-    private predicate newStyle() {
-        this.isC()
-        or
-        major_version() >= 3
-        or
-        exists(this.declaredMetaClass())
+    predicate isNewStyle() {
+        final_is_new_style(this)
     }
 
     /** Whether this class is a legal exception class. 
@@ -142,66 +125,39 @@ class ClassObject extends Object {
     }
 
     /** Returns an attribute declared on this class (not on a super-class) */
-    cached Object declaredAttribute(string name) {
-        this.declaredAttribute(name, result, _)
-    }
-
-    private predicate declaredAttribute(string name, Object obj, ObjectOrCfg origin) {
-        /* TO DO -- This needs to handle class decorators */
-        this.getImportTimeScope().objectReachingExit(name, obj, origin.(ControlFlowNode))
-        or
-        py_cmembers(this, name, obj) and this.declaresAttribute(name) and not name = ".super." and origin = obj
+    Object declaredAttribute(string name) {
+        final_class_declared_attribute(this, name, result, _, _)
     }
 
     /** Returns an attribute declared on this class (not on a super-class) */
-    cached predicate declaresAttribute(string name) {
-        this.getImportTimeScope().definesName(name)
-        or
-        not name = ".super." and
-        exists(Object o |
-            py_cmembers(this, name, o) and 
-            not exists(ClassObject sup | py_cmembers(this, ".super.", sup) and 
-                py_cmembers(sup, name, o)
-            )
-        )
+    predicate declaresAttribute(string name) {
+        class_declares_attribute(this, name)
     }
 
     /** Returns an attribute as it would be when looked up at runtime on this class.
       Will include attributes of super-classes */
     Object lookupAttribute(string name) {
-        this.lookupAttributeInternal(this, name, result, _)
+        final_class_attribute_lookup(this, name, result, _, _)
     }
 
     /** Looks up an attribute by searching this class' MRO starting at `start` */
     Object lookupMro(ClassObject start, string name) {
-        this.lookupAttributeInternal(start, name, result, _)
+        final_class_lookup_in_mro(this, start, name, result)
     }
 
     /** Whether the named attribute refers to the object and origin */
     predicate attributeRefersTo(string name, Object obj, ControlFlowNode origin) {
-        this.lookupAttributeInternal(this, name, obj, origin.(ObjectOrCfg))
+        final_class_attribute_lookup(this, name, obj, _, origin)
     }
 
-    /** Helper for `lookupAttribute`, `lookupMro` and `attributeRefersTo`.
-     * Looks up the attribute `name` in this class, starting at `start`.  */
-    private cached predicate lookupAttributeInternal(ClassObject start, string name, Object object, ObjectOrCfg origin) {
-        /* Choose attribute from superclass declared closest to, but not before, `start` in MRO. */
-        exists(int i, int j |
-            start = this.getMroItem(i) and
-            j = min(int k | k = this.declaringClassIndex(name) and k >= i) and
-            this.getMroItem(j).declaredAttribute(name, object, origin)
-        )
-    }
-
-    private int declaringClassIndex(string name) {
-        this.getMroItem(result).declaresAttribute(name)
+    /** Whether the named attribute refers to the object, class and origin */
+    predicate attributeRefersTo(string name, Object obj, ClassObject cls, ControlFlowNode origin) {
+        final_class_attribute_lookup(this, name, obj, cls, origin)
     }
 
     /** Whether this class has a attribute named `name`, either declared or inherited.*/
-    cached predicate hasAttribute(string name) {
-        this.declaresAttribute(name) or this.getASuperType().declaresAttribute(name)
-        or
-        this.getMetaClass().assignedInInit(name)
+    predicate hasAttribute(string name) {
+        final_class_has_attribute(this, name)
     }
 
     /** Whether it is impossible to know all the attributes of this class. Usually because it is
@@ -210,122 +166,35 @@ class ClassObject extends Object {
         /* True for a class with undeterminable superclasses, unanalysable metaclasses, or other confusions */
         this.failedInference()
         or
-        this.explicitMetaclass().failedInference()
+        this.getMetaClass().failedInference()
         or
         this.getABaseType().unknowableAttributes()
     }
 
-    private predicate hasExplicitMetaclass() {
-        exists(this.declaredMetaClass())
-        or
-        py_cobjecttypes(this, _)
-        or
-        six_add_metaclass(_, this, _)
-    }
-
-    private ClassObject explicitMetaclass() {
-        intermediate_points_to(this.declaredMetaClass(), result, _)
-        or
-        py_cobjecttypes(this, result) and is_c_metaclass(result)
-        or
-        exists(ControlFlowNode meta |
-            six_add_metaclass(_, this, meta) and
-            import_time_points_to(meta, result, _)
-        )
-    }
-
-    /** Gets the class of this object for simple cases, namely constants, functions, comprehensions and built-in objects. 
-     *  This exists primarily for internal use. Use getAnInferredType() instead.
-     */
-    ClassObject simpleClass() {
-        result = this.implicitSimpleClass()
-        or
-        result = this.explicitSimpleClass()
-    }
-
-    private ClassObject explicitSimpleClass() {
-        simple_points_to(this.declaredMetaClass(), result)
-        or
-        py_cobjecttypes(this, result)
-    }
-
-    private ClassObject implicitSimpleClass() {
-        this.approxHasTypeType() and result = theTypeType()
-        or
-        this.approxHasClassType() and result = theClassType()
-    }
-
-    private predicate hasTypeType() {
-        not this.hasExplicitMetaclass() and this.isNewStyle()
-    }
-
-    private predicate hasClassType() {
-      not this.hasExplicitMetaclass() and not this.isNewStyle()
-    }
-
-    private ClassObject inheritedMetaClass() {
-        result = this.getASuperType().explicitMetaclass()
-        and
-        forall(ClassObject possibleMeta | 
-            possibleMeta = this.getASuperType().explicitMetaclass() |
-            result.getAnImproperSuperType() = possibleMeta
-        )
+    /** Use getMetaClass() instead */
+    deprecated ClassObject simpleClass() {
+        result = this.getMetaClass()
     }
 
     /** Gets the metaclass for this class */
     ClassObject getMetaClass() {
-        not this.failedInference() and
-        (
-            this.hasExplicitMetaclass() and result = this.explicitMetaclass()
-            or
-            /* Meta class determination http://gnosis.cx/publish/programming/metaclass_2.html */
-            not this.hasExplicitMetaclass() and result = this.inheritedMetaClass()
-            or
-            /* No declared or inherited metaclass */
-            not this.hasExplicitMetaclass() and not exists(this.getASuperType().explicitMetaclass())
-            and
-            (
-              this.hasTypeType() and result = theTypeType()
-              or
-              this.hasClassType() and result = theClassType()
-            )
-        )
-    }
-
-    private predicate approxHasTypeType() {
-        not exists(declaredMetaClass()) and (major_version() >= 3 or hasABase())
+        result = final_class_get_meta_class(this)
         and
-        not py_cobjecttypes(this, _)
-    }
-
-    private predicate approxHasClassType() {
-        not exists(declaredMetaClass()) and major_version() < 3 and not hasABase()
-        and
-        not py_cobjecttypes(this, _)
+        not this.failedInference()
     }
 
     /* Whether this class is abstract. */
     predicate isAbstract() {
-        this.explicitMetaclass() = theAbcMetaClassObject()
+        this.getMetaClass() = theAbcMetaClassObject()
     }
 
-    private ControlFlowNode declaredMetaClass() {
+    ControlFlowNode declaredMetaClass() {
         result = this.getPyClass().getMetaClass().getAFlowNode()
     }
 
     /** Has type inference failed to compute the full class hierarchy for this class for the reason given. */ 
     predicate failedInference(string reason) {
-        strictcount(this.getPyClass().getADecorator()) > 1 and reason = "Multiple decorators"
-        or
-        exists(this.getPyClass().getADecorator()) and not six_add_metaclass(_, this, _) and reason = "Decorator not understood"
-        or
-        exists(int i | exists(((ClassExpr)this.getOrigin()).getBase(i)) and not exists(this.getBaseType(i)) and reason = "Missing base " + i)
-        or
-        exists(this.getPyClass().getMetaClass()) and not exists(this.explicitMetaclass()) and reason = "Failed to infer metaclass"
-        or
-        exists(int i | this.getBaseType(i).failedInference() and reason = "Failed inference for base class at position " + i)
-        or
-        exists(int i | strictcount(this.getBaseType(i)) > 1 and reason = "Multiple bases at position " + i)
+        final_failed_inference(this, reason)
     }
 
     /** Has type inference failed to compute the full class hierarchy for this class */ 
@@ -336,7 +205,7 @@ class ClassObject extends Object {
     /** Gets an object which is the sole instance of this class, if this class is probably a singleton.
      *  Note the 'probable' in the name; there is no guarantee that this class is in fact a singleton.
      *  It is guaranteed that getProbableSingletonInstance() returns at most one Object for each ClassObject. */
-     Object getProbableSingletonInstance() {
+    Object getProbableSingletonInstance() {
         exists(ControlFlowNode use, Expr origin |
             use.refersTo(result, this, origin.getAFlowNode())
             |
@@ -352,10 +221,10 @@ class ClassObject extends Object {
 
     /** This class is only instantiated at one place in the code */
     private  predicate hasStaticallyUniqueInstance() {
-        strictcount(Object instances | runtime_points_to(_, instances, this, _)) = 1
+        strictcount(Object instances | final_points_to(_, instances, this, _)) = 1
     }
 
-    private ImportTimeScope getImportTimeScope() {
+    ImportTimeScope getImportTimeScope() {
         result = this.getPyClass()
     }
 
@@ -370,72 +239,19 @@ class ClassObject extends Object {
 
     /** Returns the next class in the MRO of 'this' after 'sup' */
      ClassObject nextInMro(ClassObject sup) {
-        exists(int i |
-            sup = this.getMroItem(i) and
-            result = this.getMroItem(i+1)
-        )
+        result = final_next_in_mro(this, sup)
     }
 
     /** The MRO for this class. ClassObject `sup` occurs at `index` in the list of classes. 
      * `this` has an index of `1`, the next class in the MRO has an index of `2`, and so on.
      */
     ClassObject getMroItem(int index) {
-        /* Collapse the sparse array into a dense one */
-        exists(int idx | this.mroSparse(result, idx) |
-            idx = rank[index](int i, ClassObject s | this.mroSparse(s, i) | i) 
-        )
-    }
-
-    /** Eliminate duplicates classes from  the (super-class, index) tuples of depthFirstIndexed.
-     * Old-style classes perform depth-first search (like C++), so we eliminate all duplicates
-     * but the left-most (lowest index).
-     * New-style classes use the C3 MRO, so we eliminate all duplicates but the right-most.
-     */
-    private predicate mroSparse(ClassObject sup, int index) {
-        if this.isNewStyle() then (
-            this.depthFirstIndexed(sup, index) and
-            not exists(int after | this.depthFirstIndexed(sup, after) and after > index)
-        ) else (
-            this.depthFirstIndexed(sup, index) and
-            not exists(int before | this.depthFirstIndexed(sup, before) and before < index)
-        )
-    }
-
-    /** Index all super-classes using depth-first search, 
-     * numbering parent nodes before their children */
-    private predicate depthFirstIndexed(ClassObject sup, int index) {
-        not this.hasIllegalBases() and this.getAnImproperSuperType() = sup and
-        (
-            sup = this and index = 0
-            or
-            exists(ClassObject base, int base_offset, int sub_index |
-                base = this.getABaseType() and 
-                this.baseOffset(base, base_offset) and
-                base.depthFirstIndexed(sup, sub_index) and
-                index = base_offset + sub_index + 1
-            )
-        )
-    }
-
-    /** An index for the base class in the mro such that the index for superclasses of the base
-     * class are guaranteed not to clash with the superclasses of other base classes.  */
-    private predicate baseOffset(ClassObject base, int index) {
-        exists(int n |
-            this.getBaseType(n) = base |
-            index = sum(ClassObject left_base |
-                exists(int i | left_base = this.getBaseType(i) and i < n) |
-                count (left_base.getAnImproperSuperType())
-            )
-        )
+        result = final_get_mro_item(this, index)
     }
 
     /** This class has duplicate base classes */
     predicate hasDuplicateBases() {
         exists(ClassObject base, int i, int j | i != j and base = this.getBaseType(i) and base = this.getBaseType(j))
-    }
-
-    private predicate hasIllegalBases() {
-        this.hasDuplicateBases() or this.getABaseType().getASuperType() = this or this.getABaseType() = this
     }
 
     /** Whether this class is an iterable. */
@@ -450,7 +266,7 @@ class ClassObject extends Object {
          or   
          /* Because 'next' is a common method name we need to check that an __iter__
           * method actually returns this class. This is not needed for Py3 as the
-          * '__next__' method exists to define a class an an iterator.
+          * '__next__' method exists to define a class as an iterator.
           */
          major_version() = 2 and this.hasAttribute("next") and 
          exists(ClassObject other, FunctionObject iter | 
@@ -545,21 +361,11 @@ class ClassObject extends Object {
     predicate isOverridingDescriptorType() {
         this.hasAttribute("__get__") and this.hasAttribute("__set__") 
     }
+    
+    FunctionObject getAMethodCalledFromInit() {
+        final_method_called_from_init(result, this)
+    }
 
-}
-
-/* INTERNAL -- Do not use */
-predicate six_add_metaclass(CallNode decorator_call, ClassObject decorated, ControlFlowNode metaclass) {
-    exists(CallNode decorator, FunctionObject six_meta |
-        decorator_call.getArg(0) = decorated and
-        decorator = decorator_call.getFunction() |
-        import_time_points_to(decorator.getFunction(), six_meta, _) and
-        decorator.getArg(0) = metaclass and
-        exists(ModuleObject six |
-            six.getName() = "six" and
-            six.getAttribute("add_metaclass") = six_meta
-        )
-    )
 }
 
 /** The 'str' class. This is the same as the 'bytes' class for
@@ -572,14 +378,17 @@ ClassObject theStrType() {
 }
 
 private
-ModuleObject theAbcModuleObject() {
-    exists(Module sys_module | sys_module.getName() = "abc" and
-           result.getOrigin() = sys_module)
+Module theAbcModule() {
+    result.getName() = "abc"
 }
 
-private
-Object theAbcMetaClassObject() {
-    result = theAbcModuleObject().getAttribute("ABCMeta")
+ClassObject theAbcMetaClassObject() {
+    /* Avoid using points-to and thus negative recursion */
+    exists(Class abcmeta |
+        result.getPyClass() = abcmeta |
+        abcmeta.getName() = "ABCMeta" and
+        abcmeta.getScope() = theAbcModule()
+    )
 }
 
 /* Common builtin classes */
@@ -768,4 +577,9 @@ ClassObject theSuperType() {
 /** The builtin class 'StopIteration' */
 ClassObject theStopIterationType() {
     result = builtin_object("StopIteration")
+}
+
+/** The builtin class 'NotImplementedError' */
+ClassObject theNotImplementedErrorType() {
+    result = builtin_object("NotImplementedError")
 }

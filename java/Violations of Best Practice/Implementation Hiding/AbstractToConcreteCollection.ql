@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@
 
 /**
  * @name Cast from abstract to concrete collection
- * @description A cast from an abstract collection to a concrete implementation type makes the 
+ * @description A cast from an abstract collection to a concrete implementation type makes the
  *              code brittle.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 485
+ * @tags reliability
+ *       maintainability
+ *       modularity
+ *       external/cwe/cwe-485
  */
-import default
+import java
 import semmle.code.java.Collections
 
 predicate guardedByInstanceOf(VarAccess e, RefType t) {

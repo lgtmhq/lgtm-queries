@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,17 @@
 
 /**
  * @name Implicit narrowing conversion in compound assignment
- * @description Compound assignment statements (for example 'intvar += longvar') that implicitly 
- *              cast a value of a wider type to a narrower type may result in information loss and 
+ * @description Compound assignment statements (for example 'intvar += longvar') that implicitly
+ *              cast a value of a wider type to a narrower type may result in information loss and
  *              numeric errors such as overflows.
  * @kind problem
  * @problem.severity warning
- * @cwe 190 192 197 681
+ * @tags reliability
+ *       security
+ *       external/cwe/cwe-190
+ *       external/cwe/cwe-192
+ *       external/cwe/cwe-197
+ *       external/cwe/cwe-681
  */
 import semmle.code.java.arithmetic.Overflow
 

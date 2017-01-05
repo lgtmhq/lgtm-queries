@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -132,6 +132,20 @@ library class AugStore_ extends @py_AugStore, ExprContext {
 
     string toString() {
         result = "AugStore"
+    }
+
+}
+
+library class Await_ extends @py_Await, Expr {
+
+
+    /** Gets the expression waited upon of this await expression. */
+    Expr getValue() {
+        py_exprs(result, _, this, 2)
+    }
+
+    string toString() {
+        result = "Await"
     }
 
 }
@@ -283,49 +297,37 @@ library class Call_ extends @py_Call, Expr {
     }
 
 
-    /** Gets the arguments of this call expression. */
-    ExprList getArgs() {
+    /** Gets the positional arguments of this call expression. */
+    ExprList getPositionalArgs() {
         py_expr_lists(result, this, 3)
     }
 
 
-    /** Gets the nth argument of this call expression. */
-    Expr getArg(int index) {
-        result = this.getArgs().getItem(index)
+    /** Gets the nth positional argument of this call expression. */
+    Expr getPositionalArg(int index) {
+        result = this.getPositionalArgs().getItem(index)
     }
 
-    /** Gets an argument of this call expression. */
-    Expr getAnArg() {
-        result = this.getArgs().getAnItem()
-    }
-
-
-    /** Gets the keyword arguments of this call expression. */
-    KeywordList getKeywords() {
-        py_keyword_lists(result, this)
+    /** Gets a positional argument of this call expression. */
+    Expr getAPositionalArg() {
+        result = this.getPositionalArgs().getAnItem()
     }
 
 
-    /** Gets the nth keyword argument of this call expression. */
-    Keyword getKeyword(int index) {
-        result = this.getKeywords().getItem(index)
-    }
-
-    /** Gets a keyword argument of this call expression. */
-    Keyword getAKeyword() {
-        result = this.getKeywords().getAnItem()
+    /** Gets the named arguments of this call expression. */
+    DictItemList getNamedArgs() {
+        py_dict_item_lists(result, this)
     }
 
 
-    /** Gets the tuple (*) argument of this call expression. */
-    Expr getStarargs() {
-        py_exprs(result, _, this, 5)
+    /** Gets the nth named argument of this call expression. */
+    DictItem getNamedArg(int index) {
+        result = this.getNamedArgs().getItem(index)
     }
 
-
-    /** Gets the dictionary (**) argument of this call expression. */
-    Expr getKwargs() {
-        py_exprs(result, _, this, 6)
+    /** Gets a named argument of this call expression. */
+    DictItem getANamedArg() {
+        result = this.getNamedArgs().getAnItem()
     }
 
     string toString() {
@@ -396,31 +398,19 @@ library class ClassExpr_ extends @py_ClassExpr, Expr {
 
 
     /** Gets the keyword arguments of this class definition. */
-    KeywordList getKeywords() {
-        py_keyword_lists(result, this)
+    DictItemList getKeywords() {
+        py_dict_item_lists(result, this)
     }
 
 
     /** Gets the nth keyword argument of this class definition. */
-    Keyword getKeyword(int index) {
+    DictItem getKeyword(int index) {
         result = this.getKeywords().getItem(index)
     }
 
     /** Gets a keyword argument of this class definition. */
-    Keyword getAKeyword() {
+    DictItem getAKeyword() {
         result = this.getKeywords().getAnItem()
-    }
-
-
-    /** Gets the tuple (*) argument of this class definition. */
-    Expr getStarargs() {
-        py_exprs(result, _, this, 5)
-    }
-
-
-    /** Gets the dictionary (**) argument of this class definition. */
-    Expr getKwargs() {
-        py_exprs(result, _, this, 6)
     }
 
 
@@ -527,37 +517,20 @@ library class Delete_ extends @py_Delete, Stmt {
 library class Dict_ extends @py_Dict, Expr {
 
 
-    /** Gets the keys of this dictionary expression. */
-    ExprList getKeys() {
-        py_expr_lists(result, this, 2)
+    /** Gets the items of this dictionary expression. */
+    DictItemList getItems() {
+        py_dict_item_lists(result, this)
     }
 
 
-    /** Gets the nth key of this dictionary expression. */
-    Expr getKey(int index) {
-        result = this.getKeys().getItem(index)
+    /** Gets the nth item of this dictionary expression. */
+    DictItem getItem(int index) {
+        result = this.getItems().getItem(index)
     }
 
-    /** Gets a key of this dictionary expression. */
-    Expr getAKey() {
-        result = this.getKeys().getAnItem()
-    }
-
-
-    /** Gets the values of this dictionary expression. */
-    ExprList getValues() {
-        py_expr_lists(result, this, 3)
-    }
-
-
-    /** Gets the nth value of this dictionary expression. */
-    Expr getValue(int index) {
-        result = this.getValues().getItem(index)
-    }
-
-    /** Gets a value of this dictionary expression. */
-    Expr getAValue() {
-        result = this.getValues().getAnItem()
+    /** Gets an item of this dictionary expression. */
+    DictItem getAnItem() {
+        result = this.getItems().getAnItem()
     }
 
     string toString() {
@@ -582,6 +555,26 @@ library class DictComp_ extends @py_DictComp, Expr {
 
     string toString() {
         result = "DictComp"
+    }
+
+}
+
+library class DictUnpacking_ extends @py_DictUnpacking, DictItem {
+
+
+    /** Gets the location of this dictionary unpacking. */
+    Location getLocation() {
+        py_locations(result, this)
+    }
+
+
+    /** Gets the value of this dictionary unpacking. */
+    Expr getValue() {
+        py_exprs(result, _, this, 1)
+    }
+
+    string toString() {
+        result = "DictUnpacking"
     }
 
 }
@@ -763,6 +756,12 @@ library class For_ extends @py_For, Stmt {
         result = this.getOrelse().getAnItem()
     }
 
+
+    /** Whether the async property of this for statement is true. */
+    predicate isAsync() {
+        py_bools(this, 5)
+    }
+
     string toString() {
         result = "For"
     }
@@ -838,6 +837,12 @@ library class Function_ extends @py_Function {
     /** Gets a statement of this function. */
     Stmt getAStmt() {
         result = this.getBody().getAnItem()
+    }
+
+
+    /** Whether the async property of this function is true. */
+    predicate isAsync() {
+        py_bools(this, 6)
     }
 
     FunctionParent getParent() {
@@ -1142,6 +1147,32 @@ library class IsNot_ extends @py_IsNot, Cmpop {
 
 }
 
+library class KeyValuePair_ extends @py_KeyValuePair, DictItem {
+
+
+    /** Gets the location of this key-value pair. */
+    Location getLocation() {
+        py_locations(result, this)
+    }
+
+
+    /** Gets the value of this key-value pair. */
+    Expr getValue() {
+        py_exprs(result, _, this, 1)
+    }
+
+
+    /** Gets the key of this key-value pair. */
+    Expr getKey() {
+        py_exprs(result, _, this, 2)
+    }
+
+    string toString() {
+        result = "KeyValuePair"
+    }
+
+}
+
 library class LShift_ extends @py_LShift, Operator {
 
     string toString() {
@@ -1264,6 +1295,14 @@ library class LtE_ extends @py_LtE, Cmpop {
 
     string toString() {
         result = "LtE"
+    }
+
+}
+
+library class MatMult_ extends @py_MatMult, Operator {
+
+    string toString() {
+        result = "MatMult"
     }
 
 }
@@ -1505,14 +1544,6 @@ library class Print_ extends @py_Print, Stmt {
 
     string toString() {
         result = "Print"
-    }
-
-}
-
-library class ExprOrPrint_ extends @py_Print_or_expr {
-
-    string toString() {
-        result = "ExprOrPrint"
     }
 
 }
@@ -2073,6 +2104,12 @@ library class With_ extends @py_With, Stmt {
         result = this.getBody().getAnItem()
     }
 
+
+    /** Whether the async property of this with statement is true. */
+    predicate isAsync() {
+        py_bools(this, 4)
+    }
+
     string toString() {
         result = "With"
     }
@@ -2261,6 +2298,14 @@ library class AstNode_ extends @py_ast_node {
 
 }
 
+library class BoolParent_ extends @py_bool_parent {
+
+    string toString() {
+        result = "BoolParent"
+    }
+
+}
+
 library class Boolop_ extends @py_boolop {
 
     BoolExpr getParent() {
@@ -2376,6 +2421,48 @@ library class ComprehensionList_ extends @py_comprehension_list {
 
 }
 
+library class DictItem_ extends @py_dict_item {
+
+    DictItemList getParent() {
+        py_dict_items(this, _, result, _)
+    }
+
+    string toString() {
+        result = "DictItem"
+    }
+
+}
+
+library class DictItemList_ extends @py_dict_item_list {
+
+    DictItemListParent getParent() {
+        py_dict_item_lists(this, result)
+    }
+
+    /** Gets an item of this dict_item list */
+    DictItem getAnItem() {
+        py_dict_items(result, _, this, _)
+    }
+
+    /** Gets the nth item of this dict_item list */
+    DictItem getItem(int index) {
+        py_dict_items(result, _, this, index)
+    }
+
+    string toString() {
+        result = "DictItemList"
+    }
+
+}
+
+library class DictItemListParent_ extends @py_dict_item_list_parent {
+
+    string toString() {
+        result = "DictItemListParent"
+    }
+
+}
+
 library class Expr_ extends @py_expr {
 
 
@@ -2466,62 +2553,28 @@ library class ExprParent_ extends @py_expr_parent {
 
 }
 
-library class Keyword_ extends @py_keyword {
+library class Keyword_ extends @py_keyword, DictItem {
 
 
-    /** Gets the name of this keyword. */
-    string getArg() {
-        py_strs(result, this, 0)
+    /** Gets the location of this keyword argument. */
+    Location getLocation() {
+        py_locations(result, this)
     }
 
 
-    /** Gets the value of this keyword. */
+    /** Gets the value of this keyword argument. */
     Expr getValue() {
         py_exprs(result, _, this, 1)
     }
 
 
-    /** Gets the location of this keyword. */
-    Location getLocation() {
-        py_locations(result, this)
-    }
-
-    KeywordList getParent() {
-        py_keywords(this, result, _)
+    /** Gets the arg of this keyword argument. */
+    string getArg() {
+        py_strs(result, this, 2)
     }
 
     string toString() {
         result = "Keyword"
-    }
-
-}
-
-library class KeywordList_ extends @py_keyword_list {
-
-    KeywordListParent getParent() {
-        py_keyword_lists(this, result)
-    }
-
-    /** Gets an item of this keyword list */
-    Keyword getAnItem() {
-        py_keywords(result, this, _)
-    }
-
-    /** Gets the nth item of this keyword list */
-    Keyword getItem(int index) {
-        py_keywords(result, this, index)
-    }
-
-    string toString() {
-        result = "KeywordList"
-    }
-
-}
-
-library class KeywordListParent_ extends @py_keyword_list_parent {
-
-    string toString() {
-        result = "KeywordListParent"
     }
 
 }

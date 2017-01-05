@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,14 @@
  *              in a runtime exception.
  * @kind problem
  * @problem.severity error
+ * @tags correctness
  */
 
 import javascript
 import semmle.javascript.flow.Analysis
+private import semmle.javascript.flow.InferredTypes
 
 from InvokeExpr invk, AnalysedFlowNode callee
 where callee = invk.getCallee() and
-      forex (InferredType tp | tp = callee.getAType() | tp != "function" and tp != "class")
+      forex (InferredType tp | tp = callee.getAType() | tp != TTFunction() and tp != TTClass())
 select invk, "Callee is not a function: it has type " + callee.ppTypes() + "."

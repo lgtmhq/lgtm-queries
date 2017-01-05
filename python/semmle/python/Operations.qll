@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -120,8 +120,14 @@ class LShift extends LShift_ {
 class Mod extends Mod_ {
 
 }
+
 /** A multiplication (`*`) binary operator */
 class Mult extends Mult_ {
+
+}
+
+/** A matrix multiplication (`@`) binary operator */
+class MatMult extends MatMult_ {
 
 }
 

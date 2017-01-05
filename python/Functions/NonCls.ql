@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
 /**
  * @name First parameter of a class method is not named 'cls'
  * @description Using an alternative name for the first argument of a class method makes code more
- *  difficult to read; PEP8 states that the first argument to class methods should be 'cls'.
+ *              difficult to read; PEP8 states that the first argument to class methods should be 'cls'.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       readability
+ *       convention
  */
 
 import python

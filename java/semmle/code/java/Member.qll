@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,6 +101,7 @@ class Callable extends StmtParent, Member, @callable {
    *
    * DEPRECATED: use `getACallee` instead.
    */
+  deprecated
   Constructor getAConstructorCall() {
     result = getACallee()
   }
@@ -114,7 +115,7 @@ class Callable extends StmtParent, Member, @callable {
    * Whether this callable calls `target`
    * using a `super(...)` constructor call.
    */
-  predicate callsSuper(Constructor target) {
+  predicate callsSuperConstructor(Constructor target) {
     getACallSite(target) instanceof SuperConstructorInvocationStmt
   }
 
@@ -140,7 +141,7 @@ class Callable extends StmtParent, Member, @callable {
    * or a `this(...)` constructor call.
    */
   predicate callsConstructor(Constructor c) {
-    this.callsSuper(c) or this.callsThis(c)
+    this.callsSuperConstructor(c) or this.callsThis(c)
   }
 
   /**
@@ -177,8 +178,18 @@ class Callable extends StmtParent, Member, @callable {
    */
   predicate accesses(Field f) { this.writes(f) or this.reads(f) }
 
-  /** A field accessed in this callable. */
-  Field getAnAccess() { this.accesses(result) }
+  /**
+   * A field accessed in this callable.
+   *
+   * DEPRECATED: use `getAnAccessedField()` instead.
+   */
+  deprecated
+  Field getAnAccess() { result = getAnAccessedField() }
+
+  /**
+   * A field accessed in this callable.
+   */
+  Field getAnAccessedField() { this.accesses(result) }
 
   /** The type of a formal parameter of this callable. */
   Type getAParamType() { result = getParameterType(_) }
@@ -368,7 +379,7 @@ predicate overridesIgnoringAccess(Method m1, RefType t1, Method m2, RefType t2) 
 }
 
 private predicate inheritableMethodWithSignature(string sig, RefType t, Method m) {
-  declaresMethod(t, m) and
+  methods(m,_,_,_,t,_) and
   sig = m.getSignature() and
   m.isInheritable()
 }
@@ -378,6 +389,15 @@ private predicate inheritableMethodWithSignature(string sig, RefType t, Method m
 class Method extends Callable, @method {
   /** Whether this method (directly) overrides the specified callable. */
   predicate overrides(Method m) { overrides(this, m) }
+
+  /**
+   * Whether this method either overrides `m`, or `m` is the
+   * source declaration of this method (and not equal to it).
+   */
+  predicate overridesOrInstantiates(Method m) {
+    this.overrides(m) or
+    this.getSourceDeclaration() = m and this != m
+  }
 
   /** A method (directly or transitively) overridden by this method. */
   Method getAnOverride() {
@@ -459,6 +479,13 @@ class Method extends Callable, @method {
    */
   predicate isInheritable() {
     not isPrivate() and not isStatic()
+  }
+
+  /** Whether this method can be overridden. */
+  predicate isOverridable() {
+    isInheritable() and
+    not isFinal() and
+    not getDeclaringType().isFinal()
   }
 }
 
@@ -606,7 +633,7 @@ class Field extends Member, ExprParent, @field, Variable {
   Type getType() { fields(this, _, result, _, _) }
 
   /** The type in which this field is declared. */
-  RefType getDeclaringType() { declaresField(result,this) }
+  RefType getDeclaringType() { fields(this, _, _, result, _) }
 
   /**
    * The field declaration in which this field is declared.

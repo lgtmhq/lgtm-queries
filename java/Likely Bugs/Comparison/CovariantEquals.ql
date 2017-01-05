@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 
 /**
  * @name Overloaded equals
- * @description Defining 'Object.equals', where the parameter of 'equals' is not of the 
+ * @description Defining 'Object.equals', where the parameter of 'equals' is not of the
  *              appropriate type, overloads 'equals' instead of overriding it.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
-import default
+import java
 
 from RefType t, Method equals
 where t.fromSource() and

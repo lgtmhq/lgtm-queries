@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 
 /**
  * @name Suspicious reference equality test of boxed types
- * @description Comparing two boxed primitive values using the == or != operator 
+ * @description Comparing two boxed primitive values using the == or != operator
  *              compares object identity, which may not be intended.
  * @kind problem
  * @problem.severity error
- * @cwe 595
+ * @tags reliability
+ *       correctness
+ *       external/cwe/cwe-595
  */
-import default
+import java
 
 from EqualityTest c
 where c.getLeftOperand().getType() instanceof BoxedType and

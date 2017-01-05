@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
  * @description Extending or implementing an annotation is unlikely to be what the programmer intends.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       correctness
+ *       logic
  */
 
-import default
+import java
 
 from RefType type, AnnotationType annotation
 where type.getASupertype() = annotation

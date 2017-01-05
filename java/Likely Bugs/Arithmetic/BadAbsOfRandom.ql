@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 
 /**
  * @name Incorrect absolute value of random number
- * @description Calling 'Math.abs' to find the absolute value of a randomly generated integer is not 
+ * @description Calling 'Math.abs' to find the absolute value of a randomly generated integer is not
  *              guaranteed to return a non-negative integer.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
-import default
+import java
 
 from MethodAccess ma, Method abs, Method nextIntOrLong, MethodAccess nma
 where ma.getMethod() = abs and

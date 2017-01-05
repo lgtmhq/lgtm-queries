@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,22 +13,24 @@
 
 /**
  * @name User-controlled data in arithmetic expression
- * @description Arithmetic operations on user-controlled data that is not validated can cause 
+ * @description Arithmetic operations on user-controlled data that is not validated can cause
  *              overflows.
  * @kind problem
  * @problem.severity warning
- * @cwe 190 191
+ * @tags security
+ *       external/cwe/cwe-190
+ *       external/cwe/cwe-191
  */
-import default
+import java
 import semmle.code.java.security.DataFlow
 import ArithmeticCommon
 
 from ArithExpr exp, VarAccess tainted, RemoteUserInput origin, string effect
 where
-	exp.getAnOperand() = tainted and
-  origin.flowsTo(tainted)	and
-	(
-	  (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
+  exp.getAnOperand() = tainted and
+  origin.flowsTo(tainted) and
+  (
+    (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
     (not guardedAgainstOverflow(exp, tainted) and effect = "overflow")
   )
   // Exclude widening conversions of tainted values due to binary numeric promotion (JLS 5.6.2)
@@ -36,4 +38,4 @@ where
   and narrowerThanOrEqualTo(exp, tainted.getType())
   and not exp.getEnclosingCallable() instanceof HashCodeMethod
 select exp, "$@ flows to here and is used in arithmetic, potentially causing an " + effect + ".", 
-	origin, "User-provided value"
+  origin, "User-provided value"

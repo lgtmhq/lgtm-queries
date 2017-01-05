@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 
 /**
  * @name Inconsistent equals and hashCode
- * @description If a class overrides only one of 'equals' and 'hashCode', it may mean that 
+ * @description If a class overrides only one of 'equals' and 'hashCode', it may mean that
  *              'equals' and 'hashCode' are inconsistent.
  * @kind problem
  * @problem.severity error
- * @cwe 581
+ * @tags reliability
+ *       correctness
+ *       external/cwe/cwe-581
  */
-import default
+import java
 import Equality
 
 from Class c, string message, Method existingMethod

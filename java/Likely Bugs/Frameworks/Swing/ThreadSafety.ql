@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@
 
 /**
  * @name Thread safety
- * @description Calling Swing methods from a thread other than the event-dispatching thread may 
+ * @description Calling Swing methods from a thread other than the event-dispatching thread may
  *              result in multi-threading errors.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       frameworks/swing
  */
 
-import default
+import java
 
 from MethodAccess ma, Method m, MainMethod main
 where ma.getQualifier().getType().getCompilationUnit().getPackage().getName()

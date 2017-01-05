@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@
  *              confusing.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       readability
+ *       naming
  */
-import default
+import java
 
 from Method m, Method n
 where m.getDeclaringType() = n.getDeclaringType() and

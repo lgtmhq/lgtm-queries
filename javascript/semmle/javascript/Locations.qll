@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -150,7 +150,20 @@ class Locatable extends @locatable {
   	// exclude empty EOF token
   	result.getValue() != ""
   }
-  
+
+  /** Get a token belonging to this element. */
+  Token getAToken() {
+    exists (string path, int sl, int sc, int el, int ec,
+                  int tksl, int tksc, int tkel, int tkec |
+      this.getLocation().hasLocationInfo(path, sl, sc, el, ec) and
+      result.getLocation().hasLocationInfo(path, tksl, tksc, tkel, tkec) |
+      (sl < tksl or (sl = tksl and sc <= tksc)) and
+      (tkel < el or (tkel = el and tkec <= ec))
+    ) and
+    // exclude empty EOF token
+    result.getValue() != ""
+  }
+
   /** Get the number of lines covered by this element. */
   int getNumLines() {
   	result = getLocation().getNumLines()

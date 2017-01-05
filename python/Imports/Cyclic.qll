@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ predicate import_time_module_use(PythonModuleObject m, PythonModuleObject enclos
     )
 }
 
-/** Whether importing module 'first' before importing module 'other' will fail at runtime, due to the an
+/** Whether importing module 'first' before importing module 'other' will fail at runtime, due to an
     AttributeError at 'use' (in module 'other') caused by 'first.attr' not being defined as its definition can
     occur after the import 'other' in 'first'.
 */

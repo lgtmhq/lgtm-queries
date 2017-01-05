@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,18 +18,20 @@
 import Modules
 
 /**
- * An AMD <code>define</code> call of the form
+ * An AMD `define` call of the form
  *
- * <pre>
+ * ```
  * define(['a', 'b'], function(a, b) {
  *   ...
  * });
- * </pre>
+ * ```
  *
- * <p>
  * The first argument is an (optional) array of dependencies,
  * the second a factory method or object.
- * </p>
+ *
+ * We also recognize the three-argument form `define('m', ['a', 'b'], ...)`
+ * where the first argument is the module name, the second argument an
+ * array of dependencies, and the third argument a factory method or object.
  */
 class AMDModuleDefinition extends CallExpr {
   AMDModuleDefinition() {
@@ -37,13 +39,15 @@ class AMDModuleDefinition extends CallExpr {
     getCallee().(GlobalVarAccess).getName() = "define" and
     exists (int n | n = getNumArgument() |
       n = 1 or
-      n = 2 and getArgument(0) instanceof ArrayExpr
+      n = 2 and getArgument(0) instanceof ArrayExpr or
+      n = 3 and getArgument(0) instanceof StringLiteral and getArgument(1) instanceof ArrayExpr
     )
   }
 
   /** Get the array of module dependencies, if any. */
   ArrayExpr getDependencies() {
-    result = getArgument(0)
+    result = getArgument(0) or
+    result = getArgument(1)
   }
 
   /** Get the i-th dependency of this module definition. */
@@ -53,7 +57,8 @@ class AMDModuleDefinition extends CallExpr {
 
   /** Get some dependency of this module definition. */
   PathExpr getADependency() {
-    result = getDependency(_)
+    result = getDependency(_) or
+    result = getARequireCall().getAnArgument()
   }
 
   /** Get the factory expression of this module definition, which may be a function or a literal. */
@@ -158,17 +163,42 @@ class AMDModuleDefinition extends CallExpr {
       result = assgn.getRhs().(DataFlowNode).getASource()
     )
   }
+
+  /**
+   * Get a call to `require` inside this module.
+   */
+  CallExpr getARequireCall() {
+    result.getCallee().stripParens() = getRequireParameter().getVariable().getAnAccess()
+  }
 }
 
 /** A path expression appearing in the list of dependencies of an AMD module. */
-library class AMDDependencyPath extends PathExpr, StringLiteral {
+library class AMDDependencyPath extends PathExpr {
   AMDDependencyPath() {
+    this instanceof StringLiteral and
     exists (AMDModuleDefinition amd | this.getParentExpr*() = amd.getDependencies().getAnElement())
   }
 
-  string getValue() { result = StringLiteral.super.getValue() }
-  predicate isImpure() { StringLiteral.super.isImpure() }
-  string getStringValue() { result = StringLiteral.super.getStringValue() }
+  string getValue() { result = this.(StringLiteral).getValue() }
+}
+
+/** A path expression appearing in a `require` call in an AMD module. */
+library class AMDRequirePath extends PathExpr {
+  AMDRequirePath() {
+    this instanceof StringLiteral and
+    exists (AMDModuleDefinition amd | this.getParentExpr*() = amd.getARequireCall().getAnArgument())
+  }
+
+  string getValue() { result = this.(StringLiteral).getValue() }
+}
+
+/**
+ * Helper predicate: `def` is an AMD module definition in `tl`, and it is
+ * not nested inside another module definition.
+ */
+private predicate amdModuleTopLevel(AMDModuleDefinition def, TopLevel tl) {
+  def.getTopLevel() = tl and
+  not def.getParent+() instanceof AMDModuleDefinition
 }
 
 /**
@@ -176,12 +206,12 @@ library class AMDDependencyPath extends PathExpr, StringLiteral {
  */
 class AMDModule extends Module {
   AMDModule() {
-    strictcount (AMDModuleDefinition def | def.getTopLevel() = this) = 1
+    strictcount (AMDModuleDefinition def | amdModuleTopLevel(def, this)) = 1
   }
 
   /** Get the definition of this module. */
   AMDModuleDefinition getDefine() {
-    result.getTopLevel() = this
+    amdModuleTopLevel(result, this)
   }
 
   Module getAnImportedModule() {

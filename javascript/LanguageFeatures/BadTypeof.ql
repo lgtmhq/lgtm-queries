@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@
  *              this comparison can never succeed.
  * @kind problem
  * @problem.severity error
+ * @tags maintainability
+ *       correctness
+ *       language-features
  */
 
-import default
+import javascript
 
 /**
  * Common abstraction for equality tests and switch cases. Switch

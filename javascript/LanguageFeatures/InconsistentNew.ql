@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@
  *              it should always be invoked as a normal function, that is, without 'new'.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
+ *       language-features
  */
 
 import javascript
-import semmle.javascript.callgraph.Basic
+import semmle.javascript.flow.CallGraph
 import semmle.javascript.RestrictedLocations
 
 /** Check whether f contains code to guard against missing 'new'. There are many ways to implement such
@@ -39,7 +42,7 @@ where // externs are special, so don't flag them
       f = new.(CallSite).getACallee() and
       f = call.(CallSite).getACallee() and
       not guardsAgainstMissingNew(f) and
-      not new.(CallSite).isIncomplete() and
-      not call.(CallSite).isIncomplete()
+      not new.(CallSite).isUncertain() and
+      not call.(CallSite).isUncertain()
 select (FirstLineOf)f, "This function is invoked as a constructor here $@, and as a normal function here $@.",
           new, new.toString(), call, call.toString()

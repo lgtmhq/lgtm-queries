@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
  * @description Querying the contents of a collection or map that is never initialized is not normally useful.
  * @kind problem
  * @problem.severity error
- * @cwe 561
+ * @tags reliability
+ *       maintainability
+ *       useless-code
+ *       external/cwe/cwe-561
  */
 
-import default
+import java
 import semmle.code.java.Reflection
 import Containers
 

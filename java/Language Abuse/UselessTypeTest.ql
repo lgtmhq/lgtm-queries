@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,15 +16,17 @@
  * @description Testing whether a derived type is an instance of its base type is unnecessary.
  * @kind problem
  * @problem.severity warning
- * @cwe 561
+ * @tags maintainability
+ *       language-features
+ *       external/cwe/cwe-561
  */
 
-import default
+import java
 
 from InstanceOfExpr ioe, RefType t, RefType ct
 where t = ioe.getExpr().getType()
-	and ct = ioe.getTypeName().getType()
-	and ct = t.getASupertype+()
+  and ct = ioe.getTypeName().getType()
+  and ct = t.getASupertype+()
 select ioe, "There is no need to test whether an instance of $@ is also an instance of $@ - it always is.",
-	t, t.getName(),
-	ct, ct.getName()
+  t, t.getName(),
+  ct, ct.getName()

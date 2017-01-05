@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
  * @description A piece of code could not be parsed due to syntax errors.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
+ *       language-features
  */
 
-import default
+import javascript
 
 from JSParseError pe
-select pe, "Syntax error."
+select pe, pe.getMessage()

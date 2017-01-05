@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,10 +59,16 @@ private predicate cpython_interned_value(Expr e) {
     exists(Tuple t | t = e and not exists(t.getAnElt()))
 }
 
+/** The set of values that can be expected to be interned across 
+ * the main implementations of Python. PyPy, Jython, etc tend to
+ * follow CPython, but it varies, so this is a best guess.
+ */
 private predicate universally_interned_value(Expr e) {
      e.(IntegerLiteral).getN().toInt() = 0
      or
      exists(Tuple t | t = e and not exists(t.getAnElt()))
+     or
+     e.(StrConst).getText() = ""
 }
 
 predicate cpython_interned_constant(Expr e) {
@@ -97,7 +103,7 @@ private predicate comparison_one_type(Compare comp, Cmpop op, ClassObject cls) {
 
 predicate invalid_portable_is_comparison(Compare comp, Cmpop op, ClassObject cls) {
     /* OK to use 'is' when defining '__eq__' */
-    not exists(Function eq | eq.getName() = "__eq__" or eq.getName() = "__ne__" | eq = comp.getScope+())
+    not exists(Function eq | eq.getName() = "__eq__" or eq.getName() = "__ne__" | eq = comp.getScope().getScope*())
     and
     (
         comparison_one_type(comp, op, cls) and invalid_to_use_is_portably(cls)

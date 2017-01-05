@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,15 @@
  * @description Dereferencing a variable whose value is 'null' causes a 'NullPointerException'.
  * @kind problem
  * @problem.severity error
- * @cwe 476
+ * @tags reliability
+ *       correctness
+ *       exceptions
+ *       external/cwe/cwe-476
  */
 
-import default
-import semmle.code.java.dataflow.Nullness
+import java
+private import semmle.code.java.dataflow.Nullness
 
-from VarAccess access, LocalVariableDecl var
-where access = unguardedNullDereference(var)
+from VarAccess access, LocalScopeVariable var
+where alwaysNullDeref(var, access)
 select access, "Variable $@ is always null here.", var, var.getName()

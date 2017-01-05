@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
  * @description 'alert' should not be used in production code.
  * @kind problem
  * @problem.severity warning
+ * @tags usability
+ *       maintainability
  */
 
-import default
+import javascript
 
 class AlertCall extends CallExpr {
 	AlertCall() {

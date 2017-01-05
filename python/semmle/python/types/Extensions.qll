@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,10 +11,21 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** This library allows custom extensions to the points-to analysis to incorporate
+ * custom domain knowledge into the points-to analysis.
+ * 
+ * This should be considered an advance feature. Modifying the points-to analysis
+ * can cause queries to give strange and misleading results, if not done with care.
+ */
+
 import python
+private import semmle.python.pointsto.Penultimate
 
+/* Custom Facts. This extension mechanism allows you to add custom
+ * sources of data to the points-to analysis.
+ */
 
-abstract class CustomPointsToFact extends @py_flow_node {
+abstract class FinalCustomPointsToFact extends @py_flow_node {
 
     string toString() { none() }
 
@@ -22,7 +33,19 @@ abstract class CustomPointsToFact extends @py_flow_node {
 
 }
 
-abstract class CustomPointsToOriginFact extends CustomPointsToFact {
+abstract class PenultimateCustomPointsToFact extends @py_flow_node {
+
+    string toString() { none() }
+
+    abstract predicate pointsTo(Object value, ClassObject cls, ControlFlowNode origin);
+
+}
+
+abstract class CustomPointsToFact extends FinalCustomPointsToFact {
+
+}
+
+abstract class CustomPointsToOriginFact extends FinalCustomPointsToFact {
 
     string toString() { none() }
 
@@ -34,53 +57,40 @@ abstract class CustomPointsToOriginFact extends CustomPointsToFact {
 
 }
 
-/* Examples */
-
-/** The kwargs parameter (**kwargs) in a function definition is always a dict */
-class KwArgsFact extends CustomPointsToOriginFact {
-
-    KwArgsFact() {
-        exists(Function f | f.getKwarg() = this.(ControlFlowNode).getNode()) 
-    }
-
-    predicate pointsTo(Object value, ClassObject cls) {
-        value = this and
-        cls = theDictType()
-    }
-
-}
-
-/** The varargs (*varargs) in a function definition is always a tuple */
-class VarargFact extends CustomPointsToOriginFact {
-
-    VarargFact() {
-        exists(Function f | f.getVararg() = this.(ControlFlowNode).getNode()) 
-    }
-
-    predicate pointsTo(Object value, ClassObject cls) {
-        value = this and
-        cls = theTupleType()
-    }
-
-}
-
-/* A more complex example */
+/* An example */
 
 /** Any variable iterating over range or xrange must be an integer */
-class RangeIterationVariableFact extends CustomPointsToOriginFact {
+class RangeIterationVariableFact extends PenultimateCustomPointsToFact {
 
     RangeIterationVariableFact() {
         exists(For f, ControlFlowNode iterable |
             iterable.getBasicBlock().dominates(this.(ControlFlowNode).getBasicBlock()) and
             f.getIter().getAFlowNode() = iterable and
             f.getTarget().getAFlowNode() = this and
-            iterable.refersTo(_, theRangeType(), _)
+            penultimate_points_to(iterable, _, theRangeType(), _)
         )
     }
 
-    predicate pointsTo(Object value, ClassObject cls) {
-        value = this and
+    predicate pointsTo(Object value, ClassObject cls, ControlFlowNode origin) {
+        value = this and 
+        origin = this and
         cls = theIntType()
     }
 }
+
+/* Custom filters. This allows you to add custom filters to 
+ * filter out results.
+ * To implement a custom points-to filter you must implement four abstract methods.
+ * The first two of those are:
+ *    `boolean isTrueFor(ControlledVariable var)` and `boolean isTrueForAttribute(SsaVariable var, string attr_name)`
+ * which are defined in ConditionalControlFlowNode, and describes what variable or attribute the test applies to.
+ * 
+ * The second two of those are:
+ *    `
+ */
+
+abstract class CustomPointsToFilter extends PenultimatePointsToFilter {
+
+}
+
 

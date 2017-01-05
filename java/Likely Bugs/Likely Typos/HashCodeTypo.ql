@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,11 @@
  * @description A method named 'hashcode' may be intended to be named 'hashCode'.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       readability
+ *       naming
  */
-import default
+import java
 
 from Method m
 where m.hasName("hashcode") and 

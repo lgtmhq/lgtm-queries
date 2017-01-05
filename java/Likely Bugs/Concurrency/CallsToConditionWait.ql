@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@
 
 /**
  * @name Wait on condition
- * @description Calling 'wait' on a 'Condition' interface may result in unexpected behavior and is 
+ * @description Calling 'wait' on a 'Condition' interface may result in unexpected behavior and is
  *              probably a typographical error.
  * @kind problem
  * @problem.severity error
- * @cwe 662
+ * @tags reliability
+ *       correctness
+ *       concurrency
+ *       external/cwe/cwe-662
  */
-import default
+import java
 
 class WaitMethod extends Method {
   WaitMethod() {

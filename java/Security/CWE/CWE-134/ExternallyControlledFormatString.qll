@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,33 +11,33 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import java
 import semmle.code.java.security.DataFlow
 
 /**
  * A call to a `format` or `printf` method.
  */
 class StringFormat extends MethodAccess {
-	StringFormat() {
-		(
-			getCallee().hasName("format") or
-			getCallee().hasName("printf")
-		) and (
-			getCallee().getDeclaringType().hasQualifiedName("java.lang", "String") or
-			getCallee().getDeclaringType().hasQualifiedName("java.io", "PrintStream") or
-			getCallee().getDeclaringType().hasQualifiedName("java.util", "Formatter")
-		)
-	}
+  StringFormat() {
+    (
+      getCallee().hasName("format") or
+      getCallee().hasName("printf")
+    ) and (
+      getCallee().getDeclaringType().hasQualifiedName("java.lang", "String") or
+      getCallee().getDeclaringType().hasQualifiedName("java.io", "PrintStream") or
+      getCallee().getDeclaringType().hasQualifiedName("java.util", "Formatter")
+    )
+  }
 
-	Expr getFormatArgument() {
-		if getCallee().hasStringSignature("format(Locale, String, Object[])") then
-			/*
-			 * `Formatter` has a special form which takes a `Locale`,
-			 * which pushes the format argument to the second position.
-			 */
-			result = getArgument(1)
-		else
-			// In all other cases, we want the first argument.
-			result = getArgument(0)
-	}
+  Expr getFormatArgument() {
+    if getCallee().hasStringSignature("format(Locale, String, Object[])") then
+      /*
+       * `Formatter` has a special form which takes a `Locale`,
+       * which pushes the format argument to the second position.
+       */
+      result = getArgument(1)
+    else
+      // In all other cases, we want the first argument.
+      result = getArgument(0)
+  }
 }

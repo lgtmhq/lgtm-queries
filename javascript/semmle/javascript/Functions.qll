@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ class Function extends @function, Parameterized, StmtContainer {
 	}
 
 	/** Get the parameter with the given name. */
-	SimpleParameter getParameter(string name) {
+	SimpleParameter getParameterByName(string name) {
 	  result = getAParameter() and
 	  result.getName() = name
 	}
@@ -109,6 +109,39 @@ class Function extends @function, Parameterized, StmtContainer {
 	  hasRestParameter(this)
 	}
 
+	/**
+	 * The last token of this function's parameter list, not including
+	 * the closing parenthesis (if any).
+	 */
+	private Token lastTokenOfParameterList() {
+	  // if there are any parameters, it's the last token of the last parameter
+	  exists (Parameter lastParam | lastParam = getParameter(getNumParameter()-1) |
+	    result = lastParam.getDefault().getLastToken() or
+	    not exists(lastParam.getDefault()) and result = lastParam.getLastToken()
+	  )
+	  or
+	  // otherwise we have an empty parameter list `()`, and
+	  // we want to return the opening parenthesis
+	  not exists(getAParameter()) and
+	  (
+	    // if the function has a name, the opening parenthesis comes right after it
+	    result = getId().getLastToken().getNextToken() or
+	    // otherwise this must be an arrow function with no parameters, so the opening
+	    // parenthesis is the very first token of the function
+	    not exists(getId()) and result = getFirstToken()
+	  )
+	}
+
+	/** Does the parameter list of this function have a trailing comma? */
+	predicate hasTrailingComma() {
+	  lastTokenOfParameterList().getNextToken().getValue() = ","
+	}
+
+	/** Is this function an asynchronous function? */
+	predicate isAsync() {
+	  isAsync(this)
+	}
+
 	/** Get the enclosing function or toplevel of this function. */
 	StmtContainer getEnclosingContainer() {
 	  result = getEnclosingStmt().getContainer()
@@ -146,6 +179,18 @@ class Function extends @function, Parameterized, StmtContainer {
 	}
 
 	predicate isStrict() {
-	  getScope().isStrict() or StmtContainer.super.isStrict()
+	  exists (StrictModeDecl smd | this = smd.getContainer()) or
+	  StmtContainer.super.isStrict()
+	}
+	
+	/** Get a return statement in the body of the functions, if any. */
+	ReturnStmt getAReturnStmt() {
+	  result.getContainer() = this
+	}
+	
+	/** Get an expression that could be returned by the function, if any. */
+	Expr getAReturnedExpr() {
+	  result = getBody() or
+	  result = getAReturnStmt().getExpr()
 	}
 }

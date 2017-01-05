@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ class Expr extends Expr_, AstNode {
     predicate refersTo(Object value, ClassObject cls, AstNode origin) {
         not py_special_objects(cls, "_semmle_unknown_type")
         and
-        runtime_points_to(this.getAFlowNode(), value, cls, origin.getAFlowNode())
+        final_points_to(this.getAFlowNode(), value, cls, origin.getAFlowNode())
     }
 
     /** Whether this expression might "refer-to" to `value` which is from `origin` 
@@ -91,12 +91,12 @@ class Expr extends Expr_, AstNode {
      * where the class cannot be inferred.
      */
     predicate refersTo(Object value, AstNode origin) {
-        runtime_points_to(this.getAFlowNode(), value, _, origin.getAFlowNode())
+        final_points_to(this.getAFlowNode(), value, _, origin.getAFlowNode())
     }
 
     /** Equivalent to `this.refersTo(value, _)` */
     predicate refersTo(Object value) {
-        runtime_points_to(this.getAFlowNode(), value, _, _)
+        final_points_to(this.getAFlowNode(), value, _, _)
     }
 
 }
@@ -155,11 +155,9 @@ class Subscript extends Subscript_ {
 class Call extends Call_ {
 
     Expr getASubExpression() {
-        result = this.getAnArg() or
+        result = this.getAPositionalArg() or
         result = this.getAKeyword().getValue() or
-        result = this.getFunc() or
-        result = this.getKwargs() or
-        result = this.getStarargs()
+        result = this.getFunc()
     }
 
     predicate hasSideEffects() {
@@ -171,6 +169,52 @@ class Call extends Call_ {
     }
 
     CallNode getAFlowNode() { result = super.getAFlowNode() }
+
+    /** Gets a tuple (*) argument of this class definition. */
+    Expr getStarargs() {
+        result = this.getAPositionalArg().(Starred).getValue()
+    }
+
+    /** Gets a dictionary (**) argument of this class definition. */
+    Expr getKwargs() {
+        result = this.getANamedArg().(DictUnpacking).getValue()
+    }
+
+    /* Backwards compatibility */
+
+    /** Gets the nth keyword argument of this call expression, provided it is not preceded by a double-starred argument. 
+     * This exists primarily for backwards compatibility. You are recommended to use
+     * Call.getNamedArg(index) instead.
+     * */
+    Keyword getKeyword(int index) {
+        result = this.getNamedArg(index) and not exists(DictUnpacking d, int lower | d = this.getNamedArg(lower) and lower < index)
+    }
+
+    /** Gets a keyword argument of this call expression, provided it is not preceded by a double-starred argument. 
+     * This exists primarily for backwards compatibility. You are recommended to use
+     * Call.getANamedArg() instead.
+     * */
+    Keyword getAKeyword() {
+        result = this.getKeyword(_)
+    }
+
+    /** Gets the positional argument at `index`, provided it is not preceded by a starred argument.
+     * This exists primarily for backwards compatibility. You are recommended to use
+     * Call.getPositionalArg(index) instead.
+     */
+    Expr getArg(int index) {
+        result = this.getPositionalArg(index) and
+        not result instanceof Starred and
+        not exists(Starred s, int lower | s = this.getPositionalArg(lower) and lower < index)
+    }
+
+    /** Gets a positional argument, provided it is not preceded by a starred argument.
+     * This exists primarily for backwards compatibility. You are recommended to use
+     * Call.getAPositionalArg() instead.
+     */
+    Expr getAnArg() {
+        result = this.getArg(_)
+    }
 
 }
 
@@ -242,7 +286,7 @@ class Bytes extends Bytes_, ImmutableLiteral {
     Expr getASubExpression() {
         none()
     }
-    
+
     AstNode getAChildNode() {
         result = this.getAnImplicitlyConcatenatedPart()
     }
@@ -327,7 +371,7 @@ class IntegerLiteral extends Num {
         not this instanceof FloatLiteral and not this instanceof ImaginaryLiteral
     }
 
-    /** Gets the (integer) value of this constant. will not return a result if the value does not fit into
+    /** Gets the (integer) value of this constant. Will not return a result if the value does not fit into
         a 32 bit signed value */
     int getValue() {
         result = this.getN().toInt()
@@ -452,6 +496,18 @@ class Unicode extends Str_, ImmutableLiteral {
 
 /** A dictionary expression, such as `{'key':'value'}` */
 class Dict extends Dict_ {
+
+    /** Gets the value of an item of this dict display */
+    Expr getAValue() {
+        result = this.getAnItem().(DictDisplayItem).getValue()
+    }
+
+    /** Gets the key of an item of this dict display, for those items that have keys
+     * E.g, in {'a':1, **b} this returns only 'a'
+     */
+     Expr getAKey() {
+        result = this.getAnItem().(KeyValuePair).getKey()
+    }
 
     Expr getASubExpression() {
         result = this.getAValue() or result = this.getAKey()
@@ -662,10 +718,6 @@ abstract class NameConstant extends Name, ImmutableLiteral {
         any()
     }
 
-    deprecated Variable getVariable() {
-        result = Name.super.getVariable()
-    }
-
     ExprParent getParent() {
         result = Name.super.getParent() 
     }
@@ -677,8 +729,6 @@ abstract class NameConstant extends Name, ImmutableLiteral {
     deprecated predicate defines(Variable v) { none() }
 
     deprecated predicate deletes(Variable v) { none() }
-
-    deprecated predicate uses(Variable v) { none() }
 
     NameConstantNode getAFlowNode() { result = Name.super.getAFlowNode() }
 
@@ -778,6 +828,11 @@ class AugStore extends AugStore_ {
 
 /** Parameter context, the context of var in def f(var): pass */
 class Param extends Param_ {
+
+}
+
+/** An await expression such as `await coro` */
+class Await extends Await_ {
 
 }
 

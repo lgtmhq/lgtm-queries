@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
  *              then the back reference always matches the empty string, which probably indicates a mistake.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
+ *       regular-expressions
  */
 
-import default
+import javascript
 
 from RegExpNegativeLookahead neg, RegExpGroup grp, RegExpBackRef back
 where grp.getParent+() = neg and

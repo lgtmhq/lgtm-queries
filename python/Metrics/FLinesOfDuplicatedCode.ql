@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,12 @@
 /**
  * @name Duplicated lines in files
  * @description The number of lines in a file, including code, comment and whitespace lines,
- *     which are duplicated in at least one other place.
+ *              which are duplicated in at least one other place.
  * @kind treemap
  * @treemap.warnOn highValues
  * @metricType file
  * @metricAggregate avg sum max
+ * @tags testability
  */
 import python
 import external.CodeDuplication

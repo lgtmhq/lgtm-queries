@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@
  * @description A magic number makes code less readable and maintainable.
  * @kind problem
  * @problem.severity recommendation
+ * @tags changeability
+ *       readability
  */
-import default
+import java
 import MagicConstants
 
 from Literal e, string msg

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,35 +17,38 @@
  *              unpredictable.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
+ *       logic
  */
-import default
+import java
 
 private
 predicate writtenInOneCallable(Field f) {
-	strictcount(Callable m | m.writes(f)) = 1
+  strictcount(Callable m | m.writes(f)) = 1
 }
 
 private
 FieldWrite fieldWriteOnlyIn(Callable m, Field f) {
-	result.getField() = f and
-	m.writes(f) and
-	writtenInOneCallable(f)
+  result.getField() = f and
+  m.writes(f) and
+  writtenInOneCallable(f)
 }
 
 private
 FieldRead nonFinalFieldRead(Callable m, Field f) {
-	result.getField() = f and
-	result.getEnclosingCallable() = m and
-	not f.isFinal()
+  result.getField() = f and
+  result.getEnclosingCallable() = m and
+  not f.isFinal()
 }
 
 private
 MethodAccess unqualifiedCallToNonAbstractMethod(Constructor c, Method m) {
-	result.getEnclosingCallable() = c and
-	(not exists(result.getQualifier()) or
-		result.getQualifier().(ThisAccess).getType() = c.getDeclaringType()) and
-	m = result.getMethod() and
-	not m.isAbstract()
+  result.getEnclosingCallable() = c and
+  (not exists(result.getQualifier()) or
+    result.getQualifier().(ThisAccess).getType() = c.getDeclaringType()) and
+  m = result.getMethod() and
+  not m.isAbstract()
 }
 
 from Constructor c, MethodAccess ma, Method m, Method n, Field f, FieldRead fa, Constructor d, FieldWrite fw

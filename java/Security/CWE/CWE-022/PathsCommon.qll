@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import java
 import semmle.code.java.controlflow.Dominance
 
 abstract class PathCreation extends Expr {
@@ -29,6 +29,7 @@ class PathsGet extends PathCreation, MethodAccess {
   Expr getInput() { result = this.getAnArgument() }
   
   Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
   
   string toString() { result = MethodAccess.super.toString() }
 }
@@ -44,6 +45,7 @@ class FileSystemGetPath extends PathCreation, MethodAccess {
   Expr getInput() { result = this.getAnArgument() }
   
   Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
   
   string toString() { result = MethodAccess.super.toString() }
 }
@@ -60,6 +62,7 @@ class FileCreation extends PathCreation, ClassInstanceExpr {
   }
   
   Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
   
   string toString() { result = ClassInstanceExpr.super.toString() }
 }
@@ -76,6 +79,7 @@ class FileWriterCreation extends PathCreation, ClassInstanceExpr {
   }
   
   Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
   
   string toString() { result = ClassInstanceExpr.super.toString() }
 }

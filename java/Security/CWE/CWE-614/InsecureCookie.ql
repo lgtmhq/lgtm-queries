@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,14 @@
 
 /**
  * @name Failure to use secure cookies
- * @description Insecured cookies may be sent in cleartext, which makes them vulnerable to 
+ * @description Insecured cookies may be sent in cleartext, which makes them vulnerable to
  *              interception.
  * @kind problem
  * @problem.severity warning
- * @cwe 614
+ * @tags security
+ *       external/cwe/cwe-614
  */
-import default
+import java
 import semmle.code.java.frameworks.Servlets
 
 from MethodAccess add

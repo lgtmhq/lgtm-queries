@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
 /**
  * @name Jump from finally
  * @description Avoid using unstructured control flow statements (return, continue, or break) inside
- *              a 'finally' block. 
+ *              a 'finally' block.
  * @kind problem
  * @problem.severity recommendation
+ * @tags reliability
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 class Jump extends Stmt {
 	Jump() {

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description Using a global variable before it is initialized causes an exception.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
 import python
@@ -64,6 +66,8 @@ predicate undefined_use_in_function(Name u) {
     and
     not ((ImportTimeScope)u.getEnclosingModule()).definesName(u.getId())
     and
+    not final_import_star_defines_name(u.getEnclosingModule(), u.getId())
+    and
     not globallyDefinedName(u.getId())
     and
     not exists(SsaVariable var | var.getAUse().getNode() = u and not var.maybeUndefined())
@@ -71,17 +75,6 @@ predicate undefined_use_in_function(Name u) {
     not guarded_against_name_error(u)
     and
     not (u.getEnclosingModule().isPackageInit() and u.getId() = "__path__")
-}
-
-pragma [nomagic]
-private predicate import_star_defines_name(Module m, string name) {
-    exists(ImportStar im | 
-        im.getScope() = m and
-        exists(ModuleObject imported |
-            imported.importedAs(im.getImportedModuleName()) |
-            imported.exports(name)
-        ) 
-    )
 }
 
 predicate undefined_use_in_class_or_module(Name u) {
@@ -93,18 +86,41 @@ predicate undefined_use_in_class_or_module(Name u) {
     and
     not guarded_against_name_error(u)
     and
-    not import_star_defines_name(u.getEnclosingModule(), u.getId())
+    not final_import_star_defines_name(u.getEnclosingModule(), u.getId())
     and
     not (u.getEnclosingModule().isPackageInit() and u.getId() = "__path__")
     and
     not globallyDefinedName(u.getId())
 }
 
+predicate undefined_use(Name u) {
+    (
+        undefined_use_in_class_or_module(u)
+        or
+        undefined_use_in_function(u)
+    ) and
+    not monkey_patched_builtin(u.getId()) and
+    not contains_unknown_import_star(u.getEnclosingModule())
+}
+
+private predicate first_use_in_a_block(Name use) {
+    exists(GlobalVariable v, BasicBlock b, int i |
+        i = min(int j | b.getNode(j).getNode() = v.getALoad()) and b.getNode(i) = use.getAFlowNode()
+    )
+}
+
+predicate first_undefined_use(Name use) {
+    undefined_use(use) and
+    exists(GlobalVariable v |
+        v.getALoad() = use |
+        first_use_in_a_block(use) and
+        not exists(ControlFlowNode other | 
+            other.getNode() = v.getALoad() and
+            other.getBasicBlock().strictlyDominates(use.getAFlowNode().getBasicBlock())
+        )
+    )
+}
+
 from Name u
-where (undefined_use_in_class_or_module(u) or undefined_use_in_function(u)) and
-      not monkey_patched_builtin(u.getId()) and
-      not contains_unknown_import_star(u.getEnclosingModule())
+where first_undefined_use(u)
 select u, "This use of global variable '" + u.getId()  + "' may be undefined."
-
-
-

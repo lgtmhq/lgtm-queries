@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,8 +99,9 @@ abstract class StructurallyCompared extends ASTNode {
      * As above, it suffices to check one implication. */
     (exists(valueOf(this)) implies valueOf(this) = valueOf(that)) and
 
-    forall (StructurallyCompared child, int i | child = getChild(i) |
-      child.sameInternal(that.getChild(i))
+    forall (StructurallyCompared child, int i |
+       child = getChild(i) and that = child.getAStructuralUncle(i) |
+       child.sameInternal(that.getChild(i))
     )
   }
 
@@ -157,15 +158,15 @@ class SelfAssignment extends StructurallyCompared {
 class DuplicatePropertyInitDetector extends StructurallyCompared {
   DuplicatePropertyInitDetector() {
     exists (ObjectExpr oe, string p |
-      this = oe.getProperty(p).getInit() and
-      oe.getProperty(p) != oe.getProperty(p)
+      this = oe.getPropertyByName(p).getInit() and
+      oe.getPropertyByName(p) != oe.getPropertyByName(p)
     )
   }
 
   Expr candidate() {
     exists (ObjectExpr oe, string p |
-      this = oe.getProperty(p).getInit() and
-      result = oe.getProperty(p).getInit() and
+      this = oe.getPropertyByName(p).getInit() and
+      result = oe.getPropertyByName(p).getInit() and
       result != this
     )
   }

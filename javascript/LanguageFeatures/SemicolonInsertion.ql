@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description Code that relies on automatic semicolon insertion is hard to read and maintain.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       language-features
  */
 
 import javascript

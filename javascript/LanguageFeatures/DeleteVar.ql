@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
  * @description The operand of the 'delete' operator should always be a property accessor.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from DeleteExpr del
 where not del.getOperand().stripParens() instanceof PropAccess

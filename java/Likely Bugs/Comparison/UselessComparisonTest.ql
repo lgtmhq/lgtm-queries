@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@
  *              dead code.
  * @kind problem
  * @problem.severity warning
+ * @tags correctness
+ *       logic
  */
 import UselessComparisonTest
 
 from ConditionNode s, BinaryExpr test, boolean testIsTrue
-where uselessTest(s, test, testIsTrue)
+where uselessTest(s, test, testIsTrue) and
+  not exists(AssertStmt assert | assert.getExpr() = test.getParent*())
 select test, "Test is always " + testIsTrue + ", because of $@.", s, "this condition"

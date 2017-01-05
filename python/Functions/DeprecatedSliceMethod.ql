@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
  * @description Defining special methods for slicing has been deprecated since Python 2.0.
  * @kind problem
  * @problem.severity warning
+ * @tags changeability
+ *       maintainability
  */
 
-import default
+import python
 
 predicate slice_method_name(string name) {
   name = "__getslice__" or name = "__setslice__" or name = "__delslice__"

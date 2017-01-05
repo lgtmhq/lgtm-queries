@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 
 /**
  * @name AnnotationPresent check
- * @description If an annotation has not been annotated with a 'RUNTIME' retention policy, checking 
+ * @description If an annotation has not been annotated with a 'RUNTIME' retention policy, checking
  *              for its presence at runtime is not possible.
  * @kind problem
  * @problem.severity error
+ * @tags correctness
+ *       logic
  */
-import default
+import java
 
 from MethodAccess c, Method m, ParameterizedClass p, AnnotationType t
 where c.getMethod() = m and

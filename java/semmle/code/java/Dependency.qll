@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,20 +99,26 @@ predicate depends(RefType t, RefType dep) {
 
 /**
  * Bind the reference type `dep` to the source declaration of any types used to construct `t`,
- * including (possibly nested) type parameters of parameterized types and element types of array types.
+ * including (possibly nested) type parameters of parameterized types, element types of array types,
+ * and bounds of type variables or wildcards.
  */
 cached
 predicate usesType(Type t, RefType dep) { 
   dep = inside*(t).getSourceDeclaration() and
+  not dep instanceof TypeVariable and
+  not dep instanceof Wildcard and
   not dep instanceof Array
 }
 
 /**
- * A type argument of a parameterized type or
- * the element type of an array type.
+ * A type argument of a parameterized type,
+ * the element type of an array type, or
+ * a bound of a type variable or wildcard.
  */
 private
 RefType inside(Type t) {
+  result = t.(TypeVariable).getATypeBound().getType() or
+  result = t.(Wildcard).getATypeBound().getType() or
   result = t.(ParameterizedType).getATypeArgument() or
   result = t.(Array).getElementType()
 }

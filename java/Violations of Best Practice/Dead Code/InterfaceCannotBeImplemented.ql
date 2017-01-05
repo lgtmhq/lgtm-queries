@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,18 +13,20 @@
 
 /**
  * @name Interface cannot be implemented
- * @description An interface method that is incompatible with a protected method on 
+ * @description An interface method that is incompatible with a protected method on
  *              'java.lang.Object' means that the interface cannot be implemented.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       useless-code
  */
 
-import default
+import java
 
 Method protectedObjectMethod(string signature) {
-	result.getSignature() = signature and
-	result.isProtected() and
-	result.getDeclaringType() instanceof TypeObject
+  result.getSignature() = signature and
+  result.isProtected() and
+  result.getDeclaringType() instanceof TypeObject
 }
 
 from Method method, Method objMethod, Interface impossible
@@ -32,6 +34,6 @@ where method.getDeclaringType() = impossible
   and objMethod = protectedObjectMethod(method.getSignature())
   and not hasSubtype*(objMethod.getType(), method.getType())
 select method,
-	"This method's return type conflicts with Object." + method.getName() + " so $@ can never be implemented.",
-	impossible,
-	impossible.getName()
+  "This method's return type conflicts with Object." + method.getName() + " so $@ can never be implemented.",
+  impossible,
+  impossible.getName()

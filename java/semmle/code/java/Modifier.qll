@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ predicate isStatic(Element e) {
  */
 deprecated
 predicate isPublic(Element e) {
-	e.(Modifiable).hasModifier("public")
+  e.(Modifiable).hasModifier("public")
 }
 
 /**
@@ -54,7 +54,7 @@ predicate isPublic(Element e) {
  */
 deprecated
 predicate isProtected(Element e) {
-	e.(Modifiable).hasModifier("protected")
+  e.(Modifiable).hasModifier("protected")
 }
 
 /**

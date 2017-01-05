@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 
 import javascript
 import AbstractValues
-import InferredTypes
+private import InferredTypes
 private import AbstractValuesImpl
 
 /**
@@ -37,7 +37,7 @@ class AnalysedFlowNode extends DataFlowNode {
     result = flowPred().(AnalysedFlowNode).getAValue() or
     // model flow that isn't captured by the data flow graph
     exists (DataFlowIncompleteness cause |
-      isIncomplete(cause) and result = indefiniteAbstractValue(cause)
+      isIncomplete(cause) and result = TIndefiniteAbstractValue(cause)
     )
   }
 
@@ -49,10 +49,25 @@ class AnalysedFlowNode extends DataFlowNode {
   }
 
   /**
+   * A primitive type to which the value of this node
+   * can be coerced.
+   */
+  PrimitiveType getAPrimitiveType() {
+    result = getAValue().toPrimitive().getType()
+  }
+
+  /**
+   * A Boolean value that this node evaluates to.
+   */
+  boolean getABooleanValue() {
+    result = getAValue().getBooleanValue()
+  }
+
+  /**
    * The unique Boolean value that this node evaluates to, if any.
    */
   boolean getTheBooleanValue() {
-    forex (boolean bv | bv = getAValue().getBooleanValue() | result = bv)
+    forex (boolean bv | bv = getABooleanValue() | result = bv)
   }
 
   /**
@@ -67,7 +82,7 @@ class AnalysedFlowNode extends DataFlowNode {
       // inferred no types
       n = 0 and result = "" or
       // inferred a single type
-      n = 1 and result = getAType() or
+      n = 1 and result = getAType().toString() or
       // inferred all types
       n = count(InferredType it) and result = ppAllTypeTags() or
       // the general case: more than one type, but not all types
@@ -79,9 +94,13 @@ class AnalysedFlowNode extends DataFlowNode {
   /**
    * Helper predicate to get the i-th type inferred for this node in lexicographical
    * order.
+   *
+   * Only defined if the number of types inferred for this node is between two
+   * and one less than the total number of types.
    */
   private string getType(int i) {
-    result = rank[i](string tp | tp = getAType())
+    getNumTypes() in [2..count(InferredType it)-1] and
+    result = rank[i](InferredType tp | tp = getAType() | tp.toString())
   }
 
   private int getNumTypes() {
@@ -109,8 +128,8 @@ library
 class BooleanLiteralSource extends AnalysedFlowNode, @booleanliteral {
   AbstractValue getAValue() {
     exists (string v | v = this.(Literal).getValue() |
-      v = "true" and result = theAbstractTrueValue() or
-      v = "false" and result = theAbstractFalseValue()
+      v = "true" and result = TAbstractBoolean(true) or
+      v = "false" and result = TAbstractBoolean(false)
     )
   }
 }
@@ -126,9 +145,9 @@ class NumberLiteralSource extends AnalysedFlowNode, @numberliteral {
 
   AbstractValue getAValue() {
     if isZero() then
-      result = theAbstractZeroValue()
+      result = TAbstractZero()
     else
-      result = theAbstractNonZeroValue()
+      result = TAbstractNonZero()
   }
 }
 
@@ -140,11 +159,11 @@ class StringLiteralSource extends AnalysedFlowNode, @stringliteral {
   AbstractValue getAValue() {
     exists (string v | v = this.(Literal).getValue() |
       if v = "" then
-        result = theAbstractEmptyValue()
+        result = TAbstractEmpty()
       else if exists(v.toFloat()) then
-        result = theAbstractNumStringValue()
+        result = TAbstractNumString()
       else
-        result = theAbstractOtherStringValue()
+        result = TAbstractOtherString()
     )
   }
 }
@@ -154,7 +173,7 @@ class StringLiteralSource extends AnalysedFlowNode, @stringliteral {
  */
 library
 class TemplateLiteralSource extends AnalysedFlowNode, @templateliteral {
-  AbstractValue getAValue() { result = abstractValueOfType("string") }
+  AbstractValue getAValue() { result = abstractValueOfType(TTString()) }
 }
 
 /**
@@ -162,7 +181,7 @@ class TemplateLiteralSource extends AnalysedFlowNode, @templateliteral {
  */
 library
 class RegExpLiteralSource extends AnalysedFlowNode, @regexpliteral {
-  AbstractValue getAValue() { result = theAbstractObjectValue() }
+  AbstractValue getAValue() { result = TAbstractObject() }
 }
 
 /**
@@ -170,7 +189,7 @@ class RegExpLiteralSource extends AnalysedFlowNode, @regexpliteral {
  */
 library
 class NullLiteralSource extends AnalysedFlowNode, @nullliteral {
-  AbstractValue getAValue() { result = theAbstractNullValue() }
+  AbstractValue getAValue() { result = TAbstractNull() }
 }
 
 /**
@@ -178,7 +197,7 @@ class NullLiteralSource extends AnalysedFlowNode, @nullliteral {
  */
 library
 class ObjectExprSource extends AnalysedFlowNode, @objexpr {
-  AbstractValue getAValue() { result = theAbstractObjectValue() }
+  AbstractValue getAValue() { result = TAbstractObject() }
 }
 
 /**
@@ -186,7 +205,7 @@ class ObjectExprSource extends AnalysedFlowNode, @objexpr {
  */
 library
 class ArrayExprSource extends AnalysedFlowNode, @arrayexpr {
-  AbstractValue getAValue() { result = theAbstractObjectValue() }
+  AbstractValue getAValue() { result = TAbstractObject() }
 }
 
 /**
@@ -194,7 +213,7 @@ class ArrayExprSource extends AnalysedFlowNode, @arrayexpr {
  */
 library
 class ArrayComprehensionExprSource extends AnalysedFlowNode, @arraycomprehensionexpr {
-  AbstractValue getAValue() { result = theAbstractObjectValue() }
+  AbstractValue getAValue() { result = TAbstractObject() }
 }
 
 /**
@@ -202,7 +221,15 @@ class ArrayComprehensionExprSource extends AnalysedFlowNode, @arraycomprehension
  */
 library
 class FunctionSource extends AnalysedFlowNode, @function {
-  AbstractValue getAValue() { result = theAbstractFunctionValue() }
+  AbstractValue getAValue() { result = TAbstractFunction(this) }
+}
+
+/**
+ * Flow analysis for function bind expressions.
+ */
+library
+class FunctionBindSource extends AnalysedFlowNode, @bindexpr {
+  AbstractValue getAValue() { result = TIndefiniteFunctionOrClass("call") }
 }
 
 /**
@@ -210,7 +237,7 @@ class FunctionSource extends AnalysedFlowNode, @function {
  */
 library
 class ClassExprSource extends AnalysedFlowNode, @classdecl {
-  AbstractValue getAValue() { result = theAbstractClassValue() }
+  AbstractValue getAValue() { result = TAbstractClass(this.(ClassDefinition).getDefinedClass()) }
 }
 
 /**
@@ -219,7 +246,7 @@ class ClassExprSource extends AnalysedFlowNode, @classdecl {
 library
 class ThisSource extends AnalysedFlowNode, @thisexpr {
   AbstractValue getAValue() {
-    result = indefiniteAbstractValue("call")
+    result = TIndefiniteAbstractValue("call")
   }
 }
 
@@ -229,7 +256,7 @@ class ThisSource extends AnalysedFlowNode, @thisexpr {
 library
 class SuperSource extends AnalysedFlowNode, @superexpr {
   AbstractValue getAValue() {
-    result = indefiniteAbstractValue("call")
+    result = TIndefiniteAbstractValue("call")
   }
 }
 
@@ -240,23 +267,7 @@ library
 class ArithmeticSource extends AnalysedFlowNode, @binaryexpr {
   ArithmeticSource() { this instanceof ArithmeticExpr }
 
-  AbstractValue getAValue() { result = abstractValueOfType("number") }
-}
-
-/**
- * Could `afn` evaluate to a value that, when converted to a primitive value,
- * yields a string?
- */
-private predicate convertsToString(AnalysedFlowNode afn) {
-  afn.getAValue().toPrimitive().getType() = "string"
-}
-
-/**
- * Could `afn` evaluate to a value that, when converted to a primitive value,
- * yields a non-string?
- */
-private predicate convertsToNonString(AnalysedFlowNode afn) {
-  afn.getAValue().toPrimitive().getType() != "string"
+  AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
 /**
@@ -265,7 +276,7 @@ private predicate convertsToNonString(AnalysedFlowNode afn) {
  */
 private predicate isStringAppend(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  convertsToString(e.getAChild())
+  e.getAChild().(AnalysedFlowNode).getAPrimitiveType() = TTString()
 }
 
 /**
@@ -274,8 +285,8 @@ private predicate isStringAppend(Expr e) {
  */
 private predicate isAddition(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  convertsToNonString(e.getChild(0)) and
-  convertsToNonString(e.getChild(1))
+  e.getChild(0).(AnalysedFlowNode).getAPrimitiveType() != TTString() and
+  e.getChild(1).(AnalysedFlowNode).getAPrimitiveType() != TTString()
 }
 
 /**
@@ -284,8 +295,8 @@ private predicate isAddition(Expr e) {
 library
 class AddExprSource extends ArithmeticSource, @addexpr {
   AbstractValue getAValue() {
-    isStringAppend(this) and result = abstractValueOfType("string") or
-    isAddition(this) and result = abstractValueOfType("number")
+    isStringAppend(this) and result = abstractValueOfType(TTString()) or
+    isAddition(this) and result = abstractValueOfType(TTNumber())
   }
 }
 
@@ -296,7 +307,7 @@ library
 class BitwiseExprSource extends AnalysedFlowNode, @expr {
   BitwiseExprSource() { this instanceof BitwiseExpr }
 
-  AbstractValue getAValue() { result = abstractValueOfType("number") }
+  AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
 /**
@@ -305,9 +316,9 @@ class BitwiseExprSource extends AnalysedFlowNode, @expr {
 library
 class NewSource extends AnalysedFlowNode, @newexpr {
   AbstractValue getAValue() {
-    result = abstractValueOfType("function") or
-    result = abstractValueOfType("date") or
-    result = abstractValueOfType("object")
+    result = TIndefiniteFunctionOrClass("call") or
+    result = abstractValueOfType(TTDate()) or
+    result = abstractValueOfType(TTObject())
   }
 }
 
@@ -316,7 +327,7 @@ class NewSource extends AnalysedFlowNode, @newexpr {
  */
 library
 class VoidSource extends AnalysedFlowNode, @voidexpr {
-  AbstractValue getAValue() { result = theAbstractUndefinedValue() }
+  AbstractValue getAValue() { result = TAbstractUndefined() }
 }
 
 /**
@@ -324,7 +335,7 @@ class VoidSource extends AnalysedFlowNode, @voidexpr {
  */
 library
 class TypeofSource extends AnalysedFlowNode, @typeofexpr {
-  AbstractValue getAValue() { result = theAbstractOtherStringValue() }
+  AbstractValue getAValue() { result = TAbstractOtherString() }
 }
 
 /**
@@ -332,7 +343,7 @@ class TypeofSource extends AnalysedFlowNode, @typeofexpr {
  */
 library
 class ComparisonSource extends AnalysedFlowNode, @comparison {
-  AbstractValue getAValue() { result = abstractValueOfType("boolean") }
+  AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
 /**
@@ -340,7 +351,7 @@ class ComparisonSource extends AnalysedFlowNode, @comparison {
  */
 library
 class InSource extends AnalysedFlowNode, @inexpr {
-  AbstractValue getAValue() { result = abstractValueOfType("boolean") }
+  AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
 /**
@@ -348,7 +359,7 @@ class InSource extends AnalysedFlowNode, @inexpr {
  */
 library
 class InstanceofSource extends AnalysedFlowNode, @instanceofexpr {
-  AbstractValue getAValue() { result = abstractValueOfType("boolean") }
+  AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
 /**
@@ -356,7 +367,7 @@ class InstanceofSource extends AnalysedFlowNode, @instanceofexpr {
  */
 library
 class UpdateSource extends AnalysedFlowNode, @updateexpr {
-  AbstractValue getAValue() { result = abstractValueOfType("number") }
+  AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
 /**
@@ -367,8 +378,8 @@ class LogNotSource extends AnalysedFlowNode, @lognotexpr {
   AbstractValue getAValue() {
     exists (AbstractValue op | op = this.(UnaryExpr).getOperand().(AnalysedFlowNode).getAValue() |
       exists (boolean bv | bv = op.getBooleanValue() |
-        bv = true and result = theAbstractFalseValue() or
-        bv = false and result = theAbstractTrueValue()
+        bv = true and result = TAbstractBoolean(false) or
+        bv = false and result = TAbstractBoolean(true)
       )
     )
   }
@@ -379,7 +390,7 @@ class LogNotSource extends AnalysedFlowNode, @lognotexpr {
  */
 library
 class NegExprSource extends AnalysedFlowNode, @negexpr {
-  AbstractValue getAValue() { result = abstractValueOfType("number") }
+  AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
 /**
@@ -387,7 +398,7 @@ class NegExprSource extends AnalysedFlowNode, @negexpr {
  */
 library
 class PlusExprSource extends AnalysedFlowNode, @plusexpr {
-  AbstractValue getAValue() { result = abstractValueOfType("number") }
+  AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
 /**
@@ -395,7 +406,7 @@ class PlusExprSource extends AnalysedFlowNode, @plusexpr {
  */
 library
 class BitNotSource extends AnalysedFlowNode, @bitnotexpr {
-  AbstractValue getAValue() { result = abstractValueOfType("number") }
+  AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
 /**
@@ -403,7 +414,7 @@ class BitNotSource extends AnalysedFlowNode, @bitnotexpr {
  */
 library
 class DeleteSource extends AnalysedFlowNode, @deleteexpr {
-  AbstractValue getAValue() { result = abstractValueOfType("boolean") }
+  AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
 /**
@@ -413,7 +424,7 @@ library
 class CompoundAssignSource extends AnalysedFlowNode, @assignment {
   CompoundAssignSource() { this instanceof CompoundAssignExpr }
 
-  AbstractValue getAValue() { result = abstractValueOfType("number") }
+  AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
 /**
@@ -422,8 +433,8 @@ class CompoundAssignSource extends AnalysedFlowNode, @assignment {
 library
 class AddAssignSource extends CompoundAssignSource, @assignaddexpr {
   AbstractValue getAValue() {
-    isStringAppend(this) and result = abstractValueOfType("string") or
-    isAddition(this) and result = abstractValueOfType("number")
+    isStringAppend(this) and result = abstractValueOfType(TTString()) or
+    isAddition(this) and result = abstractValueOfType(TTNumber())
   }
 }
 
@@ -443,7 +454,7 @@ class UninitialisedVarAccessSource extends AnalysedFlowNode, @cfg_node {
     )
   }
 
-  AbstractValue getAValue() { result = AnalysedFlowNode.super.getAValue() or result = theAbstractUndefinedValue() }
+  AbstractValue getAValue() { result = AnalysedFlowNode.super.getAValue() or result = TAbstractUndefined() }
 }
 
 /**
@@ -465,7 +476,7 @@ class ArgumentsSource extends UninitialisedVarAccessSource {
     this.(VarAccess).getVariable() instanceof ArgumentsObject
   }
 
-  AbstractValue getAValue() { result = theAbstractObjectValue() }
+  AbstractValue getAValue() { result = TAbstractArguments() }
 }
 
 /**
@@ -474,12 +485,12 @@ class ArgumentsSource extends UninitialisedVarAccessSource {
 private predicate nodeBuiltins(Variable var, AbstractValue av) {
   var.getScope() instanceof ModuleScope and
   exists (string name | name = var.getName() |
-    name = "require" and av = indefiniteAbstractValue("heap") or
+    name = "require" and av = TIndefiniteAbstractValue("heap") or
 
-    (name = "module" or name = "exports") and av = theAbstractObjectValue() or
+    (name = "module" or name = "exports") and av = TAbstractObject() or
 
     (name = "__filename" or name = "__dirname") and
-    (av = theAbstractNumStringValue() or av = theAbstractOtherStringValue())  )
+    (av = TAbstractNumString() or av = TAbstractOtherString())  )
 }
 
 /**
@@ -506,5 +517,54 @@ library
 class UndefinedSource extends AnalysedFlowNode, @varaccess {
   UndefinedSource() { this.(GlobalVarAccess).getName() = "undefined" }
 
-  AbstractValue getAValue() { result = theAbstractUndefinedValue() }
+  AbstractValue getAValue() { result = TAbstractUndefined() }
+}
+
+/**
+ * Flow analysis for JSX elements.
+ */
+library
+class JSXElementSource extends AnalysedFlowNode, @jsxelement {
+  AbstractValue getAValue() { result = TAbstractObject() }
+}
+
+/**
+ * Flow analysis for qualified JSX names.
+ */
+library
+class JSXQualifiedNameSource extends AnalysedFlowNode, @jsxqualifiedname {
+  AbstractValue getAValue() { result = TAbstractObject() }
+}
+
+/**
+ * Flow analysis for empty JSX expressions.
+ */
+library
+class JSXEmptyExpressionSource extends AnalysedFlowNode, @jsxemptyexpr {
+  AbstractValue getAValue() { result = TAbstractUndefined() }
+}
+
+/**
+ * Flow analysis for `arguments.callee`.
+ */
+library class ArgumentsCalleeSource extends AnalysedFlowNode, @propaccess {
+  ArgumentsCalleeSource() {
+    exists (PropAccess pacc | pacc = this |
+      exists (StmtContainer c | c = pacc.getContainer() |
+        c instanceof FunctionExpr or c instanceof FunctionDeclStmt
+      ) and
+      pacc.getPropertyName() = "callee"
+    )
+  }
+
+  AnalysedFlowNode getBase() {
+    result = this.(PropAccess).getBase()
+  }
+
+  AbstractValue getAValue() {
+    exists (AbstractValue base | base = getBase().getAValue() |
+      base = TAbstractArguments() and result = TAbstractFunction(this.(PropAccess).getContainer()) or
+      base != TAbstractArguments() and result = AnalysedFlowNode.super.getAValue()
+    )
+  }
 }

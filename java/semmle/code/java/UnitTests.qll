@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ class JUnit3TestMethod extends Method {
     this.isPublic() and
     this.getDeclaringType() instanceof JUnit38TestClass and
     this.getName().matches("test%") and
-    this.getType().hasName("void")	and
+    this.getType().hasName("void")  and
     this.hasNoParameters()
   }
 }
@@ -107,6 +107,29 @@ class JUnit3TestSuite extends Method {
 class JUnit4TestMethod extends Method {
   JUnit4TestMethod() {
     this.getAnAnnotation().getType().hasQualifiedName("org.junit", "Test")
+  }
+}
+
+/**
+ * A JUnit `@Ignore` annotation.
+ */
+class JUnitIgnoreAnnotation extends Annotation {
+  JUnitIgnoreAnnotation() {
+    getType().hasQualifiedName("org.junit", "Ignore")
+  }
+}
+
+/**
+ * A method which, directly or indirectly, is treated as ignored by JUnit due to a `@Ignore`
+ * annotation.
+ */
+class JUnitIgnoredMethod extends Method {
+  JUnitIgnoredMethod() {
+    getAnAnnotation() instanceof JUnitIgnoreAnnotation or
+    exists(Class c |
+      c = this.getDeclaringType() |
+      c.getAnAnnotation() instanceof JUnitIgnoreAnnotation
+    )
   }
 }
 

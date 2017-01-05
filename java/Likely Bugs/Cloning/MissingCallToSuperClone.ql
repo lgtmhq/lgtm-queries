@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,16 @@
 
 /**
  * @name Missing super clone
- * @description A 'clone' method that is overridden in a subclass, and that does not itself call 
- *              'super.clone', causes calls to the subclass's 'clone' method to return an object of 
+ * @description A 'clone' method that is overridden in a subclass, and that does not itself call
+ *              'super.clone', causes calls to the subclass's 'clone' method to return an object of
  *              the wrong type.
  * @kind problem
  * @problem.severity error
- * @cwe 580
+ * @tags reliability
+ *       maintainability
+ *       external/cwe/cwe-580
  */
-import default
+import java
 
 from CloneMethod c, CloneMethod sc
 where c.callsSuper(sc) and 

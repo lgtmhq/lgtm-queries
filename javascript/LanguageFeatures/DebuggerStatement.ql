@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
  * @description The 'debugger' statement should not be used in production code.
  * @kind problem
  * @problem.severity recommendation
+ * @tags efficiency
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from DebuggerStmt ds
 select ds, "Do not use 'debugger'."

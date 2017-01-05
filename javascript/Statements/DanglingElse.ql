@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description The 'else' clause of an 'if' statement should be aligned with the 'if' it belongs to.
  * @kind problem
  * @problem.severity warning
+ * @tags changeability
+ *       readability
  */
 
 import javascript
@@ -62,6 +64,7 @@ where inner = outer.getThen().getAChildStmt*() and
       outerIf = outer.getIfToken() and outerIndent = ifIndent(outer) and
       innerIf = inner.getIfToken() and innerElse = inner.getElseToken() and
       outerIndent < ifIndent(inner) and
-      outerIndent = elseIndent(inner)
+      outerIndent = elseIndent(inner) and
+      not outer.getTopLevel().isMinified()
 select innerElse, "This else branch belongs to $@, but its indentation suggests it belongs to $@.",
                 innerIf, "this if statement", outerIf, "this other if statement"

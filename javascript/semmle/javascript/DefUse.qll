@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,19 +17,16 @@ import Stmt
 /**
  * A CFGNode that defines (i.e., initializes or updates) a variable.
  *
- * <p>
  * The following program elements perform variable updates:
- * </p>
  *
- * <ul>
- * <li>assignment expressions</li>
- * <li>update expressions</li>
- * <li>variable declarators with an initializer</li>
- * <li>for-in and for-of statements</li>
- * <li>function declaration statements</li>
- * <li>function calls</li>
- * <li>catch blocks</li>
- * </ul>
+ * - assignment expressions (`x = 42`)
+ * - update expressions (`++x`)
+ * - variable declarators with an initializer (`var x = 42`)
+ * - for-in and for-of statements (`for (x in o) { ... }`)
+ * - parameters of functions or catch clauses (`function (x) { ... }`)
+ * - named functions (`function x() { ... }`)
+ * - named classes (`class x { ... }`)
+ * - import specifiers (`import { x } from 'm'`)
  */
 class VarDef extends CFGNode {
   VarDef() {
@@ -89,9 +86,7 @@ class VarDef extends CFGNode {
 /**
  * A CFGNode that uses a variable.
  *
- * <p>
  * Some variable definitions are also uses, notably the operands of update expressions.
- * </p>
  */
 class VarUse extends CFGNode {
   VarUse() {
@@ -121,13 +116,21 @@ class VarUse extends CFGNode {
   }
 }
 
+private predicate implicitDef(BasicBlock bb, Variable v, VarDef d) {
+  v = d.getAVariable() and
+  exists (StmtContainer sc | bb = sc.getEntry() |
+    d.(ImportSpecifier).getContainer() = sc 
+  )
+}
+
 /**
  * Does the definition of `v` in `def` reach `use` along some control flow path
  * without crossing another definition of `v`? 
  */
 predicate definitionReaches(Variable v, VarDef def, VarUse use) {
   v = use.getVariable() and
-  exists (BasicBlock bb, int i, int next | next = nextDefAfter(bb, v, i, def) |
+  exists (BasicBlock bb, int i, int next |
+    next = nextDefAfter(bb, v, i, def) or implicitDef(bb, v, def) and i = -1 and next = bb.length() |
     exists (int j | j in [i+1..next-1] | bb.useAt(j, v, use)) or
     exists (BasicBlock succ | succ = bb.getASuccessor() |
       succ.isLiveAtEntry(v, use) and
@@ -141,7 +144,8 @@ predicate definitionReaches(Variable v, VarDef def, VarUse use) {
  */
 predicate localDefinitionReaches(PurelyLocalVariable v, VarDef def, VarUse use) {
   v = use.getVariable() and
-  exists (BasicBlock bb, int i, int next | next = nextDefAfter(bb, v, i, def) |
+  exists (BasicBlock bb, int i, int next |
+    next = nextDefAfter(bb, v, i, def) or implicitDef(bb, v, def) and i = -1 and next = bb.length() |
     exists (int j | j in [i+1..next-1] | bb.useAt(j, v, use)) or
     exists (BasicBlock succ | succ = bb.getASuccessor() |
       succ.localIsLiveAtEntry(v, use) and
@@ -166,7 +170,8 @@ private int nextDefAfter(BasicBlock bb, Variable v, int i, VarDef d) {
  * another definition of `v`.
  */
 predicate localDefinitionOverwrites(PurelyLocalVariable v, VarDef earlier, VarDef later) {
-  exists (BasicBlock bb, int i, int next | next = nextDefAfter(bb, v, i, earlier) |
+  exists (BasicBlock bb, int i, int next |
+    next = nextDefAfter(bb, v, i, earlier) or implicitDef(bb, v, earlier) and i = -1 and next = bb.length() |
     bb.defAt(next, v, later) or
     exists (BasicBlock succ | succ = bb.getASuccessor() |
       succ.localMayBeOverwritten(v, later) and

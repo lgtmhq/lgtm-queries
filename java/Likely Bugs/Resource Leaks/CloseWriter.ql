@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,15 @@
 
 /**
  * @name Close output resource
- * @description A resource that is opened for writing but not closed may cause a resource 
+ * @description A resource that is opened for writing but not closed may cause a resource
  *              leak.
  * @kind problem
  * @problem.severity error
- * @cwe 404 772
+ * @tags efficiency
+ *       correctness
+ *       resources
+ *       external/cwe/cwe-404
+ *       external/cwe/cwe-772
  */
 import CloseType
 

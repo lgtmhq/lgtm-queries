@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,10 @@ private string getALineOfCommentedOutCode(Comment c) {
   result = c.getLine(_) and
   // line ends with ';', '{', or '}', optionally followed by a comma,
   ((result.regexpMatch(".*[;{}],?\\s*") and
-    // but not with something that looks like a JSDoc type declaration
-    not result.regexpMatch(".*\\{[.:,=!?*|$<>()\\{\\}\\[\\]\\w\\s]+\\}\\s*")) or
+    // but it doesn't look like a JSDoc-like annotation
+    not result.regexpMatch(".*@\\w+\\s*\\{.*\\}\\s*") and
+    // and it does not contain three consecutive words (which is uncommon in code)
+    not result.regexpMatch("[^'\\\"]*\\w\\s++\\w++\\s++\\w[^'\\\"]*")) or
   // line is part of a block comment and ends with something that looks
   // like a line comment; character before '//' must not be ':' to
   // avoid matching URLs

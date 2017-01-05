@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +16,16 @@
  * @description An empty statement hinders readability.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       useless-code
  */
 
-import default
+import java
 
 from EmptyStmt empty, string action
 where if exists(LoopStmt l | l.getBody() = empty) then (
-		action = "turned into '{}'"
-	) else (
-		action = "deleted"
-	)
+    action = "turned into '{}'"
+  ) else (
+    action = "deleted"
+  )
 select empty, "This empty statement should be " + action + "."

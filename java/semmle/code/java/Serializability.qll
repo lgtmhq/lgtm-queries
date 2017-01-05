@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  * A library for working with Java Serialization.
  */
 
-import default
+import java
 private import frameworks.jackson.JacksonSerializability
 
 /**
@@ -23,14 +23,14 @@ private import frameworks.jackson.JacksonSerializability
  * due to the use of serialization.
  */
 abstract class SerializableField extends Field {
-	
+  
 }
 /**
  * A deserializable field may be written without code referencing it,
  * due to the use of serialization.
  */
 abstract class DeserializableField extends Field {
-	
+  
 }
 
 /**
@@ -38,8 +38,8 @@ abstract class DeserializableField extends Field {
  * and may be read or written via serialization.
  */
 library class StandardSerializableField extends SerializableField, DeserializableField {
-	StandardSerializableField(){
-		this.getDeclaringType().getASupertype*().hasName("Serializable") and
-		not this.isTransient()
-	}
+  StandardSerializableField(){
+    this.getDeclaringType().getASupertype*().hasName("Serializable") and
+    not this.isTransient()
+  }
 }

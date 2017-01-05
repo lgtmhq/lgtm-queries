@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
  * @description Certain standard library routines are dangerous to call.
  * @kind problem
  * @problem.severity error
- * @cwe 676
+ * @tags reliability
+ *       security
+ *       external/cwe/cwe-676
  */
-import default
+import java
 
 predicate dangerousMethod(string descriptor) {
   descriptor = "java.lang.Thread.stop"

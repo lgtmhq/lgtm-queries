@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ predicate type_or_typeof(Raise r, ClassObject type, ControlFlowNode orig) {
         exception.refersTo(type, _, orig)
         or
         not exists(ClassObject exc_type | exception.refersTo(exc_type)) and
+        not type = theTypeType() and // First value is an unknown exception type
         exception.refersTo(_, type, orig)
     )
   

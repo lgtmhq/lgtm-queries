@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,30 +17,44 @@
  *              the two types to be confused.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       readability
+ *       types
  */
 
-import default
+import java
 
-RefType anOuterType(TypeVariable var) {
-	var.getGenericCallable().getDeclaringType() = result
-	or
-	var.getGenericType() = result
-	or
-	result = anOuterType(var).(NestedType).getEnclosingType()
+class SourceDeclTypeVariable extends TypeVariable {
+  SourceDeclTypeVariable() {
+    getGenericCallable().isSourceDeclaration() or
+    getGenericType().isSourceDeclaration()
+  }
 }
 
-RefType aTypeVisibleFrom(TypeVariable var) {
-	result = anOuterType(var)
-	or
-	exists(ImportType i | 
-		var.getLocation().getFile() = i.getCompilationUnit() and
-		result = i.getImportedType()
-	)
-	or
-	(var.getPackage() = result.getPackage() and result instanceof TopLevelType)
+RefType anOuterType(TypeVariable var) {
+  var.getGenericCallable().getDeclaringType() = result
+  or
+  var.getGenericType() = result
+  or
+  result = anOuterType(var).(NestedType).getEnclosingType()
+}
+
+pragma[nomagic]
+TopLevelType aTopLevelType(Package pkg, string name) {
+  result.getPackage() = pkg and
+  result.hasName(name)
+}
+
+RefType aTypeVisibleFrom(SourceDeclTypeVariable var, string name) {
+  result = anOuterType(var) and result.hasName(name) or
+  exists (ImportType i |
+    var.getCompilationUnit() = i.getCompilationUnit() and
+    result = i.getImportedType() and
+    result.hasName(name)
+  ) or
+  result = aTopLevelType(var.getPackage(), name)
 }
 
 from RefType hidden, TypeVariable var
-where hidden = aTypeVisibleFrom(var)
-  and var.getName() = hidden.getName()
+where hidden = aTypeVisibleFrom(var, var.getName())
 select var, "Type $@ is hidden by this type variable.", hidden, hidden.getQualifiedName()

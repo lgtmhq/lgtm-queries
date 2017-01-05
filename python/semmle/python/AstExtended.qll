@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,6 +47,10 @@ library class StrListParent extends StrListParent_ {
 
 /** Internal implementation class */
 library class ExprParent extends ExprParent_ {
+
+}
+
+library class DictItem extends DictItem_ {
 
 }
 
@@ -114,6 +118,6 @@ class StringPart extends StringPart_, AstNode {
 }
 
 class StringPartList extends StringPartList_ {
-   
+
 }
 

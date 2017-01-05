@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
  *              that is no longer supported.
  * @kind problem
  * @problem.severity error
+ * @tags portability
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from ForInComprehensionBlock ficb
 select ficb, "For-in comprehension blocks are a non-standard language feature."

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@
 
 /**
  * @name Direct call to a run() method
- * @description Directly calling a 'Thread' object's 'run' method does not start a separate thread 
+ * @description Directly calling a 'Thread' object's 'run' method does not start a separate thread
  *              but executes the method within the current thread.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 572
+ * @tags reliability
+ *       correctness
+ *       concurrency
+ *       external/cwe/cwe-572
  */
-import default
+import java
 
 class RunMethod extends Method{
   RunMethod(){

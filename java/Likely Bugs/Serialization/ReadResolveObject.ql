@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
 /**
  * @name ReadResolve must have Object return type, not void
  * @description An implementation of 'readResolve' that does not have the signature that is expected
- *              by the Java serialization framework is not recognized by the serialization 
+ *              by the Java serialization framework is not recognized by the serialization
  *              mechanism.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       language-features
  */
-import default
+import java
 
 from TypeSerializable serializable, Class c, Method m
 where c.hasSupertype+(serializable) and

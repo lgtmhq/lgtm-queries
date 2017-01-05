@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,12 +58,12 @@ class Object extends @py_object {
     predicate isBuiltin() {
         py_cobjects(this)
     }
-    
-    /** Retained for backwards compatibilty. See Object.isBuiltin() */
+
+    /** Retained for backwards compatibility. See Object.isBuiltin() */
     predicate isC() {
         this.isBuiltin()
     }
-    
+
     /** Gets the point in the source code from which this object "originates".
      *
      *  WARNING: The lack of context makes this less accurate than f.refersTo(this, _, result)
@@ -126,7 +126,7 @@ class Object extends @py_object {
             declaringClass(name).getASuperType() = o.declaringClass(name)
         )
     }
-    
+
     /** The Boolean value of this object if it always evaluates to true or false.
      * For example:
      *     false for None, true for 7 and no result for int(x)
@@ -156,11 +156,11 @@ class Object extends @py_object {
             s.getS() != "" and result = true
         )
     }
-    
+
 }
 
 /** Numeric objects (ints and floats). 
- *  Includes those occuring in the source as a literal
+ *  Includes those occurring in the source as a literal
  *  or in a builtin module as a value.
  */
 class NumericObject extends Object {
@@ -213,7 +213,7 @@ class NumericObject extends Object {
 }
 
 /** String objects (unicode or bytes).
- *  Includes those occuring in the source as a literal
+ *  Includes those occurring in the source as a literal
  *  or in a builtin module as a value.
  */
 class StringObject extends Object {
@@ -245,7 +245,7 @@ class StringObject extends Object {
 }
 
 /** Sequence objects (lists and tuples)
- *  Includes those occuring in the source as a literal
+ *  Includes those occurring in the source as a literal
  *  or in a builtin module as a value.
  */
 abstract class SequenceObject extends Object {

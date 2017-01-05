@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,12 +53,12 @@ abstract class AstNode extends AstNode_ {
         result.getAChildNode() = this
     }
 
-    /** Whether this contains `inner` syntactactically */
+    /** Whether this contains `inner` syntactically */
     predicate contains(AstNode inner) {
         this.getAChildNode+() = inner
     }
 
-    /** Whether this contains `inner` syntactactically and `inner` has the same scope as `this` */
+    /** Whether this contains `inner` syntactically and `inner` has the same scope as `this` */
     predicate containsInScope(AstNode inner) {
         this.contains(inner) and
         this.getScope() = inner.getScope()

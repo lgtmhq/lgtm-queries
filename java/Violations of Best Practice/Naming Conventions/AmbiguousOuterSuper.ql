@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,19 +13,21 @@
 
 /**
  * @name Subtle call to inherited method
- * @description An unqualified call to a method that exists with the same signature in both a 
+ * @description An unqualified call to a method that exists with the same signature in both a
  *              superclass and an outer class is ambiguous.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       readability
  */
 import java
 
 RefType nestedSupertypePlus(RefType t) {
-	t.getASupertype() = result and
-	t instanceof NestedType or
-	exists(RefType mid | mid = nestedSupertypePlus(t) |
-		mid.getASupertype() = result
-	)
+  t.getASupertype().getSourceDeclaration() = result and
+  t instanceof NestedType or
+  exists(RefType mid | mid = nestedSupertypePlus(t) |
+    mid.getASupertype().getSourceDeclaration() = result
+  )
 }
 
 /**
@@ -33,11 +35,11 @@ RefType nestedSupertypePlus(RefType t) {
  * to an inherited method with the specified `signature`.
  */
 predicate callToInheritedMethod(RefType lexicalScope, MethodAccess ma, string signature) {
-	not ma.getMethod().isStatic() and  
-	not ma.hasQualifier() and
-	ma.getEnclosingCallable().getDeclaringType() = lexicalScope and
-	nestedSupertypePlus(lexicalScope).getAMethod() = ma.getMethod() and
-	signature = ma.getMethod().getSignature()
+  not ma.getMethod().isStatic() and  
+  not ma.hasQualifier() and
+  ma.getEnclosingCallable().getDeclaringType() = lexicalScope and
+  nestedSupertypePlus(lexicalScope).getAMethod() = ma.getMethod() and
+  signature = ma.getMethod().getSignature()
 }
 
 /**
@@ -47,21 +49,21 @@ predicate callToInheritedMethod(RefType lexicalScope, MethodAccess ma, string si
  * classes "on-route" can be static.
  */
 Method methodInEnclosingType(NestedType nested, string signature) {
-	(result.isStatic() or not nested.isStatic())
-	and
-	result.getSignature() = signature
-	and
-	exists(RefType outer | outer = nested.getEnclosingType() |
-		result = outer.getAMethod() or
-		result = methodInEnclosingType(nested, signature)
-	)
+  (result.isStatic() or not nested.isStatic())
+  and
+  result.getSignature() = signature
+  and
+  exists(RefType outer | outer = nested.getEnclosingType() |
+    result = outer.getAMethod() or
+    result = methodInEnclosingType(nested, signature)
+  )
 }
 
 from MethodAccess ma, Method m, NestedType nt, string signature
 where callToInheritedMethod(nt, ma, signature) and
       m = methodInEnclosingType(nt, signature) and
       // There is actually scope for confusion.
-      not nt.getASupertype+() = m.getDeclaringType()
+      not nt.getASupertype+().getSourceDeclaration() = m.getDeclaringType()
 select ma, "A $@ is called instead of a $@.",
-	ma.getMethod(),	"method declared in a superclass",
-	m, "method with the same signature in an enclosing class"
+  ma.getMethod(),  "method declared in a superclass",
+  m, "method with the same signature in an enclosing class"

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,10 +47,10 @@ class JSDocTypeExprParent extends @jsdoc_type_expr_parent {
 }
 
 /**
- * A JSDoc tag such as <code>@param Object options An object literal with options.</code> 
+ * A JSDoc tag such as `@param Object options An object literal with options.` 
  */
 class JSDocTag extends @jsdoc_tag, JSDocTypeExprParent, Locatable {
-  /** Get the tag title; for instance, the title of a <code>@param</code> tag is <code>"param"</code>. */
+  /** Get the tag title; for instance, the title of a `@param` tag is `"param"`. */
   string getTitle() {
     jsdoc_tags (this, result, _, _, _)
   }
@@ -76,7 +76,7 @@ class JSDocTag extends @jsdoc_tag, JSDocTypeExprParent, Locatable {
 
   /**
    * Get the (optional) name associated with the tag, such as the name of the documented parameter
-   * for a <code>@param</code> tag.
+   * for a `@param` tag.
    */
   string getName() {
     jsdoc_tag_names (this, result)
@@ -84,7 +84,7 @@ class JSDocTag extends @jsdoc_tag, JSDocTypeExprParent, Locatable {
 
   /**
    * Get the (optional) type associated with the tag, such as the type of the documented parameter
-   * for a <code>@param</code> tag.
+   * for a `@param` tag.
    */
   JSDocTypeExpr getType() {
     result.getParent() = this
@@ -97,7 +97,7 @@ class JSDocTag extends @jsdoc_tag, JSDocTypeExprParent, Locatable {
 }
 
 /**
- * A <code>@param</code> tag.
+ * A `@param` tag.
  */
 class JSDocParamTag extends JSDocTag {
   JSDocParamTag() {
@@ -132,12 +132,10 @@ class JSDocTypeExpr extends @jsdoc_type_expr, JSDocTypeExprParent {
   }
 
   /**
-   * Get the i-th child type expression of this type expression.
+   * Get the `i`-th child type expression of this type expression.
    *
-   * <p>
-   * Note: the indices of child type expressions in their parent elements are an implementation
+   * _Note_: the indices of child type expressions in their parent elements are an implementation
    * detail that may change between versions of the extractor.
-   * </p>
    */
   JSDocTypeExpr getChild(int i) {
     jsdoc_type_exprs (result, _, this, i, _)
@@ -148,16 +146,16 @@ class JSDocTypeExpr extends @jsdoc_type_expr, JSDocTypeExprParent {
   }
 }
 
-/** An "any" type expression <code>*</code>. */
+/** An "any" type expression `*`. */
 class JSDocAnyTypeExpr extends @jsdoc_any_type_expr, JSDocTypeExpr {}
 
 /** A null type expression. */
 class JSDocNullTypeExpr extends @jsdoc_null_type_expr, JSDocTypeExpr {}
 
-/** A type expression representing the type of <code>undefined</code>. */
+/** A type expression representing the type of `undefined`. */
 class JSDocUndefinedTypeExpr extends @jsdoc_undefined_type_expr, JSDocTypeExpr {}
 
-/** A type expression representing an unknown type <code>?</code>. */
+/** A type expression representing an unknown type `?`. */
 class JSDocUnknownTypeExpr extends @jsdoc_unknown_type_expr, JSDocTypeExpr {}
 
 /** A type expression representing the void type. */
@@ -170,55 +168,51 @@ class JSDocNamedTypeExpr extends @jsdoc_named_type_expr, JSDocTypeExpr {
 }
 
 /**
- * An applied type expression such as <code>Array&lt;string&gt;</code>.
+ * An applied type expression such as `Array<string>`.
  */
 class JSDocAppliedTypeExpr extends @jsdoc_applied_type_expr, JSDocTypeExpr {
-  /** The head type expression, such as <code>Array</code> in <code>Array&lt;string&gt;</code>. */
+  /** The head type expression, such as `Array` in `Array<string>`. */
   JSDocTypeExpr getHead() { result = getChild(-1) }
 
   /**
    * The i-th argument type of the applied type expression.
    *
-   * <p>
-   * For example, in <code>Array&lt;string&gt;</code>, <code>string</code> is the 0'th argument type.
-   * </p>
+   * For example, in `Array<string>`, `string` is the 0'th argument type.
    */
   JSDocTypeExpr getArgument(int i) { i >= 0 and result = getChild(i) }
 
   /**
    * Any argument type of the applied type expression.
    *
-   * <p>
-   * For example, in <code>Array&lt;string&gt;</code>, <code>string</code> is the only argument type.
-   * </p>
+   * For example, in `Array<string>`, `string` is the only argument type.
    */
   JSDocTypeExpr getAnArgument() { result = getArgument(_) }
 }
 
 /**
- * A nullable type expression such as <code>?number</code>.
+ * A nullable type expression such as `?number`.
  */
 class JSDocNullableTypeExpr extends @jsdoc_nullable_type_expr, JSDocTypeExpr {
   /** Get the argument type expression. */
   JSDocTypeExpr getTypeExpr() { result = getChild(0) }
 
-  /** Is the <code>?</code> operator of this type expression written in prefix notation? */
+  /** Is the `?` operator of this type expression written in prefix notation? */
   predicate isPrefix() { jsdoc_prefix_qualifier(this) }
 }
 
 /**
- * A non-nullable type expression such as <code>!number</code>.
+ * A non-nullable type expression such as `!number`.
  */
 class JSDocNonNullableTypeExpr extends @jsdoc_non_nullable_type_expr, JSDocTypeExpr {
   /** Get the argument type expression. */
   JSDocTypeExpr getTypeExpr() { result = getChild(0) }
 
-  /** Is the <code>!</code> operator of this type expression written in prefix notation? */
+  /** Is the `!` operator of this type expression written in prefix notation? */
   predicate isPrefix() { jsdoc_prefix_qualifier(this) }
 }
 
 /**
- * A record type expression such as <code>{ x: number, y: string }</code>.
+ * A record type expression such as `{ x: number, y: string }`.
  */
 class JSDocRecordTypeExpr extends @jsdoc_record_type_expr, JSDocTypeExpr {
   /** Get the name of the i-th field of the record type. */
@@ -231,13 +225,13 @@ class JSDocRecordTypeExpr extends @jsdoc_record_type_expr, JSDocTypeExpr {
   JSDocTypeExpr getFieldType(int i) { result = getChild(i) }
 
   /** Get the type of the field with the given name. */
-  JSDocTypeExpr getFieldType(string fieldname) {
+  JSDocTypeExpr getFieldTypeByName(string fieldname) {
     exists (int idx | fieldname = getFieldName(idx) and result = getFieldType(idx))
   }
 }
 
 /**
- * An array type expression such as <code>[string]</code>.
+ * An array type expression such as `[string]`.
  */
 class JSDocArrayTypeExpr extends @jsdoc_array_type_expr, JSDocTypeExpr {
   /** Get the type of the i-th element of this array type. */
@@ -248,7 +242,7 @@ class JSDocArrayTypeExpr extends @jsdoc_array_type_expr, JSDocTypeExpr {
 }
 
 /**
- * A union type expression such as <code>number|string</code>.
+ * A union type expression such as `number|string`.
  */
 class JSDocUnionTypeExpr extends @jsdoc_union_type_expr, JSDocTypeExpr {
   /** Get one of the type alternatives of this union type. */
@@ -256,7 +250,7 @@ class JSDocUnionTypeExpr extends @jsdoc_union_type_expr, JSDocTypeExpr {
 }
 
 /**
- * A function type expression such as <code>function(string): number</code>.
+ * A function type expression such as `function(string): number`.
  */
 class JSDocFunctionTypeExpr extends @jsdoc_function_type_expr, JSDocTypeExpr {
   /** Get the result type of this function type. */
@@ -276,7 +270,7 @@ class JSDocFunctionTypeExpr extends @jsdoc_function_type_expr, JSDocTypeExpr {
 }
 
 /**
- * An optional parameter type such as <code>number=</code>.
+ * An optional parameter type such as `number=`.
  */
 class JSDocOptionalParameterTypeExpr extends @jsdoc_optional_type_expr, JSDocTypeExpr {
   /** Get the underlying type of this optional type. */
@@ -284,7 +278,7 @@ class JSDocOptionalParameterTypeExpr extends @jsdoc_optional_type_expr, JSDocTyp
 }
 
 /**
- * A rest parameter type such as <code>string...</code>.
+ * A rest parameter type such as `string...`.
  */
 class JSDocRestParameterTypeExpr extends @jsdoc_rest_type_expr, JSDocTypeExpr {
   /** Get the underlying type of this rest parameter type. */

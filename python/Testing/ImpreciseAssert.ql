@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,10 @@
 /**
  * @name Imprecise assert
  * @description Using 'assertTrue' or 'assertFalse' rather than a more specific assertion can give uninformative failure messages.
- 
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       testability
  */
 
 import python
@@ -36,19 +37,19 @@ predicate callToAssertOnComparison(Call call, string assertName, Cmpop op) {
 }
 
 class CallToAssertOnComparison extends Call {
-  
+
     CallToAssertOnComparison() {
         callToAssertOnComparison(this, _, _)
     }
-  
+
     Cmpop getOperator() {
         callToAssertOnComparison(this, _, result) 
     }
-    
+
     string getMethodName() {
         callToAssertOnComparison(this, result, _)
     }
-    
+
     string getBetterName() {
         exists(Cmpop op |
             callToAssertOnComparison(this, "assertTrue", op) and
@@ -98,7 +99,7 @@ class CallToAssertOnComparison extends Call {
             )
         )
     }
-  
+
 }
 
 
@@ -106,5 +107,5 @@ from CallToAssertOnComparison call
 where 
   /* Exclude cases where an explicit message is provided*/
   not exists(call.getArg(1))
-select call, "Use of " + call.getMethodName() + "(a " + call.getOperator().getSymbol() + " b) " +
-             "rather than " + call.getBetterName() + "(a, b) will give less precise failure messages."
+select call, call.getMethodName() + "(a " + call.getOperator().getSymbol() + " b) " +
+             "cannot provide an informative message. Using " + call.getBetterName() + "(a, b) instead will give more informative messages."

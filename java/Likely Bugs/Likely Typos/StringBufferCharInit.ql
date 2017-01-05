@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@
  *              be converted to an integer and interpreted as the buffer's initial capacity, which is probably not intended.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       maintainability
  */
-import default
+import java
 
 class NewStringBufferOrBuilder extends ClassInstanceExpr {
   NewStringBufferOrBuilder() {

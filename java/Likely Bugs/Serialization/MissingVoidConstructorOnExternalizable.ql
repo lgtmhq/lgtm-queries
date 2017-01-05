@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,15 @@
 
 /**
  * @name Externalizable but no public no-argument constructor
- * @description A class that implements 'Externalizable' but does not have a public no-argument 
+ * @description A class that implements 'Externalizable' but does not have a public no-argument
  *              constructor causes an 'InvalidClassException' to be thrown.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       language-features
  */
-import default
+import java
 
 from Class extern, Interface externalizable
 where externalizable.hasQualifiedName("java.io", "Externalizable") and

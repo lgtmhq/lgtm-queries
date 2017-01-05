@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,9 +86,12 @@ private predicate instance_attr_defn(Attribute attr, AstNode defn) {
 
 private predicate inferred_definition(Expr use, AstNode defn) {
     not use = defn and
-    exists(AstNode value | use.refersTo(_, value) |
+    exists(AstNode value | 
+        use.refersTo(_, value) and
+        not use.(Name).getCtx() instanceof Store
+        |
         /* value is lhs of assignment, use rhs as definition */
-        exists(Assign a | 
+        exists(AssignStmt a |
             /* If more than one target (a = b = c) we end up with a defining b and vice versa */
             strictcount(a.getATarget()) = 1 and
             a.getValue() = value and 
@@ -96,9 +99,14 @@ private predicate inferred_definition(Expr use, AstNode defn) {
         )
         or
         /* Non assignment */
-        not exists(Assign a |
+        not exists(AssignStmt a |
             strictcount(a.getATarget()) = 1 and a.getValue() = value
         ) and defn = value
+        or
+        /* Get underlying function/class from decorator call */
+        defn.(ClassExpr).getADecoratorCall() = value
+        or
+        defn.(FunctionExpr).getADecoratorCall() = value
     )
 }
 
@@ -138,6 +146,12 @@ private AstNode getADefinition(Expr use) {
         or
         local_definition(use, result)
     )
+    or
+    exists(ImportingStmt imp, ModuleObject mod |
+        imp.contains(use) and
+        use.refersTo(mod) and
+        result = mod.getModule()
+    )
 }
 
 private predicate preferredDefinition(AstNode preferred, AstNode other) {
@@ -154,6 +168,11 @@ private predicate preferredDefinition(AstNode preferred, AstNode other) {
         and
         t.getAHandler().contains(other.(Expr))
     )
+    or
+    /* Prefer function or class definition over call to decorator */
+    preferred.(FunctionExpr).getADecoratorCall() = other
+    or
+    preferred.(ClassExpr).getADecoratorCall() = other
 }
 
 
@@ -161,6 +180,7 @@ private predicate preferredDefinition(AstNode preferred, AstNode other) {
  * Helper for the jump-to-definition query.
  */
 AstNode getDefinition(Expr use) {
+    not use instanceof Call and
     not result.isArtificial() and
     not use.isArtificial() and
     result = getADefinition(use) and
@@ -169,7 +189,7 @@ AstNode getDefinition(Expr use) {
         or
         /* If there are exactly two possibilities choose the preferred one. */
         preferredDefinition(result, getADefinition(use)) and strictcount(getADefinition(use)) = 2
-        /* If more than two possibilites, then give up. It is too amibiguous. */
+        /* If more than two possibilities, then give up. It is too ambiguous. */
     )
 }
 

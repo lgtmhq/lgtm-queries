@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@
  *              error.
  * @kind problem
  * @problem.severity warning
+ * @tags correctness
  */
 
 import semmle.javascript.flow.Analysis
+import semmle.javascript.RestrictedLocations
 
 /**
  * Check whether `va` is a defensive check that may be worth keeping, even if it
@@ -82,18 +84,28 @@ predicate whitelist(Expr e) {
 }
 
 /**
- * Check whether `e` is in a syntactic position where its value is checked for
- * truthiness.
+ * Check whether `e` is part of a conditional node `cond` that evaluates
+ * `e` and checks its value for truthiness.
  */
-predicate isConditional(Expr e) {
-  exists (IfStmt i | e = i.getCondition()) or
-  exists (ConditionalExpr c | e = c.getCondition()) or
-  exists (LogAndExpr a | e = a.getLeftOperand()) or
-  exists (LogOrExpr o | e = o.getLeftOperand())
+predicate isConditional(ASTNode cond, Expr e) {
+  e = cond.(IfStmt).getCondition() or
+  e = cond.(ConditionalExpr).getCondition() or
+  e = cond.(LogAndExpr).getLeftOperand() or
+  e = cond.(LogOrExpr).getLeftOperand()
 }
 
-from AnalysedFlowNode cond, boolean cv
-where isConditional(cond) and
-      cv = cond.getTheBooleanValue()and
-      not whitelist(cond)
-select cond, "This condition always evaluates to " + cv + "."
+from ASTNode cond, AnalysedFlowNode op, boolean cv, ASTNode sel, string msg
+where isConditional(cond, op) and
+      cv = op.getTheBooleanValue()and
+      not whitelist(op) and
+
+      // if `cond` is of the form `<non-trivial truthy expr> && <something>`,
+      // we suggest replacing it with `<non-trivial truthy expr>, <something>`
+      if cond instanceof LogAndExpr and cv = true and not op.(Expr).isPure() then
+        (sel = cond and msg = "This logical 'and' expression can be replaced with a comma expression.")
+
+      // otherwise we just report that `op` always evaluates to `cv`
+      else
+        (sel = op and msg = "This expression always evaluates to " + cv + ".")
+
+select sel, msg

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,12 +69,22 @@ class Module extends Module_, Scope, AstNode {
     string getAnExport() {
         py_exports(this, result)
         or
-        not this.(ImportTimeScope).definesName("__all__") and this.(ImportTimeScope).definesName(result)
+        not final_module_defines_name(this, "__all__") and final_module_defines_name(this, result)
     }
 
     /** Gets the source file for this module */
     File getFile() {
         py_module_path(this, result)
+    }
+
+    /** Gets the source file or folder for this module or package */
+    Container getPath() {
+        result = this.getFile()
+        or
+        exists(Module m | 
+            m.getPackage() = this |
+            result = m.getPath().getParent()
+        )
     }
 
     /** Whether this is a package */

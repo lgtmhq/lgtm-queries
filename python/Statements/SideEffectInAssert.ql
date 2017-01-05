@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,28 @@
 /**
  * @name An assert statement has a side-effect
  * @description Side-effects in assert statements result in differences between normal
- *  and optimized behavior.
+ *              and optimized behavior.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       maintainability
  */
 
 import python
 
 predicate func_with_side_effects(Expr e) {
-    exists(string name | name = ((Attribute)e).getName() or name = ((Name)e).getId() |
-                         name = "print" or name = "write" or name = "append" or
-                         name = "pop" or name = "remove" or name = "discard" or
-                         name = "delete" or name = "close" or name = "open" or
-                         name = "exit"
-				   )
+    exists(string name |
+        name = ((Attribute)e).getName() or name = ((Name)e).getId() |
+        name = "print" or name = "write" or name = "append" or
+        name = "pop" or name = "remove" or name = "discard" or
+        name = "delete" or name = "close" or name = "open" or
+        name = "exit"
+    )
 }
 
 predicate probable_side_effect(Expr e) {
-    e instanceof Yield
+    // Only consider explicit yields, not artificial ones in comprehensions
+    e instanceof Yield and not exists(Comp c | c.contains(e))
     or
     e instanceof YieldFrom
     or

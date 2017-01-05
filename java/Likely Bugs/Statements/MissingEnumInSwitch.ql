@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,16 @@
 
 /**
  * @name Missing enum case in switch
- * @description A 'switch' statement that is based on an 'enum' type and does not have cases for all 
+ * @description A 'switch' statement that is based on an 'enum' type and does not have cases for all
  *              the 'enum' constants is usually a coding mistake.
  * @kind problem
  * @problem.severity warning
- * @cwe 478
+ * @tags reliability
+ *       readability
+ *       external/cwe/cwe-478
  */
 
-import default
+import java
 
 from SwitchStmt switch, EnumType enum, EnumConstant missing
 where switch.getExpr().getType() = enum

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,36 +17,38 @@
  *              of its argument may lead to failing casts.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 import semmle.code.java.Member
 import semmle.code.java.JDK
 
 /** A cast inside a try-catch block that catches `ClassCastException`. */
 class CheckedCast extends CastExpr {
-	CheckedCast() {
-		exists (TryStmt try, RefType cce |
-			this.getEnclosingStmt().getParent+() = try and
-			try.getACatchClause().getVariable().getType() = cce and
-			cce.getQualifiedName() = "java.lang.ClassCastException"
-		)
-	}
+  CheckedCast() {
+    exists (TryStmt try, RefType cce |
+      this.getEnclosingStmt().getParent+() = try and
+      try.getACatchClause().getVariable().getType() = cce and
+      cce.getQualifiedName() = "java.lang.ClassCastException"
+    )
+  }
 
-	Variable castVariable() {
-		result.getAnAccess() = this.getExpr()
-	}
+  Variable castVariable() {
+    result.getAnAccess() = this.getExpr()
+  }
 }
 
 /** An `equals` method with the body `return o == this;`. */
 class ReferenceEquals extends EqualsMethod {
-	ReferenceEquals() {
-		exists(Block b, ReturnStmt ret, EQExpr eq |
-			this.getBody() = b and
-			b.getStmt(0) = ret and
-			(ret.getResult() = eq or exists(ParExpr pe | ret.getResult() = pe and pe.getExpr() = eq)) and
-			eq.getAnOperand() = this.getAParameter().getAnAccess() and
-			eq.getAnOperand() instanceof ThisAccess
-		)
-	}
+  ReferenceEquals() {
+    exists(Block b, ReturnStmt ret, EQExpr eq |
+      this.getBody() = b and
+      b.getStmt(0) = ret and
+      (ret.getResult() = eq or exists(ParExpr pe | ret.getResult() = pe and pe.getExpr() = eq)) and
+      eq.getAnOperand() = this.getAParameter().getAnAccess() and
+      eq.getAnOperand() instanceof ThisAccess
+    )
+  }
 }
 
 from EqualsMethod m
@@ -65,9 +67,17 @@ where // The parameter is accessed at least once ...
         or c.hasName("isInstance")
         or c.hasName("reflectionEquals")
         // If both `this` and the argument are passed to another method,
+        // or if the argument is passed to a method declared or inherited by `this` type,
         // that method may do the right thing.
-        or (ma.getAnArgument() instanceof ThisAccess and
-            ma.getAnArgument() = m.getParameter().getAnAccess())
+        or (
+          ma.getAnArgument() = m.getParameter().getAnAccess() and
+          (
+            ma.getAnArgument() instanceof ThisAccess or
+            exists(Method delegate | delegate.getSourceDeclaration() = ma.getMethod() |
+              m.getDeclaringType().inherits(delegate)
+            )
+          )
+        )
       ) and
       not m.getDeclaringType() instanceof Interface and
       // Exclude checked casts (casts inside `try`-blocks).

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@
  *              program analysis and understanding. Consequently, they should not be used.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
  */
 
-import default
+import javascript
 
 /* A call to one of the evil twins setTimeout and setInterval, passing
  * a string literal as first argument. */

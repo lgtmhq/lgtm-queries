@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,15 @@
 
 /**
  * @name Incorrect serialVersionUID field
- * @description A 'serialVersionUID' field that is declared in a serializable class but is of the 
+ * @description A 'serialVersionUID' field that is declared in a serializable class but is of the
  *              wrong type cannot be used by the serialization framework.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       language-features
  */
-import default
+import java
 
 from Field f
 where f.hasName("serialVersionUID") and 
