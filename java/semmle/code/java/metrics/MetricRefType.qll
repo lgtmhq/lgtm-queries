@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +44,13 @@ class MetricRefType extends RefType, MetricElement {
   /** The number of fields declared in this type. */
   int getNumberOfFields() {
     result = count(this.getAField())
+  }
+
+  /**
+   * The number of fields declared in this type, excluding enum constants.
+   */
+  int getNumberOfExplicitFields() {
+    result = count(Field f | f = this.getAField() and not f instanceof EnumConstant | f)
   }
 
   /**

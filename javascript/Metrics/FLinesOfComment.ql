@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
 
 /**
  * @name Lines of comments in files
- * @description Files with few lines of comment might not have sufficient documentation to make them understandable. 
+ * @description Files with few lines of comment might not have sufficient documentation to make them understandable.
  * @kind treemap
  * @treemap.warnOn lowValues
  * @metricType file
  * @metricAggregate avg sum max
+ * @tags documentation
  */
 import javascript 
 

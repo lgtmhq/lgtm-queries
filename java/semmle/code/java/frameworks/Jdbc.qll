@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,26 +69,26 @@ class StatementExecuteQuery extends Method {
 
 /** A method with the name `execute` declared in `java.sql.Statement`. */
 class MethodStatementExecute extends Method {
-	MethodStatementExecute() {
-		getDeclaringType() instanceof TypeStatement and
-		hasName("execute")
-	}
+  MethodStatementExecute() {
+    getDeclaringType() instanceof TypeStatement and
+    hasName("execute")
+  }
 }
 
 /** A method with the name `executeUpdate` declared in `java.sql.Statement`. */
 class MethodStatementExecuteUpdate extends Method {
-	MethodStatementExecuteUpdate() {
-		getDeclaringType() instanceof TypeStatement and
-		hasName("executeUpdate")
-	}
+  MethodStatementExecuteUpdate() {
+    getDeclaringType() instanceof TypeStatement and
+    hasName("executeUpdate")
+  }
 }
 
 /** A method with the name `addBatch` declared in `java.sql.Statement`. */
 class MethodStatementAddBatch extends Method {
-	MethodStatementAddBatch() {
-		getDeclaringType() instanceof TypeStatement and
-		hasName("addBatch")
-	}
+  MethodStatementAddBatch() {
+    getDeclaringType() instanceof TypeStatement and
+    hasName("addBatch")
+  }
 }
 
 /** A method with the name `getString` declared in `java.sql.ResultSet`. */

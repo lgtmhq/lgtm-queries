@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import Paths
 /**
  * A module.
  */
-abstract class Module extends TopLevel, @script {
+abstract class Module extends TopLevel {
   /** Get the full path of the file containing this module. */
   string getPath() {
     result = getFile().getPath()
@@ -111,6 +111,48 @@ abstract class Import extends ASTNode {
   /** Get the (unresolved) path that this import refers to. */
   abstract PathExpr getImportedPath();
 
-  /** Get the module this import refers to. */
-  abstract Module getImportedModule();
+  /**
+   * Resolve this import to an externs module, if possible.
+   *
+   * Any externs module whose name exactly matches the imported
+   * path is assumed to be a possible target of the import.
+   */
+  Module resolveExternsImport() {
+    result.isExterns() and result.getName() = getImportedPath().getValue()
+  }
+
+  /**
+   * Resolve the path that this import refers to.
+   */
+  Module resolveImportedPath() {
+    result.getFile() = getEnclosingModule().resolve(getImportedPath())
+  }
+
+  /**
+   * Get a module with a `@providesModule` JSDoc tag that matches
+   * the imported path.
+   */
+  private Module resolveAsProvidedModule() {
+    exists (JSDocTag tag |
+      tag.getTitle() = "providesModule" and
+      tag.getParent().getComment().getTopLevel() = result and
+      tag.getDescription().trim() = getImportedPath().getValue()
+    )
+  }
+
+  /**
+   * Get the module this import refers to.
+   *
+   * The result is either an externs module, or an actual source module;
+   * in cases of ambiguity, the former are preferred. This models the runtime
+   * behavior of Node.js imports, which prefer core modules such as `fs` over any
+   * source module of the same name.
+   */
+  Module getImportedModule() {
+    if exists(resolveExternsImport()) then
+      result = resolveExternsImport()
+    else
+      (result = resolveAsProvidedModule() or
+       result = resolveImportedPath())
+  }
 }

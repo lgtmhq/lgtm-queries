@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@
  *              allows for a cross-site scripting vulnerability.
  * @kind problem
  * @problem.severity error
- * @cwe 079
+ * @tags security
+ *       external/cwe/cwe-079
  */
-import default
+import java
 import semmle.code.java.security.DataFlow
 import semmle.code.java.security.XSS
 
 from XssSink sink, RemoteUserInput source
 where source.flowsTo(sink)
 select sink, "Cross-site scripting vulnerability due to $@.",
-	source, "user-provided value"
+  source, "user-provided value"

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,22 +18,22 @@ import java
  * are -- where annotated -- called remotely.
  */
 class JaxWsEndpoint extends Class {
-	JaxWsEndpoint() {
-		exists(AnnotationType a | a = this.getAnAnnotation().getType() |
-			a.hasName("WebService") or
-			a.hasName("WebServiceProvider") or
-			a.hasName("WebServiceClient")
-		)
-	}
-	
-	Callable getARemoteMethod() {
-		result = this.getACallable() and (
-			exists(AnnotationType a | a = result.getAnAnnotation().getType() |
-				a.hasName("WebMethod") or
-				a.hasName("WebEndpoint")
-			)
-		)
-	}
+  JaxWsEndpoint() {
+    exists(AnnotationType a | a = this.getAnAnnotation().getType() |
+      a.hasName("WebService") or
+      a.hasName("WebServiceProvider") or
+      a.hasName("WebServiceClient")
+    )
+  }
+  
+  Callable getARemoteMethod() {
+    result = this.getACallable() and (
+      exists(AnnotationType a | a = result.getAnAnnotation().getType() |
+        a.hasName("WebMethod") or
+        a.hasName("WebEndpoint")
+      )
+    )
+  }
 }
 
 /**
@@ -41,38 +41,38 @@ class JaxWsEndpoint extends Class {
  * class itself may be reflectively constructed by the container.
  */
 class JaxRsService extends Class {
-	JaxRsService() {
-		exists(AnnotationType a |
-			a = this.getAnAnnotation().getType() and
-			a.getPackage().getName() = "javax.ws.rs" |
-			a.hasName("Path")
-		)
-	}
+  JaxRsService() {
+    exists(AnnotationType a |
+      a = this.getAnAnnotation().getType() and
+      a.getPackage().getName() = "javax.ws.rs" |
+      a.hasName("Path")
+    )
+  }
 
-	Callable getARemoteMethod() {
-		result = this.getACallable() and (
-			exists(AnnotationType a |
-				a = result.getAnAnnotation().getType() and
-				a.getPackage().getName() = "javax.ws.rs" |
-				a.hasName("GET") or
-				a.hasName("POST") or
-				a.hasName("DELETE") or
-				a.hasName("PUT") or 
-				a.hasName("OPTIONS") or
-				a.hasName("HEAD")
-			)
-		)
-	}
+  Callable getARemoteMethod() {
+    result = this.getACallable() and (
+      exists(AnnotationType a |
+        a = result.getAnAnnotation().getType() and
+        a.getPackage().getName() = "javax.ws.rs" |
+        a.hasName("GET") or
+        a.hasName("POST") or
+        a.hasName("DELETE") or
+        a.hasName("PUT") or 
+        a.hasName("OPTIONS") or
+        a.hasName("HEAD")
+      )
+    )
+  }
 }
 
 class JaxRsResponse extends Class {
-	JaxRsResponse() {
-		this.hasQualifiedName("javax.ws.rs.core", "Response")
-	}
+  JaxRsResponse() {
+    this.hasQualifiedName("javax.ws.rs.core", "Response")
+  }
 }
 
 class JaxRsResponseBuilder extends Class {
-	JaxRsResponseBuilder() {
-		this.hasQualifiedName("javax.ws.rs.core", "ResponseBuilder")
-	}
+  JaxRsResponseBuilder() {
+    this.hasQualifiedName("javax.ws.rs.core", "ResponseBuilder")
+  }
 }

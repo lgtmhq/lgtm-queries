@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,9 +41,14 @@ class Scope extends @scope {
     result = getScopeElement().getLocation()
   }
 
-  /** Is there a strict mode declaration in this scope? */
+  /**
+   * Is there a strict mode declaration in this scope?
+   *
+   * DEPRECATED: Use `StmtContainer.isStrict()` instead.
+   */
+  deprecated
   predicate isStrict() {
-    exists (StrictModeDecl smd | this = smd.getScope())
+    exists (StrictModeDecl smd | getScopeElement() = smd.getContainer())
   }
   
   /** Get a variable declared in this scope. */
@@ -66,7 +71,7 @@ class GlobalScope extends Scope, @globalscope {
 }
 
 /**
- * The scope induced by a Node.js or ES6 module
+ * The scope induced by a Node.js or ES2015 module
  */
 class ModuleScope extends Scope, @modulescope {
   /** Get the module to which this scope belongs. */
@@ -423,12 +428,18 @@ class ObjectPattern extends DestructuringPattern, @objectpattern {
     result.getName() = name
   }
 
+  /** Get the rest property pattern of this object pattern, if any. */
+  Expr getRest() {
+    result = getChildExpr(-1)
+  }
+
   predicate isImpure() {
     getAPropertyPattern().isImpure()
   }
 
   VarRef getABindingVarRef() {
-    result = getAPropertyPattern().getValuePattern().(BindingPattern).getABindingVarRef()
+    result = getAPropertyPattern().getValuePattern().(BindingPattern).getABindingVarRef() or
+    result = getRest().(BindingPattern).getABindingVarRef()
   }
 }
 
@@ -490,6 +501,10 @@ class PropertyPattern extends @property, ASTNode {
   string toString() {
     properties(this, _, _, _, result)
   }
+
+  CFGNode getFirstCFGNode() {
+    result = getNameExpr().getFirstCFGNode()
+  }
 }
 
 /** A variable declarator declaring a local or global variable. */
@@ -510,10 +525,7 @@ class VariableDeclarator extends Expr, @vardeclarator {
 	}
 
   CFGNode getFirstCFGNode() {
-    if exists(getInit()) then
-      result = getInit().getFirstCFGNode()
-    else
-      result = this
+    result = getBindingPattern().getFirstCFGNode()
   }
 }
 

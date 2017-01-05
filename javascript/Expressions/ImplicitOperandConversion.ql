@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,13 @@
  *              hard to read.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       readability
  */
 
 import javascript
 import semmle.javascript.flow.Analysis
-
-/** Is the i-th operand of `parent` interpreted as a property name? */
-predicate convertToPropName(Expr parent, int i) {
-  parent instanceof InExpr and i = 0 or
-  parent instanceof IndexExpr and i = 1
-}
+private import semmle.javascript.flow.InferredTypes
 
 /** Is the i-th operand of `parent` interpreted as a number? */
 predicate convertToNumber(Expr parent, int i) {
@@ -45,8 +42,16 @@ predicate unlikelyConversion(Expr parent, int i, AnalysedFlowNode operand, Abstr
                   string conversionTarget) {
   operand = parent.getChildExpr(i) and v = operand.getAValue() and
   (
-    // property names should be strings or numbers
-    convertToPropName(parent, i) and not (v.getType() = "string" or v.getType() = "number") and
+    // property names in `in` expressions should be strings or numbers
+    parent instanceof InExpr and i = 0 and
+    not (v.getType() = TTString() or v.getType() = TTNumber()) and
+    conversionTarget = "string" or
+
+    // property names in index expressions should be booleans, strings or numbers
+    parent instanceof IndexExpr and i = 1 and
+    not exists (InferredType t | t = v.getType() |
+      t = TTBoolean() or t = TTString() or t = TTNumber()
+    ) and
     conversionTarget = "string" or
 
     // operands of arithmetic operations should be booleans, numbers or Dates
@@ -59,19 +64,19 @@ predicate unlikelyConversion(Expr parent, int i, AnalysedFlowNode operand, Abstr
     not v.getType() instanceof NonPrimitiveType and
     conversionTarget = "object" or
  
-    // the right hand operand of `instanceof` should be a function
+    // the right hand operand of `instanceof` should be a function or class
     parent instanceof InstanceofExpr and i = 1 and
-    not exists (InferredType t | t = v.getType() | t = "function" or t = "class") and
+    not exists (InferredType t | t = v.getType() | t = TTFunction() or t = TTClass()) and
     conversionTarget = "function" or
 
     // the operands of `+` should not be null or undefined
     parent instanceof AddExpr and
-    forall (InferredType tp | tp = v.getType() | tp = "null" or tp = "unknown") and
+    forall (InferredType tp | tp = v.getType() | tp = TTNull() or tp = TTUndefined()) and
     conversionTarget = "number or string" or
 
     // the operands of a relational comparison should be strings, numbers, or Dates
     exists (RelationalComparison rel | parent = rel |
-      not exists (InferredType tp | tp = v.getType() | tp = "string" or tp = "number" or tp = "date") and
+      not exists (InferredType tp | tp = v.getType() | tp = TTString() or tp = TTNumber() or tp = TTDate()) and
       conversionTarget = "number or string"
     )
   )

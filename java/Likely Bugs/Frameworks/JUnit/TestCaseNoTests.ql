@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,23 +17,26 @@
  *              declarations is not used.
  * @kind problem
  * @problem.severity recommendation
+ * @tags testability
+ *       maintainability
+ *       frameworks/junit
  */
-import default
+import java
 
 // `suite()` methods in `TestCase`s also count as test methods.
 class SuiteMethod extends Method {
-	SuiteMethod() {
-		this.getDeclaringType() instanceof JUnit38TestClass and
-		this.isPublic() and
-		this.isStatic() and 
-		this.hasNoParameters()
-	}
+  SuiteMethod() {
+    this.getDeclaringType() instanceof JUnit38TestClass and
+    this.isPublic() and
+    this.isStatic() and 
+    this.hasNoParameters()
+  }
 }
 
 from JUnit38TestClass j
 where j.fromSource() and
-			not j.getAnAnnotation().getType().hasQualifiedName("org.junit", "Ignore") and
-			not j.isAbstract() and
-			not exists(TestMethod t | t.getDeclaringType() = j) and
-			not exists(SuiteMethod s | s.getDeclaringType() = j)
+      not j.getAnAnnotation().getType().hasQualifiedName("org.junit", "Ignore") and
+      not j.isAbstract() and
+      not exists(TestMethod t | t.getDeclaringType() = j) and
+      not exists(SuiteMethod s | s.getDeclaringType() = j)
 select j, "TestCase has no tests."

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,61 +14,37 @@
 /**
  * Library for control-flow graph dominance.
  */
-import default
+import java
 private import semmle.code.java.Successor
 private import semmle.code.java.ControlFlowGraph
 
- /*
-  * Predicates for statement-level dominance.
-  */
-  
+
+/*
+ * Predicates for basic-block-level dominance.
+ */
+
 /** Entry points for control-flow. */
 private predicate flowEntry(Stmt entry) {
   exists (Callable c | entry = c.getBody())
 }
-
-predicate succs(ControlFlowNode s, ControlFlowNode succ) { succ = s.getASuccessor() }
-
-/** Immediate dominance relation on control-flow graph nodes. */
-predicate iDominates(ControlFlowNode dominator, ControlFlowNode node)
-  = idominance(flowEntry/1,succs/2)(dominator, node)
-
-/** Exit points for control-flow. */
-private predicate flowExit(Callable exit) {
-  exists(ControlFlowNode s | s.getASuccessor() = exit)
-}
-
-/** Reversed `succs`. */
-private predicate preds(ControlFlowNode post, ControlFlowNode pre) { succs(pre, post) }
-
-/** Immediate post-dominance relation on control-flow graph nodes. */
-predicate iPostDominates(ControlFlowNode dominator, ControlFlowNode node)
-  = idominance(flowExit/1,preds/2)(dominator, node)
-
-/** Whether `dom` strictly dominates `node`. */
-predicate strictlyDominates(ControlFlowNode dom, ControlFlowNode node) { iDominates+(dom, node) }
-
-/** Whether `dom` dominates `node`. (This is reflexive.) */
-predicate dominates(ControlFlowNode dom, ControlFlowNode node) { strictlyDominates(dom, node) or dom = node }
-
-/** Whether `dom` strictly post-dominates `node`. */
-predicate strictlyPostDominates(ControlFlowNode dom, ControlFlowNode node) { iPostDominates+(dom, node) }
-
-/** Whether `dom` post-dominates `node`. (This is reflexive.) */
-predicate postDominates(ControlFlowNode dom, ControlFlowNode node) { strictlyPostDominates(dom, node) or dom = node }
-
- /*
-  * Predicates for basic-block-level dominance.
-  */
 
 /** The successor relation for basic blocks. */
 private predicate bbSucc(BasicBlock pre, BasicBlock post) {
   post = pre.getABBSuccessor()
 }
 
+private predicate bbIDominatesAux(Stmt entry, BasicBlock dom, BasicBlock node)
+  = idominance(flowEntry/1, bbSucc/2)(entry, dom, node)
+
 /** The immediate dominance relation for basic blocks. */
-predicate bbIDominates(BasicBlock dom, BasicBlock node)
-  = idominance(flowEntry/1, bbSucc/2)(dom, node)
+predicate bbIDominates(BasicBlock dom, BasicBlock node) {
+  bbIDominatesAux(_, dom, node)
+}
+
+/** Exit points for control-flow. */
+private predicate flowExit(Callable exit) {
+  exists(ControlFlowNode s | s.getASuccessor() = exit)
+}
 
 /** Exit points for basic-block control-flow. */
 private predicate bbSink(BasicBlock exit) {
@@ -80,9 +56,13 @@ private predicate bbPred(BasicBlock post, BasicBlock pre) {
   post = pre.getABBSuccessor()
 }
 
+private predicate bbIPostDominatesAux(BasicBlock exit, BasicBlock dominator, BasicBlock node)
+  = idominance(bbSink/1,bbPred/2)(exit, dominator, node)
+
 /** The immediate post-dominance relation on basic blocks. */
-predicate bbIPostDominates(BasicBlock dominator, BasicBlock node)
-  = idominance(bbSink/1,bbPred/2)(dominator, node)
+predicate bbIPostDominates(BasicBlock dominator, BasicBlock node) {
+  bbIPostDominatesAux(_, dominator, node)
+}
 
 /** Whether `dom` strictly dominates `node`. */
 predicate bbStrictlyDominates(BasicBlock dom, BasicBlock node) { bbIDominates+(dom, node) }
@@ -99,4 +79,62 @@ predicate bbPostDominates(BasicBlock dom, BasicBlock node) { bbStrictlyPostDomin
 /** The dominance frontier relation for basic blocks. */
 predicate dominanceFrontier(BasicBlock x, BasicBlock w) {
   bbDominates(x, w.getABBPredecessor()) and not bbStrictlyDominates(x, w)
+}
+
+/*
+ * Predicates for expression-level dominance.
+ */
+
+/** Immediate dominance relation on control-flow graph nodes. */
+predicate iDominates(ControlFlowNode dominator, ControlFlowNode node) {
+  exists(BasicBlock bb, int i | dominator = bb.getNode(i) and node = bb.getNode(i+1)) or
+  exists(BasicBlock dom, BasicBlock bb |
+    bbIDominates(dom, bb) and
+    dominator = dom.getLastNode() and
+    node = bb.getFirstNode()
+  )
+}
+
+/** Whether `dom` strictly dominates `node`. */
+pragma[inline]
+predicate strictlyDominates(ControlFlowNode dom, ControlFlowNode node) {
+  // This predicate is gigantic, so it must be inlined.
+  bbStrictlyDominates(dom.getBasicBlock(), node.getBasicBlock())
+  or
+  exists(BasicBlock b, int i, int j |
+    dom = b.getNode(i) and node = b.getNode(j) and i < j
+  )
+}
+
+/** Whether `dom` dominates `node`. (This is reflexive.) */
+pragma[inline]
+predicate dominates(ControlFlowNode dom, ControlFlowNode node) {
+  // This predicate is gigantic, so it must be inlined.
+  bbStrictlyDominates(dom.getBasicBlock(), node.getBasicBlock())
+  or
+  exists(BasicBlock b, int i, int j |
+    dom = b.getNode(i) and node = b.getNode(j) and i <= j
+  )
+}
+
+/** Whether `dom` strictly post-dominates `node`. */
+pragma[inline]
+predicate strictlyPostDominates(ControlFlowNode dom, ControlFlowNode node) {
+  // This predicate is gigantic, so it must be inlined.
+  bbStrictlyPostDominates(dom.getBasicBlock(), node.getBasicBlock())
+  or
+  exists(BasicBlock b, int i, int j |
+    dom = b.getNode(i) and node = b.getNode(j) and i > j
+  )
+}
+
+/** Whether `dom` post-dominates `node`. (This is reflexive.) */
+pragma[inline]
+predicate postDominates(ControlFlowNode dom, ControlFlowNode node) {
+  // This predicate is gigantic, so it must be inlined.
+  bbStrictlyPostDominates(dom.getBasicBlock(), node.getBasicBlock())
+  or
+  exists(BasicBlock b, int i, int j |
+    dom = b.getNode(i) and node = b.getNode(j) and i >= j
+  )
 }

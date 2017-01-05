@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
  *              program analysis and understanding. Consequently, these two functions should not be used.
  * @kind problem
  * @problem.severity recommendation
+ * @tags security
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 class NewFunction extends NewExpr {
   NewFunction() {

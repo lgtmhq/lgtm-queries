@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 
 /**
  * @name Magic strings: use defined constant
- * @description A magic string, which is used instead of an existing named constant, makes code less 
+ * @description A magic string, which is used instead of an existing named constant, makes code less
  *              readable and maintainable.
  * @kind problem
  * @problem.severity recommendation
+ * @tags changeability
+ *       readability
  */
-import default
+import java
 import MagicConstants
 
 from StringLiteral magicLiteral, string message, Field field, string linkText

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,12 +27,10 @@ class YAMLNode extends @yaml_node, Locatable {
   }
 
   /**
-   * Get the i-th child node of this node.
+   * Get the `i`-th child node of this node.
    *
-   * <p>
-   * Note: The index of a child node relative to its parent is considered
+   * _Note_: The index of a child node relative to its parent is considered
    * an implementation detail and may change between versions of the extractor.
-   * </p>
    */
   YAMLNode getChildNode(int i) {
     yaml(result, _, this, i, _, _)
@@ -75,7 +73,7 @@ class YAMLNode extends @yaml_node, Locatable {
 
   /**
    * Is this node tagged with a standard type tag of the form
-   * <code>tag:yaml.org,2002:&lt;t&gt;</code>?
+   * `tag:yaml.org,2002:<t>`?
    */
   predicate hasStandardTypeTag(string t) {
     t = getTag().regexpCapture("tag:yaml.org,2002:(.*)", 1)
@@ -119,13 +117,12 @@ abstract class YAMLValue extends YAMLNode {
 class YAMLScalar extends YAMLValue, @yaml_scalar_node {
   /**
    * Get the style of this scalar, which is one of the following:
-   * <ul>
-   * <li><code>""</code> (empty string): plain style</li>
-   * <li><code>"\""</code> (double quote): double quoted style</li>
-   * <li><code>"'"</code> (single quote): single quoted style</li>
-   * <li><code>"&gt;"</code> (greater-than): folded style</li>
-   * <li><code>"|"</code> (pipe): literal style</li>
-   * </ul>
+   *
+   * - `""` (empty string): plain style
+   * - `"\""` (double quote): double quoted style
+   * - `"'"` (single quote): single quoted style
+   * - `">"` (greater-than): folded style
+   * - `"|"` (pipe): literal style
    */
   string getStyle() {
     exists (int s | yaml_scalars(this, s, _) |
@@ -240,7 +237,7 @@ class YAMLMergeKey extends YAMLScalar {
 }
 
 /**
- * A YAML scalar representing an <code>!include</code> directive.
+ * A YAML scalar representing an `!include` directive.
  */
 class YAMLInclude extends YAMLScalar {
   YAMLInclude() {

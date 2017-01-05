@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@
  *              may even lead to platform-dependent behavior.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
-import default
+import javascript
 
 from FunctionDeclStmt f, FunctionDeclStmt g
 where f.getVariable() = g.getVariable() and

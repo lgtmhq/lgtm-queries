@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,11 @@
 
 /**
  * @name Print an array
- * @description Directly printing an array, without first converting the array to a string, 
+ * @description Directly printing an array, without first converting the array to a string,
  *              produces unreadable results.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
  */
 import java
 

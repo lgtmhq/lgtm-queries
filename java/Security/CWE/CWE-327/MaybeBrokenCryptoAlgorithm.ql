@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,10 @@
  * @description Using broken or weak cryptographic algorithms can allow an attacker to compromise security.
  * @kind problem
  * @problem.severity warning
- * @cwe 327
+ * @tags security
+ *       external/cwe/cwe-327
  */
-import default
+import java
 import semmle.code.java.security.Encryption
 import semmle.code.java.security.DataFlow
 

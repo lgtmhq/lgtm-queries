@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 
 /**
  * @name Static field written by instance method
- * @description Writing to a static field from an instance method is prone to race conditions 
- *              unless you use synchronization. In addition, it makes it difficult to keep the 
+ * @description Writing to a static field from an instance method is prone to race conditions
+ *              unless you use synchronization. In addition, it makes it difficult to keep the
  *              static state consistent and affects code readability.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
-import default
+import java
 
 from FieldWrite fw, Field f, Callable c, string kind
 where fw.getField() = f and

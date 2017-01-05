@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,8 @@ import semmle.javascript.YAML
 import semmle.javascript.AMD
 import semmle.javascript.Classes
 import semmle.javascript.Modules
-import semmle.javascript.ES6Modules
+import semmle.javascript.ES2015Modules
+import semmle.javascript.JSX
+import semmle.javascript.HTML
 
 import semmle.javascript.StandardLibrary

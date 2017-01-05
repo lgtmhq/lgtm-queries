@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,11 @@
 /**
  * @name __init__ method calls overridden method
  * @description Calling a method from __init__ that is overridden by a subclass may result in a partially
- *      initialized instance being observed.
+ *              initialized instance being observed.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
  */
 
 import python

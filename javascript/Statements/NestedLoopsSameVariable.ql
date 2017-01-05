@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
  * @description Nested loops in which the iteration variable is the same for each loop are difficult
  *              to understand.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity recommendation
+ * @tags maintainability
+ *       correctness
  */
-import default
+import javascript
 
 Variable getIterationVariable(ForStmt for) {
 	result.getAnAccess().getParentExpr*() = for.getTest() and

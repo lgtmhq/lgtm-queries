@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
  * in a fashion that the user can control. This includes authorization
  * methods such as logins, and sending of data, etc.
  */
-import default
+import java
 
 private string suspicious() {
   result = "%password%" or
@@ -56,6 +56,7 @@ class SensitiveMethodAccess extends SensitiveExpr, MethodAccess {
   }
 
   Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
+  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
   
   string toString() {
     result = MethodAccess.super.toString()
@@ -111,9 +112,9 @@ class AuthMethod extends SensitiveExecutionMethod {
 /** A method that sends data, and so should not be run conditionally on user input. */
 class SendingMethod extends SensitiveExecutionMethod {
   SendingMethod() {
-	  exists(string s | s.matches("%Socket") |
-	    this.getDeclaringType().hasQualifiedName("java.net", s) and
-	    this.hasName("send")
-	  )
+    exists(string s | s.matches("%Socket") |
+      this.getDeclaringType().hasQualifiedName("java.net", s) and
+      this.hasName("send")
+    )
   }
 }

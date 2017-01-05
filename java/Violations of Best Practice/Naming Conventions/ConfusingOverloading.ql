@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,23 +13,21 @@
 
 /**
  * @name Confusing overloading of methods
- * @description Overloaded methods that have the same number of parameters, where each pair of 
- *              corresponding parameter types is convertible by casting or autoboxing, may be 
+ * @description Overloaded methods that have the same number of parameters, where each pair of
+ *              corresponding parameter types is convertible by casting or autoboxing, may be
  *              confusing.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       readability
+ *       naming
  */
-import default
+import java
 
 private
 predicate confusingPrimitiveBoxedTypes(Type t, Type u) {
-    t instanceof PrimitiveType and
-    u instanceof BoxedType and
-    t.(PrimitiveType).getBoxedType() = u
-  or
-    t instanceof BoxedType and
-    u instanceof PrimitiveType and
-    u.(PrimitiveType).getBoxedType() = t
+  t.(PrimitiveType).getBoxedType() = u or
+  u.(PrimitiveType).getBoxedType() = t
 }
 
 private
@@ -46,9 +44,10 @@ predicate overloadedMethods(Method n, Method m) {
 private
 predicate overloadedMethodsMostSpecific(Method n, Method m) {
   overloadedMethods(n, m)
-  and not exists(Method nSup, Method mSup | n.overrides*(nSup) and m.overrides*(mSup) |
-  	overloadedMethods(nSup, mSup) and
-  	(n != nSup or m != mSup)
+  and not exists(Method nSup, Method mSup |
+    n.overridesOrInstantiates*(nSup) and m.overridesOrInstantiates*(mSup) |
+    overloadedMethods(nSup, mSup) and
+    (n != nSup or m != mSup)
   )
 }
 
@@ -57,7 +56,7 @@ predicate overloadedMethodsMostSpecific(Method n, Method m) {
  * not be reported by this query.
  */
 private predicate whitelist(string name) {
-	name = "visit"
+  name = "visit"
 }
 
 /**
@@ -66,19 +65,26 @@ private predicate whitelist(string name) {
  */
 private 
 predicate candidateMethod(RefType t, Method m, string name, int numParam) {
-  t.inherits(m) and
+  exists(Method n | n.getSourceDeclaration() = m | t.inherits(n)) and
   m.getName() = name and 
   m.getNumberOfParameters() = numParam and
   m = m.getSourceDeclaration() and
+  not m.getAnAnnotation() instanceof DeprecatedAnnotation and
   not whitelist(name)
 }
 
 private
 predicate potentiallyConfusingTypes(Type a, Type b) {
-  exists(RefType commonSubtype | hasSubtypeStar(a, commonSubtype) |
-    hasSubtypeStar(b, commonSubtype)
+  exists(RefType commonSubtype | hasSubtypeOrInstantiation*(a, commonSubtype) |
+    hasSubtypeOrInstantiation*(b, commonSubtype)
   ) or
   confusingPrimitiveBoxedTypes(a, b)
+}
+
+private
+predicate hasSubtypeOrInstantiation(RefType t, RefType sub) {
+  hasSubtype(t, sub) or
+  sub.getSourceDeclaration() = t
 }
 
 private
@@ -86,6 +92,32 @@ predicate confusinglyOverloaded(Method m, Method n) {
   overloadedMethodsMostSpecific(n, m) and
   forall(int i, Parameter p, Parameter q | p = n.getParameter(i) and q = m.getParameter(i) |
     potentiallyConfusingTypes(p.getType(), q.getType())
+  ) and
+  // There is no possibility for confusion between two methods with identical behavior.
+  not exists(Method target | delegate*(m, target) and delegate*(n, target))
+}
+
+private
+predicate wrappedAccess(Expr e, MethodAccess ma) {
+  e = ma or
+  wrappedAccess(e.(ParExpr).getExpr(), ma) or
+  wrappedAccess(e.(CastExpr).getExpr(), ma)
+}
+
+private
+predicate delegate(Method caller, Method callee) {
+  exists(MethodAccess ma | ma.getMethod() = callee |
+    exists(Stmt stmt | stmt = caller.getBody().(SingletonBlock).getStmt() |
+      wrappedAccess(stmt.(ExprStmt).getExpr(), ma) or
+      wrappedAccess(stmt.(ReturnStmt).getResult(), ma)
+    ) and
+    forex(Parameter p, int i, Expr arg | p = caller.getParameter(i) and ma.getArgument(i) = arg |
+      // The parameter is propagated without modification.
+      arg = p.getAnAccess() or
+      // The parameter is cast to a supertype.
+      arg.(CastExpr).getExpr() = p.getAnAccess() and
+        arg.getType().(RefType).getASubtype() = p.getType()
+    )
   )
 }
 

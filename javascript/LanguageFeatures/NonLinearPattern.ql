@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@
  *              unintentional.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
+ *       language-features
  */
 
-import default
+import javascript
 
 from BindingPattern p, string n, VarDecl v, VarDecl w
 where v = p.getABindingVarRef() and w = p.getABindingVarRef() and

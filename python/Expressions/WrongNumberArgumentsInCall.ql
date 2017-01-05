@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description A call to function may have an incorrect number of arguments. This will cause a TypeError to be raised.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
 import python

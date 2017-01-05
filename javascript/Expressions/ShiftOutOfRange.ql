@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              right operand into account. Thus, it is not possible to shift by more than 31 bits.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
-import default
+import javascript
 
 from ShiftExpr shift
 where shift.getRightOperand().getIntValue() > 31

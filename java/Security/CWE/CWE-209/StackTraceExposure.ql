@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,12 @@
  *              that are useful to an attacker for developing a subsequent exploit.
  * @kind problem
  * @problem.severity error
- * @cwe 209 497
+ * @tags security
+ *       external/cwe/cwe-209
+ *       external/cwe/cwe-497
  */
 
-import default
+import java
 import semmle.code.java.security.DataFlow
 import semmle.code.java.security.XSS
 

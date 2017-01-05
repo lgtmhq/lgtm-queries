@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,10 @@
  * @description Storing sensitive information in cleartext can expose it to an attacker.
  * @kind problem
  * @problem.severity warning
- * @cwe 313
+ * @tags security
+ *       external/cwe/cwe-313
  */
-import default
+import java
 import semmle.code.java.security.DataFlow
 import SensitiveStorage
 

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
 /**
  * @name Mismatch in multiple assignment
  * @description Assigning multiple variables without ensuring that you define a
- *  value for each variable causes an exception at runtime.
+ *              value for each variable causes an exception at runtime.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
+ *       types
  */
 
 import python

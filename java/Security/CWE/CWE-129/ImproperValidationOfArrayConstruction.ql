@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  * @description Using unvalidated external input as the argument to a construction of an array can lead to index out of bound exceptions.
  * @kind problem
  * @problem.severity error
- * @cwe 129
+ * @tags security
+ *       external/cwe/cwe-129
  */
 
-import default
+import java
 import ArraySizing
 import semmle.code.java.dataflow.DefUse
 

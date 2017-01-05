@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ class Stmt extends Stmt_, AstNode {
     Stmt getASubStatement() {
         none()
     }
-    
+
     AstNode getAChildNode() {
         result = this.getASubExpression()
         or
@@ -246,7 +246,7 @@ class If extends If_ {
     /** Whether this if statement starts with the keyword `elif` */
     predicate isElif() {
         /* The Python parser turns all elif chains into nested if-else statements.
-         * An `elif` can be indentified as it is the first statement in an `else` block
+         * An `elif` can be identified as it is the first statement in an `else` block
          * and it is not indented relative to its parent `if`.
          */
         exists(If i | 
@@ -387,6 +387,22 @@ class TemplateWrite extends TemplateWrite_ {
 
 }
 
+class AsyncFor extends For {
+
+    AsyncFor() {
+        this.isAsync()
+    }
+
+}
+
+class AsyncWith extends With {
+
+    AsyncWith() {
+        this.isAsync()
+    }
+
+}
+
 /** A list of statements */
 class StmtList extends StmtList_ {
 
@@ -401,6 +417,5 @@ class StmtList extends StmtList_ {
     Stmt getLastItem() { result = this.getItem(max(int i | exists(this.getItem(i)))) }
 
 }
-
 
 

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,17 +13,20 @@
 
 /**
  * @name Exposing internal representation
- * @description An object that accidentally exposes its internal representation may allow the 
+ * @description An object that accidentally exposes its internal representation may allow the
  *              object's fields to be modified in ways that the object is not prepared to handle.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 485
+ * @tags reliability
+ *       maintainability
+ *       modularity
+ *       external/cwe/cwe-485
  */
 import java
 
 predicate relevantType(RefType t) {
   t instanceof Array or
-  exists(RefType sup | sup = t.getASupertype*() |
+  exists(RefType sup | sup = t.getASupertype*().getSourceDeclaration() |
     sup.hasQualifiedName("java.util", "Map") or
     sup.hasQualifiedName("java.util", "Collection")
   )
@@ -40,14 +43,14 @@ predicate modifyMethod(Method m) {
 }
 
 predicate storesArray(Callable c, Field f) {
-  f.getDeclaringType() = c.getDeclaringType().getASupertype*() and 
+  f.getDeclaringType() = c.getDeclaringType().getASupertype*().getSourceDeclaration() and
   relevantType(f.getType()) and
   exists(Parameter p | p = c.getAParameter() | f.getAnAssignedValue() = p.getAnAccess()) and
   not c.isStatic()
 }
 
 predicate returnsArray(Callable c, Field f) {
-  f.getDeclaringType() = c.getDeclaringType().getASupertype*() and 
+  f.getDeclaringType() = c.getDeclaringType().getASupertype*().getSourceDeclaration() and
   relevantType(f.getType()) and
   exists(ReturnStmt rs | rs.getEnclosingCallable() = c and rs.getResult() = f.getAnAccess()) and
   not c.isStatic()

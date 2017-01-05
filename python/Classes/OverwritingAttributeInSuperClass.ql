@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
  * @description Assignment to self attribute overwrites attribute previously defined in subclass or superclass __init__ method.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       modularity
  */
 
 import python

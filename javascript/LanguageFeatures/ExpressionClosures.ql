@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
  *              make it harder to reuse code.
  * @kind problem
  * @problem.severity warning
+ * @tags portability
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 predicate deprecated_feature(ASTNode nd, string type, string replacement) {
   exists (FunctionExpr fe | fe = nd and fe.getBody() instanceof Expr |

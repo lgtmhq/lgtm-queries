@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,17 +23,17 @@ abstract class ManagedBean extends Interface {
 
 /** An `MBean`. */
 class MBean extends ManagedBean {
-	MBean() {
-		this.getQualifiedName().matches("%MBean%")
-	}
+  MBean() {
+    this.getQualifiedName().matches("%MBean%")
+  }
 }
 
 /** An `MXBean`. */
 class MXBean extends ManagedBean {
-	MXBean() {
-		this.getQualifiedName().matches("%MXBean%") or
-		this.getAnAnnotation().getType().hasQualifiedName("javax.management", "MXBean")
-	}
+  MXBean() {
+    this.getQualifiedName().matches("%MXBean%") or
+    this.getAnAnnotation().getType().hasQualifiedName("javax.management", "MXBean")
+  }
 }
 
 /**
@@ -41,35 +41,35 @@ class MXBean extends ManagedBean {
  * indirectly.
  */
 class RegisteredManagedBeanImpl extends Class {
-	RegisteredManagedBeanImpl() {
-		getAnAncestor() instanceof ManagedBean and
-		exists(JMXRegistrationCall registerCall |
-			registerCall.getObjectArgument().getType() = this
-		)
-	}
+  RegisteredManagedBeanImpl() {
+    getAnAncestor() instanceof ManagedBean and
+    exists(JMXRegistrationCall registerCall |
+      registerCall.getObjectArgument().getType() = this
+    )
+  }
 
-	/**
-	 * The managed beans that this registered bean class implements.
-	 */
-	ManagedBean getAnImplementedManagedBean() {
-		result = getAnAncestor()
-	}
+  /**
+   * The managed beans that this registered bean class implements.
+   */
+  ManagedBean getAnImplementedManagedBean() {
+    result = getAnAncestor()
+  }
 }
 
 /**
  * A call that registers an object with the `MBeanServer`, directly or indirectly.
  */
 class JMXRegistrationCall extends MethodAccess {
-	JMXRegistrationCall() {
-		getCallee() instanceof JMXRegistrationMethod
-	}
+  JMXRegistrationCall() {
+    getCallee() instanceof JMXRegistrationMethod
+  }
 
-	/**
-	 * The argument that represents the object in the registration call.
-	 */
-	Expr getObjectArgument() {
-		result = getArgument(getCallee().(JMXRegistrationMethod).getObjectPosition())
-	}
+  /**
+   * The argument that represents the object in the registration call.
+   */
+  Expr getObjectArgument() {
+    result = getArgument(getCallee().(JMXRegistrationMethod).getObjectPosition())
+  }
 }
 
 /**
@@ -79,38 +79,38 @@ class JMXRegistrationCall extends MethodAccess {
  * registration method.
  */
 class JMXRegistrationMethod extends Method {
-	JMXRegistrationMethod() {
-		(
-			// A direct registration with the `MBeanServer`.
-			getDeclaringType().hasQualifiedName("javax.management", "MBeanServer") and
-			getName() = "registerMBean"
-		) or
-		/*
-		 * The `MBeanServer` is often wrapped by an application specific management class, so identify
-		 * methods that wrap a call to another `JMXRegistrationMethod`.
-		 */
-		exists(JMXRegistrationCall c |
-			/*
-			 * This must be a call to another JMX registration method, where the object argument is an access
-			 * of one of the parameters of this method.
-			 */
-			c.getObjectArgument().(VarAccess).getVariable() = getAParameter()
-		)
-	}
+  JMXRegistrationMethod() {
+    (
+      // A direct registration with the `MBeanServer`.
+      getDeclaringType().hasQualifiedName("javax.management", "MBeanServer") and
+      getName() = "registerMBean"
+    ) or
+    /*
+     * The `MBeanServer` is often wrapped by an application specific management class, so identify
+     * methods that wrap a call to another `JMXRegistrationMethod`.
+     */
+    exists(JMXRegistrationCall c |
+      /*
+       * This must be a call to another JMX registration method, where the object argument is an access
+       * of one of the parameters of this method.
+       */
+      c.getObjectArgument().(VarAccess).getVariable() = getAParameter()
+    )
+  }
 
-	/**
-	 * The position of parameter through which the "object" to be registered is passed.
-	 */
-	int getObjectPosition() {
-		(
-			// Passed as the first argument to `registerMBean`.
-			getDeclaringType().hasQualifiedName("javax.management", "MBeanServer") and
-			getName() = "registerMBean" and
-			result = 0
-		) or
-		// Identify the position in this method where the object parameter should be passed.
-		exists(JMXRegistrationCall c |
-			c.getObjectArgument().(VarAccess).getVariable() = getParameter(result)
-		)
-	}
+  /**
+   * The position of parameter through which the "object" to be registered is passed.
+   */
+  int getObjectPosition() {
+    (
+      // Passed as the first argument to `registerMBean`.
+      getDeclaringType().hasQualifiedName("javax.management", "MBeanServer") and
+      getName() = "registerMBean" and
+      result = 0
+    ) or
+    // Identify the position in this method where the object parameter should be passed.
+    exists(JMXRegistrationCall c |
+      c.getObjectArgument().(VarAccess).getVariable() = getParameter(result)
+    )
+  }
 }

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,13 +48,6 @@ private predicate self_attribute(Attribute attr, Class cls) {
     )
 }
 
-private predicate hasatttr_call(Call call, Expr object, Expr attr) {
-    exists(GlobalVariable v, Name n |
-        v.getId() = "hasattr" and call.getFunc() = n and n.getVariable() = v |
-        object = call.getArg(0) and attr = call.getArg(1)
-    )
-}
-
 /** Helper class for UndefinedClassAttribute.ql &amp; MaybeUndefinedClassAttribute.ql */
 class SelfAttributeRead extends SelfAttribute {
 
@@ -63,12 +56,10 @@ class SelfAttributeRead extends SelfAttribute {
     }
 
     predicate guardedByHasattr() {
-        exists(Call c, Name self, StrConst attr |
-            exists(If i | c = i.getTest()) and
-            c.getAFlowNode().getBasicBlock().strictlyDominates(this.getAFlowNode().getBasicBlock()) and
-            hasatttr_call(c, self, attr) and
-            self.getVariable() = ((Name)this.getObject()).getVariable() and
-            attr.getText() = this.getName()
+        exists(HasAttr hasattr, ControlledVariable var |
+            var.getAUse() = this.getObject().getAFlowNode() and
+            hasattr.getAttr() = this.getName() and
+            hasattr.controls(var, this.getAFlowNode().getBasicBlock(), true)
         )
     }
 
@@ -130,7 +121,8 @@ class CheckClass extends ClassObject {
     predicate alwaysDefines(string name) {
         auto_name(name) or
         this.hasAttribute(name) or
-        this.getAnImproperSuperType().assignedInInit(name)
+        this.getAnImproperSuperType().assignedInInit(name) or
+        this.getMetaClass().assignedInInit(name)
     }
 
     predicate sometimesDefines(string name) {
@@ -161,7 +153,7 @@ class CheckClass extends ClassObject {
     private predicate monkeyPatched(string name) {
         exists(Attribute a |
              a.getCtx() instanceof Store and
-             intermediate_points_to(a.getObject().getAFlowNode(), this, _) and a.getName() = name
+             final_points_to(a.getObject().getAFlowNode(), this, _, _) and a.getName() = name
         )
     }
 
@@ -229,18 +221,25 @@ class CheckClass extends ClassObject {
 
 }
 
-/* pragma [nomagic] */cached
-predicate attribute_assigned_in_method(FunctionObject method, string name) {
-    exists(SelfAttributeStore a | a.getScope() = method.getFunction() and a.getName() = name)
-    or
-    exists(ClassObject t, Call c, FunctionObject called, SelfAttribute a | 
-        c.getScope() = method.getFunction() and
-        c.getFunc() = a and t.lookupAttribute(_) = method and
-        called = t.lookupAttribute(a.getName()) and
-        attribute_assigned_in_method(called, name)
+private predicate attr_assigned_in_method_arg_n(FunctionObject method, string name, int n) {
+    exists(SsaVariable param |
+        method.getFunction().getArg(n).asName() = param.getDefinition().getNode()
+        |
+        exists(AttrNode attr | 
+            attr.getObject(name) = param.getAUse() and
+            attr.isStore()
+        )
+        or
+        exists(CallNode call, FunctionObject callee, int m |
+            callee.getArgumentForCall(call, m) = param.getAUse() and
+            attr_assigned_in_method_arg_n(callee, name, m)
+        )
     )
 }
 
+predicate attribute_assigned_in_method(FunctionObject method, string name) {
+    attr_assigned_in_method_arg_n(method, name, 0)
+}
 
 private predicate auto_name(string name) {
   name = "__class__" or name = "__dict__"

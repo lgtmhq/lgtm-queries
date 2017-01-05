@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,29 +17,32 @@
  *              than that of the collection is unlikely to have any effect.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
+ *       logic
  */
-import default
+import java
 import semmle.code.java.Collections
 
 /** A call to a method implementing `Collection.remove(java.lang.Object)`. */
 class RemoveCall extends MethodAccess {
-	RemoveCall() {
-		exists(CollectionMethod cm | cm = this.getCallee() |
-			cm.getSignature() = "remove(java.lang.Object)"
-		)
-	}
-	
-	/** The type of elements of the collection on which `remove` is invoked. */
-	RefType getReceiverElementType() {
-		result = getCallee().(CollectionMethod).getReceiverElementType()
-	}
-	
-	/** The type of the (only) argument to `remove`, boxed if it is a primitive. */
-	RefType getArgumentType() {
-		exists(Type argtp | argtp = this.getArgument(0).getType() |
-			result = argtp or result = argtp.(PrimitiveType).getBoxedType()
-		)
-	}
+  RemoveCall() {
+    exists(CollectionMethod cm | cm = this.getCallee() |
+      cm.getSignature() = "remove(java.lang.Object)"
+    )
+  }
+  
+  /** The type of elements of the collection on which `remove` is invoked. */
+  RefType getReceiverElementType() {
+    result = getCallee().(CollectionMethod).getReceiverElementType()
+  }
+  
+  /** The type of the (only) argument to `remove`, boxed if it is a primitive. */
+  RefType getArgumentType() {
+    exists(Type argtp | argtp = this.getArgument(0).getType() |
+      result = argtp or result = argtp.(PrimitiveType).getBoxedType()
+    )
+  }
 }
 
 from RemoveCall ma, RefType elementtype, RefType argtype

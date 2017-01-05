@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
  * @description Empty character classes are not normally useful and may indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
+ *       regular-expressions
  */
 
-import default
+import javascript
 
 from RegExpCharacterClass recc
 where not exists(recc.getAChild()) and

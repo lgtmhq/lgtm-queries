@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,13 @@
 
 /**
  * @name Building a command line with string concatenation
- * @description Using concatenated strings in a command line is vulnerable to malicious 
+ * @description Using concatenated strings in a command line is vulnerable to malicious
  *              insertion of special characters in the strings.
  * @kind problem
  * @problem.severity error
- * @cwe 078 088
+ * @tags security
+ *       external/cwe/cwe-078
+ *       external/cwe/cwe-088
  */
 
 import semmle.code.java.Expr

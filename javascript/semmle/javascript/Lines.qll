@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,18 +27,14 @@ class Line extends @line, Locatable {
 
   /** Get the terminator character(s) of this line.
    *
-   * <p>
    * This predicate may return:
-   * </p>
    *
-   * <ul>
-   * <li> the empty string if this line is the last line in a file
-   *      and there is no line terminator after it;</li>
-   * <li> a single-character string containing the character '\n' (newline),
-   *     '\r' (carriage return), '\u2028' (Unicode character LINE SEPARATOR)
-   *     or '\u2029' (Unicode character PARAGRAPH SEPARATOR);</li>
-   * <li> the two-character string "\r\n" (carriage return followed by newline).</li>
-   * </ul>
+   * - the empty string if this line is the last line in a file
+   *   and there is no line terminator after it;
+   * - a single-character string containing the character '\n' (newline),
+   *   '\r' (carriage return), '\u2028' (Unicode character LINE SEPARATOR)
+   *   or '\u2029' (Unicode character PARAGRAPH SEPARATOR);
+   * - the two-character string "\r\n" (carriage return followed by newline).
    */
   string getTerminator() {
     lines(this, _, _, result)
@@ -46,16 +42,12 @@ class Line extends @line, Locatable {
 
   /** Get the indentation character used by this line.
    *
-   * <p>
    * The indentation character of a line is defined to be the whitespace character
    * c such that the line starts with one or more instances of c, followed by a
    * non-whitespace character.
-   * </p>
    *
-   * <p>
    * If the line does not start with a whitespace character, or with a mixture of
    * different whitespace characters, its indentation character is undefined.
-   * </p>
    */
   string getIndentChar() {
     result = getText().regexpCapture("(\\s)\\1*\\S.*", 1)

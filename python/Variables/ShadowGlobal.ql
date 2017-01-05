@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,14 +11,15 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-
 /**
  * @name Global shadowed by local variable
  * @description Defining a local variable with the same name as a global variable
- *  makes the global variable unusable within the current scope and makes the code
- *  more difficult to read.
+ *              makes the global variable unusable within the current scope and makes the code
+ *              more difficult to read.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       readability
  */
 
 import python
@@ -49,9 +50,13 @@ AttrNode pytest_fixture_attr() {
 }
 
 Object pytest_fixture() {
-    result.(CallNode).getFunction() = pytest_fixture_attr()
-    or
-    result.(CallNode).getFunction().(CallNode).getFunction() = pytest_fixture_attr()
+    exists(CallNode call |
+        call.getFunction() = pytest_fixture_attr()
+        or
+        call.getFunction().(CallNode).getFunction() = pytest_fixture_attr()
+        |
+        call.refersTo(result)
+    )
 }
 
 /* pytest fixtures require that the parameter name is also a global */

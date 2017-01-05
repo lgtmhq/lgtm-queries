@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,14 @@
  *              in a runtime exception.
  * @kind problem
  * @problem.severity error
+ * @tags correctness
  */
 
 import javascript
 import semmle.javascript.flow.Analysis
+private import semmle.javascript.flow.InferredTypes
 
 from PropAccess pacc, AnalysedFlowNode base
 where base = pacc.getBase() and
-      forex (InferredType tp | tp = base.getAType() | tp = "null" or tp = "undefined")
+      forex (InferredType tp | tp = base.getAType() | tp = TTNull() or tp = TTUndefined())
 select pacc, "The base expression of this property access is always " + base.ppTypes() + "."

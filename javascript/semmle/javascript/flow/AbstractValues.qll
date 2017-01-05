@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@
 
 import javascript
 private import AbstractValuesImpl
+private import InferredTypes
 
 /**
  * An abstract value inferred by the flow analysis, representing
@@ -62,24 +63,18 @@ private import AbstractValuesImpl
  * representation is an implementation detail and may change in
  * future.
  */
-class AbstractValue extends int {
-  AbstractValue() { abstractValueId(this) }
-
+class AbstractValue extends TAbstractValue {
   /**
    * Get the type of some concrete value represented by this
    * abstract value.
    */
-  InferredType getType() {
-    abstractValues(this, result, _)
-  }
+  abstract InferredType getType();
 
   /**
    * Get the Boolean value some concrete value represented by this
    * abstract value coerces to.
    */
-  boolean getBooleanValue() {
-    abstractValues(this, _, result)
-  }
+  abstract boolean getBooleanValue();
 
   /**
    * Get an abstract primitive value this abstract value coerces to.
@@ -87,50 +82,48 @@ class AbstractValue extends int {
    * This abstractly models the `ToPrimitive` coercion described in the
    * ECMAScript language specification.
    */
-  PrimitiveAbstractValue toPrimitive() {
-    exists (InferredType tp | tp = getType() |
-      tp instanceof PrimitiveType and result = abstractValueOfType(tp) or
-      (tp = "function" or tp = "class") and result = theAbstractOtherStringValue() or
-      tp = "date" and result = abstractValueOfType("number") or
-      tp = "object" and result = abstractValueOfType("string")
-    )
-  }
+  abstract PrimitiveAbstractValue toPrimitive();
 
   /**
    * Is this abstract value coercible to a number, that is, does it
    * represent at least one concrete value for which the `ToNumber`
    * conversion does not yield `NaN`?
    */
-  predicate isCoercibleToNumber() {
-    this = indefiniteAbstractValue(_) or
-    this = abstractValueOfType("boolean") or
-    this = abstractValueOfType("number") or
-    this = theAbstractNumStringValue() or
-    this = abstractValueOfType("date")
-  }
+  abstract predicate isCoercibleToNumber();
 
   /**
    * Is this abstract value an indefinite value arising from the
    * incompleteness `cause`?
    */
   predicate isIndefinite(DataFlowIncompleteness cause) {
-    this = indefiniteAbstractValue(cause)
+    this = TIndefiniteAbstractValue(cause) or
+    this = TIndefiniteFunctionOrClass(cause)
   }
+
+  abstract string toString();
+}
+
+/**
+ * A definite abstract value, that is, an abstract value that is not
+ * affected by analysis incompleteness.
+ */
+abstract class DefiniteAbstractValue extends AbstractValue {
 }
 
 /**
  * A definite abstract value that represents only primitive concrete values.
  */
-class PrimitiveAbstractValue extends AbstractValue {
-  PrimitiveAbstractValue() {
-    exists (PrimitiveType prim | this = abstractValueOfType(prim))
-  }
-
+abstract class PrimitiveAbstractValue extends DefiniteAbstractValue {
   PrimitiveAbstractValue toPrimitive() {
     result = this
   }
 
-  PrimitiveType getType() {
-    result = super.getType()
-  }
+  abstract PrimitiveType getType();
+}
+
+/**
+ * Get a definite abstract value with the given type.
+ */
+DefiniteAbstractValue abstractValueOfType(TypeTag type) {
+  result.getType() = type
 }

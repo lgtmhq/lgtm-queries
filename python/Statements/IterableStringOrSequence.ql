@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,9 +13,11 @@
 
 /**
  * @name Iterable can be either a string or a sequence
- * @description Iteration over either a string or a sequence in the same loop can cause errors that are hard to find. 
+ * @description Iteration over either a string or a sequence in the same loop can cause errors that are hard to find.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
 
 import python

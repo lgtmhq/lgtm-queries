@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,19 +16,23 @@
  * @description Calling super with something other than the enclosing class may cause incorrect object initialization.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       convention
  */
 
-import default
+import python
 
-from Call call_to_super, ClassObject cls
+from CallNode call_to_super, string name
 where
-exists(GlobalVariable gv, Name n, ControlFlowNode cn |
-    call_to_super.getFunc() = n and
-    n.getVariable() = gv and
+exists(GlobalVariable gv, ControlFlowNode cn |
+    call_to_super.getFunction().refersTo(theSuperType()) and
     gv.getId() = "super" and
-    cn = call_to_super.getArg(0).getAFlowNode() and
-    exists(ClassObject other | cn.refersTo(other)) and
-    cls.getPyClass() = call_to_super.getScope().getScope() and
-    not cn.refersTo(cls)
+    cn = call_to_super.getArg(0) and
+    name = call_to_super.getScope().getScope().(Class).getName() and
+    exists(ClassObject other | 
+        cn.refersTo(other) and
+        not other.getPyClass().getName() = name
+    )
 )
-select call_to_super, "First argument to super() should be " + cls.getName() + "."
+select call_to_super.getNode(), "First argument to super() should be " + name + "."

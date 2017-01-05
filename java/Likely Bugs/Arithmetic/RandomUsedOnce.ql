@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 
 /**
  * @name Random used only once
- * @description Creating an instance of 'Random' for each pseudo-random number required does not 
+ * @description Creating an instance of 'Random' for each pseudo-random number required does not
  *              guarantee an evenly distributed sequence of random numbers.
  * @kind problem
  * @problem.severity warning
- * @cwe 335
+ * @tags reliability
+ *       maintainability
+ *       external/cwe/cwe-335
  */
-import default
+import java
 
 from MethodAccess ma, Method random
 where random.getDeclaringType().hasQualifiedName("java.util","Random") and

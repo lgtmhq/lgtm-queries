@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@
  *              makes code vulnerable to attack by header splitting.
  * @kind problem
  * @problem.severity error
- * @cwe 113
+ * @tags security
+ *       external/cwe/cwe-113
  */
-import default
+import java
 import ResponseSplitting
 
 from HeaderSplittingSink sink, RemoteUserInput source

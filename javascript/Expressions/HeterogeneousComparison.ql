@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,13 @@
  *              yield 'true'.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
 import javascript
 import semmle.javascript.flow.Analysis
+private import semmle.javascript.flow.InferredTypes
 
 predicate comparisonOperands(ASTNode nd, Expr left, Expr right) {
   exists (Comparison cmp | cmp = nd | left = cmp.getLeftOperand() and right = cmp.getRightOperand()) or
@@ -43,19 +46,21 @@ InferredType convertedOperandType(ASTNode parent, AnalysedFlowNode operand) {
 
   // non-strict equality tests convert booleans and strings to numbers, and equate undefined and null
   operand = parent.(NonStrictEqualityTest).getAChildExpr() and
-  exists (AbstractValue v | v = operand.getAValue() |
-    result = v.getType() or
-    (v.getType() = "boolean" and result = "number") or
-    (v.getType() = "undefined" and result = "null")
+  exists (InferredType tp | tp = operand.getAValue().getType() |
+    result = tp or
+    (tp = TTBoolean() and result = TTNumber()) or
+    (tp = TTString() and
+     // exclude cases where the string is guaranteed to coerce to NaN
+     not exists(StringLiteral l | l = operand | not exists(l.getValue().toFloat())) and
+     result = TTNumber()) or
+    (tp = TTUndefined() and result = TTNull())
   ) or
 
   // relational operators convert their operands to numbers or strings
   operand = parent.(RelationalComparison).getAChildExpr() and
   exists (AbstractValue v | v = operand.getAValue() |
     result = v.getType() or
-    exists (InferredType tp | tp = "boolean" or tp = "undefined" or tp = "null" |
-      tp = v.getType() and result = "number"
-    )
+    v.isCoercibleToNumber() and result = TTNumber()
   )
 }
 

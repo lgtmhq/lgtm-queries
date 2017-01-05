@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,16 +16,18 @@
  * @description Including surplus arguments in a formatting call makes code more difficult to read and may indicate an error.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       useless-code
  */
 
-import default
+import python
 
 
 import python
 import AdvancedFormatting
 
 from AdvancedFormattingCall call, AdvancedFormatString fmt, int arg_count, int max_field
-where arg_count = call.getPositionalArgs() and max_field = max(fmt.getFieldNumber(_, _)) and
+where arg_count = call.providedArgCount() and max_field = max(fmt.getFieldNumber(_, _)) and
 call.getAFormat() = fmt and not exists(call.getStarargs()) and max_field+1 < arg_count
 select call, "Too many arguments for string format. Format $@ requires at only " + (max_field+1) + ", but " + 
 arg_count.toString() + " are provided.", fmt, "\"" + fmt.getText() + "\""

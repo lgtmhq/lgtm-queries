@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,15 +13,19 @@
 
 /**
  * @name Do not synchronize on boxed types or Strings
- * @description Synchronizing on boxed types or Strings may lead to 
-                deadlock since an instance of that type is likely to
-                be shared between many parts of the program.
+ * @description Synchronizing on boxed types or Strings may lead to
+ *              deadlock since an instance of that type is likely to
+ *              be shared between many parts of the program.
  * @kind problem
  * @problem.severity error
- * @cwe 662
+ * @tags reliability
+ *       correctness
+ *       concurrency
+ *       language-features
+ *       external/cwe/cwe-662
  */
 
-import default
+import java
 
 from SynchronizedStmt synch, Type type
 where synch.getExpr().getType() = type

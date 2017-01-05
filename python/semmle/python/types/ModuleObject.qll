@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,9 @@
 // permissions and limitations under the License.
 
 import python
-import semmle.python.types.ImportTime
+private import semmle.python.pointsto.Final
+private import semmle.python.pointsto.Base
+private import semmle.python.types.ModuleKind
 
 abstract class ModuleObject extends Object {
 
@@ -42,6 +44,10 @@ abstract class ModuleObject extends Object {
      */
     abstract predicate attributeRefersTo(string name, Object value, ControlFlowNode origin);
 
+    /** Whether the named attribute of this module "refers-to" value, with known class and a known origin.
+     */
+    abstract predicate attributeRefersTo(string name, Object value, ClassObject cls, ControlFlowNode origin);
+
     /** Gets the package for this module. */
     PackageObject getPackage() {
         this.getName().matches("%.%") and
@@ -65,13 +71,20 @@ abstract class ModuleObject extends Object {
     /** Whether this module is imported by 'import name'. For example on a linux system,
       * the module 'posixpath' is imported as 'os.path' or as 'posixpath' */
     predicate importedAs(string name) {
-        import_time_module_imported_as(this, name)
+        final_module_imported_as(this, name)
     }
 
     abstract predicate hasAttribute(string name);
 
     ModuleObject getAnImportedModule() {
         result.importedAs(this.getModule().getAnImportedModuleName())
+    }
+
+    /** Gets the kind for this module. Will be one of
+     * "module", "script" or "plugin".
+     */
+    string getKind() {
+        result = getKindForModule(this)
     }
 
 }
@@ -103,6 +116,10 @@ class BuiltinModuleObject extends ModuleObject {
         none() 
     }
 
+    predicate attributeRefersTo(string name, Object value, ClassObject cls, ControlFlowNode origin) {
+        none() 
+    }
+
     predicate exportsComplete() {
         any()
     }
@@ -127,26 +144,30 @@ class PythonModuleObject extends ModuleObject {
     }
 
     cached Object getAttribute(string name) {
-        import_time_py_module_attributes(this.getModule(), name, result, _)
+        final_py_module_attributes(this.getModule(), name, result, _, _)
     }
 
     predicate exports(string name) {
-        import_time_exports(this.getModule(), name)
+        final_module_exports(this.getModule(), name)
     }
 
     predicate exportsComplete() {
-        import_time_exports_complete(this.getModule())
+        module_exports_complete(this.getModule())
     }
 
     predicate hasAttribute(string name) {
-        ((ImportTimeScope)this.getModule()).definesName(name)
+        final_module_defines_name(this.getModule(), name)
         or
         /* The interpreter always adds the __name__ and __package__ attributes */
         name = "__name__" or name = "__package__"
     }
 
     predicate attributeRefersTo(string name, Object value, ControlFlowNode origin) {
-         import_time_py_module_attributes(this.getModule(), name, value, origin)
+         final_py_module_attributes(this.getModule(), name, value, _, origin)
+    }
+
+    predicate attributeRefersTo(string name, Object value, ClassObject cls, ControlFlowNode origin) {
+         final_py_module_attributes(this.getModule(), name, value, cls, origin)
     }
 
 }
@@ -189,7 +210,7 @@ class PackageObject extends ModuleObject {
     }
 
     Object getAttribute(string name) {
-        import_time_package_attributes(this.getModule(), name, result, _)
+        final_package_attributes(this, name, result, _, _)
     }
 
     PythonModuleObject getInitModule() {
@@ -197,7 +218,7 @@ class PackageObject extends ModuleObject {
     }
 
     predicate exports(string name) {
-        import_time_exports(this.getModule(), name)
+        final_module_exports(this.getModule(), name)
     }
 
     predicate exportsComplete() {
@@ -213,7 +234,11 @@ class PackageObject extends ModuleObject {
     }
 
     predicate attributeRefersTo(string name, Object value, ControlFlowNode origin) {
-        import_time_package_attributes(this.getModule(), name, value, origin)
+        final_package_attributes(this, name, value, _, origin)
+    }
+
+    predicate attributeRefersTo(string name, Object value, ClassObject cls, ControlFlowNode origin) {
+        final_package_attributes(this, name, value, cls, origin)
     }
 
 }

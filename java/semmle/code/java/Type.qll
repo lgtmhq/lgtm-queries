@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,8 +101,6 @@ predicate hasSubtype(RefType t, Type sub) {
   // Direct subtype.
   (extendsReftype(sub, t) and t != sub) or
   implInterface(sub, t) or
-  // We consider parameterized types to be subtypes of their generic counterparts.
-  (parSubtypeGeneric(t, sub) and t != sub) or
   // A parameterized type `T<A>` is a subtype of the corresponding raw type `T<>`.
   (parSubtypeRaw(t, sub) and t != sub) or
   // Array subtyping is covariant.
@@ -130,11 +128,6 @@ predicate parContainmentSubtype(ParameterizedType pt, ParameterizedType psub) {
 private
 predicate parSubtypeRaw(RefType t, ParameterizedType sub) {
   t = sub.getErasure().(GenericType).getRawType()
-}
-
-private
-predicate parSubtypeGeneric(GenericType generic, ParameterizedType sub) {
-  generic.getAParameterizedType() = sub
 }
 
 private
@@ -168,11 +161,22 @@ predicate typeArgumentsContain(GenericType g, ParameterizedType s, Parameterized
  *
  * See JLS 4.5.1, Type Arguments of Parameterized Types.
  */
-private
+private 
 predicate contains(GenericType g, ParameterizedType sParm, ParameterizedType tParm, int n) {
   exists (RefType s, RefType t |
     s = parameterisationTypeArgument(g, sParm, n) and
     t = parameterisationTypeArgument(g, tParm, n) |
+    typeArgumentContains(s,t)
+  )
+}
+
+/**
+ * Whether the type argument `s` contains the type argument `t`.
+ * 
+ * See JLS 4.5.1, Type Arguments of Parameterized Types.
+ */
+private
+predicate typeArgumentContains(RefType s, RefType t) {
     exists (RefType tUpperBound | tUpperBound = t.(Wildcard).getUpperBound().getType() |
       // ? extends T <= ? extends S if T <: S
       hasSubtypeStar(s.(Wildcard).getUpperBound().getType(), tUpperBound) or
@@ -193,7 +197,6 @@ predicate contains(GenericType g, ParameterizedType sParm, ParameterizedType tPa
     hasSubtypeStar(s.(Wildcard).getUpperBound().getType(), t) or
     // T <= ? super T
     hasSubtypeStar(t, s.(Wildcard).getLowerBound().getType())
-  )
 }
 
 predicate hasSubtypeStar(RefType t, RefType sub) {
@@ -216,19 +219,34 @@ predicate declaresMember(Type t, @member m) {
    not m instanceof LocalClass)
 }
 
-/** Whether class `t` declares constructor `m`. */
+/**
+ * Whether class `t` declares constructor `m`.
+ *
+ * DEPRECATED: use `m.getDeclaringType() = t` instead.
+ */
+deprecated
 predicate declaresConstructor(Class t, Constructor m) {
-  constrs(m,_,_,_,t,_)
+  m.getDeclaringType() = t
 }
 
-/** Whether type `t` declares method `m`. */
+/**
+ * Whether type `t` declares method `m`.
+ *
+ * DEPRECATED: use `m.getDeclaringType() = t` instead.
+ */
+deprecated
 predicate declaresMethod(RefType t, Method m) {
-  methods(m,_,_,_,t,_)
+  m.getDeclaringType() = t
 }
 
-/** Whether type `t` declares field `f`. */
+/**
+ * Whether type `t` declares field `f`.
+ *
+ * DEPRECATED: use `f.getDeclaringType() = t` instead.
+ */
+deprecated
 predicate declaresField(RefType t, Field f) {
-  fields(f,_,_,t,_)
+  f.getDeclaringType() = t
 }
 
 /**
@@ -313,7 +331,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   RefType getAnAncestor() { hasSubtypeStar(result, this) }
 
   /** Whether this type declares any members. */
-  predicate hasMember() { declaresMember(this, _) }
+  predicate hasMember() { exists(getAMember()) }
 
   /** A member declared in this type. */
   Member getAMember() { this = result.getDeclaringType() }
@@ -345,7 +363,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   predicate declaresField(string name) { this.getAField().getName() = name }
 
   /** The number of methods declared in this type. */
-  int getNumberOfMethods() { result = count(Method m | declaresMember(this,m)) }
+  int getNumberOfMethods() { result = count(Method m | m.getDeclaringType() = this) }
 
   /**
    * Whether this type declares or inherits method `m`, which is declared
@@ -361,13 +379,14 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
     )
   }
 
-  /** Whether this type declares or inherits the specified method. */
-  predicate inherits(Method m) { hasMethod(m, _) }
-
-  /** Whether this type declares or inherits the specified field. */
-  predicate inherits(Field f) {
-    f = getAField() or
-    not f.isPrivate() and not declaresField(f.getName()) and getASupertype().inherits(f)
+  /** Whether this type declares or inherits the specified member. */
+  predicate inherits(Member m) {
+    exists(Field f | f = m |
+      f = getAField() or
+      not f.isPrivate() and not declaresField(f.getName()) and getASupertype().inherits(f)
+    )
+    or
+    hasMethod((Method)m, _)
   }
 
   /** Whether this is a top-level type, which is not nested inside any other types. */
@@ -662,6 +681,9 @@ class ClassOrInterface extends RefType {
  * and `double`.
  */
 class PrimitiveType extends Type, @primitive {
+  PrimitiveType() {
+    this.getName().regexpMatch("float|double|int|boolean|short|byte|char|long")
+  }
 
   /** The boxed type corresponding to this primitive type. */
   BoxedType getBoxedType() {
@@ -708,8 +730,17 @@ class PrimitiveType extends Type, @primitive {
   }
 }
 
+/** The type of the `null` literal. */
+class NullType extends Type, @primitive {
+  NullType() { this.hasName("<nulltype>") }
+
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
+    filepath = "" and startline = 0 and startcolumn = 0 and endline = 0 and endcolumn = 0
+  }
+}
+
 /** The `void` type. */
-class VoidType extends PrimitiveType {
+class VoidType extends Type, @primitive {
   VoidType() { this.hasName("void") }
 
   /**
@@ -717,6 +748,10 @@ class VoidType extends PrimitiveType {
    */
   string getTypeDescriptor() {
     result = "V"
+  }
+
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
+    filepath = "" and startline = 0 and startcolumn = 0 and endline = 0 and endcolumn = 0
   }
 }
 
@@ -823,6 +858,8 @@ private cached Type erase(Type t) {
   result = t.(Interface).getSourceDeclaration() or
   result.(Array).getComponentType() = erase(t.(Array).getComponentType()) or
   result = erase(t.(BoundedType).getUpperBoundType()) or
+  result = (NullType)t or
+  result = (VoidType)t or
   result = (PrimitiveType)t
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,11 @@
 /**
  * @name Modification of parameter with default
  * @description Modifying the default value of a parameter can lead to unexpected
-results.
+ *              results.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       maintainability
  */
 
 import python

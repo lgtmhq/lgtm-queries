@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
  * @description Defining only an equality method or an inequality method for a class violates the object model.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
 import python
+import Equality
 
 string equals_or_ne() {
   result = "__eq__" or result = "__ne__"
@@ -46,7 +49,9 @@ predicate violates_equality_contract(ClassObject c, string present, string missi
    not c.unknowableAttributes() and
    not total_ordering(c.getPyClass()) and
    /* Python 3 automatically implements __ne__ if __eq__ is defined, but not vice-versa */
-   not (major_version() = 3 and present = "__eq__" and missing = "__ne__")
+   not (major_version() = 3 and present = "__eq__" and missing = "__ne__") and
+   not method.getFunction() instanceof DelegatingEqualityMethod and
+   not c.lookupAttribute(missing).(FunctionObject).getFunction() instanceof DelegatingEqualityMethod
 }
 
 from ClassObject c, string present, string missing, FunctionObject method

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 
 /**
  * @name Hashed value without hashCode definition
- * @description Classes that define an 'equals' method but no 'hashCode' method, and whose instances 
+ * @description Classes that define an 'equals' method but no 'hashCode' method, and whose instances
  *              are stored in a hashing data structure, can lead to unexpected results.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
-import default
+import java
 import Equality
 
 /** A class that defines an `equals` method but no `hashCode` method. */

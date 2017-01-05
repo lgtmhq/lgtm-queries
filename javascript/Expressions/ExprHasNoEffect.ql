@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
  *              likely redundant and may indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       correctness
  */
 
 import javascript
@@ -60,18 +62,48 @@ predicate isDeclaration(Expr e) {
  */
 predicate isGetterProperty(string name) {
   // there is a call of the form `Object.defineProperty(..., name, { get: ..., ... })`
+  // or `Object.defineProperty(..., name, <something that's not an object literal>)`
   exists (CallToObjectDefineProperty defProp |
     name = defProp.getPropertyName() and
-    exists(defProp.getPropertyDescriptor().(ObjectExpr).getProperty("get"))
+    exists (Expr descriptor | descriptor = defProp.getPropertyDescriptor() |
+      exists(descriptor.(ObjectExpr).getPropertyByName("get")) or
+      not descriptor instanceof ObjectExpr
+    )
   ) or
   // there is an object expression with a getter property `name`
-  exists (ObjectExpr obj | obj.getProperty(name) instanceof PropertyGetter)
+  exists (ObjectExpr obj | obj.getPropertyByName(name) instanceof PropertyGetter)
 }
 
 class GetterPropertyAccess extends PropAccess {
   predicate isImpure() {
     isGetterProperty(getPropertyName())
   }
+}
+
+/**
+ * `c` is an indirect eval call of the form `(dummy, eval)(...)`, where
+ * `dummy` is some expression whose value is discarded, and which simply
+ * exists to prevent the call from being interpreted as a direct eval.
+ */
+predicate isIndirectEval(CallExpr c, Expr dummy) {
+  exists (SeqExpr seq | seq = c.getCallee().stripParens() |
+    dummy = seq.getOperand(0) and
+    seq.getOperand(1).(GlobalVarAccess).getName() = "eval" and
+    seq.getNumOperands() = 2
+  )
+}
+
+/**
+ * `c` is a call of the form `(dummy, e[p])(...)`, where `dummy` is
+ * some expression whose value is discarded, and which simply exists
+ * to prevent the call from being interpreted as a method call.
+ */
+predicate isReceiverSuppressingCall(CallExpr c, Expr dummy, PropAccess callee) {
+  exists (SeqExpr seq | seq = c.getCallee().stripParens() |
+    dummy = seq.getOperand(0) and
+    seq.getOperand(1) = callee and
+    seq.getNumOperands() = 2
+  )
 }
 
 from Expr e
@@ -87,5 +119,8 @@ where e.isPure() and inVoidContext(e) and
       // exclude DOM properties, which sometimes have magical auto-update properties
       not isDOMProperty(e.(PropAccess).getPropertyName()) and
       // exclude xUnit.js annotations
-      not e instanceof XUnitAnnotation
+      not e instanceof XUnitAnnotation and
+      // exclude common patterns that are most likely intentional
+      not isIndirectEval(_, e) and
+      not isReceiverSuppressingCall(_, e, _)
 select e, "This expression has no effect."

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,20 @@
  * @description Comments that contain commented-out code should be avoided.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
  */
 
-import default
+import javascript
 import CommentedOut
 
+/**
+ * Does this comment look like an annotation for the [Flow](https://flowtype.org/)
+ * type checker?
+ */
+predicate isFlowAnnotation(SlashStarComment c) {
+  c.getText().regexpMatch("^(?s)\\s*(: |::|flow-include ).*")
+}
+
 from CommentedOutCode c
+where not isFlowAnnotation(c)
 select c, "This comment appears to contain commented-out code."

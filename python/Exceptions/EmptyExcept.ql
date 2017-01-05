@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  * @description Except doesn't do anything and has no comment
  * @kind problem
  * @problem.severity warning
- * @cwe 391
+ * @tags reliability
+ *       maintainability
+ *       external/cwe/cwe-391
  */
 
 import python
@@ -48,7 +50,6 @@ predicate try_has_normal_exit(Try try) {
         pred.getASuccessor() = succ and
         not pred.getAnExceptionalSuccessor() = succ |
         /* Successor is either a normal flow node or a fall-through exit */
-        not exists(Scope s | s.getExceptionExitNode() = succ) and
         not exists(Scope s | s.getReturnNode() = succ) and
         /* Predecessor is in try body and successor is not */
         pred.getNode().getParentNode*() = try.getAStmt() and

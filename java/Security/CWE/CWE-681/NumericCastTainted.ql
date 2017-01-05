@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              can cause unexpected truncation.
  * @kind problem
  * @problem.severity warning
- * @cwe 197 681
+ * @tags security
+ *       external/cwe/cwe-197
+ *       external/cwe/cwe-681
  */
-import default
+import java
 import semmle.code.java.security.DataFlow
 import NumericCastCommon
 

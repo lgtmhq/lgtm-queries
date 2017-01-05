@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,18 +57,3 @@ class NoseTestFunction extends Test {
     }
 
 }
-
-class DocTest extends Test {
-
-    DocTest() {
-        exists(string docstring |
-            docstring = this.getDocString().getText() and
-            forex(string line |
-                line = docstring.splitAt("\n") and line.regexpMatch(".*>>>.*") |
-                line.regexpMatch(" *>>> .*")
-            )
-        )
-    }
-
-}
-

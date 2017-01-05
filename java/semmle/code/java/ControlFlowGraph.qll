@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,46 +23,9 @@
 
 /*
  * The implementation is centered around the concept of a _completion_, which
- * models how the execution of a statement or expression terminates. There are five kinds of
- * completions: normal completion, `return` completion, `break` completion,
- * `continue` completion, and `throw` completion.
- *
- * Normal completions are further subdivided into boolean completions and all
- * other normal completions. A boolean completion adds the information that the
- * cfg node terminated with the given boolean value due to a subexpression
- * terminating with the other given boolean value. This is only
- * relevant for conditional contexts in which the value controls the
- * control-flow successor.
- *
- * Completions can be represented as an algebraic data type `Completion`
- *
- * ```
- * data Completion =
- *     Normal
- *   | Return
- *   | Boolean (boolean, boolean)
- *   | Break (Maybe Label)
- *   | Continue (Maybe Label)
- *   | Throw ThrownType
- * ```
- *
- * where `Label` is a statement label, and `ThrownType` is an exception type.
- *
- * Since QL does not yet support algebraic datatypes, we have to encode completions
- * as integers as follows:
- *
- *   - `Normal` is mapped to `-1`;
- *   - `Return` is mapped to `-2`;
- *   - `Boolean (true, true)` is mapped to `-3`;
- *   - `Boolean (true, false)` is mapped to `-4`;
- *   - `Boolean (false, true)` is mapped to `-5`;
- *   - `Boolean (false, false)` is mapped to `-6`;
- *   - `Break l` is mapped to `3*i`, where `i` encodes `l`;
- *   - `Continue l` is mapped to `3*i+1`, where `i` encodes `l`;
- *   - `Throw t` is mapped to `3*i+2`, where `i` encodes `t`.
- *
- * This encoding should be considered an implementation detail, which may
- * change without notice.
+ * models how the execution of a statement or expression terminates. 
+ * Completions are represented as an algebraic data type `Completion` defined in 
+ * `Completion.qll`.
  *
  * The CFG is built by structural recursion over the AST. To achieve this the
  * CFG edges related to a given AST node, `n`, is divided into three categories:
@@ -131,12 +94,21 @@
 
 import java
 
+private import Completion
+
 /** A node in the expression-level control-flow graph. */
 class ControlFlowNode extends Top, @exprparent {
   /** The statement containing this node, if any. */
   Stmt getEnclosingStmt() {
     result = this or
     result = this.(Expr).getEnclosingStmt()
+  }
+
+  /** The immediately enclosing callable whose body contains this node. */
+  Callable getEnclosingCallable() {
+    result = this or
+    result = this.(Stmt).getEnclosingCallable() or
+    result = this.(Expr).getEnclosingCallable()
   }
 
   /** An immediate successor of this node. */
@@ -151,7 +123,13 @@ class ControlFlowNode extends Top, @exprparent {
 
   /** An exception successor of this node. */
   ControlFlowNode getAnExceptionSuccessor() {
-    result = succ(this, throwCompletion(_))
+    result = succ(this, ThrowCompletion(_))
+  }
+
+  /** A successor of this node that is neither an exception successor nor a jump (break, continue, return). */
+  ControlFlowNode getANormalSuccessor() {
+    result = succ(this, BooleanCompletion(_, _)) or
+    result = succ(this, NormalCompletion())
   }
 
   BasicBlock getBasicBlock() {
@@ -159,89 +137,14 @@ class ControlFlowNode extends Top, @exprparent {
   }
 }
 
-/**
- * A string that is used as a statement label.
- */
-private predicate label(string l) {
-  exists (LabeledStmt lbl | l = lbl.getLabel())
-}
 
-/**
- * Assign unique (1-based) IDs to statement labels.
- */
-private int labelId(string l) {
-  l = rank[result](string ll | label(ll) | ll)
-}
-
-/**
- * Assign unique (1-based) IDs to exception types.
- */
-private int throwableId(ThrowableType tt) {
-  tt.getQualifiedName() = rank[result](ThrowableType ttt | | ttt.getQualifiedName())
-}
-
-/**
- * A completion indicating that a statement finished executing
- * without influencing control flow.
- */
-private int normalCompletion()                     { result = -1 }
-
-/**
- * A completion indicating that a `return` statement was encountered.
- */
-private int returnCompletion()                     { result = -2 }
-
-/**
- * A completion indicating that an unlabeled `break` statement was encountered.
- */
-private int anonymousBreakCompletion()             { result = 0 }
-
-/**
- * A completion indicating that a labeled `break` statement was encountered.
- */
-private int labelledBreakCompletion(string lbl)    { result = 3*labelId(lbl) }
-
-/**
- * A completion indicating that an unlabeled `continue` statement was encountered.
- */
-private int anonymousContinueCompletion()          { result = 1 }
-
-/**
- * A completion indicating that a labeled `continue` statement was encountered.
- */
-private int labelledContinueCompletion(string lbl) { result = 3*labelId(lbl) + 1 }
-
-/**
- * A completion indicating that a `throw` statement or a call that may throw
- * an exception was encountered.
- */
-private int throwCompletion(ThrowableType tt)      { result = 3*throwableId(tt) + 2 }
-
-/**
- * A completion indicating that a boolean expression finished executing
- * with the result `outervalue` and that the last subexpression to execute
- * finished with the result `innervalue`.
- *
- * For example, `!true` finishes with the completion `booleanCompletion(false, true)`.
- */
-private int booleanCompletion(boolean outervalue, boolean innervalue) {
-  result = -3 and outervalue = true and innervalue = true or
-  result = -4 and outervalue = true and innervalue = false or
-  result = -5 and outervalue = false and innervalue = true or
-  result = -6 and outervalue = false and innervalue = false
-}
-
-/** The completion `booleanCompletion(value, value)`. */
-private int basicBooleanCompletion(boolean value) {
-  result = booleanCompletion(value, value)
-}
 
 /**
  * Get a label that applies to this statement.
  */
-private string getLabel(Stmt s) {
+private Label getLabel(Stmt s) {
   exists (LabeledStmt l | s = l.getStmt() |
-    result = l.getLabel() or
+    result = MkLabel(l.getLabel()) or
     result = getLabel(l)
   )
 }
@@ -271,14 +174,32 @@ library class UncheckedThrowableSuperType extends RefType {
 
 /**
  * Bind `t` to an exception type that may be thrown during execution of `n`,
- * either because `n` is a `throw` statement or because it is a call
- * that may throw an exception.
+ * either because `n` is a `throw` statement, or because it is a call
+ * that may throw an exception, or because it is a cast and a
+ * `ClassCastException` is expected.
  */
 private predicate mayThrow(ControlFlowNode n, ThrowableType t) {
   t = n.(ThrowStmt).getThrownExceptionType() or
   exists (Call c | c = n |
     t = c.getCallee().getAThrownExceptionType() or
+    uncheckedExceptionFromCatch(n.getEnclosingStmt(), t) or
+    uncheckedExceptionFromFinally(n.getEnclosingStmt(), t)
+  ) or
+  exists(CastExpr c | c = n |
+    t instanceof TypeClassCastException and
     uncheckedExceptionFromCatch(n.getEnclosingStmt(), t)
+  )
+}
+
+/**
+ * Bind `t` to an unchecked exception that may transfer control to a finally
+ * block inside which `s` is nested.
+ */
+private predicate uncheckedExceptionFromFinally(Stmt s, ThrowableType t) {
+  exists (TryStmt try |
+    (s.getParent+() = try.getBlock() or s = try.getAResourceDecl()) and
+    exists(try.getFinally()) and
+    (t instanceof TypeError or t instanceof TypeRuntimeException)
   )
 }
 
@@ -379,6 +300,38 @@ private predicate inBooleanContext(Expr b) {
 }
 
 /**
+ * A non-overridable method that always throws an exception or calls `exit`.
+ */
+private Method nonReturningMethod() {
+  result instanceof MethodExit or
+  not result.isOverridable() and
+  exists(Block body |
+    body = result.getBody() and
+    not exists(ReturnStmt ret | ret.getEnclosingCallable() = result)
+    |
+    not result.getType() instanceof VoidType or
+    body.getLastStmt() = nonReturningStmt()
+  )
+}
+
+/**
+ * A statement that always throws an exception or calls `exit`.
+ */
+private Stmt nonReturningStmt() {
+  result instanceof ThrowStmt or
+  result.(ExprStmt).getExpr().(MethodAccess).getMethod().getSourceDeclaration() = nonReturningMethod() or
+  result.(Block).getLastStmt() = nonReturningStmt() or
+  exists(IfStmt ifstmt | ifstmt = result |
+    ifstmt.getThen() = nonReturningStmt() and
+    ifstmt.getElse() = nonReturningStmt()
+  ) or
+  exists(TryStmt try | try = result |
+    try.getBlock() = nonReturningStmt() and
+    forall(CatchClause cc | cc = try.getACatchClause() | cc.getBlock() = nonReturningStmt())
+  )
+}
+
+/**
  * Expressions and statements with CFG edges in post-order AST traversal.
  *
  * This includes most expressions, except those that initiate or propagate branching control
@@ -414,7 +367,7 @@ class PostOrderNode extends ControlFlowNode {
     this instanceof SwitchCase or
     this instanceof EmptyStmt or
     this instanceof LocalClassDeclStmt or
-    this instanceof AssertStmt // currently treated as a leaf node - i.e. its sub-expression(s) are excluded from the CFG
+    this instanceof AssertStmt
   }
 
   /** Get child nodes in their order of execution. Indexing starts at either -1 or 0. */
@@ -455,7 +408,8 @@ class PostOrderNode extends ControlFlowNode {
       result = e.getArgument(index)
     ) or
     index = 0 and result = this.(ReturnStmt).getResult() or
-    index = 0 and result = this.(ThrowStmt).getExpr()
+    index = 0 and result = this.(ThrowStmt).getExpr() or
+    index = 0 and result = this.(AssertStmt).getExpr()
   }
 
   /** The first child node, if any. */
@@ -473,7 +427,8 @@ class PostOrderNode extends ControlFlowNode {
   predicate mayCompleteNormally() {
     not this instanceof BooleanLiteral and
     not this instanceof ReturnStmt and
-    not this instanceof ThrowStmt
+    not this instanceof ThrowStmt and
+    not this.(MethodAccess).getMethod().getSourceDeclaration() = nonReturningMethod()
   }
 }
 
@@ -481,8 +436,8 @@ class PostOrderNode extends ControlFlowNode {
  * If the body of `loop` finishes with `completion`, the loop will
  * continue executing (provided the loop condition still holds).
  */
-private predicate continues(int completion, LoopStmt loop) {
-  completion = normalCompletion() or
+private predicate continues(Completion completion, LoopStmt loop) {
+  completion = NormalCompletion() or
   // only consider continue completions if there actually is a `continue`
   // somewhere inside this loop; we don't particularly care whether that
   // `continue` could actually target this loop, we just want to restrict
@@ -516,9 +471,9 @@ private ControlFlowNode first(ControlFlowNode n) {
  * node in the `try` block that may not complete normally, or a node in
  * the `try` block that has no control flow successors inside the block.
  */
-private predicate catchOrFinallyCompletion(TryStmt try, ControlFlowNode last, int completion) {
+private predicate catchOrFinallyCompletion(TryStmt try, ControlFlowNode last, Completion completion) {
   last(try.getBlock(), last, completion) or
-  last(try.getAResourceDecl(), last, completion) and completion = throwCompletion(_)
+  last(try.getAResourceDecl(), last, completion) and completion = ThrowCompletion(_)
 }
 
 /**
@@ -528,14 +483,14 @@ private predicate catchOrFinallyCompletion(TryStmt try, ControlFlowNode last, in
  * In other words, if `last` throws an exception it is possibly not caught by any
  * of the catch clauses.
  */
-private predicate uncaught(TryStmt try, ControlFlowNode last, int completion) {
+private predicate uncaught(TryStmt try, ControlFlowNode last, Completion completion) {
   catchOrFinallyCompletion(try, last, completion) and
   (
     exists (ThrowableType thrown |
-      thrown = thrownInBody(try) and completion = throwCompletion(thrown) and
+      thrown = thrownInBody(try) and completion = ThrowCompletion(thrown) and
       not mustCatch(try.getACatchClause(), thrown)
     ) or
-    completion = normalCompletion() or completion = returnCompletion() or
+    completion = NormalCompletion() or completion = ReturnCompletion() or
     completion = anonymousBreakCompletion() or completion = labelledBreakCompletion(_) or
     completion = anonymousContinueCompletion() or completion = labelledContinueCompletion(_)
   )
@@ -548,7 +503,7 @@ private predicate uncaught(TryStmt try, ControlFlowNode last, int completion) {
  * This is similar to `uncaught`, but also includes final statements of `catch`
  * clauses.
  */
-private predicate finallyPred(TryStmt try, ControlFlowNode last, int completion) {
+private predicate finallyPred(TryStmt try, ControlFlowNode last, Completion completion) {
   uncaught(try, last, completion) or
   last(try.getACatchClause(), last, completion)
 }
@@ -562,17 +517,17 @@ private predicate finallyPred(TryStmt try, ControlFlowNode last, int completion)
  * completion besides `throwCompletion` implies that `n` is a `Stmt`.
  */
 cached
-private predicate last(ControlFlowNode n, ControlFlowNode last, int completion) {
+private predicate last(ControlFlowNode n, ControlFlowNode last, Completion completion) {
   // Exceptions are propagated from any sub-expression.
-  exists (Expr e | e.getParent() = n | last(e, last, completion) and completion = throwCompletion(_)) or
+  exists (Expr e | e.getParent() = n | last(e, last, completion) and completion = ThrowCompletion(_)) or
 
   // If an expression doesn't finish with a throw completion, then it executes normally with
   // either a `normalCompletion` or a `booleanCompletion`.
 
   // A boolean completion in a non-boolean context just indicates a normal completion
   // and a normal completion in a boolean context indicates an arbitrary boolean completion.
-  last(n, last, normalCompletion()) and inBooleanContext(n) and completion = basicBooleanCompletion(_) or
-  last(n, last, booleanCompletion(_, _)) and not inBooleanContext(n) and completion = normalCompletion() or
+  last(n, last, NormalCompletion()) and inBooleanContext(n) and completion = basicBooleanCompletion(_) or
+  last(n, last, BooleanCompletion(_, _)) and not inBooleanContext(n) and completion = NormalCompletion() or
 
   // Logic expressions and conditional expressions are executed in AST pre-order to facilitate
   // proper short-circuit representation. All other expressions are executed in post-order.
@@ -580,21 +535,21 @@ private predicate last(ControlFlowNode n, ControlFlowNode last, int completion) 
   // The last node of a logic expression is either in the right operand with an arbitrary
   // completion, or in the left operand with the corresponding boolean completion.
   exists (AndLogicalExpr andexpr | andexpr = n |
-    last(andexpr.getLeftOperand(), last, completion) and completion = booleanCompletion(false, _) or
+    last(andexpr.getLeftOperand(), last, completion) and completion = BooleanCompletion(false, _) or
     last(andexpr.getRightOperand(), last, completion)
   ) or
   exists (OrLogicalExpr orexpr | orexpr = n |
-    last(orexpr.getLeftOperand(), last, completion) and completion = booleanCompletion(true, _) or
+    last(orexpr.getLeftOperand(), last, completion) and completion = BooleanCompletion(true, _) or
     last(orexpr.getRightOperand(), last, completion)
   ) or
 
   // The last node of a `LogNotExpr` is in its sub-expression with an inverted boolean completion
   // (or a `normalCompletion`).
-  exists (int subcompletion | last(n.(LogNotExpr).getExpr(), last, subcompletion) |
-    subcompletion = normalCompletion() and completion = normalCompletion() and not inBooleanContext(n) or
+  exists (Completion subcompletion | last(n.(LogNotExpr).getExpr(), last, subcompletion) |
+    subcompletion = NormalCompletion() and completion = NormalCompletion() and not inBooleanContext(n) or
     exists (boolean outervalue, boolean innervalue |
-      subcompletion = booleanCompletion(outervalue, innervalue) and
-      completion = booleanCompletion(outervalue.booleanNot(), innervalue)
+      subcompletion = BooleanCompletion(outervalue, innervalue) and
+      completion = BooleanCompletion(outervalue.booleanNot(), innervalue)
     )
   ) or
 
@@ -608,38 +563,38 @@ private predicate last(ControlFlowNode n, ControlFlowNode last, int completion) 
   last(n.(ParExpr).getExpr(), last, completion) or
 
   // The last node of a node executed in post-order is the node itself.
-  n.(PostOrderNode).mayCompleteNormally() and last = n and completion = normalCompletion() or
+  n.(PostOrderNode).mayCompleteNormally() and last = n and completion = NormalCompletion() or
 
-  last = n and completion = basicBooleanCompletion(n.(BooleanLiteral).getBooleanLiteral()) or
+  last = n and completion = basicBooleanCompletion(n.(BooleanLiteral).getBooleanValue()) or
 
   // The last statement in a block is any statement that does not complete normally,
   // or the last statement.
   exists (Block blk | blk = n |
-    last(blk.getAStmt(), last, completion) and completion != normalCompletion() or
+    last(blk.getAStmt(), last, completion) and completion != NormalCompletion() or
     last(blk.getStmt(blk.getNumStmt()-1), last, completion)
   ) or
 
   // The last node in an `if` statement is the last node in either of its branches or
   // the last node of the condition with a false-completion in the absence of an else-branch.
   exists (IfStmt ifstmt | ifstmt = n |
-    last(ifstmt.getCondition(), last, booleanCompletion(false, _)) and completion = normalCompletion() and not exists(ifstmt.getElse()) or
+    last(ifstmt.getCondition(), last, BooleanCompletion(false, _)) and completion = NormalCompletion() and not exists(ifstmt.getElse()) or
     last(ifstmt.getThen(), last, completion) or
     last(ifstmt.getElse(), last, completion)
   ) or
 
   // A loop may terminate normally if its condition is false...
   exists (LoopStmt loop | loop = n |
-    last(loop.getCondition(), last, booleanCompletion(false, _)) and completion = normalCompletion() or
+    last(loop.getCondition(), last, BooleanCompletion(false, _)) and completion = NormalCompletion() or
     // ...or if it's an enhanced for loop running out of items to iterate over...
     // ...which may happen either immediately after the loop expression...
-    last(loop.(EnhancedForStmt).getExpr(), last, completion) and completion = normalCompletion() or
-    exists (int bodyCompletion | last(loop.getBody(), last, bodyCompletion) |
+    last(loop.(EnhancedForStmt).getExpr(), last, completion) and completion = NormalCompletion() or
+    exists (Completion bodyCompletion | last(loop.getBody(), last, bodyCompletion) |
       // ...or after the last node in the loop's body in an iteration that would otherwise continue.
-      loop instanceof EnhancedForStmt and continues(bodyCompletion, loop) and completion = normalCompletion() or
+      loop instanceof EnhancedForStmt and continues(bodyCompletion, loop) and completion = NormalCompletion() or
       // Otherwise the last node is the last node in the loop's body...
       // ...if it is an unlabelled `break` (causing the entire loop to complete normally)
       (if bodyCompletion = anonymousBreakCompletion() then
-        completion = normalCompletion()
+        completion = NormalCompletion()
       // ...or if it is some other completion that does not continue the loop.
       else
         (not continues(bodyCompletion, loop) and completion = bodyCompletion))
@@ -649,10 +604,10 @@ private predicate last(ControlFlowNode n, ControlFlowNode last, int completion) 
   // `try` statements are a bit more complicated:
   exists (TryStmt try | try = n |
     // the last node in a `try` is the last node in its `finally` block
-    exists (int finallyCompletion | last(try.getFinally(), last, finallyCompletion) |
+    exists (Completion finallyCompletion | last(try.getFinally(), last, finallyCompletion) |
       // if the `finally` block completes normally, it resumes any completion that
       // was current before the `finally` block was entered
-      if finallyCompletion = normalCompletion() then
+      if finallyCompletion = NormalCompletion() then
         finallyPred(try, _, completion)
       else
         // otherwise, just take the completion of the `finally` block itself
@@ -667,45 +622,45 @@ private predicate last(ControlFlowNode n, ControlFlowNode last, int completion) 
   // handle `switch` statements
   exists (SwitchStmt switch | switch = n |
     // unlabelled `break` causes the whole `switch` to complete normally
-    last(switch.getAStmt(), last, anonymousBreakCompletion()) and completion = normalCompletion() or
+    last(switch.getAStmt(), last, anonymousBreakCompletion()) and completion = NormalCompletion() or
     // any other abnormal completion is propagated
     (last(switch.getAStmt(), last, completion) and
-     completion != anonymousBreakCompletion() and completion != normalCompletion()) or
+     completion != anonymousBreakCompletion() and completion != NormalCompletion()) or
     // if the last case completes normally, then so does the switch
-    last(switch.getStmt(strictcount(switch.getAStmt())-1), last, normalCompletion()) and completion = normalCompletion() or
+    last(switch.getStmt(strictcount(switch.getAStmt())-1), last, NormalCompletion()) and completion = NormalCompletion() or
     // if no default case exists, then normal completion of the expression may terminate the switch
-    not exists(switch.getDefaultCase()) and last(switch.getExpr(), last, completion) and completion = normalCompletion()
+    not exists(switch.getDefaultCase()) and last(switch.getExpr(), last, completion) and completion = NormalCompletion()
   ) or
 
   // the last statement of a synchronized statement is the last statement of its body
   last(n.(SynchronizedStmt).getBlock(), last, completion) or
 
   // `return` statements give rise to a `Return` completion
-  last = (ReturnStmt)n and completion = returnCompletion() or
+  last = (ReturnStmt)n and completion = ReturnCompletion() or
 
   // `throw` statements or throwing calls give rise to ` Throw` completion
-  exists (ThrowableType tt | mayThrow(n, tt) | last = n and completion = throwCompletion(tt)) or
+  exists (ThrowableType tt | mayThrow(n, tt) | last = n and completion = ThrowCompletion(tt)) or
 
   // `break` statements give rise to a `Break` completion
   exists (BreakStmt break | break = n and last = n |
-    completion = labelledBreakCompletion(break.getLabel()) or
+    completion = labelledBreakCompletion(MkLabel(break.getLabel())) or
     not exists(break.getLabel()) and completion = anonymousBreakCompletion()
   ) or
 
   // `continue` statements give rise to a `Continue` completion
   exists (ContinueStmt cont | cont = n and last = n |
-    completion = labelledContinueCompletion(cont.getLabel()) or
+    completion = labelledContinueCompletion(MkLabel(cont.getLabel())) or
     not exists(cont.getLabel()) and completion = anonymousContinueCompletion()
   ) or
 
   // the last node in an `ExprStmt` is the last node in the expression
-  last(n.(ExprStmt).getExpr(), last, completion) and completion = normalCompletion() or
+  last(n.(ExprStmt).getExpr(), last, completion) and completion = NormalCompletion() or
 
   // the last statement of a labeled statement is the last statement of its body...
-  exists (LabeledStmt lbl, int bodyCompletion | lbl = n and last(lbl.getStmt(), last, bodyCompletion) |
+  exists (LabeledStmt lbl, Completion bodyCompletion | lbl = n and last(lbl.getStmt(), last, bodyCompletion) |
     // ...except if it's a `break` that refers to this labelled statement
-    if bodyCompletion = labelledBreakCompletion(lbl.getLabel()) then
-      completion = normalCompletion()
+    if bodyCompletion = labelledBreakCompletion(MkLabel(lbl.getLabel())) then
+      completion = NormalCompletion()
     else
       completion = bodyCompletion
   ) or
@@ -715,7 +670,7 @@ private predicate last(ControlFlowNode n, ControlFlowNode last, int completion) 
 
   // the last node in a variable declaration statement is in the last of its individual declarations
   exists (LocalVariableDeclStmt s | s = n |
-    last(s.getVariable(count(s.getAVariable())), last, completion) and completion = normalCompletion()
+    last(s.getVariable(count(s.getAVariable())), last, completion) and completion = NormalCompletion()
   )
 }
 
@@ -724,12 +679,12 @@ private predicate last(ControlFlowNode n, ControlFlowNode last, int completion) 
  * execution finishes with the given completion.
  */
 cached
-private ControlFlowNode succ(ControlFlowNode n, int completion) {
+private ControlFlowNode succ(ControlFlowNode n, Completion completion) {
   // Callables serve as their own exit nodes.
   exists (Callable c | last(c.getBody(), n, completion) | result = c) or
 
   // Logic expressions and conditional expressions execute in AST pre-order.
-  completion = normalCompletion() and
+  completion = NormalCompletion() and
   (result = first(n.(AndLogicalExpr).getLeftOperand()) or
   result = first(n.(OrLogicalExpr).getLeftOperand()) or
   result = first(n.(LogNotExpr).getExpr()) or
@@ -737,37 +692,37 @@ private ControlFlowNode succ(ControlFlowNode n, int completion) {
 
   // If a logic expression doesn't short-circuit then control flows from its left operand to its right.
   exists (AndLogicalExpr e |
-    last(e.getLeftOperand(), n, completion) and completion = booleanCompletion(true, _) and
+    last(e.getLeftOperand(), n, completion) and completion = BooleanCompletion(true, _) and
     result = first(e.getRightOperand())
   ) or
   exists (OrLogicalExpr e |
-    last(e.getLeftOperand(), n, completion) and completion = booleanCompletion(false, _) and
+    last(e.getLeftOperand(), n, completion) and completion = BooleanCompletion(false, _) and
     result = first(e.getRightOperand())
   ) or
 
   // Control flows to the corresponding branch depending on the boolean completion of the condition.
   exists (ConditionalExpr e |
-    last(e.getCondition(), n, completion) and completion = booleanCompletion(true, _) and result = first(e.getTrueExpr()) or
-    last(e.getCondition(), n, completion) and completion = booleanCompletion(false, _) and result = first(e.getFalseExpr())
+    last(e.getCondition(), n, completion) and completion = BooleanCompletion(true, _) and result = first(e.getTrueExpr()) or
+    last(e.getCondition(), n, completion) and completion = BooleanCompletion(false, _) and result = first(e.getFalseExpr())
   ) or
 
   // In other expressions control flows from left to right and ends in the node itself.
-  exists (PostOrderNode p, int i | last(p.getChildNode(i), n, completion) and completion = normalCompletion() |
+  exists (PostOrderNode p, int i | last(p.getChildNode(i), n, completion) and completion = NormalCompletion() |
     result = first(p.getChildNode(i+1)) or
     not exists(p.getChildNode(i+1)) and result = p
   ) or
 
   // Statements within a block execute sequentially.
-  result = first(n.(Block).getStmt(0)) and completion = normalCompletion() or
+  result = first(n.(Block).getStmt(0)) and completion = NormalCompletion() or
   exists (Block blk, int i |
-    last(blk.getStmt(i), n, completion) and completion = normalCompletion() and result = first(blk.getStmt(i+1))
+    last(blk.getStmt(i), n, completion) and completion = NormalCompletion() and result = first(blk.getStmt(i+1))
   ) or
 
   // Control flows to the corresponding branch depending on the boolean completion of the condition.
   exists (IfStmt s |
-    n = s and result = first(s.getCondition()) and completion = normalCompletion() or
-    last(s.getCondition(), n, completion) and completion = booleanCompletion(true, _) and result = first(s.getThen()) or
-    last(s.getCondition(), n, completion) and completion = booleanCompletion(false, _) and result = first(s.getElse())
+    n = s and result = first(s.getCondition()) and completion = NormalCompletion() or
+    last(s.getCondition(), n, completion) and completion = BooleanCompletion(true, _) and result = first(s.getThen()) or
+    last(s.getCondition(), n, completion) and completion = BooleanCompletion(false, _) and result = first(s.getElse())
   ) or
 
   // For statements:
@@ -778,18 +733,18 @@ private ControlFlowNode succ(ControlFlowNode n, int completion) {
     not exists (for.getCondition()) and condentry = first(for.getStmt())
     |
     // From the entry point, which is the for statement itself, control goes to either the first init expression...
-    n = for and result = first(for.getInit(0)) and completion = normalCompletion() or
+    n = for and result = first(for.getInit(0)) and completion = NormalCompletion() or
     // ...or the condition if the for doesn't include init expressions.
-    n = for and not exists(for.getAnInit()) and result = condentry and completion = normalCompletion() or
+    n = for and not exists(for.getAnInit()) and result = condentry and completion = NormalCompletion() or
     // Init expressions execute sequentially, after which control is transferred to the condition.
-    exists (int i | last(for.getInit(i), n, completion) and completion = normalCompletion() |
+    exists (int i | last(for.getInit(i), n, completion) and completion = NormalCompletion() |
       result = first(for.getInit(i+1)) or
       not exists(for.getInit(i+1)) and result = condentry
     ) or
     // The true-successor of the condition is the body of the for loop.
-    last(for.getCondition(), n, completion) and completion = booleanCompletion(true, _) and result = first(for.getStmt()) or
+    last(for.getCondition(), n, completion) and completion = BooleanCompletion(true, _) and result = first(for.getStmt()) or
     // The updates execute sequentially, after which control is transferred to the condition.
-    exists (int i | last(for.getUpdate(i), n, completion) and completion = normalCompletion() |
+    exists (int i | last(for.getUpdate(i), n, completion) and completion = NormalCompletion() |
       result = first(for.getUpdate(i+1)) or
       not exists(for.getUpdate(i+1)) and result = condentry
     ) or
@@ -802,34 +757,34 @@ private ControlFlowNode succ(ControlFlowNode n, int completion) {
   // Enhanced for statements:
   exists (EnhancedForStmt for |
     // First the expression gets evaluated...
-    n = for and result = first(for.getExpr()) and completion = normalCompletion() or
+    n = for and result = first(for.getExpr()) and completion = NormalCompletion() or
     // ...then the variable gets assigned...
-    last(for.getExpr(), n, completion) and completion = normalCompletion() and result = for.getVariable() or
+    last(for.getExpr(), n, completion) and completion = NormalCompletion() and result = for.getVariable() or
     // ...and then control goes to the body of the loop.
-    n = for.getVariable() and result = first(for.getStmt()) and completion = normalCompletion() or
+    n = for.getVariable() and result = first(for.getStmt()) and completion = NormalCompletion() or
     // Finally, the back edge of the loop goes to reassign the variable.
     last(for.getStmt(), n, completion) and continues(completion, for) and result = for.getVariable()
   ) or
 
   // While loops start at the condition...
-  result = first(n.(WhileStmt).getCondition()) and completion = normalCompletion() or
+  result = first(n.(WhileStmt).getCondition()) and completion = NormalCompletion() or
   // ...and do-while loops start at the body.
-  result = first(n.(DoStmt).getStmt()) and completion = normalCompletion() or
+  result = first(n.(DoStmt).getStmt()) and completion = NormalCompletion() or
   exists (LoopStmt loop | loop instanceof WhileStmt or loop instanceof DoStmt |
     // Control goes from the condition via a true-completion to the body...
-    last(loop.getCondition(), n, completion) and completion = booleanCompletion(true, _) and result = first(loop.getBody()) or
+    last(loop.getCondition(), n, completion) and completion = BooleanCompletion(true, _) and result = first(loop.getBody()) or
     // ...and through the back edge from the body back to the condition.
     last(loop.getBody(), n, completion) and continues(completion, loop) and result = first(loop.getCondition())
   ) or
 
   // Resource declarations in a try-with-resources execute sequentially.
-  exists (TryStmt try, int i | last(try.getResourceDecl(i), n, completion) and completion = normalCompletion() |
+  exists (TryStmt try, int i | last(try.getResourceDecl(i), n, completion) and completion = NormalCompletion() |
     result = first(try.getResourceDecl(i+1)) or
     not exists(try.getResourceDecl(i+1)) and result = first(try.getBlock())
   ) or
 
   // After the last resource declaration, control transfers to the body.
-  exists (TryStmt try | n = try and completion = normalCompletion() |
+  exists (TryStmt try | n = try and completion = NormalCompletion() |
     result = first(try.getResourceDecl(0)) or
     not exists(try.getAResourceDecl()) and result = first(try.getBlock())
   ) or
@@ -837,7 +792,7 @@ private ControlFlowNode succ(ControlFlowNode n, int completion) {
   // exceptional control flow
   exists (TryStmt try | catchOrFinallyCompletion(try, n, completion) |
     // if the body of the `try` throws...
-    exists (ThrowableType tt | completion = throwCompletion(tt) |
+    exists (ThrowableType tt | completion = ThrowCompletion(tt) |
       // ...control transfers to a catch clause...
       result = first(handlingCatchClause(try, tt)) or
       // ...or to the finally block
@@ -845,7 +800,7 @@ private ControlFlowNode succ(ControlFlowNode n, int completion) {
     ) or
 
     // if the body completes normally, control transfers to the finally block
-    not completion = throwCompletion(_) and result = first(try.getFinally())
+    not completion = ThrowCompletion(_) and result = first(try.getFinally())
   ) or
 
   // after each catch clause, control transfers to the finally block
@@ -854,13 +809,13 @@ private ControlFlowNode succ(ControlFlowNode n, int completion) {
   ) or
 
   // Catch clauses first assign their variable and then execute their block
-  exists (CatchClause cc | completion = normalCompletion() |
+  exists (CatchClause cc | completion = NormalCompletion() |
     n = cc and result = first(cc.getVariable()) or
     last(cc.getVariable(), n, completion) and result = first(cc.getBlock())
   ) or
 
   // Switch statements
-  exists (SwitchStmt switch | completion = normalCompletion() |
+  exists (SwitchStmt switch | completion = NormalCompletion() |
     // From the entry point control is transferred first to the expression...
     n = switch and result = first(switch.getExpr()) or
     // ...and then to one of the cases.
@@ -872,17 +827,17 @@ private ControlFlowNode succ(ControlFlowNode n, int completion) {
   // No edges in a SwitchCase - the constant expression in a ConstCase isn't included in the CFG.
 
   // Synchronized statements execute their expression _before_ synchronization, so the CFG reflects that.
-  exists (SynchronizedStmt synch | completion = normalCompletion() |
+  exists (SynchronizedStmt synch | completion = NormalCompletion() |
     last(synch.getExpr(), n, completion) and result = synch or
     n = synch and result = first(synch.getBlock())
   ) or
 
-  result = first(n.(ExprStmt).getExpr()) and completion = normalCompletion() or
+  result = first(n.(ExprStmt).getExpr()) and completion = NormalCompletion() or
 
-  result = first(n.(LabeledStmt).getStmt()) and completion = normalCompletion() or
+  result = first(n.(LabeledStmt).getStmt()) and completion = NormalCompletion() or
 
   // Variable declarations in a variable declaration statement are executed sequentially.
-  exists (LocalVariableDeclStmt s | completion = normalCompletion() |
+  exists (LocalVariableDeclStmt s | completion = NormalCompletion() |
     n = s and result = first(s.getVariable(1)) or
     exists (int i | last(s.getVariable(i), n, completion) and result = first(s.getVariable(i+1)))
   )
@@ -921,13 +876,13 @@ private ControlFlowNode succ(ControlFlowNode n) {
  * predicate `finallyPred`, since their completion is resumed after normal
  * completion of the `finally`.
  */
-private int resumption(ControlFlowNode n) {
+private Completion resumption(ControlFlowNode n) {
   exists (TryStmt try | lastInFinally(try, n) and finallyPred(try, _, result)) or
-  not lastInFinally(_, n) and result = normalCompletion()
+  not lastInFinally(_, n) and result = NormalCompletion()
 }
 
 private predicate lastInFinally(TryStmt try, ControlFlowNode n) {
-  last(try.getFinally(), n, normalCompletion())
+  last(try.getFinally(), n, NormalCompletion())
 }
 
 /**
@@ -936,7 +891,7 @@ private predicate lastInFinally(TryStmt try, ControlFlowNode n) {
  * That is, the `booleanCompletion` is the label of the edge in the CFG.
  */
 private ControlFlowNode mainBranchSucc(ControlFlowNode n, boolean b) {
-  result = succ(n, booleanCompletion(_, b))
+  result = succ(n, BooleanCompletion(_, b))
 }
 
 /**

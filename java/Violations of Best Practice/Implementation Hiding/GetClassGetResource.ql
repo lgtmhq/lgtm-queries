@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 
 /**
  * @name Unsafe use of getResource
- * @description Calling 'this.getClass().getResource()' may yield unexpected results if called from a 
+ * @description Calling 'this.getClass().getResource()' may yield unexpected results if called from a
  *              subclass in another package.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
-import default
+import java
 
 /** Access to a method in `this` object. */
 class MethodAccessInThis extends MethodAccess {

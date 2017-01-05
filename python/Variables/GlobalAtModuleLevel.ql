@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description Use of the 'global' statement at module level
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       useless-code
  */
 
 import python

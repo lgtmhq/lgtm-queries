@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
  * @description When a class subclasses multiple base classes and more than one base class defines the same attribute, attribute overriding may result in unexpected behavior by instances of this class.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       modularity
  */
 
-import default
+import python
 
 predicate does_nothing(PyFunctionObject f) {
     not exists(Stmt s | s.getScope() = f.getFunction() |

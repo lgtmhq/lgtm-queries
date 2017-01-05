@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,32 +14,24 @@
 /**
  * @name Signature mismatch in overriding method
  * @description Overriding a method without ensuring that both methods accept the same
- *  number and type of parameters causes an error when there is a mismatch.
+ *              number and type of parameters causes an error when there is a mismatch.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
 import python
 
-predicate method_parameter_counts(FunctionObject func, int min_parameter_count, int max_parameter_count) {
-    func.getName() != "__init__" and
-    func.isNormalMethod() and
-    min_parameter_count = func.minParameters() and
-    max_parameter_count = func.maxParameters()
-}
-
-predicate liskov_violation(FunctionObject base, FunctionObject derived, boolean strict) {
-  derived.overrides(base) and
-  exists(int base_min, int base_max, int derived_min, int derived_max |
-    method_parameter_counts(base, base_min, base_max) and
-    method_parameter_counts(derived, derived_min, derived_max) and
-    (strict = true and (derived_min > base_min or derived_max < base_max)
-	   or
-     strict = false and (derived_min > base_max or derived_max < base_min)))
-}
-
 from FunctionObject base, PyFunctionObject derived
-where 
-    not derived.getFunction().isSpecialMethod() and
-    liskov_violation(base, derived, false)
+where
+  derived.getName() != "__init__" and
+  derived.isNormalMethod() and
+  derived.overrides(base) and
+  not derived.getFunction().isSpecialMethod() and
+  (
+    derived.minParameters() > base.maxParameters()
+    or
+    derived.maxParameters() < base.minParameters()
+  )
 select derived, "Overriding method '" + derived.getName() + "' has signature mismatch with $@.", base, "overridden method"

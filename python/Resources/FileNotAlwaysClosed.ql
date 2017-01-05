@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,9 +13,12 @@
 
 /**
  * @name File is not always closed
- * @description Opening a file without ensuring that it is always closed may cause resouce leaks.
+ * @description Opening a file without ensuring that it is always closed may cause resource leaks.
  * @kind problem
  * @problem.severity error
+ * @tags efficiency
+ *       correctness
+ *       resources
  */
 
 import python
@@ -38,7 +41,7 @@ predicate is_not_none_guard(IsEqual isnone, ControlFlowNode open) {
      /* A guard for a file closure is also treated as a closure - The file will always be closed if not None */
      exists(ControlFlowNode close, ControlledVariable var, BasicBlock block |
            block.contains(close) and closes_or_returns_file(close, open) and variable_references_file(var, open)  |
-           isnone.controls(var, block, false) and isnone.getObject().refersTo(theNoneObject())
+           isnone.controls(var, block, false) and isnone.getObject(var).refersTo(theNoneObject())
      )
 }
 
@@ -171,9 +174,12 @@ predicate opened_in_enter_closed_in_exit(AttrNode open, AttrNode close) {
 from ControlFlowNode defn, string message
 where 
 exists(Scope s, ControlFlowNode f, boolean ex | file_is_open(f, defn, ex) |
-    f = s.getAnExitNode() and ex = false and message = "File is opened but is not closed."
+    f = s.getANormalExit() and ex = false and message = "File is opened but is not closed."
     or
-    f = s.getAnExitNode() and ex = true and message = "File may not be closed if an exception is raised." and
+    (f.(RaisingNode).viableExceptionalExit(s, _) or
+     f = s.getANormalExit() and file_is_open(f, defn, true)
+    )
+    and message = "File may not be closed if an exception is raised." and
     not file_is_open(s.getANormalExit(), defn, false)
 ) and
 not opened_in_enter_closed_in_exit(defn, _)

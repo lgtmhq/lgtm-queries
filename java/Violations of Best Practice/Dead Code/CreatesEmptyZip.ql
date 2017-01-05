@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@
  *              stream means that an empty ZIP file entry is written.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       readability
  */
-import default
+import java
 
 /** A class that is a descendant of `java.util.zip.ZipOutputStream`. */
 class ZipOutputStream extends Class {

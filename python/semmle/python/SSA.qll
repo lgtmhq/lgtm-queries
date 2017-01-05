@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -162,7 +162,7 @@ class SsaVariable extends @py_ssa_var{
                var.getId() = "__path__" and ((Module)var.getScope()).isPackageInit()
         )
     }
-    
+
     /** Gets the global variable that is accessed if this local is undefined. 
      *  Only applies to local variables in class scopes.
      */  
@@ -174,15 +174,15 @@ class SsaVariable extends @py_ssa_var{
             not exists(this.getDefinition())
         )
     }
-    
+
     /* Whether this SSA variable is the first parameter of a method 
      * (regardless of whether it is actually called self or not)
      */
     predicate isSelf() {
-        exists(FunctionObject fobj | 
-            fobj.isNormalMethod()
+        exists(Function func | 
+            func.isMethod()
             and
-            this.getDefinition().getNode() = fobj.getFunction().getArg(0)
+            this.getDefinition().getNode() = func.getArg(0)
         )
     }
 }

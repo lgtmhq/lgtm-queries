@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              label is confusing to read, or may even indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       readability
  */
 
-import default
+import javascript
 
 from LabeledStmt l, Case c
 where l = c.getAChildStmt+() and

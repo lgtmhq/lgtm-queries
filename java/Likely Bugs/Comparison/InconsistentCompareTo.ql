@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@
  *              and 'equals' are inconsistent.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
  */
 import java
+import semmle.code.java.frameworks.Lombok
 
 /** Whether `t` implements `Comparable` on `typeArg`. */
 predicate implementsComparableOn(RefType t, RefType typeArg) {
@@ -50,6 +53,8 @@ from Class c, CompareToMethod compareToMethod
 where c.fromSource() and
       compareToMethod.fromSource() and
       not exists(EqualsMethod em | em.getDeclaringType().getSourceDeclaration() = c) and
-      compareToMethod.getDeclaringType().getSourceDeclaration() = c
+      compareToMethod.getDeclaringType().getSourceDeclaration() = c and
+      // Exclude classes annotated with relevant Lombok annotations.
+      not c instanceof LombokEqualsAndHashCodeGeneratedClass
 select c, "This class declares $@ but inherits equals; the two could be inconsistent.",
        compareToMethod, "compareTo"

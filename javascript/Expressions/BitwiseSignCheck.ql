@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@
  * @description Checking the sign of the result of a bitwise operation may yield unexpected results.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
  */
-import default
+import javascript
 
 predicate acceptableSignCheck(BitwiseExpr b) {
   // projecting out constant bit patterns not containing the sign bit is fine

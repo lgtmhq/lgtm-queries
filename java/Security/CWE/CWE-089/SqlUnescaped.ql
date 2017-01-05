@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
 
 /**
  * @name SQL query built without neutralizing special characters
- * @description Building a SQL query without escaping or otherwise neutralizing any special 
+ * @description Building a SQL query without escaping or otherwise neutralizing any special
  *              characters is vulnerable to insertion of malicious SQL code.
  * @kind problem
  * @problem.severity error
- * @cwe 089
+ * @tags security
+ *       external/cwe/cwe-089
  */
 
 import semmle.code.java.security.SqlUnescapedLib

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
  * @description A call to an object which is not a callable will raise a TypeError at runtime.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
+ *       types
  */
 
 import python
@@ -27,4 +30,3 @@ where f = c.getFunc().getAFlowNode() and f.refersTo(_, t, origin) and
       and not t = theNoneType()
 
 select c, "Call to a $@ of $@.", origin, "non-callable", t, t.toString()
-

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,18 +47,18 @@ class FunctionMetrics extends Function {
      */
     int getCyclomaticComplexity() {
         exists(int E, int N |
-            N = count(this.getABasicBlock())
+            N = count(BasicBlock b | b = this.getABasicBlock() and b.likelyReachable())
             and
             E = count(BasicBlock b1, BasicBlock b2 | 
-                b1 = this.getABasicBlock() and b2 = this.getABasicBlock() and
-                b2 = b1.getASuccessor() and
-                not b1.unlikelySuccessor(b2)
+                b1 = this.getABasicBlock() and b1.likelyReachable() and
+                b2 = this.getABasicBlock() and b2.likelyReachable() and
+                b2 = b1.getASuccessor() and not b1.unlikelySuccessor(b2)
             )
             |
             result = E - N + 2
         )
     }
-    
+
     private BasicBlock getABasicBlock() {
         result = this.getEntryNode().getBasicBlock()
         or

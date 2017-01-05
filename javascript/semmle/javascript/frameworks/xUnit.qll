@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -211,7 +211,7 @@ class XUnitAttribute extends Expr {
  */
 library class XUnitAnnotatedFunction extends Function {
   XUnitAnnotatedFunction() {
-    exists (XUnitTarget target | target.getAnAnnotation() instanceof XUnitAnnotation |
+    exists (XUnitTarget target | exists(target.getAnAnnotation()) |
       this = target or
       this = target.(VarDeclStmt).getADecl().getInit() or
       this = target.(ExprStmt).getExpr().(AssignExpr).getRhs()

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              permissions being granted.
  * @kind problem
  * @problem.severity warning
- * @cwe 807 290
+ * @tags security
+ *       external/cwe/cwe-807
+ *       external/cwe/cwe-290
  */
-import default
+import java
 import semmle.code.java.security.DataFlow
 
 class TypeShiroSubject extends RefType {
@@ -41,12 +43,12 @@ abstract class PermissionsConstruction extends Top {
 class PermissionsCheckMethodAccess extends MethodAccess, PermissionsConstruction {
   PermissionsCheckMethodAccess() {
     exists(Method m | m = this.getMethod() |
-	    (m.getDeclaringType() instanceof TypeShiroSubject
-	    and m.getName() = "isPermitted")
-	    or
-	    (m.getName().toLowerCase().matches("%permitted%") and
-	    m.getNumberOfParameters() = 1)
-	  )
+      (m.getDeclaringType() instanceof TypeShiroSubject
+      and m.getName() = "isPermitted")
+      or
+      (m.getName().toLowerCase().matches("%permitted%") and
+      m.getNumberOfParameters() = 1)
+    )
   }
   
   Expr getInput() {

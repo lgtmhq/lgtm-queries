@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@
  *              regular expression cannot match any string.
  * @kind problem
  * @problem.severity error
+ * @tags reliability
+ *       correctness
+ *       regular-expressions
  */
 
-import default
+import javascript
 
 from RegExpCaret caret, RegExpTerm t
 where t = caret.getPredecessor+() and

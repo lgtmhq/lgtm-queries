@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,5 +20,5 @@ import semmle.code.java.security.ExternalProcess
  * reporting overlapping results.
  */
 predicate execTainted(UserInput source, ArgumentToExec execArg) {
-	source.flowsTo(execArg)
+  source.flowsTo(execArg)
 }

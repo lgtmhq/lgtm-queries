@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,17 @@ class ClassExpr extends ClassExpr_ {
             exists(Assign a | a = this.getInnerScope().getAStmt() and ((Name)a.getATarget()).getId() = "__metaclass__" and result = a.getValue())
     }
 
+
+    /** Gets the nth keyword argument of this class definition. */
+    DictUnpackingOrKeyword getKeyword(int index) {
+        result = this.getKeywords().getItem(index)
+    }
+
+    /** Gets a keyword argument of this class definition. */
+    DictUnpackingOrKeyword getAKeyword() {
+        result = this.getKeywords().getAnItem()
+    }
+    
     Expr getASubExpression() {
        result = this.getABase() or
        result = this.getAKeyword().getValue() or
@@ -48,6 +59,16 @@ class ClassExpr extends ClassExpr_ {
         result = this.getASubExpression()
         or
         result = this.getInnerScope()
+    }
+
+    /** Gets a tuple (*) argument of this class definition. */
+    Expr getStarargs() {
+        result = this.getABase().(Starred).getValue()
+    }
+
+    /** Gets a dictionary (**) argument of this class definition. */
+    Expr getKwargs() {
+        result = this.getAKeyword().(DictUnpacking).getValue()
     }
 
 }

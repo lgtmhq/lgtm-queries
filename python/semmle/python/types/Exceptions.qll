@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,8 +31,10 @@ class RaisingNode extends ControlFlowNode {
     
     RaisingNode() {
         exists(this.getAnExceptionalSuccessor())
+        or
+        this.isExceptionalExit(_)
     }
-    
+
     /** Gets the CFG node for the exception, if and only if this RaisingNode is an explicit raise */
     ControlFlowNode getExceptionNode() {
         exists(Raise r, Expr e | 
@@ -61,10 +63,10 @@ class RaisingNode extends ControlFlowNode {
         or
         result = systemExitRaise()
     }
-    
+
     pragma[noinline]
     private ClassObject systemExitRaise() {
-    	  this.quits() and result = builtin_object("SystemExit")
+        this.quits() and result = builtin_object("SystemExit")
     }
 
     cached private ClassObject localRaisedType() {
@@ -99,7 +101,7 @@ class RaisingNode extends ControlFlowNode {
           this.read_write_call() and result = theIOErrorType()
         )
     }
-    
+
     /** Whether this control flow node raises an exception, 
      * but the type of the exception it raises cannot be inferred. */
     predicate raisesUnknownType() {
@@ -167,6 +169,17 @@ class RaisingNode extends ControlFlowNode {
         )
     }
 
+    /** Whether this exceptional exit is viable. That is, is it
+     * plausible that the scope `s` can be exited with exception `raised`
+     * at this point.
+     */
+    predicate viableExceptionalExit(Scope s, ClassObject raised) {
+        raised.isLegalExceptionType() and
+        raised = this.getARaisedType() and
+        this.isExceptionalExit(s) and
+        not ((ExceptFlowNode)this.getAnExceptionalSuccessor()).handles(raised)
+    }
+
 }
 
 /** Is this a sequence or mapping subscript x[i]? */
@@ -212,38 +225,36 @@ private predicate unknown_current_exception(BasicBlock b) {
 /** INTERNAL -- Use FunctionObject.getARaisedType() instead */
 predicate scope_raises(ClassObject ex, Scope s) {
     exists(BasicBlock b | 
-        current_exception(ex, b) |
-        b.getLastNode() instanceof ReraisingNode and
-        b.getLastNode().getAnExceptionalSuccessor() = s.getExceptionExitNode() 
-        or
-        b.getLastNode() = s.getExceptionExitNode()
+        current_exception(ex, b) and
+        b.getLastNode().isExceptionalExit(s) |
+        b.getLastNode() instanceof ReraisingNode
     )
     or
-    exists(RaisingNode r | r.viableExceptionEdge(s.getExceptionExitNode(), ex))
+    exists(RaisingNode r | r.viableExceptionalExit(s, ex))
 }
 
 /** INTERNAL -- Use FunctionObject.raisesUnknownType() instead */
 predicate scope_raises_unknown(Scope s) {
     exists(BasicBlock b | 
         b.getLastNode() instanceof ReraisingNode
-        and b.getLastNode().getAnExceptionalSuccessor() = s.getExceptionExitNode() |
+        and b.getLastNode().isExceptionalExit(s) |
         unknown_current_exception(b)
     )
     or
-    exists(RaisingNode r | 
+    exists(RaisingNode r |
         r.raisesUnknownType() and
-        r.getAnExceptionalSuccessor() = s.getExceptionExitNode()
+        r.isExceptionalExit(s)
     )
 }
 
 
 /** ControlFlowNode for an 'except' statement. */
 class ExceptFlowNode extends ControlFlowNode {
-    
+
     ExceptFlowNode() {
         this.getNode() instanceof ExceptStmt
     }
-    
+
     private predicate handledObject(Object obj, ClassObject cls, ControlFlowNode origin) {
         exists(ExceptStmt ex, ControlFlowNode type |
             this.getBasicBlock().dominates(type.getBasicBlock()) and

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
  * @name Lines of commented-out code in files
  * @description The number of lines of commented out code per file
  * @kind treemap
- * @treemap.warnOn highValues 
- * @metricType file 
+ * @treemap.warnOn highValues
+ * @metricType file
+ * @tags maintainability
  */
 
 import python

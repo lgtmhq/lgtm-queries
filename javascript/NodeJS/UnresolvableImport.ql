@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
  *              cause an exception at runtime.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       frameworks/node.js
  */
 
 import javascript
@@ -42,8 +44,13 @@ where path = r.getImportedPath().getValue() and
       not exists (r.getImportedModule()) and
 
       // no enclosing NPM package declares a dependency on `mod`
-      forex (NPMPackage pkg | pkg.getAModule() = r.getTopLevel() |
-        not pkg.getPackageJSON().declaresDependency(mod, _)
+      forex (NPMPackage pkg, PackageJSON pkgJSON |
+        pkg.getAModule() = r.getTopLevel() and pkgJSON = pkg.getPackageJSON() |
+        not pkgJSON.declaresDependency(mod, _) and
+        not pkgJSON.getPeerDependencies().getADependency(mod, _) and
+        // exclude packages depending on `fbjs`, which automatically pulls in many otherwise
+        // undeclared dependencies
+        not pkgJSON.declaresDependency("fbjs", _)
       )
 select r, "Module " + mod + " cannot be resolved, and is not declared as a dependency in $@.",
        getClosestPackageJSON(r.getFile().getParent()), "package.json"

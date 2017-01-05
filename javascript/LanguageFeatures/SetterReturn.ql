@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              always be ignored.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from FunctionExpr f, ReturnStmt ret
 where ret.getContainer() = f and

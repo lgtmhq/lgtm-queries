@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              are difficult to read and may even indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       correctness
  */
 
-import default
+import javascript
 
 /* A binary expression of the form x op y, which is itself an operand (say, the left) of
  * another binary expression (x op y) op' y' such that (x op y) op' y' = x op (y op' y),
@@ -87,5 +89,6 @@ from BinaryExpr inner, BinaryExpr outer, int wsouter, int wsinner
 where interestingNesting(inner, outer) and
       wsinner = operatorWS(inner) and wsouter = operatorWS(outer) and
       wsinner % 2 = 0 and wsouter % 2 = 0 and
-      wsinner > wsouter
+      wsinner > wsouter and
+      not outer.getTopLevel().isMinified()
 select outer, "Whitespace around nested operators contradicts precedence."

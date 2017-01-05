@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description Assignment to a variable occurs multiple times without any intermediate use of that variable
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       useless-code
  */
 
 import python
@@ -23,7 +25,7 @@ import Definition
 
 predicate multiply_defined(AstNode asgn1, AstNode asgn2, Variable v) {
     /* Must be redefined on all possible paths in the CFG corresponding to the original source.
-     * For example, spliting may create a path where `def` is unconditionally redefined, even though
+     * For example, splitting may create a path where `def` is unconditionally redefined, even though
      * it is not in the original source. */
     forex(Definition def, Definition redef |
         def.getVariable() = v and
@@ -63,5 +65,6 @@ predicate uninteresting_definition(AstNode asgn1) {
 from AstNode asgn1, AstNode asgn2, Variable v
 where
     multiply_defined(asgn1, asgn2, v) and
+    forall(Name el | el = asgn1.getParentNode().(Tuple).getAnElt() | multiply_defined(el, _, _)) and
     not uninteresting_definition(asgn1)
 select asgn1, "This assignment to '" + v.getId() + "' is unnecessary as it is redefined $@ before this value is used.", asgn2 as t, "here"

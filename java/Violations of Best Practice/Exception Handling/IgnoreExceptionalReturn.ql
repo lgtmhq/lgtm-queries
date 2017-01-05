@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 
 /**
  * @name Ignored error status of call
- * @description Ignoring an exceptional value that is returned by a method may cause subsequent 
+ * @description Ignoring an exceptional value that is returned by a method may cause subsequent
  *              code to fail.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 391
+ * @tags reliability
+ *       correctness
+ *       external/cwe/cwe-391
  */
-import default
+import java
 
 class SpecialMethod extends Method {
   predicate isMethod(string pack, string clss, string name, int numparam) {

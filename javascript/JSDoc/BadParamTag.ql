@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@
  *              description is useless and should be removed.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       readability
+ *       documentation
  */
 
-import default
+import javascript
 
 from JSDocParamTag parm, string missing
 where // JSDoc comments in externs files are not necessarily meant for human readers, so don't complain

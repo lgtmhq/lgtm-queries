@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,11 +71,6 @@ class Scope extends Scope_ {
         py_scope_flow(result, this, 2)
     }
 
-    /** Gets the exit of this scope following an unhandled exception */
-    ControlFlowNode getExceptionExitNode() {
-        py_scope_flow(result, this, 1)
-    }
-
     /** Gets an exit from this Scope's control flow graph */
     ControlFlowNode getAnExitNode() {
 	      exists (int i | py_scope_flow(result, this, i) and i >= 0)
@@ -122,6 +117,14 @@ class Scope extends Scope_ {
         this.getBody().contains(s)
         or
         exists(Scope inner | inner.getScope() = this | inner.contains(s))
+    }
+    
+    /** Whether this scope precedes the other.
+     * That is, is it impossible for other to execute without
+     * this having executed at least once.
+     */
+    predicate precedes(Scope other) {
+        final_scope_precedes(this, other)
     }
 
 }

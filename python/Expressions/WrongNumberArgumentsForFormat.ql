@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,11 @@
 /**
  * @name Wrong number of arguments for format
  * @description A string formatting operation, such as '"%s: %s, %s" % (a,b)', where the number of conversion specifiers in the
- 								format string differs from the number of values to be formatted will raise a TypeError.
+ *              format string differs from the number of values to be formatted will raise a TypeError.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
  */
 
 import python

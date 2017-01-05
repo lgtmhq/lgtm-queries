@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -296,7 +296,7 @@ private predicate comparisonStep(Expr tracked, Expr sink) {
         )
       )
     )
-    and other.isCompileTimeConstant()
+    and (other.isCompileTimeConstant() or other instanceof NullLiteral)
     and tracked != other
   )
 }

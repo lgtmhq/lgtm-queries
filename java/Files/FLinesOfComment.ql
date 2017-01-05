@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,10 @@
  * @treemap.warnOn lowValues
  * @metricType file
  * @metricAggregate avg sum max
+ * @tags maintainability
+ *       documentation
  */
-import default
+import java
 
 from File f, int n
 where n = f.getNumberOfCommentLines()

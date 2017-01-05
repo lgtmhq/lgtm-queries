@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import python
 class CompareOp extends int {
 
     CompareOp() { 
-        this.(int) in [1..6]
+        this in [1..6]
     }
 
     /** Gets the logical inverse operator */
@@ -97,17 +97,17 @@ private predicate simple_test(CompareNode cmp, ControlFlowNode l, CompareOp cmpo
     )
 }
 
-/* left + x op right + c => left op right + (c-x)
-   left op (right + x) + c => left op right + (c+x) */
-private predicate add_test(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
-    exists(BinaryExprNode lhs, float c, float x, Num n |
+private predicate add_test_left(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
+  exists(BinaryExprNode lhs, float c, float x, Num n |
         lhs.getNode().getOp() instanceof Add and
         test(cmp, lhs, op, r, c) and x = n.getN().toFloat() and k = c - x |
         l = lhs.getLeft() and n = lhs.getRight().getNode()
         or
         l = lhs.getRight() and n = lhs.getLeft().getNode()
     )
-    or
+}
+
+private predicate add_test_right(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
     exists(BinaryExprNode rhs, float c, float x, Num n |
         rhs.getNode().getOp() instanceof Add and
         test(cmp, l, op, rhs, c) and x = n.getN().toFloat() and k = c + x |
@@ -117,17 +117,25 @@ private predicate add_test(CompareNode cmp, ControlFlowNode l, CompareOp op, Con
     )
 }
 
-/* left - x op right + c => left op right + (c+x) 
-   left op (right - x) + c => left op right + (c-x) */
-private predicate subtract_test(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
-    exists(BinaryExprNode lhs, float c, float x, Num n |
+/* left + x op right + c => left op right + (c-x)
+   left op (right + x) + c => left op right + (c+x) */
+private predicate add_test(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
+    add_test_left(cmp, l, op, r, k)
+    or
+    add_test_right(cmp, l, op ,r, k)
+}
+
+private predicate subtract_test_left(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
+   exists(BinaryExprNode lhs, float c, float x, Num n |
         lhs.getNode().getOp() instanceof Sub and
         test(cmp, lhs, op, r, c) and
         l = lhs.getLeft() and n = lhs.getRight().getNode() and
         x = n.getN().toFloat() |
         k = c + x
     )
-    or
+}
+
+private predicate subtract_test_right(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
     exists(BinaryExprNode rhs, float c, float x, Num n |
         rhs.getNode().getOp() instanceof Sub and
         test(cmp, l, op, rhs, c) and
@@ -135,6 +143,14 @@ private predicate subtract_test(CompareNode cmp, ControlFlowNode l, CompareOp op
         x = n.getN().toFloat() |
         k = c - x
     )
+}
+
+/* left - x op right + c => left op right + (c+x) 
+   left op (right - x) + c => left op right + (c-x) */
+private predicate subtract_test(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
+    subtract_test_left(cmp, l, op, r, k)
+    or
+    subtract_test_right(cmp, l, op, r, k)
 }
 
 private predicate not_test(UnaryExprNode u, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {

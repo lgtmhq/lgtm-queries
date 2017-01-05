@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -180,13 +180,13 @@ private predicate commented_out_code_block(Comment start, Comment end) {
 
 /* A single line comment that appears to be commented out code */
 class CommentedOutCodeLine extends Comment {
-  
+
     CommentedOutCodeLine () {
         exists(CommentedOutCodeBlock b |
             b.contains(this)
         )
     }
-    
+
     /* Whether this commented-out code line is likely to be example code embedded in a larger comment. */
     predicate maybeExampleCode() {
         exists(CommentedOutCodeBlock block |
@@ -194,7 +194,7 @@ class CommentedOutCodeLine extends Comment {
             block.maybeExampleCode()
         )
     }
-    
+
 }
 
 /** A block of comments that appears to be commented out code */
@@ -203,11 +203,11 @@ class CommentedOutCodeBlock extends @py_comment {
     CommentedOutCodeBlock() {
          commented_out_code_block(this, _)
     }
-  
+
     string toString() {
         result = "Commented out code" 
     }
-    
+
     /** Whether this commented-out code block contains the comment c */
     predicate contains(Comment c) {
         this = c 
@@ -218,16 +218,12 @@ class CommentedOutCodeBlock extends @py_comment {
             this.contains(prev)
         )
     }
-   
-    private Comment last() {
-        commented_out_code_block(this, result)
-    }
-    
+
     /** The length of this comment block (in comments) */
     int length() {
         result = count(Comment c | this.contains(c))
     }
-    
+
     predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
         ((Comment)this).getLocation().hasLocationInfo(filepath, bl, bc, _, _)
         and
@@ -236,7 +232,7 @@ class CommentedOutCodeBlock extends @py_comment {
             end.getLocation().hasLocationInfo(_, _, _, el, ec)
         )
     }
-    
+
     /** Whether this commented-out code block is likely to be example code embedded in a larger comment. */
     predicate maybeExampleCode() {
         exists(CommentBlock block |

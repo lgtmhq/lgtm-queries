@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,7 @@ import Locations
  * Restrict the location of a syntactic element to its first line, unless the element
  * is less than one line long to begin with.
  *
- * <p>
  * This is useful for avoiding multi-line violations.
- * </p>
  */
 class FirstLineOf extends Locatable {
   predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
@@ -37,9 +35,7 @@ class FirstLineOf extends Locatable {
  * Restrict the location of a syntactic element to its last line, unless the element
  * is less than one line long to begin with.
  *
- * <p>
  * This is useful for avoiding multi-line violations.
- * </p>
  */
 class LastLineOf extends Locatable {
   predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {

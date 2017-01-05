@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 
 import python
 import semmle.python.types.Exceptions
-private import Attributes
+import semmle.python.pointsto.Final
 
 /** A function object, whether written in Python or builtin */
 abstract class FunctionObject extends Object {
@@ -42,9 +42,6 @@ abstract class FunctionObject extends Object {
     /** Whether this function raises an exception, the class of which cannot be inferred */
     abstract predicate raisesUnknownType();
 
-    /** Whether this function never returns */
-    abstract predicate neverReturns();
-
     /** Use descriptiveString() instead. */
     deprecated string prettyString() {
         result = this.descriptiveString()
@@ -55,44 +52,43 @@ abstract class FunctionObject extends Object {
 
     /** Gets a call-site from where this function is called as a function */
     CallNode getAFunctionCall() {
-        result.getFunction().refersTo(this)
+        final_function_call(this, result)
     }
 
     /** Gets a call-site from where this function is called as a method */
     CallNode getAMethodCall() {
-        exists(ControlFlowNode attr, ClassObject cls, string name |
-            attr = result.getFunction() and
-            receiverTypeFor(attr, cls, name) and
-            this = cls.lookupAttribute(name)
-        )
-        or
-        super_method_call(result, this)
+        final_method_call(this, result)
     }
 
     /** Gets a call-site from where this function is called */
     ControlFlowNode getACall() {
-        result = this.getAFunctionCall()
-        or
-        result = this.getAMethodCall()
+        result = final_get_a_call(this)
     }
 
     /** Gets the `ControlFlowNode` that will be passed as the nth argument to `this` when called at `call`.
         This predicate will correctly handle `x.y()`, treating `x` as the zeroth argument.
     */
     ControlFlowNode getArgumentForCall(CallNode call, int n) {
-        call = this.getAMethodCall() and
-        (
-            exists(int call_index | n = call_index+1 | result = call.getArg(call_index))
-            or
-            n = 0 and result = call.getFunction().(AttrNode).getObject()
-        )
-        or
-        call = this.getAFunctionCall() and
-        result = call.getArg(n)
+        result = final_get_positional_argument_for_call(this, call, n)
+    }
+
+    /** Gets the `ControlFlowNode` that will be passed as the named argument to `this` when called at `call`.
+        This predicate will correctly handle `x.y()`, treating `x` as the self argument.
+    */
+    ControlFlowNode getNamedArgumentForCall(CallNode call, string name) {
+        result = final_get_named_argument_for_call(this, call, name)
     }
 
     /** Gets a class that this function may return */
-    abstract ClassObject getAnInferredReturnType();
+    ClassObject getAnInferredReturnType() {
+        result = final_get_an_inferred_return_type(this)
+    }
+
+    /** Whether this function never returns. This is an approximation.
+     */
+    predicate neverReturns() {
+         final_function_never_returns(this)
+    }
 
     /** Whether this is a "normal" method, that is, it is exists as a class attribute 
      *  which is not wrapped and not the __new__ method. */
@@ -112,50 +108,14 @@ abstract class FunctionObject extends Object {
 
     /** Gets a function that this function (directly) calls */
     FunctionObject getACallee() {
-        exists(ControlFlowNode node, Function f |
-            node.getScope() = f and
-            f = this.getFunction() and
-            node = result.getACall()
-        )
+        result = final_get_a_callee(this.getFunction())
     }
 
     /** Gets the qualified name for this function object.
-     * Should return the same name as the `__qualname__` attribute on functions in in Python 3.
+     * Should return the same name as the `__qualname__` attribute on functions in Python 3.
      */
     abstract string getQualifiedName();
 
-}
-
-/**
- * Whether this class is the receiver type of an attribute access.
- *  Also bind the name of the attribute.
- */
-predicate receiverTypeFor(ControlFlowNode n, ClassObject cls, string name) {
-    /* `super().meth()` is not a method on `super` */
-    cls != theSuperType() and
-    exists(Object o |
-        /* list.__init__() is not a call to type.__init__() */
-        not o instanceof ClassObject |
-        n.(AttrNode).getObject(name).refersTo(o, cls, _)
-    )
-    or
-    exists(PlaceHolder p, Variable v | 
-        n.getNode() = p and n.(NameNode).uses(v) and name = v.getId() and
-        p.getScope().getScope() = cls.getPyClass()
-    )
-}
-
-/** Whether `call` is a call to `method` of the form `super(...).method(...)` */
-private predicate super_method_call(CallNode call, FunctionObject method) {
-    exists(AttrNode attr |
-        attr = call.getFunction() and
-        exists(CallNode super_call, ClassObject start_type, ClassObject self_type, string name |
-            super_call_types(super_call, self_type, start_type) |
-            super_call = attr.getObject(name) and
-            /* super().name lookup */
-            self_type.lookupMro(start_type, name) = method
-        )
-    )
 }
 
 class PyFunctionObject extends FunctionObject {
@@ -187,57 +147,8 @@ class PyFunctionObject extends FunctionObject {
         scope_raises_unknown(this.getFunction())
     }
 
-    /** Whether this function never returns. This is an approximation.
-     */
-    predicate neverReturns() {
-        /* A function never returns if it has no normal exits that are not dominated by a
-         * call to a function which itself never returns.
-         */
-        exists(Function f | f = this.getFunction() |
-            not exists(ControlFlowNode exit |
-                exit = f.getANormalExit()
-                and
-                not exists(FunctionObject callee, BasicBlock call  |
-                    callee.getACall().getBasicBlock() = call and
-                    callee.neverReturns() and
-                    call.dominates(exit.getBasicBlock())
-                )
-            )
-        )
-    }
-
-    ClassObject getAnInferredReturnType() {
-        this.getFunction().isGenerator() and result = theGeneratorType()
-        or
-        not this.neverReturns() and not this.getFunction().isGenerator() and
-        (
-          this.getAReturnedNode().refersTo(_, result, _)
-          or
-          this.implicityReturns(result)
-          or 
-          /* If the origin of the the return node is a call to another function, then this function will return the type of that call 
-           * Note: since runtime_points_to() is intra-procedural, we need to handle the return types of calls explicitly here. */
-          exists(FunctionObject callee |
-              runtime_points_to(this.getAReturnedNode(), _, theUnknownType(), callee.getACall()) | 
-              result = callee.getAnInferredReturnType()
-          )
-        )
-    }
-
-    /**
-     * Whether this implictly returns an object
-     */
-    pragma[noinline]
-    private predicate implicityReturns(ClassObject none) {
-       none = theNoneType() and
-       (
-         not exists(this.getAReturnedNode())
-         or
-         exists(Return ret | ret.getScope() = this.getFunction() and not exists(ret.getValue()))
-       )
-    }
-
-    private ControlFlowNode getAReturnedNode() {
+    /** Gets a control flow node corresponding to the value of a return statement */
+    ControlFlowNode getAReturnedNode() {
         exists(Return ret |
             ret.getScope() = this.getFunction() and
             result.getNode() = ret.getValue()
@@ -275,16 +186,44 @@ class PyFunctionObject extends FunctionObject {
     /** Whether this method unconditionally sets the attribute `self.attrname`.
      */
     predicate unconditionallySetsSelfAttribute(string attrname) {
-        unconditionally_sets_self_attribute(this, attrname)
+        final_unconditionally_sets_self_attribute(this, attrname)
     }
 
     string getQualifiedName() {
         result = this.getFunction().getQualifiedName()
     }
+    
+    predicate unconditionallyReturnsParameter(int n) {
+        exists(SsaVariable pvar |
+            exists(Parameter p | p = this.getFunction().getArg(n) |
+                p.asName().getAFlowNode() = pvar.getDefinition()
+            ) and
+            exists(NameNode rval |
+                rval = pvar.getAUse() and
+                exists(Return r | r.getValue() = rval.getNode()) and
+                rval.strictlyDominates(rval.getScope().getANormalExit())
+            )
+        )
+    }
 
 }
 
-class BuiltinMethodObject extends FunctionObject {
+abstract class BuiltinCallable extends FunctionObject {
+
+    abstract ClassObject getAReturnType();
+
+    predicate isProcedure() {
+        forex(ClassObject rt |
+            rt = this.getAReturnType() |
+            rt = theNoneType()
+        )
+    }
+    
+    abstract string getQualifiedName();
+
+}
+
+class BuiltinMethodObject extends BuiltinCallable {
 
     BuiltinMethodObject() {
         py_cobjecttypes(this, theMethodDescriptorType())
@@ -319,10 +258,6 @@ class BuiltinMethodObject extends FunctionObject {
         result = "Builtin-method " + this.getName()
     }
 
-    predicate isProcedure() {
-        this.getAnInferredReturnType() = theNoneType()
-    }
-
     ClassObject getARaisedType() {
         /* Information is unavailable for C code in general */
         none()
@@ -333,14 +268,6 @@ class BuiltinMethodObject extends FunctionObject {
         any()
     }
 
-    predicate neverReturns() {
-        none()
-    }
-
-    ClassObject getAnInferredReturnType() {
-        ext_rettype(this, result)
-    }
-
     int minParameters() {
         none() 
     }
@@ -349,9 +276,13 @@ class BuiltinMethodObject extends FunctionObject {
         none() 
     }
 
+    ClassObject getAReturnType() {
+        ext_rettype(this, result)
+    }
+    
 }
 
-class BuiltinFunctionObject extends FunctionObject {
+class BuiltinFunctionObject extends BuiltinCallable {
 
     BuiltinFunctionObject() {
         py_cobjecttypes(this, theBuiltinFunctionType()) and exists(ModuleObject m | py_cmembers(m, _, this))
@@ -373,10 +304,6 @@ class BuiltinFunctionObject extends FunctionObject {
         result = "builtin-function " + this.getName()
     }
 
-    predicate isProcedure() {
-        this.getAnInferredReturnType() = theNoneType()
-    }
-
     ClassObject getARaisedType() {
         /* Information is unavailable for C code in general */
         none()
@@ -385,14 +312,6 @@ class BuiltinFunctionObject extends FunctionObject {
     predicate raisesUnknownType() {
         /* Information is unavailable for C code in general */
         any()
-    }
-
-    predicate neverReturns() {
-        this = theExitFunctionObject()
-    }
-
-    ClassObject getAnInferredReturnType() {
-        result = this.getAReturnType() 
     }
 
     ClassObject getAReturnType() {

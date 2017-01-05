@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,14 @@
  *              not synchronized, the thread-safety of the subclass may be broken.
  * @kind problem
  * @problem.severity error
- * @cwe 820
+ * @tags reliability
+ *       correctness
+ *       concurrency
+ *       language-features
+ *       external/cwe/cwe-820
  */
 
-import default
+import java
 
 /**
  * Check whether expression `e` is a call to method `target` of the form

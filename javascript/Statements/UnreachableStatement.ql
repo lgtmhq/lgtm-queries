@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description Unreachable statements are often indicative of missing code or latent bugs and should be avoided.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       correctness
  */
 
 import javascript

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -132,7 +132,7 @@ class TypeVariable extends BoundedType, @typevariable {
   RefType getGenericType() { typeVars(this,_,_,_,result) }
 
   /** The generic callable that is parameterized by this type parameter, if any. */
-  Callable getGenericCallable() { typeVars(this,_,_,_,result) }
+  GenericCallable getGenericCallable() { typeVars(this,_,_,_,result) }
 
   /** DEPRECATED: Use `getGenericCallable()` instead. */
   deprecated Method getGenericMethod() { typeVars(this,_,_,_,result) }
@@ -199,14 +199,11 @@ class Wildcard extends BoundedType, @wildcard {
   }
   
   /**
-   * The lower bound type for this wildcard, or the `<null>` type
-   * if no explicit lower bound is present.
+   * The lower bound type for this wildcard,
+   * if an explicit lower bound is present.
    */
   Type getLowerBoundType() {
-    if this.hasLowerBound() then
-      result = this.getLowerBound().getType()
-    else
-      result.(PrimitiveType).hasName("<null>")
+    result = this.getLowerBound().getType()
   }
 
   /**
@@ -273,7 +270,10 @@ class TypeBound extends @typebound {
  * the generic type `List<E>`, where `E` is a type parameter.
  */
 class ParameterizedType extends RefType {
-  ParameterizedType() { isParameterized(this) }
+  ParameterizedType() {
+    typeArgs(_,_,this) or
+    typeVars(_,_,_,_,this)
+  }
 
   /**
    * The erasure of a parameterized type is its generic counterpart.
@@ -294,16 +294,27 @@ class ParameterizedType extends RefType {
    *
    * For example, `Number` in `List<Number>`.
    */
-  RefType getATypeArgument() { typeArgs(result,_,this) }
+  RefType getATypeArgument() {
+    typeArgs(result,_,this) or
+    typeVars(result,_,_,_,this)
+  }
 
   /** The type argument of this parameterized type at the specified position. */
-  RefType getTypeArgument(int pos) { typeArgs(result,pos,this) }
+  RefType getTypeArgument(int pos) {
+    typeArgs(result,pos,this) or
+    typeVars(result,_,pos,_,this)
+  }
 
   /** The number of type arguments of this parameterized type. */
-  int getNumberOfTypeArguments() { result = count(int pos | typeArgs(_,pos,this)) }
+  int getNumberOfTypeArguments() {
+    result = count(int pos |
+      typeArgs(_,pos,this) or
+      typeVars(_,_,pos,_,this)
+    )
+  }
 
   /** Whether this type originates from source code. */
-  predicate fromSource() { not any() }
+  predicate fromSource() { typeVars(_,_,_,_,this) and RefType.super.fromSource() }
 }
 
 /** A parameterized type that is a class. */
@@ -368,25 +379,78 @@ class RawInterface extends Interface, RawType {
   predicate isAbstract() { Interface.super.isAbstract() }
 }
 
-// -------- Generic methods  --------
+// -------- Generic callables  --------
+
+/**
+ * A generic callable is a callable with a type parameter.
+ */
+class GenericCallable extends Callable {
+  GenericCallable() { typeVars(_,_,_,_,this) }
+
+  /**
+   * The `i`-th type parameter of this generic callable.
+   */
+  TypeVariable getTypeParameter(int i) { typeVars(result, _, i, _, this) }
+
+  /**
+   * A type parameter of this generic callable.
+   */
+  TypeVariable getATypeParameter() { result = getTypeParameter(_) }
+
+  /**
+   * The number of type parameters of this generic callable.
+   */
+  int getNumberOfTypeParameters() { result = strictcount(getATypeParameter()) }
+}
+
+/**
+ * A generic constructor is a constructor with a type parameter.
+ *
+ * For example, `<T> C(T t) { }` is a generic constructor for type `C`.
+ */
+class GenericConstructor extends Constructor, GenericCallable {
+  GenericConstructor getSourceDeclaration() { result = Constructor.super.getSourceDeclaration() }
+  ConstructorCall getAReference() { result = Constructor.super.getAReference() }
+  string getSignature() { result = Constructor.super.getSignature() }
+  predicate isAbstract() { Constructor.super.isAbstract() }
+  predicate isPublic() { Constructor.super.isPublic() }
+  predicate isStrictfp() { Constructor.super.isStrictfp() }
+  string getIconPath() { result = Constructor.super.getIconPath() }
+}
 
 /**
  * A generic method is a method with a type parameter.
  *
  * For example, `<T> void m(T t) { }` is a generic method.
  */
-class GenericMethod extends Method {
-  GenericMethod() { typeVars(_,_,_,_,this) }
+class GenericMethod extends Method, GenericCallable {
+  GenericMethod getSourceDeclaration() { result = Method.super.getSourceDeclaration() }
+  MethodAccess getAReference() { result = Method.super.getAReference() }
+  string getSignature() { result = Method.super.getSignature() }
+  predicate isAbstract() { Method.super.isAbstract() }
+  predicate isPublic() { Method.super.isPublic() }
+  predicate isStrictfp() { Method.super.isStrictfp() }
+  string getIconPath() { result = Method.super.getIconPath() }
 
   /**
    * A parameterization of this generic method.
    *
    * A parameterized method is an instantiation of a generic method, where
    * each formal type variable has been replaced with a type argument.
+   *
+   * DEPRECATED: to reason about type arguments of generic method invocations,
+   * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
    */
+  deprecated
   ParameterizedMethod getAParameterizedMethod() { result.getErasure() = this }
 
-  /** A raw method corresponding to this generic method. */
+  /**
+   * A raw method corresponding to this generic method.
+   *
+   * DEPRECATED: to reason about type arguments of generic method invocations,
+   * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
+   */
+  deprecated
   RawMethod getARawMethod() { result.getErasure() = this }
 }
 
@@ -395,8 +459,12 @@ class GenericMethod extends Method {
 /**
  * A parameterized method is an instantiation of a generic method, where
  * each formal type variable has been replaced with a type argument.
+ *
+ * DEPRECATED: to reason about type arguments of generic method invocations,
+ * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
  */
- class ParameterizedMethod extends Method {
+deprecated
+class ParameterizedMethod extends Method {
   ParameterizedMethod() { isParameterized(this) }
 
   /**
@@ -408,7 +476,13 @@ class GenericMethod extends Method {
   Method getErasure() { erasure(this,result) }
 }
 
-/** A raw method is a generic method that is used as if it was not generic. */
+/**
+ * A raw method is a generic method that is used as if it was not generic.
+ *
+ * DEPRECATED: to reason about type arguments of generic method invocations,
+ * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
+ */
+deprecated
 class RawMethod extends Method {
   RawMethod() { isRaw(this) }
 

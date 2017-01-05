@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,19 +16,17 @@
  * @description A duplicated call to a super-class __del__ method may lead to class instances not be cleaned up properly.
  * @kind problem
  * @problem.severity warning
+ * @tags efficiency
+ *       correctness
  */
 
 import python
 import MethodCallOrder
 
-predicate multiple_calls_to_method(ClassObject self, FunctionObject multi) {
-    strictcount(FunctionObject x | multi = next_function_in_chain(self, x)) > 1
-}
-
 from ClassObject self, FunctionObject multi
-where multi.getName() = "__del__" and
-multiple_calls_to_method(self, multi) and
-not multiple_calls_to_method(self.getABaseType(), multi) and
+where 
+multiple_calls_to_superclass_method(self, multi, "__del__") and
+not multiple_calls_to_superclass_method(self.getABaseType(), multi, "__del__") and
 not self.failedInference()
 select self, "Class " + self.getName() + " may not be cleaned up properly as $@ may be called multiple times during destruction.",
 multi, multi.descriptiveString()

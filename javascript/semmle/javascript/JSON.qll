@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,12 +99,12 @@ class JSONArray extends @json_array, JSONValue {
  * A JSON-encoded object.
  */
 class JSONObject extends @json_object, JSONValue {
-  /** Get the value of property <code>name</code>. */
+  /** Get the value of property `name`. */
   JSONValue getPropValue(string name) {
     json_properties(this, name, result)
   }
 
-  /** Get the string value of the property <code>name</code>. */
+  /** Get the string value of the property `name`. */
   string getPropStringValue(string name) {
     result = ((JSONString)getPropValue(name)).getValue()
   }

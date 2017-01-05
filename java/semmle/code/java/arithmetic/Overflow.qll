@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import java
 
 /** A subclass of `PrimitiveType` with width-based ordering methods. */
 class OrdPrimitiveType extends PrimitiveType {
@@ -67,7 +67,7 @@ class NumType extends Type {
   }
 
   int getWidthRank() {
-  	result = this.getOrdPrimitiveType().getWidthRank()
+    result = this.getOrdPrimitiveType().getWidthRank()
   }
 }
 

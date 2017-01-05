@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 import Expr
 
 /**
- * An expression or function declaration, viewed as a node in a data flow graph.
+ * An expression or function/class declaration, viewed as a node in a data flow graph.
  */
 class DataFlowNode extends @ast_node {
   DataFlowNode() {
@@ -47,28 +47,31 @@ class DataFlowNode extends @ast_node {
   }
 
   /**
-   * Lift reflexive transitive closure of localFlowPred into new predicate
-   * to enable fast transitive closure.
+   * Get a source flow node (that is, a node without a `localFlowPred()`) from which data
+   * may flow to this node in zero or more local steps (that is, not involving data flow
+   * through global or captured variables)
    */
-  private DataFlowNode localFlowPredStar() {
-    result = localFlowPred*()
+  private DataFlowNode getALocalSource() {
+    if exists(localFlowPred()) then
+      result = localFlowPred().getALocalSource()
+    else
+      result = this
   }
 
   /**
-   * Return a source flow node from which data may flow to this node in zero or more steps.
+   * Return a source flow node (that is, a node without a `localFlowPred()`) from which data
+   * may flow to this node in zero or more steps, including at most one non-local step.
    *
-   * <p>
    * The analysis performed by this predicate is flow-sensitive for local variables, but
    * flow-insensitive and incomplete for global variables and local variables captured
    * in an inner scope; all assignments to such a variable are considered to flow into all uses.
    * The analysis is furthermore heap-insensitive (that is, data flow through properties is
    * not tracked), and does not track flow through function calls, except for IIFEs.
-   * </p>
    */
   DataFlowNode getASource() {
-    result = localFlowPredStar() or
+    result = getALocalSource() or
     // flow through non-local variable
-    result = localFlowPredStar().nonLocalFlowPred().localFlowPredStar()
+    result = getALocalSource().nonLocalFlowPred().getALocalSource()
   }
 
   /**
@@ -103,8 +106,20 @@ class DataFlowIncompleteness extends string {
     this = "heap" or   // lack of heap modelling
     this = "import" or // lack of module import/export modelling
     this = "global" or // incomplete modelling of global object
-    this = "yield"     // lack of generator modelling
+    this = "yield" or  // lack of yield/async/await modelling
+    this = "eval"      // lack of `eval` modelling
   }
+}
+
+/**
+ * Is there an `eval` that might affect the value of `lv`?
+ */
+private predicate maybeAffectedByEval(LocalVariable lv) {
+  exists (CallExpr directEval |
+    // only direct `eval`s can affect the enclosing scope
+    directEval.getCallee().(GlobalVarAccess).getName() = "eval" |
+    directEval.getParent+() = lv.getScope().getScopeElement()
+  )
 }
 
 /**
@@ -155,7 +170,8 @@ library class VarAccessFlow extends DataFlowNode, @varaccess {
     ) or
     exists (Variable v | this = v.getAnAccess() |
       v.isGlobal() and cause = "global" or
-      v instanceof ArgumentsObject and cause = "call"
+      v instanceof ArgumentsObject and cause = "call" or
+      maybeAffectedByEval(v) and cause = "eval"
     )
   }
 }
@@ -223,7 +239,17 @@ library class NewTargetFlow extends DataFlowNode, @newtargetexpr {
 }
 
 library class YieldFlow extends DataFlowNode, @yieldexpr {
-  // flow through iterators is not modelled; mark as incomplete
+  // asynchronous flow is not modelled; mark as incomplete
+  predicate isIncomplete(DataFlowIncompleteness cause) { cause = "yield" }
+}
+
+library class AwaitFlow extends DataFlowNode, @awaitexpr {
+  // asynchronous flow is not modelled; mark as incomplete
+  predicate isIncomplete(DataFlowIncompleteness cause) { cause = "yield" }
+}
+
+library class FunctionSentFlow extends DataFlowNode, @functionsentexpr {
+  // asynchronous flow is not modelled; mark as incomplete
   predicate isIncomplete(DataFlowIncompleteness cause) { cause = "yield" }
 }
 
@@ -231,13 +257,28 @@ library class YieldFlow extends DataFlowNode, @yieldexpr {
  * A data flow node that writes to an object property.
  */
 abstract class PropWriteNode extends DataFlowNode {
-  /** The data flow node corresponding to the base object whose property is written to. */
+  /**
+   * The data flow node corresponding to the base object
+   * whose property is written to.
+   */
   abstract DataFlowNode getBase();
 
-  /** The name of the property being written, if it can be statically determined. */
+  /**
+   * The name of the property being written,
+   * if it can be statically determined.
+   *
+   * This predicate is undefined for dynamic property writes
+   * such as `e[computePropertyName()] = rhs` and for spread
+   * properties.
+   */
   abstract string getPropertyName();
 
-  /** The data flow node corresponding to the value being written. */
+  /**
+   * The data flow node corresponding to the value being written,
+   * if it can be statically determined.
+   *
+   * This predicate is undefined for spread properties.
+   */
   abstract DataFlowNode getRhs();
 }
 
@@ -280,7 +321,32 @@ class ObjectDefinePropNode extends PropWriteNode {
   DataFlowNode getRhs() {
     exists (ObjectExpr propdesc |
       propdesc = this.(CallToObjectDefineProperty).getPropertyDescriptor() and
-      result = propdesc.getProperty("value").getInit()
+      result = propdesc.getPropertyByName("value").getInit()
     )
   }
+}
+
+/**
+ * A static member definition, viewed as a data flow node that adds
+ * a property to the class.
+ */
+library class StaticMemberAsWrite extends PropWriteNode {
+  StaticMemberAsWrite() {
+    exists (MemberDefinition md | md.isStatic() and this = md.getNameExpr())
+  }
+  private MemberDefinition getMember() { this = result.getNameExpr() }
+  DataFlowNode getBase() { result = getMember().getDeclaringClass().getDefinition() }
+  string getPropertyName() { result = getMember().getName() }
+  DataFlowNode getRhs() { result = getMember().getChildExpr(1) }
+}
+
+/**
+ * A spread property of an object literal, viewed as a data flow node that writes
+ * properties of the object literal.
+ */
+library class SpreadPropertyAsWrite extends PropWriteNode {
+  SpreadPropertyAsWrite() { exists (SpreadProperty prop | this = prop.getInit()) }
+  DataFlowNode getBase() { result.(ObjectExpr).getAProperty().getInit() = this }
+  string getPropertyName() { none() }
+  DataFlowNode getRhs() { none() }
 }

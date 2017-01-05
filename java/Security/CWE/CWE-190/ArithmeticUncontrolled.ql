@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 
 /**
  * @name Uncontrolled data in arithmetic expression
- * @description Arithmetic operations on uncontrolled data that is not validated can cause 
+ * @description Arithmetic operations on uncontrolled data that is not validated can cause
  *              overflows.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 190 191
+ * @tags security
+ *       external/cwe/cwe-190
+ *       external/cwe/cwe-191
  */
-import default
+import java
 import semmle.code.java.security.DataFlow
 import semmle.code.java.security.SecurityTests
 import ArithmeticCommon
@@ -27,25 +29,25 @@ import ArithmeticCommon
 class TaintSource extends FlowSource {
   TaintSource() {
     // Either this is an access to a random number generating method of the right kind, ...
-	  exists(Method def |
-	    def = ((MethodAccess)this).getMethod()
-	    and 
-	    (
-	      // Some random-number methods are omitted:
-	      // `nextDouble` and `nextFloat` are between 0 and 1,
-	      // `nextGaussian` is extremely unlikely to hit max values.
-	      def.getName() = "nextInt" or
-	      def.getName() = "nextLong"
-			)
-			and def.getNumberOfParameters() = 0
-	    and def.getDeclaringType().hasQualifiedName("java.util", "Random")
-	  )
-	  
-	  // ... or this is the array parameter of `nextBytes`, which is filled with random bytes.
-	  or exists(MethodAccess m, Method def | 
-	    m.getAnArgument() = this 
-	    and m.getMethod() = def
-	    and def.getName() = "nextBytes" 
+    exists(Method def |
+      def = ((MethodAccess)this).getMethod()
+      and 
+      (
+        // Some random-number methods are omitted:
+        // `nextDouble` and `nextFloat` are between 0 and 1,
+        // `nextGaussian` is extremely unlikely to hit max values.
+        def.getName() = "nextInt" or
+        def.getName() = "nextLong"
+      )
+      and def.getNumberOfParameters() = 0
+      and def.getDeclaringType().hasQualifiedName("java.util", "Random")
+    )
+    
+    // ... or this is the array parameter of `nextBytes`, which is filled with random bytes.
+    or exists(MethodAccess m, Method def | 
+      m.getAnArgument() = this 
+      and m.getMethod() = def
+      and def.getName() = "nextBytes" 
       and def.getNumberOfParameters() = 1
       and def.getDeclaringType().hasQualifiedName("java.util", "Random")
     )
@@ -54,10 +56,10 @@ class TaintSource extends FlowSource {
 
 from ArithExpr exp, VarAccess tainted, TaintSource origin, string effect
 where
-	exp.getAnOperand() = tainted and
+  exp.getAnOperand() = tainted and
   origin.flowsTo(tainted) and
-	(
-	  (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
+  (
+    (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
     (not guardedAgainstOverflow(exp, tainted) and effect = "overflow")
   )
   // Exclude widening conversions of tainted values due to binary numeric promotion (JLS 5.6.2)
@@ -66,4 +68,4 @@ where
   and not exp.getEnclosingCallable() instanceof HashCodeMethod
   and not exp.getEnclosingCallable().getDeclaringType() instanceof NonSecurityTestClass
 select exp, "$@ flows to here and is used in arithmetic, potentially causing an " + effect + ".", 
-	origin, "Uncontrolled value"
+  origin, "Uncontrolled value"

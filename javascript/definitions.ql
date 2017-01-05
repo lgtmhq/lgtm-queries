@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ predicate variableLookup(VarAccess va, VarDecl decl, string kind) {
 
 /**
  * Import resolution: connect path expressions in Node.js require statements
- * and ES6 imports to the module they refer to.
+ * and ES2015 imports to the module they refer to.
  *
  * Kind is always "I" (for "import").
  */

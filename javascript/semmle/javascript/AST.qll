@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,8 @@ import CFG
 /**
  * A syntactic entity corresponding to JavaScript code.
  *
- * <p>
  * This class provides generic traversal methods applicable to all AST nodes,
  * such as obtaining the children of an AST node.
- * </p>
  */
 class ASTNode extends @ast_node, Locatable {
   /** Get the toplevel syntactic unit to which this element belongs. */
@@ -35,10 +33,8 @@ class ASTNode extends @ast_node, Locatable {
    * Get the i-th child node of this node; the result may be an expression, a statement,
    * a property or a class.
    *
-   * <p>
-   * Note: The indices of child nodes are considered an implementation detail and may
+   * _Note_: The indices of child nodes are considered an implementation detail and may
    * change between versions of the extractor.
-   * </p>
    */
   ASTNode getChild(int i) {
     result = getChildExpr(i) or
@@ -105,17 +101,20 @@ class ASTNode extends @ast_node, Locatable {
 
 /**
  * A toplevel syntactic unit; that is, a stand-alone script, an inline script
- * embedded in an HTML 'script' tag, a code snippet assigned to an HTML event
- * handler attribute, or a 'javascript:' URL.
+ * embedded in an HTML `<script>` tag, a code snippet assigned to an HTML event
+ * handler attribute, or a `javascript:` URL.
  */
 class TopLevel extends @toplevel, StmtContainer {
   /** Is this syntactic unit minified? */
   predicate isMinified() {
-    exists (File f | f = getFile() |
-      // file name contains 'min' (not as part of a longer word)
-      f.getName().regexpMatch(".*\\bmin\\b.*") or
-      // or there are more than 10 statements per line on average
-      count(Stmt s | s.getTopLevel() = this) / (float)f.getNumberOfLines() > 10
+    // file name contains 'min' (not as part of a longer word)
+    getFile().getName().regexpMatch(".*[^-.]*[-.]min([-.].*)?\\.\\w+")
+    or
+    exists (int numstmt | numstmt = strictcount(Stmt s | s.getTopLevel() = this) |
+      // there are more than two statements per line on average
+      (float)numstmt / getNumberOfLines() > 2 and
+      // and there are at least ten statements overall
+      numstmt >= 10
     )
   }
 
@@ -159,19 +158,19 @@ class TopLevel extends @toplevel, StmtContainer {
 }
 
 /**
- * A script originating from an HTML 'script' tag.
+ * A script originating from an HTML `<script>` element.
  */
 abstract class Script extends TopLevel {
 }
 
 /**
- * An external script originating from an HTML 'script' tag.
+ * An external script originating from an HTML `<script>` element.
  */
 class ExternalScript extends @script, Script {
 }
 
 /**
- * Code embedded inline in an HTML 'script' tag.
+ * Code embedded inline in an HTML `<script>` element.
  */
 class InlineScript extends @inline_script, Script {
 }
@@ -189,7 +188,7 @@ class EventHandlerCode extends @event_handler, CodeInAttribute {
 }
 
 /**
- * Code originating from a URL with the 'javascript:' URL scheme.
+ * Code originating from a URL with the `javascript:` URL scheme.
  */
 class JavaScriptURL extends @javascript_url, CodeInAttribute {
 }
@@ -199,7 +198,7 @@ class JavaScriptURL extends @javascript_url, CodeInAttribute {
  */
 class Externs extends TopLevel {
   Externs() {
-    isExterns(this)
+    isExterns()
   }
 }
 

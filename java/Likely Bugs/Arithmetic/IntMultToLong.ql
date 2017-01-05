@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,20 @@
 
 /**
  * @name Result of integer multiplication cast to long
- * @description Casting the result of an integer multiplication to type 'long' instead of casting 
+ * @description Casting the result of an integer multiplication to type 'long' instead of casting
  *              before the multiplication may cause overflow.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 190 192 197 681
+ * @tags reliability
+ *       security
+ *       correctness
+ *       types
+ *       external/cwe/cwe-190
+ *       external/cwe/cwe-192
+ *       external/cwe/cwe-197
+ *       external/cwe/cwe-681
  */
-import default
+import java
 
 /** Either the boxed type `java.lang.Long` or the primitive type `long`. */
 class Long extends Type {

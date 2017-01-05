@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
  * @description Class defines one or more ordering method but does not define all 4 ordering comparison methods
  * @kind problem
  * @problem.severity recommendation
+ * @tags reliability
+ *       correctness
  */
 
 import python

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
  *              be what you expect.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
 import java
 
@@ -49,7 +51,7 @@ predicate explicitToStringCall(Expr e) {
 }
 
 predicate directlyDeclaresToString(Class c) {
-  exists(Method m | declaresMethod(c, m) |
+  exists(Method m | m.getDeclaringType() = c |
     m.getName() = "toString" and
     m.getNumberOfParameters() = 0
   )

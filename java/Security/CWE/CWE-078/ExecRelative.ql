@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
  *              malicious changes in the PATH environment variable.
  * @kind problem
  * @problem.severity error
- * @cwe 078 088
+ * @tags security
+ *       external/cwe/cwe-078
+ *       external/cwe/cwe-088
  */
 
 import semmle.code.java.Expr

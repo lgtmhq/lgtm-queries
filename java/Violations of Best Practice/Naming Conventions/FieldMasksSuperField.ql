@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 
 /**
  * @name Field masks field in super class
- * @description Hiding a field in a superclass by redeclaring it in a subclass might be 
- *              unintentional, especially if references to the hidden field are not qualified using 
+ * @description Hiding a field in a superclass by redeclaring it in a subclass might be
+ *              unintentional, especially if references to the hidden field are not qualified using
  *              'super'.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       readability
  */
-import default
+import java
 
 class VisibleInstanceField extends Field {
   VisibleInstanceField() {
@@ -30,7 +32,7 @@ class VisibleInstanceField extends Field {
 
 from RefType type, RefType supertype, 
      VisibleInstanceField masked, VisibleInstanceField masking
-where type.hasSupertype+(supertype) and 
+where type.getASupertype+().getSourceDeclaration() = supertype and
       masking.getDeclaringType() = type and 
       masked.getDeclaringType() = supertype and
       masked.getName() = masking.getName() and
@@ -40,4 +42,4 @@ where type.hasSupertype+(supertype) and
       ) and
       type.fromSource()
 select masking, "This field shadows another field called $@ in a superclass.",
-	masked, masked.getName()
+  masked, masked.getName()

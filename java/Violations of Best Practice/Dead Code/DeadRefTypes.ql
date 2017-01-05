@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              programmer resources.
  * @kind problem
  * @problem.severity recommendation
- * @cwe 561
+ * @tags maintainability
+ *       useless-code
+ *       external/cwe/cwe-561
  */
-import default
+import java
 import semmle.code.java.Reflection
 
 /**

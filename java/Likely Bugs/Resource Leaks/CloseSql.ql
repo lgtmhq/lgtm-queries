@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,10 @@
  * @description A database resource that is opened but not closed may cause a resource leak.
  * @kind problem
  * @problem.severity error
- * @cwe 404 772
+ * @tags correctness
+ *       resources
+ *       external/cwe/cwe-404
+ *       external/cwe/cwe-772
  */
 import CloseType
 

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,12 @@
  *              are difficult to read and may even indicate a bug.
  * @kind problem
  * @problem.severity warning
- * @cwe 783
+ * @tags maintainability
+ *       readability
+ *       external/cwe/cwe-783
  */
 
-import default
+import java
 
 /**
  * A binary expression using the operator

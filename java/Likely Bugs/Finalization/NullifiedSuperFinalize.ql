@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              cleanup actions undone.
  * @kind problem
  * @problem.severity error
- * @cwe 568
+ * @tags reliability
+ *       maintainability
+ *       external/cwe/cwe-568
  */
-import default
+import java
 
 from FinalizeMethod m, Class c, FinalizeMethod mSuper, Class cSuper
 where m.getDeclaringType() = c and

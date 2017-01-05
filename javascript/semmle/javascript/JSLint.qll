@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,21 +37,19 @@ abstract class JSLintDirective extends SlashStarComment {
   /**
    * The name of this directive.
    *
-   * <p>
    * Like JSHint (but unlike JSLint), this predicate allows whitespace before the
    * directive name.
-   * </p>
    */
   string getName() {
     result = getDirectiveName(this)
   }
 
-  private FunctionScope getSurroundingFunctionScope() {
-    exists (Location declloc, Location scopeloc |
-      declloc = this.getLocation() and
-      scopeloc = result.getScopeElement().getLocation() |
-      scopeloc.startsBefore(declloc) and
-      scopeloc.endsAfter(declloc)
+  private Function getASurroundingFunction() {
+    exists (Token tk | tk = getNextToken() |
+      tk = result.getAToken() and
+      // exclude the case where a JSLint directive immediately
+      // precedes the function
+      tk != result.getFirstToken()
     )
   }
 
@@ -60,12 +58,10 @@ abstract class JSLintDirective extends SlashStarComment {
    * function, or the toplevel.
    */
   StmtContainer getScope() {
-    exists (FunctionScope fs | fs = getSurroundingFunctionScope() |
-      result = fs.getScopeElement() and
-      not fs.getAnInnerScope+() = getSurroundingFunctionScope()
-    ) or
-    (not exists(getSurroundingFunctionScope()) and
-     result = getTopLevel()) 
+    result = getASurroundingFunction() and
+    not getASurroundingFunction().getEnclosingContainer+() = result
+    or
+    not exists(getASurroundingFunction()) and result = getTopLevel()
   }
   
   /**
@@ -86,18 +82,12 @@ abstract class JSLintDirective extends SlashStarComment {
   
   /**
    * Determine whether this directive applies to the given statement.
-   * This is the case if the statement is nested in the directive's scope.
+   * This is the case if the expression or statement is nested in the directive's scope.
    */
-  predicate appliesTo(Stmt s) {
-    getScope() = s.getContainer().getEnclosingContainer*()
-  }
-  
-  /**
-   * Determine whether this directive applies to the given expression.
-   * This is the case if the expression is nested in the directive's scope.
-   */
-  predicate appliesTo(Expr e) {
-    appliesTo(e.getEnclosingStmt())
+  predicate appliesTo(ExprOrStmt s) {
+    getScope() = s.(Stmt).getContainer().getEnclosingContainer*()
+    or
+    appliesTo(s.(Expr).getEnclosingStmt())
   }
 }
 
@@ -153,7 +143,7 @@ class JSLintOptions extends JSLintDirective {
   }
 }
 
-// cf. http://www.jslint.com/lint.html#global
+// cf. http://www.jslint.com/help.html#global
 private string jsLintImplicitGlobal(string category) {
   (category = "browser" and
    (result = "clearInterval" or result = "clearTimeout" or result = "document" or

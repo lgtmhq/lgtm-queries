@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,19 +22,6 @@ class Stmt extends @stmt, ExprOrStmt {
 	StmtContainer getContainer() {
 		stmtContainers(this, result)
 	}
-	
-	/** Get the scope in which this statement appears. */
-	Scope getEnclosingScope() {
-	  if this.getParentStmt+() instanceof CatchClause then
-	    result = ((CatchClause)this.getParentStmt+()).getScope()
-	  else
-	    exists (StmtContainer cont | cont = getContainer() |
-	      if cont instanceof TopLevel then
-	        result instanceof GlobalScope
-	      else
-	        result = ((Function)cont).getScope()
-	    )
-	}
 
 	/** Did this statement undergo implicit semicolon insertion? */
 	predicate hasSemicolonInserted() {
@@ -51,10 +38,8 @@ class Stmt extends @stmt, ExprOrStmt {
 	 * Get the kind of this statement, which is an integer
 	 * value representing the statement's node type.
 	 *
-	 * <p>
-	 * Note: The mapping from node types to integers is considered an implementation detail
+	 * _Note_: The mapping from node types to integers is considered an implementation detail
 	 * and may change between versions of the extractor.
-	 * </p>
 	 */
 	int getKind() {
 	  stmts(this, result, _, _, _)
@@ -155,17 +140,37 @@ class ExprStmt extends @exprstmt, Stmt {
       interface = dot.getBase() and
       // check if the interface name is followed by two colons
       tk = interface.getLastToken().getNextToken() and
-      tk.getValue() = ":" and
-      tk.getNextToken().getValue() = ":" and
+      (tk.getValue() = ":" and  tk.getNextToken().getValue() = ":" or
+       tk.getValue() = "::") and
       id = dot.getProperty() and
       f = assgn.getRhs()
     )
   }
 }
 
+/**
+ * An expression statement wrapping a string literal (which may
+ * be a directive).
+ */
+library class MaybeDirective extends ExprStmt {
+  MaybeDirective() {
+    getExpr() instanceof StringLiteral
+  }
+
+  /** The text of the string literal wrapped by this statement. */
+  string getDirectiveText() {
+    result = getExpr().(StringLiteral).getValue()
+  }
+}
+
 /** A directive, such as a strict mode declaration. */
-abstract class Directive extends ExprStmt {
-  /** Get the scope to which this directive applies. */
+abstract class Directive extends MaybeDirective {
+  /**
+   * Get the scope to which this directive applies.
+   *
+   * DEPRECATED: Use `getContainer()` instead.
+   */
+  deprecated
   Scope getScope() {
     if this.getContainer() instanceof Function then
       result = ((Function)this.getContainer()).getScope()
@@ -176,16 +181,22 @@ abstract class Directive extends ExprStmt {
 
 /** A strict mode declaration. */
 class StrictModeDecl extends Directive {
-	StrictModeDecl() {
-		((StringLiteral)this.getExpr()).getValue() = "use strict"
-	}
+  StrictModeDecl() { getDirectiveText() = "use strict" }
 }
 
 /** An asm.js directive. */
 class ASMJSDirective extends Directive {
-  ASMJSDirective() {
-    getExpr().(StringLiteral).getValue() = "use asm"
-  }
+  ASMJSDirective() { getDirectiveText() = "use asm" }
+}
+
+/** A Babel directive. */
+class BabelDirective extends Directive {
+  BabelDirective() { getDirectiveText() = "use babel" }
+}
+
+/** A legacy 6to5 directive. */
+class SixToFiveDirective extends Directive {
+  SixToFiveDirective() { getDirectiveText() = "use 6to5" }
 }
 
 /** An if statement. */
@@ -242,26 +253,22 @@ class LabeledStmt extends @labeledstmt, Stmt {
 
 /**
  * A statement that disrupts structured control flow, that is, a
- * <code>continue</code> statement, a <code>break</code> statement,
- * a <code>throw</code> statement, or a <code>return</code> statement.
+ * `continue` statement, a `break` statement,
+ * a `throw` statement, or a `return` statement.
  */
 abstract class JumpStmt extends Stmt {
   /**
    * Get the target of this jump.
    *
-   * <p>
    * For break and continue statements, this predicate returns the statement
    * this statement breaks out of or continues with. For throw statements,
    * it returns the closest surrounding try statement in whose body the
    * throw statement occurs, or otherwise the enclosing statement container.
    * For return statements, this predicate returns the enclosing statement
    * container.
-   * </p>
    *
-   * <p>
-   * Note that this predicate does not take <code>finally</code> clauses
+   * Note that this predicate does not take `finally` clauses
    * into account, which may interrupt the jump.
-   * </p>
    */
 	abstract ASTNode getTarget();
 }
@@ -610,7 +617,7 @@ class ConstDeclStmt extends @constdeclstmt, DeclStmt {}
 /** A 'let' declaration statement. */
 class LetStmt extends @letstmt, DeclStmt {}
 
-/** A legacy let statement of the form <code>let(vardecls) stmt</code>. */
+/** A legacy let statement of the form `let(vardecls) stmt`. */
 class LegacyLetStmt extends @legacy_letstmt, DeclStmt {
   /** Get the statement this let statement scopes over. */
   Stmt getBody() {

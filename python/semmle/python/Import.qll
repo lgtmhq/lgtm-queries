@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ class ImportExpr extends ImportExpr_ {
         or
         exists(int nm1 | n = nm1 + 1 | result = this.basePackage(nm1).getPackage())
     }
-    
+
     private predicate implicitRelativeImportsAllowed() {
          // relative imports are no longer allowed in Python 3
         major_version() < 3 and
@@ -220,9 +220,20 @@ class Import extends Import_ {
     /** Gets the name of an imported module. 
      * For example, for the import statement `import bar` which
      * is a relative import in package "foo", this would return
-     * "foo.bar". */
+     * "foo.bar".
+     * The import statment `from foo import bar` would return 
+     * `foo` and `foo.bar`
+     *  */
     string getAnImportedModuleName() {
-        result = this.getAModuleExpr().getImportedModuleName()
+        result = this.getAModuleExpr().getAnImportedModuleName()
+        or
+        exists(ImportMember m, string modname |
+            m = this.getAName().getValue() and
+            modname = m.getModule().(ImportExpr).getImportedModuleName() |
+            result = modname
+            or
+            result = modname + "." + m.getName()
+        )
     }
 
 }
@@ -230,7 +241,7 @@ class Import extends Import_ {
 /** An import * statement */
 class ImportStar extends ImportStar_ {
 
-    private ImportExpr getModuleExpr() {
+    ImportExpr getModuleExpr() {
         result = this.getModule()
         or
         result = ((ImportMember)this.getModule()).getModule()

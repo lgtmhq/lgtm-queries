@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,17 +47,12 @@ class ExprList extends ExprList_ {
 
 }
 
-/** A list of keyword arguments in a call */
-class KeywordList extends KeywordList_ {
+
+library class DictItemList extends DictItemList_ {
 
 }
 
-/** A keyword arguments (name=value) in a call */
-class Keyword extends Keyword_ {
-
-}
-
-library class KeywordListParent extends KeywordListParent_ {
+library class DictItemListParent extends DictItemListParent_ {
 
 }
 

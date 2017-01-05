@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
 /**
  * @name Bad implementation of an event Adapter
  * @description In a class that extends a Swing or Abstract Window Toolkit event adapter, an
- *              event handler that does not have exactly the same name as the event handler that it 
+ *              event handler that does not have exactly the same name as the event handler that it
  *              overrides means that the overridden event handler is not called.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       frameworks/swing
  */
-import default
+import java
 
 class Adapter extends Class {
   Adapter() {

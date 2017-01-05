@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,34 +26,14 @@
  * a number (not a string, as for most other objects).
  */
 
-predicate isPrimitiveTypeTag(string tag) {
-  tag = "null" or tag = "undefined" or
-  tag = "boolean" or tag = "number" or tag = "string"
-}
-
-predicate isNonPrimitiveTypeTag(string tag) {
-  tag = "function" or tag = "class" or
-  tag = "date" or tag = "object"
-}
-
-predicate isTypeTag(string tag) {
-  isPrimitiveTypeTag(tag) or isNonPrimitiveTypeTag(tag)
-}
-
-/**
- * Helper predicate that returns a pretty-printed list of all type tags.
- */
-string ppAllTypeTags() {
-  result = "boolean, class, date, function, null, number, object, string or undefined"
-}
+newtype TypeTag = TTNull() or TTUndefined() or TTBoolean() or TTNumber() or TTString()
+               or TTFunction() or TTClass() or TTDate() or TTObject()
 
 /**
  * A type inferred by the flow analysis.
  */
-class InferredType extends string {
-  InferredType() {
-    isTypeTag(this)
-  }
+class InferredType extends TypeTag {
+  abstract string toString();
 }
 
 /**
@@ -63,7 +43,16 @@ class InferredType extends string {
  */
 class PrimitiveType extends InferredType {
   PrimitiveType() {
-    isPrimitiveTypeTag(this)
+    this = TTNull() or this = TTUndefined() or
+    this = TTBoolean() or this = TTNumber() or this = TTString()
+  }
+
+  string toString() {
+    this = TTNull() and result = "null" or
+    this = TTUndefined() and result = "undefined" or
+    this = TTBoolean() and result = "boolean" or
+    this = TTNumber() and result = "number" or
+    this = TTString() and result = "string"
   }
 }
 
@@ -73,6 +62,21 @@ class PrimitiveType extends InferredType {
  */
 class NonPrimitiveType extends InferredType {
   NonPrimitiveType() {
-    isNonPrimitiveTypeTag(this)
+    this = TTFunction() or this = TTClass() or
+    this = TTDate() or this = TTObject()
   }
+
+  string toString() {
+    this = TTFunction() and result = "function" or
+    this = TTClass() and result = "class" or
+    this = TTDate() and result = "date" or
+    this = TTObject() and result = "object"
+  }
+}
+
+/**
+ * Helper predicate that returns a pretty-printed list of all type tags.
+ */
+string ppAllTypeTags() {
+  result = "boolean, class, date, function, null, number, object, string or undefined"
 }

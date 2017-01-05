@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
  * @description HTML-style comments are not a standard ECMAScript feature and should be avoided.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from HTMLComment c
 select c, "Do not use HTML comments."

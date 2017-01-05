@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +16,17 @@
  * @description Using 'enum' as an identifier makes the code incompatible with Java 5 and later.
  * @kind problem
  * @problem.severity warning
+ * @tags portability
+ *       readability
+ *       naming
  */
 
-import default
+import java
 
 Element elementNamedEnum() {
-	result.(CompilationUnit).getPackage().getName().regexpMatch("(.*\\.|)enum(\\..*|)")
-	or
-	result.getName() = "enum"
+  result.(CompilationUnit).getPackage().getName().regexpMatch("(.*\\.|)enum(\\..*|)")
+  or
+  result.getName() = "enum"
 }
 
 select elementNamedEnum(), "Code using 'enum' as an identifier will not compile with a recent version of Java."

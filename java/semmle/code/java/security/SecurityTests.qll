@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 
 /** Test detection for the security pack. */
 
-import default
+import java
 
 /** A test class that is not a Semmle class or a Juliet test suite class. */
 class NonSecurityTestClass extends TestClass {

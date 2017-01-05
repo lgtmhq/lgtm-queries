@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@
  *              may cause redirection to malicious web sites.
  * @kind problem
  * @problem.severity error
- * @cwe 601
+ * @tags security
+ *       external/cwe/cwe-601
  */
-import default
+import java
 import semmle.code.java.security.DataFlow
 import UrlRedirect
 
 from UrlRedirectSink sink, RemoteUserInput source
 where source.flowsTo(sink)
 select sink, "Potentially untrusted URL redirection due to $@.",
-	source, "user-provided value"
+  source, "user-provided value"

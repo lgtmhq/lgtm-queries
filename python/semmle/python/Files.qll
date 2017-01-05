@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ class File extends Container {
 
     /** Gets a short name for this file (just the file name) */
     string getShortName() {
-      exists(string simple, string ext | files(this, _, simple, ext, _) |
+        exists(string simple, string ext | files(this, _, simple, ext, _) |
              result = simple + ext)
     }
 
@@ -86,15 +86,15 @@ class File extends Container {
  
     private int lastLine() {
         result = max(int i | exists(Location l | l.getFile() = this and l.getEndLine() = i))
-    }  
-    
+    }
+
     /** Whether line n is empty (it contains neither code nor comment). */
     predicate emptyLine(int n) {
         n in [0..this.lastLine()]
         and
         not occupied_line(this, n)
     }
-    
+
     string getSpecifiedEncoding() {
         exists(Comment c, Location l | 
             l = c.getLocation() and l.getFile() = this |
@@ -263,4 +263,20 @@ class SyntaxError extends Location {
     }
 
 }
+
+/** An encoding error. Note that if there is an encoding error in a module,
+   much information about that module will be lost */
+class EncodingError extends SyntaxError {
+
+    EncodingError() {
+        /* Leave spaces around 'decode' in unlikely event it occurs as a name in a syntax error */
+        this.getMessage().toLowerCase().matches("% decode %")
+    }
+
+    string toString() {
+        result = "Encoding Error"
+    }
+
+}
+
 

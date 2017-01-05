@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ class CompileTimeConstantExpr extends Expr {
    */
   boolean getBooleanValue() {
     // Literal value.
-    result = this.(BooleanLiteral).getBooleanLiteral() or
+    result = this.(BooleanLiteral).getBooleanValue() or
     // No casts relevant to booleans.
     // `!` is the only unary operator that evaluates to a boolean.
     result = this.(LogNotExpr).getExpr().(CompileTimeConstantExpr).getBooleanValue().booleanNot() or
@@ -480,14 +480,28 @@ class Literal extends Expr,@literal {
 class BooleanLiteral extends Literal,@booleanliteral {
 
   /** Get the boolean representation of this literal. */
-  boolean getBooleanLiteral() {
+  boolean getBooleanValue() {
     result = true and getLiteral() = "true" or
     result = false and getLiteral() = "false"
+  }
+  
+  /** 
+   * Deprecated: use getBooleanValue() instead.
+   * Get the boolean representation of this literal. 
+   */
+  deprecated boolean getBooleanLiteral() {
+    result = getBooleanValue()
   }
 }
 
 /** An integer literal. For example, `23`. */
-class IntegerLiteral extends Literal,@integerliteral {}
+class IntegerLiteral extends Literal,@integerliteral {
+
+  /** Get the int representation of this literal. */
+  int getIntValue() {
+    result = getLiteral().toInt()
+  }
+}
 
 /** A long literal. For example, `23l`. */
 class LongLiteral extends Literal,@longliteral {}
@@ -804,6 +818,9 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   /** The immediately enclosing callable of this class instance creation expression. */
   Callable getEnclosingCallable() { result = Expr.super.getEnclosingCallable() }
 
+  /** The immediately enclosing statement of this class instance creation expression. */
+  Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
+
   /** A printable representation of this expression. */
   string toString() { result = "new " + this.getConstructor().getName() + "(...)" }
 }
@@ -1116,10 +1133,10 @@ class MethodAccess extends Expr, Call, @methodaccess {
   /** The argument at the specified (zero-based) position in this method access. */
   Expr getArgument(int index) { exprs(result, _, _, this, index) and index >= 0 }
 
-  /** A type argument supplied as part of this method access. */
+  /** A type argument supplied as part of this method access, if any. */
   Expr getATypeArgument() { result.getIndex() <= -2 and result.getParent() = this }
 
-  /** The type argument at the specified (zero-based) position in this method access. */
+  /** The type argument at the specified (zero-based) position in this method access, if any. */
   Expr getTypeArgument(int index) {
     result = this.getATypeArgument() and
     (-2 - result.getIndex()) = index
@@ -1130,6 +1147,9 @@ class MethodAccess extends Expr, Call, @methodaccess {
   
   /** The immediately enclosing callable that contains this method access. */
   Callable getEnclosingCallable() { result = Expr.super.getEnclosingCallable() }
+
+  /** The immediately enclosing statement that contains this method access. */
+  Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
   
   /** A printable representation of this expression. */
   string toString() { result = this.printAccess() }
@@ -1278,6 +1298,8 @@ abstract class Call extends Top {
   abstract Callable getEnclosingCallable();
   /** The qualifying expression of this call, if any. */
   abstract Expr getQualifier();
+  /** The enclosing statement of this call. */
+  abstract Stmt getEnclosingStmt();
   
   /** The number of arguments provided in this call. */
   int getNumArgument() { count(this.getAnArgument()) = result }

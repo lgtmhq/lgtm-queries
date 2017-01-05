@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ abstract class PathExpr extends Expr {
   /** Get the path represented by this expression. */
   abstract string getValue();
 
-  /** Get the i-th component of this path. */
+  /** Get the `i`-th component of this path. */
   string getComponent(int i) {
     result = getValue().splitAt("/", i)
   }
@@ -86,20 +86,22 @@ abstract class PathExpr extends Expr {
 }
 
 /**
- * A path expression of the form <code>p + q</code>, where both <code>p</code> and <code>q</code>
+ * A path expression of the form `p + q`, where both `p` and `q`
  * are path expressions.
  */
-library class ConcatPath extends PathExpr, AddExpr {
+library class ConcatPath extends PathExpr {
   ConcatPath() {
-    getLeftOperand() instanceof PathExpr and
-    getRightOperand() instanceof PathExpr
+    exists (AddExpr add | this = add |
+      add.getLeftOperand() instanceof PathExpr and
+      add.getRightOperand() instanceof PathExpr
+    )
   }
 
   string getValue() {
-    result = getLeftOperand().(PathExpr).getValue() + getRightOperand().(PathExpr).getValue()
+    exists (AddExpr add, PathExpr left, PathExpr right |
+      this = add and
+      left = add.getLeftOperand() and right = add.getRightOperand() |
+      result = left.getValue() + right.getValue()
+    )
   }
-
-  CFGNode getFirstCFGNode() { result = AddExpr.super.getFirstCFGNode() }
-  predicate isImpure() { AddExpr.super.isImpure() }
-  string getStringValue() { result = AddExpr.super.getStringValue() }
 }

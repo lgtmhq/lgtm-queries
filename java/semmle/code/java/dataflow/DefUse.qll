@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,44 +18,37 @@
  * DEPRECATED: use SSA library instead.
  */
 
-import default
+import java
 private import SSA
 
 /**
  * An assignment to a variable or an initialization of the variable.
- *
- * DEPRECATED: use `VariableUpdate` instead.
  */
-deprecated class VariableAssign extends Expr {
+class VariableAssign extends VariableUpdate {
   VariableAssign() {
-    ((AssignExpr)this).getDest() instanceof VarAccess or
+    this instanceof AssignExpr or
     this instanceof LocalVariableDeclExpr
   }
-  
+
   Expr getSource() {
-    result = ((AssignExpr)this).getSource() or
-    result = ((LocalVariableDeclExpr)this).getInit()
-  }
-  
-  Variable getDestVar() {
-    result.getAnAccess() = ((AssignExpr)this).getDest() or
-    result = ((LocalVariableDeclExpr)this).getVariable()
+    result = this.(AssignExpr).getSource() or
+    result = this.(LocalVariableDeclExpr).getInit()
   }
 }
 
 /** An update of a variable or an initialization of the variable. */
 class VariableUpdate extends Expr {
-	VariableUpdate() {
-		this.(Assignment).getDest() instanceof VarAccess or
-		this instanceof LocalVariableDeclExpr or
-		this.(UnaryAssignExpr).getExpr() instanceof VarAccess
-	}
+  VariableUpdate() {
+    this.(Assignment).getDest() instanceof VarAccess or
+    this instanceof LocalVariableDeclExpr or
+    this.(UnaryAssignExpr).getExpr() instanceof VarAccess
+  }
 
-	Variable getDestVar() {
-		result.getAnAccess() = this.(Assignment).getDest() or
-		result = this.(LocalVariableDeclExpr).getVariable() or
-		result.getAnAccess() = this.(UnaryAssignExpr).getExpr()
-	}
+  Variable getDestVar() {
+    result.getAnAccess() = this.(Assignment).getDest() or
+    result = this.(LocalVariableDeclExpr).getVariable() or
+    result.getAnAccess() = this.(UnaryAssignExpr).getExpr()
+  }
 }
 
 /**
@@ -133,16 +126,16 @@ cached
 predicate definitionReaches(Variable v, DefStmt def, Stmt use) {
   definition(v, def) and 
   (
-	  use = def.getASuccessor()
-	  or
-	  exists(Stmt mid | 
-	    // def reaches here
-	    definitionReaches(v, def, mid) and
-	    // not a redefinition of v
-	    not definition(v, mid) and
-	    // use is the successor
-	    use = mid.getASuccessor()
-	  )
+    use = def.getASuccessor()
+    or
+    exists(Stmt mid | 
+      // def reaches here
+      definitionReaches(v, def, mid) and
+      // not a redefinition of v
+      not definition(v, mid) and
+      // use is the successor
+      use = mid.getASuccessor()
+    )
   )
 }
 
@@ -168,16 +161,16 @@ cached
 predicate useReaches(Variable v, UseStmt use1, Stmt use2) {
   useOfVar(v, use1) and 
   (
-	  use2 = use1.getASuccessor()
-	  or
-	  exists(Stmt mid |
-	    // use reaches here
-	    useReaches(v, use1, mid) and
-	    // not a redefinition of v
-	    not definition(v, mid) and
-	    // use2 is the successor
-	    use2 = mid.getASuccessor()
-	  )
+    use2 = use1.getASuccessor()
+    or
+    exists(Stmt mid |
+      // use reaches here
+      useReaches(v, use1, mid) and
+      // not a redefinition of v
+      not definition(v, mid) and
+      // use2 is the successor
+      use2 = mid.getASuccessor()
+    )
   )
 }
 

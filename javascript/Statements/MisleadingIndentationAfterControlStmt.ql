@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,11 @@
 /**
  * @name Misleading indentation after control statement
  * @description The body of a control statement should have appropriate indentation to clarify which
- *              statements it controls and which ones it does not control. 
+ *              statements it controls and which ones it does not control.
  * @kind problem
  * @problem.severity warning
+ * @tags changeability
+ *       correctness
  */
 
 import javascript
@@ -44,6 +46,7 @@ predicate missingOutdent(Stmt s1, Stmt s2) {
 
 from ControlStmt ctrl, Stmt s1, Stmt s2
 where shouldOutdent(ctrl, s1, s2) and
-      missingOutdent(s1, s2)
+      missingOutdent(s1, s2) and
+      not ctrl.getTopLevel().isMinified()
 select (FirstLineOf)s2, "The indentation of this statement suggests that it is controlled by $@, while in fact it is not.",
             (FirstLineOf)ctrl, "this statement"

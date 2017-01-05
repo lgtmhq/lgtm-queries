@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ class XMLFile extends XMLParent, File {
                                this.getPath().length()-this.getName().length())
    }
 
-   /** get this file's enconding */
+   /** get this file's encoding */
    string getEncoding() { xmlEncoding(this,result) }
    
    /** get the file this entity belongs to */

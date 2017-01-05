@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
  * @description Unused variables may be a symptom of a bug and should be examined carefully.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
  */
 
 import javascript
@@ -26,5 +27,14 @@ where v = vd.getVariable() and
       not exists(v.getAnAccess()) and
       not exists (Parameter p | v = p.getAVariable()) and
       not vd.getParent() instanceof FunctionExpr and
-      not exists (ExportNamedDeclaration end | vd = end.getADecl())
+      not exists (ExportNamedDeclaration end | vd = end.getADecl()) and
+      // exclude variables mentioned in JSDoc comments in externs
+      not exists (Externs ext, JSDoc jsdoc |
+        ext = vd.getTopLevel() and jsdoc.getComment().getTopLevel() = ext |
+        jsdoc.getComment().getText().regexpMatch("(?s).*\\b" + v.getName() + "\\b.*")
+      ) and
+      // `v` isn't used in combination with a rest property pattern to filter out unwanted properties
+      not exists (ObjectPattern op | exists(op.getRest()) |
+        op.getAPropertyPattern().getValuePattern() = vd
+      )
 select vd, "Unused variable."

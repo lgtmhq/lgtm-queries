@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,10 +66,8 @@ class Expr extends @expr, ExprOrStmt {
    * Get the kind of this expression, which is an integer
    * value representing the expression's node type.
    *
-   * <p>
-   * Note: The mapping from node types to integers is considered an implementation detail
+   * _Note_: The mapping from node types to integers is considered an implementation detail
    * and may change between versions of the extractor.
-   * </p>
    */
   int getKind() {
      exprs(this, result, _, _, _)
@@ -171,10 +169,10 @@ class ParExpr extends @parexpr, Expr {
   }
 }
 
-/** A 'null' literal. */
+/** A `null` literal. */
 class NullLiteral extends @nullliteral, Literal {}
 
-/** A Boolean literal, that is, either 'true' or 'false'. */
+/** A Boolean literal, that is, either `true` or `false`. */
 class BooleanLiteral extends @booleanliteral, Literal {}
 
 /** A numeric literal. */
@@ -208,23 +206,23 @@ class RegExpLiteral extends @regexpliteral, Literal, RegExpParent {
     result = getValue().regexpCapture(".*/(\\w*)$", 1)
   }
   
-  /** Does this regular expression have an 'm' flag? */
+  /** Does this regular expression have an `m` flag? */
   predicate isMultiline() {
     getFlags().matches("%m%")
   }
   
-  /** Does this regular expression have a 'g' flag? */
+  /** Does this regular expression have a `g` flag? */
   predicate isGlobal() {
     getFlags().matches("%g%")
   }
   
-  /** Does this regular expression have an 'i' flag? */
+  /** Does this regular expression have an `i` flag? */
   predicate isIgnoreCase() {
     getFlags().matches("%i%")
   }
 }
 
-/** A 'this' expression. */
+/** A `this` expression. */
 class ThisExpr extends @thisexpr, Expr {
   predicate isImpure() {
     none()
@@ -288,7 +286,7 @@ class ObjectExpr extends @objexpr, Expr {
   }
   
   /** Get the property with the given name, if any. */
-  Property getProperty(string name) {
+  Property getPropertyByName(string name) {
     result = this.getAProperty() and
     result.getName() = name
   }
@@ -310,7 +308,7 @@ class ObjectExpr extends @objexpr, Expr {
  */
 class Property extends @property, ASTNode {
   Property() {
-    // filter out property patterns
+    // filter out property patterns and JSX attributes
     exists (ObjectExpr obj | properties(this, obj, _, _, _))
   }
 
@@ -319,6 +317,8 @@ class Property extends @property, ASTNode {
    * properties, this is either an identifier, a string literal, or a
    * numeric literal; for computed properties it can be an arbitrary
    * expression.
+   *
+   * For spread properties, the name is not defined.
    */
   Expr getNameExpr() {
     result = this.getChildExpr(0)
@@ -378,13 +378,14 @@ class Property extends @property, ASTNode {
     (isComputed() and getNameExpr().isImpure()) or
     getInit().isImpure()
   }
-	
+
   string toString() {
     properties(this, _, _, _, result)
   }
 
   CFGNode getFirstCFGNode() {
-    result = getNameExpr().getFirstCFGNode()
+    result = getNameExpr().getFirstCFGNode() or
+    not exists(getNameExpr()) and result = getInit().getFirstCFGNode()
   }
 
   /**
@@ -394,6 +395,26 @@ class Property extends @property, ASTNode {
    */
   int getKind() {
     properties(this, _, _, result, _)
+  }
+
+  /**
+   * The `i`-th decorator applied to this property.
+   *
+   * For example, the property `@A @B x: 42` has
+   * `@A` as its 0-th decorator, and `@B` as its first decorator.
+   */
+  Decorator getDecorator(int i) {
+    result = getChildExpr(-(i+1))
+  }
+
+  /**
+   * A decorator applied to this property, if any.
+   *
+   * For example, the property `@A @B x: 42` has
+   * decorators `@A` and `@B`.
+   */
+  Decorator getADecorator() {
+    result = getDecorator(_)
   }
 }
 
@@ -415,6 +436,17 @@ class PropertyGetter extends PropertyAccessor, @property_getter {
 
 /** A property setter in an object literal. */
 class PropertySetter extends PropertyAccessor, @property_setter {
+}
+
+/**
+ * A spread property in an object literal, such as `...others` in
+ * `{ x: 42, ...others }`. The value of a spread property is always
+ * a `SpreadElement`.
+ */
+class SpreadProperty extends Property {
+  SpreadProperty() {
+    not exists(getNameExpr())
+  }
 }
 
 /** A function expression. */
@@ -524,17 +556,17 @@ class ConditionalExpr extends @conditionalexpr, Expr {
     result = getChildExpr(0)
   }
   
-  /** Get the 'then' expression of this conditional. */
+  /** Get the "then" expression of this conditional. */
   Expr getConsequent() {
     result = getChildExpr(1)
   }
   
-  /** Get the 'else' expression of this conditional. */
+  /** Get the "else" expression of this conditional. */
   Expr getAlternate() {
     result = getChildExpr(2)
   }
  
-  /** Get either the 'then' or the 'else' expression of this conditional. */
+  /** Get either the "then" or the "else" expression of this conditional. */
   Expr getABranch() {
     result = getConsequent() or result = getAlternate()
   }
@@ -546,7 +578,7 @@ class ConditionalExpr extends @conditionalexpr, Expr {
 }
 
 /** An invocation expression, that is, either a function call or
- * a 'new' expression. */
+ * a `new` expression. */
 class InvokeExpr extends @invokeexpr, Expr {
   /** Get the expression specifying the function to be called. */
   Expr getCallee() {
@@ -579,9 +611,19 @@ class InvokeExpr extends @invokeexpr, Expr {
   CFGNode getFirstCFGNode() {
     result = getCallee().getFirstCFGNode()
   }
+
+  /** Does the argument list of this function have a trailing comma? */
+  predicate hasTrailingComma() {
+    // check whether the last token of this invocation is a closing
+    // parenthesis, which itself is preceded by a comma
+    exists (PunctuatorToken rparen | rparen.getValue() = ")" |
+      rparen = getLastToken() and
+      rparen.getPreviousToken().getValue() = ","
+    )
+  }
 }
 
-/** A 'new' expression. */
+/** A `new` expression. */
 class NewExpr extends @newexpr, InvokeExpr {}
 
 /** A function call expression. */
@@ -622,7 +664,7 @@ class MethodCallExpr extends CallExpr {
 }
 
 /** A property access, that is, either a dot expression of the form
- * 'e.f' or an index expression of the form 'e[p]'. */
+ * `e.f` or an index expression of the form `e[p]`. */
 class PropAccess extends @propaccess, Expr {
   /** Get the base expression on which the property is accessed. */
   Expr getBase() {
@@ -732,21 +774,21 @@ class BitNotExpr extends @bitnotexpr, UnaryExpr {
   }
 }
 
-/** A 'typeof' expression. */
+/** A `typeof` expression. */
 class TypeofExpr extends @typeofexpr, UnaryExpr {
   string getOperator() {
     result = "typeof"
   }
 }
 
-/** A 'void' expression. */
+/** A `void` expression. */
 class VoidExpr extends @voidexpr, UnaryExpr {
   string getOperator() {
     result = "void"
   }
 }
 
-/** A 'delete' expression. */
+/** A `delete` expression. */
 class DeleteExpr extends @deleteexpr, UnaryExpr {
   string getOperator() {
     result = "delete"
@@ -805,35 +847,35 @@ class BinaryExpr extends @binaryexpr, Expr {
 }
 
 /** A comparison expression, that is, either an equality test
- * ('==', '!=', '===', '!==') or a relational expression
- * ('&lt;', '&lt;=', '>=', '>'). */
+ * (`==`, `!=`, `===`, `!==`) or a relational expression
+ * (`<`, `<=`, `>=`, `>`). */
 class Comparison extends @comparison, BinaryExpr {}
 
-/** An equality test using '==', '!=', '===' or '!=='. */
+/** An equality test using `==`, `!=`, `===` or `!==`. */
 class EqualityTest extends @equalitytest, Comparison {}
 
-/** An equality test using '=='. */
+/** An equality test using `==`. */
 class EqExpr extends @eqexpr, EqualityTest {
   string getOperator() {
     result = "=="
   }
 }
 
-/** An inequality test using '!='. */
+/** An inequality test using `!=`. */
 class NEqExpr extends @neqexpr, EqualityTest {
   string getOperator() {
     result = "!="
   }
 }
 
-/** A strict equality test using '==='. */
+/** A strict equality test using `===`. */
 class StrictEqExpr extends @eqqexpr, EqualityTest {
   string getOperator() {
     result = "==="
   }
 }
 
-/** A strict inequality test using '!=='. */
+/** A strict inequality test using `!==`. */
 class StrictNEqExpr extends @neqqexpr, EqualityTest {
   string getOperator() {
     result = "!=="
@@ -868,21 +910,21 @@ class GEExpr extends @geexpr, Comparison {
   }
 }
 
-/** A left-shift expression using '&lt;&lt;'. */
+/** A left-shift expression using `<<`. */
 class LShiftExpr extends @lshiftexpr, BinaryExpr {
   string getOperator() {
     result = "<<"
   }
 }
 
-/** A right-shift expression using '>>'. */
+/** A right-shift expression using `>>`. */
 class RShiftExpr extends @rshiftexpr, BinaryExpr {
   string getOperator() {
     result = ">>"
   }
 }
 
-/** An unsigned right-shift expression using '>>>'. */
+/** An unsigned right-shift expression using `>>>`. */
 class URShiftExpr extends @urshiftexpr, BinaryExpr {
   string getOperator() {
     result = ">>>"
@@ -928,6 +970,13 @@ class ModExpr extends @modexpr, BinaryExpr {
   }
 }
 
+/** An exponentiation expression. */
+class ExpExpr extends @expexpr, BinaryExpr {
+  string getOperator() {
+    result = "**"
+  }
+}
+
 /** A bitwise or expression. */
 class BitOrExpr extends @bitorexpr, BinaryExpr {
   string getOperator() {
@@ -949,14 +998,14 @@ class BitAndExpr extends @bitandexpr, BinaryExpr {
   }
 }
 
-/** An 'in' expression. */
+/** An `in` expression. */
 class InExpr extends @inexpr, BinaryExpr {
   string getOperator() {
     result = "in"
   }
 }
 
-/** An 'instanceof' expression. */
+/** An `instanceof` expression. */
 class InstanceofExpr extends @instanceofexpr, BinaryExpr {
   string getOperator() {
     result = "instanceof"
@@ -968,6 +1017,8 @@ class LogAndExpr extends @logandexpr, BinaryExpr {
   string getOperator() {
     result = "&&"
   }
+
+  CFGNode getFirstCFGNode() { result = this }
 }
 
 /** A logical or expression. */
@@ -975,10 +1026,12 @@ class LogOrExpr extends @logorexpr, BinaryExpr {
   string getOperator() {
     result = "||"
   }
+
+  CFGNode getFirstCFGNode() { result = this }
 }
 
 /** A logical binary expression, that is, either a logical
- * 'or' or a logical 'and' expression. */
+ * or or a logical and expression. */
 class LogicalBinaryExpr extends BinaryExpr {
   LogicalBinaryExpr() {
     this instanceof LogAndExpr or
@@ -1030,14 +1083,7 @@ class Assignment extends @assignment, Expr {
 }
 
 /** A simple assignment expression. */
-class AssignExpr extends @assignexpr, Assignment {
-  CFGNode getFirstCFGNode() {
-    if getTarget() instanceof Identifier then
-      result = getRhs().getFirstCFGNode()
-    else
-      result = Assignment.super.getFirstCFGNode()
-  }
-}
+class AssignExpr extends @assignexpr, Assignment {}
 
 /** A compound assign expression. */
 abstract class CompoundAssignExpr extends Assignment {}
@@ -1056,6 +1102,9 @@ class AssignDivExpr extends @assigndivexpr, CompoundAssignExpr {}
 
 /** A compound modulo-assign expression. */
 class AssignModExpr extends @assignmodexpr, CompoundAssignExpr {}
+
+/** A compound exponentiate-assign expression. */
+class AssignExpExpr extends @assignexpexpr, CompoundAssignExpr {}
 
 /** A compound left-shift-assign expression. */
 class AssignLShiftExpr extends @assignlshiftexpr, CompoundAssignExpr {}
@@ -1142,7 +1191,7 @@ class YieldExpr extends @yieldexpr, Expr {
     result = getChildExpr(0)
   }
 
-  /** Is this a 'yield*' expression? */
+  /** Is this a `yield*` expression? */
   predicate isDelegating() {
     isDelegating(this)
   }
@@ -1252,7 +1301,7 @@ class ForInComprehensionBlock extends @forincomprehensionblock, ComprehensionBlo
 class ForOfComprehensionBlock extends @forofcomprehensionblock, ComprehensionBlock {
 }
 
-/** A binary arithmetic expression using '+', '-', '/', or '%'. */
+/** A binary arithmetic expression using `+`, `-`, `/`, or `%`. */
 class ArithmeticExpr extends BinaryExpr {
   ArithmeticExpr() {
     this instanceof AddExpr or
@@ -1263,7 +1312,7 @@ class ArithmeticExpr extends BinaryExpr {
   }
 }
 
-/** A logical expression using '&amp;&amp;', '||', or '!'. */
+/** A logical expression using `&&`, `||`, or `!`. */
 class LogicalExpr extends Expr {
   LogicalExpr() {
     this instanceof LogicalBinaryExpr or
@@ -1271,7 +1320,7 @@ class LogicalExpr extends Expr {
   }
 }
 
-/** A bitwise expression using '&amp;', '|', '^', '~', '&lt;&lt;', '>>', or '>>>'. */
+/** A bitwise expression using `&`, `|`, `^`, `~`, `<<`, `>>`, or `>>>`. */
 class BitwiseExpr extends Expr {
   BitwiseExpr() {
     this instanceof BitwiseBinaryExpr or
@@ -1280,7 +1329,7 @@ class BitwiseExpr extends Expr {
   }
 }
 
-/** A strict equality test using '!==' or '==='. */
+/** A strict equality test using `!==` or `===`. */
 class StrictEqualityTest extends EqualityTest {
   StrictEqualityTest() {
     this instanceof StrictEqExpr or
@@ -1288,7 +1337,7 @@ class StrictEqualityTest extends EqualityTest {
   }
 }
 
-/** A non-strict equality test using '!=' or '=='. */
+/** A non-strict equality test using `!=` or `==`. */
 class NonStrictEqualityTest extends EqualityTest {
   NonStrictEqualityTest() {
     this instanceof EqExpr or
@@ -1296,7 +1345,7 @@ class NonStrictEqualityTest extends EqualityTest {
   }
 }
 
-/** A relational comparison using '&lt;', '&lt;=', '>=', or '>'. */
+/** A relational comparison using `<`, `<=`, `>=`, or `>`. */
 class RelationalComparison extends Comparison {
   RelationalComparison() {
     this instanceof LTExpr or
@@ -1307,7 +1356,7 @@ class RelationalComparison extends Comparison {
 
   /**
    * Get the lesser operand of this comparison, that is, the left operand for
-   * a `&lt;` or `&lt;=` comparison, and the right operand for `>=` or `>`.
+   * a `<` or `<=` comparison, and the right operand for `>=` or `>`.
    */
   Expr getLesserOperand() {
     (this instanceof LTExpr or this instanceof LEExpr) and result = getLeftOperand() or
@@ -1316,7 +1365,7 @@ class RelationalComparison extends Comparison {
 
   /**
    * Get the greater operand of this comparison, that is, the right operand for
-   * a `&lt;` or `&lt;=` comparison, and the left operand for `>=` or `>`.
+   * a `<` or `<=` comparison, and the left operand for `>=` or `>`.
    */
   Expr getGreaterOperand() {
     result = getAnOperand() and result != getLesserOperand()
@@ -1334,7 +1383,7 @@ class DecExpr extends UpdateExpr {
 }
 
 
-/** An old-style let expression of the form <code>let(vardecls) expr</code>. */
+/** An old-style let expression of the form `let(vardecls) expr`. */
 class LegacyLetExpr extends Expr, @legacy_letexpr {
   /** Get the i-th declarator in this let expression. */
   VariableDeclarator getDecl(int i) {
@@ -1353,14 +1402,13 @@ class LegacyLetExpr extends Expr, @legacy_letexpr {
 }
 
 /**
- * A helper predicate that binds <code>invk</code> to an immediate invocation of
- * function <code>f</code>, and kind to a string describing how <code>invk</code>
- * invokes <code>f</code>:
- * <ul>
- * <li>if <code>invk</code> is a direct function call, <code>kind</code> is <code>"direct"</code>;</li>
- * <li>if <code>invk</code> is a reflective function call through <code>call</code> or <code>apply</code>,
- *     <code>kind</code> is <code>"call"</code> or <code>"apply"</code>, respectively.</li>
- * </ul>
+ * A helper predicate that binds `invk` to an immediate invocation of
+ * function `f`, and kind to a string describing how `invk`
+ * invokes `f`:
+ *
+ * - if `invk` is a direct function call, `kind` is `"direct"`;
+ * - if `invk` is a reflective function call through `call` or `apply`,
+ *   `kind` is `"call"` or `"apply"`, respectively.
  */
 private predicate iife(InvokeExpr invk, Function f, string kind) {
   // direct call
@@ -1392,5 +1440,120 @@ class ImmediatelyInvokedFunctionExpr extends Function {
       kind = "direct" and arg = invk.getArgument(i) or
       kind = "call" and arg = invk.getArgument(i+1)
     )
+  }
+}
+
+/** An await expression. */
+class AwaitExpr extends @awaitexpr, Expr {
+  /** Get the operand of the await expression. */
+  Expr getOperand() {
+    result = getChildExpr(0)
+  }
+
+  predicate isImpure() {
+    any()
+  }
+
+  CFGNode getFirstCFGNode() {
+    result = getOperand().getFirstCFGNode()
+  }
+}
+
+/**
+ * A `function.sent` expression.
+ *
+ * Inside a generator function, `function.sent` evaluates to the value passed
+ * to the generator by the `next` method that most recently resumed execution
+ * of the generator.
+ */
+class FunctionSentExpr extends @functionsentexpr, Expr {
+  predicate isImpure() {
+    none()
+  }
+}
+
+/**
+ * A decorator applied to a class, property or member definition.
+ *
+ * For example, in the class declaration `@A class C { }`,
+ * `@A` is a decorator applied to class `C`.
+ */
+class Decorator extends @decorator, Expr {
+  /**
+   * The element the decorator is applied to.
+   *
+   * For example, in the class declaration `@A class C { }`,
+   * the element decorator `@A` is applied to is `C`.
+   */
+  Decoratable getElement() {
+    this = result.getADecorator()
+  }
+
+  /**
+   * The expression of the decorator.
+   *
+   * For example, the decorator `@A` has expression `A`,
+   * and `@testable(true)` has expression `testable(true)`.
+   */
+  Expr getExpression() {
+    result = getChildExpr(0)
+  }
+
+  CFGNode getFirstCFGNode() {
+    result = getExpression().getFirstCFGNode()
+  }
+}
+
+/**
+ * A program element to which decorators can be applied,
+ * that is, a class, a property or a member definition.
+ */
+class Decoratable extends ASTNode {
+  Decoratable() {
+    this instanceof Class or
+    this instanceof Property or
+    this instanceof MemberDefinition
+  }
+
+  /**
+   * The `i`-th decorator applied to this element.
+   */
+  Decorator getDecorator(int i) {
+    result = this.(Class).getDecorator(i) or
+    result = this.(Property).getDecorator(i) or
+    result = this.(MemberDefinition).getDecorator(i)
+  }
+
+  /**
+   * A decorator applied to this element, if any.
+   */
+  Decorator getADecorator() {
+    result = this.getDecorator(_)
+  }
+}
+
+/**
+ * A function bind expression either of the form `b::f`, or of the
+ * form `::b.f`.
+ */
+class FunctionBindExpr extends @bindexpr, Expr {
+  /**
+   * The object of the function bind expression; undefined for
+   * expressions of the form `::b.f`.
+   */
+  Expr getObject() {
+    result = getChildExpr(0)
+  }
+
+  /**
+   * The callee of the function bind expression.
+   */
+  Expr getCallee() {
+    result = getChildExpr(1)
+  }
+
+  CFGNode getFirstCFGNode() {
+    result = getObject().getFirstCFGNode() or
+    not exists(getObject()) and result = getCallee().getFirstCFGNode()
   }
 }

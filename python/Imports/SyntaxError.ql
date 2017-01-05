@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,13 @@
  * @name Syntax error
  * @description Syntax errors cause failures at runtime and prevent analysis of the code.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @tags reliability
+ *       correctness
  */
 
 import python
 
 from SyntaxError error
+where not error instanceof EncodingError
 select error, error.getMessage()

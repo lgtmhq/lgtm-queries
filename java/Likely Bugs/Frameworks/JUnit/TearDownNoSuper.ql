@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
 /**
  * @name TestCase implements tearDown but doesn't call super.tearDown()
  * @description A JUnit 3.8 test method that overrides 'tearDown' but does not call 'super.tearDown'
- *				may result in subsequent tests failing, or allow the current state to persist and 
+ *              may result in subsequent tests failing, or allow the current state to persist and
  *              affect subsequent tests.
  * @kind problem
  * @problem.severity warning
+ * @tags testability
+ *       maintainability
+ *       frameworks/junit
  */
-import default
+import java
 
 from TearDownMethod m1
 where m1.fromSource() and

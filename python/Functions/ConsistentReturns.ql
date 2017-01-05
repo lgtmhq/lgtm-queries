@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,12 +11,13 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-
 /**
  * @name Explicit returns mixed with implicit (fall through) returns
  * @description Mixing implicit and explicit returns indicates a likely error as implicit returns always return 'None'.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
 
 import python

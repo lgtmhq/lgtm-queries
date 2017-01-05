@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,16 +13,19 @@
 
 /**
  * @name Serialization methods do not match required signature
- * @description A serialized class that implements 'readObject' or 'writeObject' but does not use 
+ * @description A serialized class that implements 'readObject' or 'writeObject' but does not use
  *              the correct signatures causes the default serialization mechanism to be used.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
+ *       language-features
  */
-import default
+import java
 
 from Method m, TypeSerializable serializable
 where m.getDeclaringType().hasSupertype+(serializable) and
-			m.getNumberOfParameters() = 1 and
+      m.getNumberOfParameters() = 1 and
       m.getAParameter().getType().(RefType).hasQualifiedName("java.io", "ObjectOutputStream") and
       (m.hasName("readObject") or m.hasName("writeObject")) and
       not m.isPrivate()

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
  *              since it could be mistaken for a word boundary assertion.
  * @kind problem
  * @problem.severity recommendation
+ * @tags maintainability
+ *       readability
+ *       regular-expressions
  */
 
-import default
+import javascript
 
 from RegExpCharEscape rece
 where rece.toString() = "\\b"

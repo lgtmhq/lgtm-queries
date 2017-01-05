@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,16 @@
 
 /**
  * @name Dangerous non-short-circuit logic
- * @description Using a bitwise logical operator on a Boolean where a conditional-and or 
+ * @description Using a bitwise logical operator on a Boolean where a conditional-and or
  *              conditional-or operator is intended is likely to give the wrong result and may
  *              cause an exception.
  * @kind problem
  * @problem.severity warning
- * @cwe 691
+ * @tags reliability
+ *       readability
+ *       external/cwe/cwe-691
  */
-import default
+import java
 
 /** An expression containing a method access, array access, or qualified field access. */
 class DangerousExpression extends Expr {
@@ -29,8 +31,8 @@ class DangerousExpression extends Expr {
       e instanceof MethodAccess or
       e instanceof ArrayAccess or
       exists(e.(FieldAccess).getQualifier())
-	  )
-	}
+    )
+  }
 }
 
 /** A use of `&` or `|` on operands of type boolean. */

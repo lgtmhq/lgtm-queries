@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,17 @@
 /**
  * @name Busy wait
  * @description Calling 'Thread.sleep' to control thread interaction is
- *              less effective than waiting for a notification and may also 
- *              result in race conditions. Merely synchronizing over shared 
- *              variables in a loop to control thread interaction 
+ *              less effective than waiting for a notification and may also
+ *              result in race conditions. Merely synchronizing over shared
+ *              variables in a loop to control thread interaction
  *              may waste system resources and cause performance problems.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
+ *       concurrency
  */
-import default
+import java
 
 class ReachFromStmt extends Stmt {
   ReachFromStmt() {
@@ -68,7 +71,7 @@ predicate callsCommunicationMethod(Method source) {
   or
   exists(MethodAccess a, Method overridingMethod, Method target |
     callsCommunicationMethod(overridingMethod) and
-    overridingMethod.overrides*(target) and
+    overridingMethod.overridesOrInstantiates*(target) and
     target = a.getMethod() and
     a.getEnclosingCallable() = source
   )

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,52 +11,35 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import python
 
-/* Whether 'func' includes super().xxx where 'xxx' is the name of 'func' */
-private predicate uses_super(FunctionObject func) {
-    exists(Attribute a, Call c, GlobalVariable sup |
-        a.getObject() = c and
-        c.getFunc() = sup.getAnAccess() and
-        sup.getId() = "super" and
-        c.getScope() = func.getFunction() and
-        a.getName() = func.getName()
+// Helper predicates for mutliple call to __init__/__del__ queries.
+
+predicate multiple_calls_to_superclass_method(ClassObject self, FunctionObject multi, string name) {
+    exists(FunctionObject top_method |
+        super_class_method(self, top_method, multi, name) and
+        strictcount(FunctionObject x | 
+            super_class_method(self, top_method, x, name) and
+            x.getACallee() = multi
+        ) > 1
     )
 }
 
-/**
- * Whether function `func` calls `super_type.called`
- * In the following code:
- * 
- *   def func(self):
- *     T.func(self)
- *
- * called is `T.func` and super_type is `T`
- */
-private predicate direct_call(FunctionObject func, ClassObject super_type, FunctionObject called) {
-    exists(Call c, string name |
-        func.getName() = name and
-        c.getScope() = func.getFunction() and
-        c.getAFlowNode().getFunction().(AttrNode).getObject(name).refersTo(super_type) and
-        ((Name)c.getArg(0)).getId() = "self" and
-        called = super_type.lookupAttribute(name)
-    )
+private predicate super_class_method(ClassObject self, FunctionObject top_method, FunctionObject method, string name) {
+    (name = "__init__" or name = "__del__") and
+    self.lookupAttribute(name) = top_method and
+    top_method.getACallee*() = method and
+    self.getAnImproperSuperType().declaredAttribute(name) = method
 }
 
-/** Returns the function of the same name whose enclosing class is a superclass of the class enclosing 'func'
-    and which is called by 'func', either directly: SuperType.meth() or indirectly: super(Type, self).meth(),
-    when the initial call, from which this chain derives, has 'self' which an instance of 'self_type' */
-FunctionObject next_function_in_chain(ClassObject self_type, FunctionObject func) {
-    exists(ClassObject current, string name | current.declaredAttribute(name) = func |
-        uses_super(func) and
-        exists(ClassObject sup | sup = self_type.nextInMro(current) |
-            result = sup.lookupAttribute(name)
-        )
-    )
-    or
-    exists(ClassObject base |
-        direct_call(func, base, result) and 
-        base = self_type.getASuperType() and
-        (self_type.lookupAttribute(_) = func or func = next_function_in_chain(self_type, _))
+predicate missing_call_to_superclass_method(ClassObject self, FunctionObject top_method, FunctionObject missing, string name) {
+    self.lookupAttribute(name) = top_method and
+    missing != top_method and
+    self.getAnImproperSuperType().declaredAttribute(name) = missing and
+    not top_method.getACallee*() = missing and
+    /* Make sure that all 'methods' are objects that we can understand */
+    forall(Object init |
+        init = self.getAnImproperSuperType().declaredAttribute(name) |
+        init instanceof FunctionObject
     )
 }

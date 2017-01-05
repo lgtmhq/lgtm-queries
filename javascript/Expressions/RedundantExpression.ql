@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
  *              even if it is intentional, it makes the code hard to read.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
  */
 
 import Clones
@@ -69,8 +71,8 @@ class RedundantIdemnecantOperand extends RedundantOperand {
 /**
  * Clone detector for idempotent expressions.
  * 
- * Note that '&amp;' and '|' are not really idempotent in JavaScript, since they coerce their
- * arguments to integers. For example, 'x&amp;x' is a common idiom for converting 'x' to an integer.
+ * Note that `&` and `|` are not really idempotent in JavaScript, since they coerce their
+ * arguments to integers. For example, `x&x` is a common idiom for converting `x` to an integer.
  */
 class RedundantIdempotentOperand extends RedundantOperand {
   RedundantIdempotentOperand() {

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,14 @@
  *              a final class has no subclasses.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       readability
+ *       types
  */
 
-import default
+import java
 
 from TypeVariable v, RefType bound
-where v.getUpperBoundType() = bound
+where v.getATypeBound().getType() = bound
   and bound.isFinal()
 select v, "Type '" + bound + "' is final, so <" + v.getName() + " extends " + bound + "> is confusing."

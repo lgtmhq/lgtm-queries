@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,11 @@
 /**
  * @name 'break' or 'return' statement in finally
  * @description Using a Break or Return statement in a finally block causes the
- *  Try-finally block to exit, discarding the exception.
+ *              Try-finally block to exit, discarding the exception.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
 
 import python

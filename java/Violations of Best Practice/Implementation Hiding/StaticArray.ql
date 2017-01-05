@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
  * @description Array constants are mutable and can be changed by malicious code or by accident.
  * @kind problem
  * @problem.severity warning
- * @cwe 582
+ * @tags maintainability
+ *       modularity
+ *       external/cwe/cwe-582
  */
 import java
 

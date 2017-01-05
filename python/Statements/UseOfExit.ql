@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
  * @description exit() or quit() may fail if the interpreter is run with the -S option.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
  */
 
 import python
 
 from CallNode call, string name
 where call.getFunction().refersTo(quitterObject(name))
-select call, "The '" + name + "' site.Quitter object may fail if the 'site' module is not loaded or modified."
+select call, "The '" + name + "' site.Quitter object may not exist if the 'site' module is not loaded or is modified."

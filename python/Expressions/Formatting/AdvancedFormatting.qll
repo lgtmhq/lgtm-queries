@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,16 @@ import python
 
 
 library class PossibleAdvancedFormatString extends StrConst {
-  
+
     PossibleAdvancedFormatString() {
         this.getText().matches("%{%}%")
     }
-    
+
     private predicate field(int start, int end) {
         brace_pair(this, start, end) and
         this.getText().substring(start, end) != "{{}}"
     }
-    
+
     /** Gets the number of the formatting field at [start, end) */
     int getFieldNumber(int start, int end) {
         result = this.fieldId(start, end).toInt()
@@ -32,13 +32,13 @@ library class PossibleAdvancedFormatString extends StrConst {
         this.implicitlyNumberedField(start, end) and
         result = count(int s | this.implicitlyNumberedField(s, _) and s < start)
     }
-        
+
     /** Gets the text of the formatting field at [start, end) */
     string getField(int start, int end) {
         this.field(start, end) and
         result = this.getText().substring(start, end)
     }
-    
+
     private string fieldId(int start, int end) {
         this.field(start, end) and
         not exists(int istart, int iend | this.field(istart, iend) and istart > start and iend < end) and
@@ -48,26 +48,26 @@ library class PossibleAdvancedFormatString extends StrConst {
             result = this.getText().substring(start+1, end-1) and result.regexpMatch("[^!:.\\[]+")
         )
     }
-    
+
     /** Gets the name of the formatting field at [start, end) */
     string getFieldName(int start, int end) {
         result = this.fieldId(start, end)
         and not exists(this.getFieldNumber(start, end))
     }
-    
+
     private predicate implicitlyNumberedField(int start, int end) {
         this.field(start, end) and
         exists(string c | 
-            c = this.getText().charAt(start+1) |
+            start+1 = this.getText().indexOf(c) |
             c = "}" or c = ":" or c = "!"    
         )
     }
-        
+
     /** Whether this format string has implicitly numbered fields */
     predicate isImplicitlyNumbered() {
         this.implicitlyNumberedField(_, _)
     }
-    
+
     /** Whether this format string has explicitly numbered fields */
     predicate isExplicitlyNumbered() {
         exists(this.fieldId(_, _).toInt())
@@ -98,7 +98,8 @@ predicate escaping_brace(PossibleAdvancedFormatString fmt, int index) {
 private predicate inner_brace_pair(PossibleAdvancedFormatString fmt, int start, int end) {
     not escaping_brace(fmt, start) and
     not escaped_brace(fmt, start) and
-    exists(string pair | pair = fmt.getText().regexpFind("\\{([^{}]|\\{\\{)*+\\}", _, start) |
+    fmt.getText().charAt(start) = "{" and
+    exists(string pair | pair = fmt.getText().suffix(start).regexpCapture("(?s)(\\{([^{}]|\\{\\{)*+\\}).*", 1) |
         end = start + pair.length()
     )
 }
@@ -129,11 +130,11 @@ private predicate advanced_format_call(Call format_expr, PossibleAdvancedFormatS
 }
 
 class AdvancedFormatString extends PossibleAdvancedFormatString {
- 
+
     AdvancedFormatString() {
         advanced_format_call(_, this, _)
     }
-  
+
 }
 
 class AdvancedFormattingCall extends Call {
@@ -141,14 +142,15 @@ class AdvancedFormattingCall extends Call {
     AdvancedFormattingCall() {
         advanced_format_call(this, _, _) 
     }
-    
-    int getPositionalArgs() {
+
+    /** Count of the arguments actually provided */
+    int providedArgCount() {
         advanced_format_call(this, _, result)
     }
-    
+
     AdvancedFormatString getAFormat() {
         advanced_format_call(this, result, _)
     }
-    
+
 }
 

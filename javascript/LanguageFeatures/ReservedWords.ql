@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,17 @@
  * @description Future reserved words should not be used as variable names.
  * @kind problem
  * @problem.severity recommendation
+ * @tags changeability
+ *       maintainability
+ *       language-features
  */
 
-import default
+import javascript
 
 from Identifier id
 where id.getName().regexpMatch("class|const|enum|export|extends|import|super|implements|interface|let|package|private|protected|public|static|yield") and
       not exists(DotExpr de | id = de.getProperty()) and
-      not exists(Property prop | id = prop.getNameExpr())
+      not exists(Property prop | id = prop.getNameExpr()) and
+      // exclude JSX attribute names
+      not exists(JSXElement e | id = e.getAnAttribute().getNameExpr())
 select id, "Identifier name is a reserved word."

@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,25 +14,19 @@
 /**
  * External declarations described in Closure-style externs files.
  *
- * <p>
  * A declaration may either declare a type alias, a global variable or a member variable.
  * Member variables may either be static variables, meaning that they are directly attached
  * to a global object (typically a constructor function), or instance variables, meaning
  * that they are attached to the 'prototype' property of a constructor function.
- * </p>
  *
- * <p>
  * An example of a type alias declaration is
- * </p>
  *
  * <pre>
  * /** @typedef {String} *&#47;
  * var MyString;
  * </pre>
  *
- * <p>
  * Examples of a global variable declarations are
- * </p>
  *
  * <pre>
  * var Math = {};
@@ -40,9 +34,7 @@
  * var Array = function() {};
  * </pre>
  *
- * <p>
  * Examples of static member variable declarations are
- * </p>
  * 
  * <pre>
  * Math.PI;
@@ -50,9 +42,7 @@
  * Array.isArray = function(arr) {};
  * </pre>
  *
- * <p>
  * Examples of instance member variable declarations are
- * </p>
  *
  * <pre>
  * Object.prototype.hasOwnProperty = function(p) {};
@@ -144,7 +134,7 @@ class ExternalGlobalFunctionDecl extends ExternalGlobalDecl, FunctionDeclStmt {
   JSDoc getDocumentation() { result = FunctionDeclStmt.super.getDocumentation() }
 }
 
-/** A global variable delaration in an externs file. */
+/** A global variable declaration in an externs file. */
 class ExternalGlobalVarDecl extends ExternalGlobalDecl, VariableDeclarator {
   ExternalGlobalVarDecl() {
     getBindingPattern() instanceof Identifier and
@@ -220,10 +210,8 @@ class ExternalMemberDecl extends ExternalVarDecl, ExprStmt {
 /**
  * A static member variable declaration in an externs file.
  *
- * <p>
- * This captures declarations of the form <code>A.f;</code>, and declarations
- * with initializers of the form <code>A.f = {};</code>.
- * </p>
+ * This captures declarations of the form `A.f;`, and declarations
+ * with initializers of the form `A.f = {};`.
  */
 class ExternalStaticMemberDecl extends ExternalMemberDecl {
   ExternalStaticMemberDecl() {
@@ -238,10 +226,8 @@ class ExternalStaticMemberDecl extends ExternalMemberDecl {
 /**
  * An instance member variable declaration in an externs file.
  *
- * <p>
- * This captures declarations of the form <code>A.prototype.f;</code>, and declarations
- * with initializers of the form <code>A.prototype.f = {};</code>.
- * </p>
+ * This captures declarations of the form `A.prototype.f;`, and declarations
+ * with initializers of the form `A.prototype.f = {};`.
  */
 class ExternalInstanceMemberDecl extends ExternalMemberDecl {
   ExternalInstanceMemberDecl() {
@@ -289,7 +275,7 @@ class ExternalFunction extends ExternalEntity, Function {
 }
 
 /**
- * A <code>@constructor</code> tag.
+ * A `@constructor` tag.
  */
 class ConstructorTag extends JSDocTag {
   ConstructorTag() { getTitle() = "constructor" }
@@ -305,14 +291,14 @@ abstract library class NamedTypeReferent extends JSDocTag {
 }
 
 /**
- * An <code>@implements</code> tag.
+ * An `@implements` tag.
  */
 class ImplementsTag extends NamedTypeReferent {
   ImplementsTag() { getTitle() = "implements" }
 }
 
 /**
- * An <code>@extends</code> tag.
+ * An `@extends` tag.
  */
 class ExtendsTag extends NamedTypeReferent {
   ExtendsTag() { getTitle() = "extends" }

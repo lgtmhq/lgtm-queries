@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 
 /**
  * @name Array in String append
- * @description Appending an array to a string, without first converting the array to a string, 
+ * @description Appending an array to a string, without first converting the array to a string,
  *              produces unreadable results.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       maintainability
  */
-import default
+import java
 
 from AddExpr ae, Expr arr
 where ae.getType() instanceof TypeString and

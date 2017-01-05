@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,14 @@
 /**
  * @name Access to let-bound variable in temporal dead zone
  * @description Accessing a let-bound variable before its declaration will lead to a runtime
- *              error on ECMAScript 6 platforms.
+ *              error on ECMAScript 2015-compatible platforms.
  * @kind problem
  * @problem.severity warning
+ * @tags portability
+ *       correctness
  */
 
-import default
+import javascript
 
 int letDeclAt(BlockStmt blk, Variable v, LetStmt let) {
   let.getADecl().getBindingPattern().getAVariable() = v and
@@ -31,5 +33,7 @@ where v = va.getVariable() and
       j = letDeclAt(blk, v, let) and
       blk.getStmt(i) = va.getEnclosingStmt().getParentStmt*() and
       i < j and
+      // don't flag uses in different functions
+      blk.getContainer() = va.getContainer() and
       not letDeclAt(blk, v, _) < i
 select va, "This expression refers to $@ inside its temporal dead zone.",  let, va.getName()

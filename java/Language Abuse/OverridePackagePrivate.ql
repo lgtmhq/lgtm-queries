@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
  *              declaring classes are in different packages, is potentially confusing.
  * @kind problem
  * @problem.severity warning
+ * @tags maintainability
+ *       readability
  */
 
-import default
+import java
 
 from Method superMethod, Method method
 where overridesIgnoringAccess(method, _, superMethod, _)
@@ -28,5 +30,5 @@ where overridesIgnoringAccess(method, _, superMethod, _)
   and not superMethod.isProtected()
   and not superMethod.isPrivate()
 select method, "This method does not override $@ because it is private to another package.",
-	superMethod,
-	superMethod.getDeclaringType().getName() + "." + superMethod.getName()
+  superMethod,
+  superMethod.getDeclaringType().getName() + "." + superMethod.getName()

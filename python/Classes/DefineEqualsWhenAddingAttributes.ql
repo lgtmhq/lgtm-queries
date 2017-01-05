@@ -1,4 +1,4 @@
-// Copyright 2016 Semmle Ltd.
+// Copyright 2017 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,51 +16,18 @@
  * @description When adding new attributes to instances of a class, equality for that class needs to be defined.
  * @kind problem
  * @problem.severity warning
+ * @tags reliability
+ *       correctness
  */
 
 import python
 import semmle.python.SelfAttribute
+import Equality
 
 predicate class_stores_to_attribute(ClassObject cls, SelfAttributeStore store, string name) {
     exists(FunctionObject f | f = cls.declaredAttribute(_) and store.getScope() = f.getFunction() and store.getName() = name) and
     /* Exclude classes used as metaclasses */
     not cls.getASuperType() = theTypeType()
-}
-
-Attribute dictAccess(LocalVariable var) {
-  result.getName() = "__dict__" and
-  result.getObject() = var.getAnAccess()
-}
-
-class GenericEqMethod extends Function {
-  GenericEqMethod() {
-    this.getName() = "__eq__" and
-    exists(LocalVariable self, LocalVariable other |
-      self.getAnAccess() = this.getArg(0) and self.getId() = "self" and
-      other.getAnAccess() = this.getArg(1) and
-      exists(Compare eq | eq.getOp(0) instanceof Eq |
-        eq.getAChildNode() = dictAccess(self) and
-        eq.getAChildNode() = dictAccess(other)
-      )
-    )
-  }
-}
-
-/** An __eq__ method that just does self is other */
-class IdentityEqMethod extends Function {
- 
-    IdentityEqMethod() {
-        this.getName() = "__eq__" and
-        exists(LocalVariable self, LocalVariable other |
-            self.getAnAccess() = this.getArg(0) and self.getId() = "self" and
-            other.getAnAccess() = this.getArg(1) and
-            exists(Compare eq | eq.getOp(0) instanceof Is |
-                eq.getAChildNode() = self.getAnAccess() and
-                eq.getAChildNode() = other.getAnAccess()
-            )
-        )
-    }
-
 }
 
 predicate should_override_eq(ClassObject cls, Object base_eq) {
