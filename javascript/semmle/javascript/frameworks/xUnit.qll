@@ -12,12 +12,12 @@
 // permissions and limitations under the License.
 
 /**
- * Classes for working with xUnit.js tests.
+ * Provides classes for working with xUnit.js tests.
  */
 
 import javascript
 
-/** Helper predicate to check whether xUnit.js is present. */
+/** Holds if an initialization of xUnit.js is detected. */
 private predicate xUnitDetected() {
   // look for `Function.RegisterNamespace("xUnit.js");`
   exists (MethodCallExpr mc |
@@ -29,7 +29,7 @@ private predicate xUnitDetected() {
   )
 }
 
-/** Does `e` look like an xUnit.js attribute, possibly with arguments? */
+/** Holds if `e` looks like an xUnit.js attribute, possibly with arguments. */
 private predicate possiblyAttribute(Expr e, string name) {
   exists (Identifier id | id = e or id = e.(CallExpr).getCallee() |
     name = id.getName() and
@@ -38,7 +38,7 @@ private predicate possiblyAttribute(Expr e, string name) {
 }
 
 /**
- * Common abstraction for bracketed lists of expressions.
+ * A bracketed list of expressions.
  *
  * Depending on their syntactic position, such lists will either be parsed as
  * array expressions, or as a property index expression where the indexing
@@ -48,13 +48,19 @@ private predicate possiblyAttribute(Expr e, string name) {
  *
  * We also allow singleton lists, as in `[a][b]`.
  */
-abstract library class BracketedListOfExpressions extends Expr {
+abstract private class BracketedListOfExpressions extends Expr {
+  /** Gets the `i`th element expression of this list. */
   abstract Expr getElement(int i);
 }
 
-library class ArrayExprIsABracketedListOfExpressions extends ArrayExpr, BracketedListOfExpressions {
-  predicate isImpure() { ArrayExpr.super.isImpure() }
-  Expr getElement(int i) { result = ArrayExpr.super.getElement(i) }
+/**
+ * An array expression viewed as a bracketed list of expressions.
+ */
+private class ArrayExprIsABracketedListOfExpressions extends
+    ArrayExpr, BracketedListOfExpressions {
+  override predicate isImpure() { ArrayExpr.super.isImpure() }
+  /** Gets the `i`th element of this array literal. */
+  override Expr getElement(int i) { result = ArrayExpr.super.getElement(i) }
 }
 
 /**
@@ -65,7 +71,7 @@ library class ArrayExprIsABracketedListOfExpressions extends ArrayExpr, Brackete
  * closing brackets, for which we compensate by overriding `getFirstToken()`
  * and `getLastToken()`.
  */
-library class IndexExprIndexIsBracketedListOfExpressions extends BracketedListOfExpressions {
+private class IndexExprIndexIsBracketedListOfExpressions extends BracketedListOfExpressions {
   IndexExprIndexIsBracketedListOfExpressions() {
     exists (IndexExpr idx, Expr base |
       base = idx.getBase() and
@@ -75,33 +81,25 @@ library class IndexExprIndexIsBracketedListOfExpressions extends BracketedListOf
     )
   }
 
-  /**
-   * If this is a sequence expression, delegate to the appropriate method of that class;
-   * otherwise interpret as singleton list.
-   */
-  Expr getElement(int i) {
+  override Expr getElement(int i) {
     result = this.(SeqExpr).getChildExpr(i) or
     not this instanceof SeqExpr and i  = 0 and result = this
   }
 
-  /**
-   * Override to include opening bracket.
-   */
-  Token getFirstToken() {
+  override Token getFirstToken() {
+    // include opening bracket
     result = BracketedListOfExpressions.super.getFirstToken().getPreviousToken()
   }
 
-  /**
-   * Override to include closing bracket.
-   */
-  Token getLastToken() {
+  override Token getLastToken() {
+    // include closing bracket
     result = BracketedListOfExpressions.super.getLastToken().getNextToken()
   }
 }
 
 /**
- * Helper predicate: Does `ann` annotate `trg`, possibly skipping over other intervening
- * annotations?
+ * Holds if `ann` annotates `trg`, possibly skipping over other intervening
+ * annotations.
  *
  * We use a token-level definition, since depending on the number of annotations involved
  * the AST structure can become pretty complicated.
@@ -111,8 +109,12 @@ private predicate annotationTarget(BracketedListOfExpressions ann, XUnitTarget t
   forex (Expr e | e = ann.getElement(_) | possiblyAttribute(e, _)) and
   // followed directly either by a target or by another annotation
   exists (Token next | next = ann.getLastToken().getNextToken() |
-    trg.getFirstToken() = next or
-    exists (BracketedListOfExpressions ann2 | ann2.getFirstToken() = next | annotationTarget(ann2, trg))
+    trg.getFirstToken() = next
+    or
+    exists (BracketedListOfExpressions ann2 |
+      ann2.getFirstToken() = next |
+      annotationTarget(ann2, trg)
+    )
   )
 }
 
@@ -126,36 +128,43 @@ class XUnitAnnotation extends Expr {
     annotationTarget(this, _)
   }
 
-  /** Get the declaration or definition to which this annotation belongs. */
+  /** Gets the declaration or definition to which this annotation belongs. */
   XUnitTarget getTarget() {
     annotationTarget(this, result)
   }
 
-  /** Get the i-th attribute of this annotation. */
+  /** Gets the `i`th attribute of this annotation. */
   Expr getAttribute(int i) {
     result = this.(BracketedListOfExpressions).getElement(i)
   }
 
-  /** Get an attribute of this annotation. */
+  /** Gets an attribute of this annotation. */
   Expr getAnAttribute() {
     result = getAttribute(_)
   }
 
-  /** Get the number of attributes of this annotation. */
+  /** Gets the number of attributes of this annotation. */
   int getNumAttribute() {
     result = strictcount(getAnAttribute())
   }
 
-  /** Override to include brackets. */
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+  /**
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   */
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
+    // extend location to cover brackets
     exists (Location l1, Location l2 |
       l1 = getFirstToken().getLocation() and
       l2 = getLastToken().getLocation() |
-      path = l1.getFile().getPath() and
-      sl = l1.getStartLine() and
-      sc = l1.getStartColumn() and
-      el = l2.getEndLine() and
-      ec = l2.getEndColumn()
+      filepath = l1.getFile().getPath() and
+      startline = l1.getStartLine() and
+      startcolumn = l1.getStartColumn() and
+      endline = l2.getEndLine() and
+      endcolumn = l2.getEndColumn()
     )
   }
 }
@@ -171,7 +180,7 @@ class XUnitTarget extends Stmt {
     this.(ExprStmt).getExpr() instanceof AssignExpr
   }
 
-  /** Get an annotation of which this is the target, if any. */
+  /** Gets an annotation of which this is the target, if any. */
   XUnitAnnotation getAnAnnotation() {
     this = result.getTarget()
   }
@@ -185,22 +194,22 @@ class XUnitAttribute extends Expr {
     exists (XUnitAnnotation ann | this = ann.getAnAttribute())
   }
 
-  /** Get the name of this attribute. */
+  /** Gets the name of this attribute. */
   string getName() {
     possiblyAttribute(this, result)
   }
 
-  /** Get the i-th parameter of this attribute. */
+  /** Gets the `i`th parameter of this attribute. */
   Expr getParameter(int i) {
     result = this.(CallExpr).getArgument(i)
   }
 
-  /** Get a parameter of this attribute. */
+  /** Gets a parameter of this attribute. */
   Expr getAParameter() {
     result = getParameter(_)
   }
 
-  /** Get the number of parameters of this attribute. */
+  /** Gets the number of parameters of this attribute. */
   int getNumParameter() {
     result = count(getAParameter())
   }
@@ -209,7 +218,7 @@ class XUnitAttribute extends Expr {
 /**
  * A function with an xUnit.js annotation.
  */
-library class XUnitAnnotatedFunction extends Function {
+private class XUnitAnnotatedFunction extends Function {
   XUnitAnnotatedFunction() {
     exists (XUnitTarget target | exists(target.getAnAnnotation()) |
       this = target or
@@ -218,7 +227,7 @@ library class XUnitAnnotatedFunction extends Function {
     )
   }
 
-  /** Get an xUnit.js annotation on this function. */
+  /** Gets an xUnit.js annotation on this function. */
   XUnitAnnotation getAnAnnotation() {
     result = this.(XUnitTarget).getAnAnnotation() or
     result = this.(Expr).getEnclosingStmt().(XUnitTarget).getAnAnnotation()

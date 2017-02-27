@@ -18,6 +18,8 @@
  * @problem.severity error
  * @tags reliability
  *       correctness
+ * @sub-severity low
+ * @precision high
  */
 
 import python

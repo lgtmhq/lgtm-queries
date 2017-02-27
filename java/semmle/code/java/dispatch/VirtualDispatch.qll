@@ -37,57 +37,143 @@ private predicate implCount(MethodAccess m, int c) {
   strictcount(viableImpl(m)) = c
 }
 
+Callable viableCallable(Call c) {
+  result = viableImpl(c) or
+  c instanceof ConstructorCall and result = c.getCallee().getSourceDeclaration()
+}
+
 /** A viable implementation of the method called in the given method access. */
+cached
 Method viableImpl(MethodAccess source) {
   not result.isAbstract() and
-  exists(Method def | source.getMethod() = def |
-    // If we have a qualifier, then we track it through one local variable assignment
-    // and take the type of the assigned value.
-    exists(Expr src | src = variableTrack(source.getQualifier()) | 
-      // If we have a class instance expression or a `super` expr, then we know the exact type.
-      // This is an important improvement in precision.
-      exists(Type t | 
-        t = src.(ClassInstanceExpr).getConstructedType() or t = src.(SuperAccess).getType() | 
-        result = exactMethodImpl(def, t)
-      )
+  if source instanceof VirtualMethodAccess then
+    exists(Method def, RefType t, boolean exact |
+      source.getMethod() = def and
+      hasQualifierType(source, t, exact)
+      |
+      exact = true and result = exactMethodImpl(def, t.getSourceDeclaration())
       or
-      // If not, we have to consider subtypes.
-      not (src instanceof ClassInstanceExpr or src instanceof SuperAccess) 
-      and result = viableMethodImpl(def, src.getType())
+      exact = false and
+      exists(RefType t2 |
+        result = viableMethodImpl(def, t.getSourceDeclaration(), t2) and
+        not failsUnification(t, t2)
+      )
     )
-    or
-    // If the call has no qualifier then it's an implicit `this` qualifier,
-    // so start from the callee's declaring type.
-    not source.hasQualifier() and result = viableMethodImpl(def, def.getDeclaringType())
+  else
+    result = source.getMethod().getSourceDeclaration()
+}
+
+pragma[noinline]
+private predicate unificationTargetLeft(ParameterizedType t1, GenericType g) {
+  hasQualifierType(_, t1, _) and t1.getGenericType() = g
+}
+
+pragma[noinline]
+private predicate unificationTargetRight(ParameterizedType t2, GenericType g) {
+  hasViableSubtype(t2, _) and t2.getGenericType() = g
+}
+
+private predicate unificationTargets(Type t1, Type t2) {
+  exists(GenericType g | unificationTargetLeft(t1, g) and unificationTargetRight(t2, g)) or
+  exists(Array a1, Array a2 |
+    unificationTargets(a1, a2) and
+    t1 = a1.getComponentType() and
+    t2 = a2.getComponentType()
+  ) or
+  exists(ParameterizedType pt1, ParameterizedType pt2, int pos |
+    unificationTargets(pt1, pt2) and
+    not pt1.getSourceDeclaration() != pt2.getSourceDeclaration() and
+    t1 = pt1.getTypeArgument(pos) and
+    t2 = pt2.getTypeArgument(pos)
   )
 }
 
+pragma[noinline]
+private predicate typeArgsOfUnificationTargets(ParameterizedType t1, ParameterizedType t2, int pos, RefType arg1, RefType arg2) {
+  unificationTargets(t1, t2) and
+  arg1 = t1.getTypeArgument(pos) and
+  arg2 = t2.getTypeArgument(pos)
+}
+
+private predicate failsUnification(Type t1, Type t2) {
+  unificationTargets(t1, t2) and
+  (
+    exists(RefType arg1, RefType arg2 |
+      typeArgsOfUnificationTargets(t1, t2, _, arg1, arg2) and
+      failsUnification(arg1, arg2)
+    ) or
+    failsUnification(t1.(Array).getComponentType(), t2.(Array).getComponentType()) or
+    not (
+      t1 instanceof Array and t2 instanceof Array or
+      t1.(PrimitiveType) = t2.(PrimitiveType) or
+      t1.(Class).getSourceDeclaration() = t2.(Class).getSourceDeclaration() or
+      t1.(Interface).getSourceDeclaration() = t2.(Interface).getSourceDeclaration() or
+      t1 instanceof BoundedType and t2 instanceof RefType or
+      t1 instanceof RefType and t2 instanceof BoundedType
+    )
+  )
+}
+
+private predicate hasQualifierType(VirtualMethodAccess ma, RefType t, boolean exact) {
+  exists(Expr src | src = variableTrack(ma.getQualifier()) |
+    // If we have a qualifier, then we track it through one variable assignment
+    // and take the type of the assigned value.
+    exists(RefType srctype | srctype = src.getType() |
+      exists(TypeVariable v | v = srctype |
+        t = v.getAnUltimatelySuppliedType() or
+        not exists(v.getAnUltimatelySuppliedType()) and t = ma.getMethod().getDeclaringType()
+      ) or
+      t = srctype and not srctype instanceof TypeVariable
+    ) and
+    // If we have a class instance expression, then we know the exact type.
+    // This is an important improvement in precision.
+    if src instanceof ClassInstanceExpr then exact = true else exact = false
+  ) or
+  // If the call has no qualifier then it's an implicit `this` qualifier,
+  // so start from the caller's declaring type.
+  not exists(ma.getQualifier()) and t = ma.getEnclosingCallable().getDeclaringType() and exact = false
+}
+
+private class SrcRefType extends RefType {
+  SrcRefType() { this.isSourceDeclaration() }
+}
+
 /** The implementation of `top` present on a value of precisely type `t`. */
-private Method exactMethodImpl(Method top, RefType t) {
-  t.hasMethod(result, _) and
+private Method exactMethodImpl(Method top, SrcRefType t) {
+  hasSrcMethod(t, result) and
   top.getAPossibleImplementation() = result
 }
 
 /** The implementations of `top` present on viable subtypes of `t`. */
-cached private Method viableMethodImpl(Method top, RefType t) {
-  // This is a performance-critical method - exercise caution when editing it.
-  exists(RefType sub | 
-    result.getDeclaringType() = sub
-    and top.getAPossibleImplementation() = result 
-    and hasSubtypeStar(t, sub) 
-    and viable(sub)
+private Method viableMethodImpl(Method top, SrcRefType tsrc, RefType t) {
+  exists(SrcRefType sub |
+    result = exactMethodImpl(top, sub) and
+    tsrc = t.getSourceDeclaration() and
+    hasViableSubtype(t, sub)
   )
 }
 
-private predicate viable(Type t) {
-  // For now, we consider everything to be viable.
-  any()
+private predicate hasSrcMethod(SrcRefType t, Method impl) {
+  exists(Method m |
+    t.hasMethod(m, _) and impl = m.getSourceDeclaration()
+  )
+}
+
+private predicate hasViableSubtype(RefType t, SrcRefType sub) {
+  sub.extendsOrImplements*(t) and
+  not sub instanceof Interface and
+  not sub.isAbstract()
+}
+
+private Expr variableTrackStep(Expr use) {
+  exists(Variable v |
+    use = v.getAnAccess() and
+    not v instanceof Parameter and
+    result = v.getAnAssignedValue()
+  )
 }
 
 private Expr variableTrack(Expr use) {
-  exists(LocalVariableDecl v |
-    use = v.getAnAccess() and
-    result = v.getAnAssignedValue()
-  )
-  or not exists(LocalVariableDecl v | use = v.getAnAccess()) and result = use
+  result = variableTrackStep(use)
+  or not exists(variableTrackStep(use)) and result = use
 }

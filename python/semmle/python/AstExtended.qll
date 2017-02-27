@@ -50,7 +50,15 @@ library class ExprParent extends ExprParent_ {
 
 }
 
-library class DictItem extends DictItem_ {
+library class DictItem extends DictItem_, AstNode {
+
+    string toString() {
+        result = DictItem_.super.toString()
+    }
+
+    AstNode getAChildNode() { none() }
+
+    Scope getScope() { none() }
 
 }
 

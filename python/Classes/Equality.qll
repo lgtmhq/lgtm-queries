@@ -19,7 +19,14 @@ private Attribute dictAccess(LocalVariable var) {
     result.getObject() = var.getAnAccess()
 }
 
-/** A generic equality method that compares all attributes in its dict. */
+private Call getattr(LocalVariable obj, LocalVariable attr) {
+    result.getFunc().(Name).getId() = "getattr" and
+    result.getArg(0) = obj.getAnAccess() and
+    result.getArg(1) = attr.getAnAccess()
+}
+
+/** A generic equality method that compares all attributes in its dict,
+ * or compares attributes using `getattr`. */
 class GenericEqMethod extends Function {
 
     GenericEqMethod() {
@@ -27,9 +34,18 @@ class GenericEqMethod extends Function {
         exists(LocalVariable self, LocalVariable other |
             self.getAnAccess() = this.getArg(0) and self.getId() = "self" and
             other.getAnAccess() = this.getArg(1) and
-            exists(Compare eq | eq.getOp(0) instanceof Eq |
+            exists(Compare eq | 
+                eq.getOp(0) instanceof Eq or
+                eq.getOp(0) instanceof NotEq |
+                // `self.__dict__ == other.__dict__`
                 eq.getAChildNode() = dictAccess(self) and
                 eq.getAChildNode() = dictAccess(other)
+                or
+                // `getattr(self, var) == getattr(other, var)`
+                exists(Variable var |
+                    eq.getAChildNode() = getattr(self, var) and
+                    eq.getAChildNode() = getattr(other, var)
+                )
             )
         )
     }

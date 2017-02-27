@@ -102,7 +102,7 @@ predicate none_class_lookup_in_mro(ClassObject cls, ClassObject start, string na
 predicate none_function_never_returns(FunctionObject func) { none() }
 
 class NonePointsToFilter extends ConditionalControlFlowNode {
-  
+
     NonePointsToFilter() {
         none()
     }
@@ -114,9 +114,9 @@ class NonePointsToFilter extends ConditionalControlFlowNode {
     predicate allowedValue(ControlledVariable var, Object value) { none() }
 
     predicate allowedClass(ClassObject cls) { none() }
-  
+
     ControlFlowNode getRelevantUse(ControlledVariable var) { none() }
-    
+
 }
 
 predicate none_method_called_from_init(FunctionObject method, ClassObject owner) { none() }
@@ -142,3 +142,5 @@ ClassObject none_get_an_improper_super_type(ClassObject cls) { none() }
 predicate none_attribute_store_load_pair(ControlFlowNode stored_value, ControlFlowNode load) { none() }
 
 predicate none_abstract_class(ClassObject cls) { none() }
+
+predicate none_global_ssa_defn(GlobalVariable v, ControlFlowNode node, string kind) { none() }

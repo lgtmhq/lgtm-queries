@@ -70,7 +70,7 @@ class GwtUiField extends Field {
    * If false, `UiBinder.createAndBindUi` will fill the field.
    */
   predicate isProvided() {
-    getAnAnnotation().(GwtUiFieldAnnotation).getValue("provided").(BooleanLiteral).getLiteral() = "true"
+    getAnAnnotation().(GwtUiFieldAnnotation).getValue("provided").(BooleanLiteral).getBooleanValue() = true
   }
 }
 

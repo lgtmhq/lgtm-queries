@@ -20,19 +20,28 @@
  * @problem.severity error
  * @tags reliability
  *       correctness
+ * @precision high
  */
 
 import javascript
 import semmle.javascript.flow.Analysis
 private import semmle.javascript.flow.InferredTypes
 
+/**
+ * Holds if `left` and `right` are the left and right operands, respectively, of `nd`, which is
+ * a comparison.
+ *
+ * Besides the usual comparison operators, `switch` statements are also considered to be comparisons,
+ * with the switched-on expression being the right operand and all case labels the left operands.
+ */
 predicate comparisonOperands(ASTNode nd, Expr left, Expr right) {
   exists (Comparison cmp | cmp = nd | left = cmp.getLeftOperand() and right = cmp.getRightOperand()) or
   exists (SwitchStmt switch | switch = nd | right = switch.getExpr() and left = switch.getACase().getExpr())
 }
 
 /**
- * Rules for converting operands of comparison expressions.
+ * Gets a type that `operand`, which is an operand of comparison `parent`,
+ * could be converted to at runtime.
  */
 InferredType convertedOperandType(ASTNode parent, AnalysedFlowNode operand) {
   // strict equality tests do no conversion at all
@@ -65,9 +74,9 @@ InferredType convertedOperandType(ASTNode parent, AnalysedFlowNode operand) {
 }
 
 /**
- * Main query predicate: `left` and `right` are operands of `cmp`, but there is no
- * common type they coerce to. Parameters `leftTypes` and `rightTypes` are bound
- * to `left.ppTypes()` and `right.ppTypes()`, respectively.
+ * Holds if `left` and `right` are operands of comparison `cmp` having types
+ * `leftTypes` and `rightTypes`, respectively, but there is no
+ * common type they coerce to.
  */
 predicate isHeterogeneousComparison(ASTNode cmp, AnalysedFlowNode left, AnalysedFlowNode right,
                                     string leftTypes, string rightTypes) {

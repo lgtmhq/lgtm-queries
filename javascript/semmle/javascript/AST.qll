@@ -11,27 +11,31 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/**
+ * Provides classes for working with the AST-based representation of JavaScript programs.
+ */
+
 import Locations
 import Expr
 import Stmt
 import CFG
 
 /**
- * A syntactic entity corresponding to JavaScript code.
+ * A program element corresponding to JavaScript code, such as an expression
+ * or a statement.
  *
  * This class provides generic traversal methods applicable to all AST nodes,
  * such as obtaining the children of an AST node.
  */
 class ASTNode extends @ast_node, Locatable {
-  /** Get the toplevel syntactic unit to which this element belongs. */
+  /** Gets the toplevel syntactic unit to which this element belongs. */
   cached
   TopLevel getTopLevel() {
     result = getParent().getTopLevel()
   }
 
   /**
-   * Get the i-th child node of this node; the result may be an expression, a statement,
-   * a property or a class.
+   * Gets the `i`th child node of this node.
    *
    * _Note_: The indices of child nodes are considered an implementation detail and may
    * change between versions of the extractor.
@@ -43,57 +47,67 @@ class ASTNode extends @ast_node, Locatable {
     classes(result, this, _) and i = 2
   }
 
-  /** Get the i-th child statement of this node. */
+  /** Gets the `i`th child statement of this node. */
   Stmt getChildStmt(int i) {
     stmts(result, _, this, i, _)
   }
 
-  /** Get the i-th child expression of this node. */
+  /** Gets the `i`th child expression of this node. */
   Expr getChildExpr(int i) {
     exprs(result, _, this, i, _)
   }
 
-  /** Get any child node of this node. */
+  /** Gets a child node of this node. */
   ASTNode getAChild() {
     result = getChild(_)
   }
 
-  /** Get any child expression of this node. */
+  /** Gets a child expression of this node. */
   Expr getAChildExpr() {
     result = getChildExpr(_)
   }
 
-  /** Get any child statement of this node. */
+  /** Gets a child statement of this node. */
   Stmt getAChildStmt() {
     result = getChildStmt(_)
   }
 
-  /** Get the number of child nodes of this node. */
+  /** Gets the number of child nodes of this node. */
   int getNumChild() {
     result = count(getAChild())
   }
 
-  /** Get the number of child expressions of this node. */
+  /** Gets the number of child expressions of this node. */
   int getNumChildExpr() {
     result = count(getAChildExpr())
   }
 
-  /** Get the number of child statements of this node. */
+  /** Gets the number of child statements of this node. */
   int getNumChildStmt() {
     result = count(getAChildStmt())
   }
 
-  /** Get the parent node of this node, if any. */
+  /** Gets the parent node of this node, if any. */
   ASTNode getParent() {
     this = result.getAChild()
   }
 
-  /** Get the first control flow node belonging to this syntactic entity. */
-  CFGNode getFirstCFGNode() {
+  /** Gets the first control flow node belonging to this syntactic entity. */
+  ControlFlowNode getFirstControlFlowNode() {
     result = this
   }
 
-  /** Does this syntactic entity belong to an externs file? */
+  /**
+   * DEPRECATED: Use `getFirstControlFlowNode` instead.
+   *
+   * Gets the first control flow node belonging to this syntactic entity.
+   */
+  deprecated
+  ControlFlowNode getFirstCFGNode() {
+    result = getFirstControlFlowNode()
+  }
+
+  /** Holds if this syntactic entity belongs to an externs file. */
   predicate inExternsFile() {
     getTopLevel().isExterns()
   }
@@ -105,7 +119,7 @@ class ASTNode extends @ast_node, Locatable {
  * handler attribute, or a `javascript:` URL.
  */
 class TopLevel extends @toplevel, StmtContainer {
-  /** Is this syntactic unit minified? */
+  /** Holds if this toplevel is minified. */
   predicate isMinified() {
     // file name contains 'min' (not as part of a longer word)
     getFile().getName().regexpMatch(".*[^-.]*[-.]min([-.].*)?\\.\\w+")
@@ -118,41 +132,46 @@ class TopLevel extends @toplevel, StmtContainer {
     )
   }
 
-  /** Is this syntactic unit an externs definitions file? */
+  /** Holds if this toplevel is an externs definitions file. */
   predicate isExterns() {
     // either it was explicitly extracted as an externs file...
     isExterns(this) or
     // ...or it has a comment with an `@externs` tag in it
-    exists (JSDoc jsdoc | jsdoc.getFile().getATopLevel() = this |
-      jsdoc.getATag().getTitle() = "externs"
+    exists (JSDocTag externs |
+      externs.getTitle() = "externs" and
+      externs.getTopLevel() = this
     )
   }
-  
-  /** Get the toplevel syntactic unit to which this element belongs, that is, itself. */
-  TopLevel getTopLevel() {
+
+  /** Gets the toplevel to which this element belongs, that is, itself. */
+  override TopLevel getTopLevel() {
     result = this
   }
 
-  /** Get the number of lines in this toplevel. */
+  /** Gets the number of lines in this toplevel. */
   int getNumberOfLines() {
     numlines(this, result, _, _)
   }
 
-  /** Get the number of lines containing code in this toplevel. */
+  /** Gets the number of lines containing code in this toplevel. */
   int getNumberOfLinesOfCode() {
     numlines(this, _, result, _)
   }
 
-  /** Get the number of lines containing comments in this toplevel. */
+  /** Gets the number of lines containing comments in this toplevel. */
   int getNumberOfLinesOfComments() {
     numlines(this, _, _, result)
   }
 
-  predicate isStrict() {
+  override predicate isStrict() {
     getAStmt() instanceof StrictModeDecl
   }
 
-  string toString() {
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getEntry()
+  }
+
+  override string toString() {
     result = "<toplevel>"
   }
 }
@@ -170,31 +189,31 @@ class ExternalScript extends @script, Script {
 }
 
 /**
- * Code embedded inline in an HTML `<script>` element.
+ * A script embedded inline in an HTML `<script>` element.
  */
 class InlineScript extends @inline_script, Script {
 }
 
 /**
- * Code originating from an HTML attribute value.
+ * A code snippet originating from an HTML attribute value.
  */
 abstract class CodeInAttribute extends TopLevel {
 }
 
 /**
- * Code originating from an event handler attribute.
+ * A code snippet originating from an event handler attribute.
  */
 class EventHandlerCode extends @event_handler, CodeInAttribute {
 }
 
 /**
- * Code originating from a URL with the `javascript:` URL scheme.
+ * A code snippet originating from a URL with the `javascript:` URL scheme.
  */
 class JavaScriptURL extends @javascript_url, CodeInAttribute {
 }
 
 /**
- * A toplevel syntactic entity containing Closure-style extern definitions.
+ * A toplevel syntactic entity containing Closure-style externs definitions.
  */
 class Externs extends TopLevel {
   Externs() {
@@ -202,38 +221,87 @@ class Externs extends TopLevel {
   }
 }
 
-/** A syntactic entity that is either an expression or a statement. */
-class ExprOrStmt extends @exprorstmt, CFGNode, ASTNode {}
+/** A program element that is either an expression or a statement. */
+class ExprOrStmt extends @exprorstmt, ControlFlowNode, ASTNode {}
 
 /**
- * A syntactic entity that contains statements, but isn't itself
- * a statement: a toplevel syntactic unit or a function.
+ * A program element that contains statements, but isn't itself
+ * a statement, in other words a toplevel or a function.
  */
 class StmtContainer extends @stmt_container, ASTNode {
-  /** Get the innermost enclosing container in which this container is nested. */
+  /** Gets the innermost enclosing container in which this container is nested. */
   StmtContainer getEnclosingContainer() {
     none()
   }
 
-  /** Get a statement that in this container. */
+  /** Gets a statement that belongs to this container. */
   Stmt getAStmt() {
     result.getContainer() = this
   }
 
-  /** Get the (unique) entry node of the control flow graph for this toplevel or function. */
-  EntryCFGNode getEntry() {
+  /**
+   * Gets the body of this container.
+   *
+   * For scripts or modules, this is the container itself; for functions,
+   * it is the function body.
+   */
+  ASTNode getBody() {
+    result = this
+  }
+
+  /**
+   * Gets the (unique) entry node of the control flow graph for this toplevel or function.
+   *
+   * For most purposes, the start node should be used instead of the entry node;
+   * see predicate `getStart()`.
+   */
+  ControlFlowEntryNode getEntry() {
     result.getContainer() = this
   }
 
-  /** Get the (unique) exit node of the control flow graph for this toplevel or function. */
-  ExitCFGNode getExit() {
+  /** Gets the (unique) exit node of the control flow graph for this toplevel or function. */
+  ControlFlowExitNode getExit() {
     result.getContainer() = this
   }
 
   /**
-   * Whether the code in this syntactic entity is executed in ECMAScript strict mode.
+   * Gets the (unique) CFG node at which execution of this toplevel or function begins.
    *
-   * See Annex C of the ECMAScript 5 and ECMAScript 2015 ("ECMAScript 6") language specifications.
+   * Unlike the entry node, which is a synthetic construct, the start node corresponds to
+   * an actual program element, such as the first statement of a toplevel or the first
+   * parameter of a function.
+   *
+   * Empty toplevels do not have a start node.
+   */
+  ConcreteControlFlowNode getStart() {
+    successor(getEntry(), result)
+  }
+
+  /**
+   * Gets the entry basic block of this function, that is, the basic block
+   * containing the entry node of its CFG.
+   */
+  EntryBasicBlock getEntryBB() {
+    result = getEntry()
+  }
+
+  /**
+   * Gets the start basic block of this function, that is, the basic block
+   * containing the start node of its CFG.
+   */
+  BasicBlock getStartBB() {
+    result.getANode() = getStart()
+  }
+
+  /** Gets the scope induced by this toplevel or function, if any. */
+  Scope getScope() {
+    scopenodes(this, result)
+  }
+
+  /**
+   * Holds if the code in this container is executed in ECMAScript strict mode.
+   *
+   * See Annex C of the ECMAScript language specification.
    */
   predicate isStrict() {
     getEnclosingContainer().isStrict()

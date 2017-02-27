@@ -19,10 +19,11 @@
  * @tags portability
  *       maintainability
  *       language-features
+ * @precision very-high
  */
 
 import javascript
 
 from Comment c
-where c.getText().trim().substring(0, 6) = "@cc_on"
+where c.getText().trim().matches("@cc_on%")
 select c, "Do not use conditional comments."

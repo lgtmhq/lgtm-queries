@@ -15,9 +15,11 @@
  * @name Unreachable code
  * @description Code is unreachable
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

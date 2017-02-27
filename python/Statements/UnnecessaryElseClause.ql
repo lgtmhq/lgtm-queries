@@ -15,9 +15,11 @@
  * @name Unnecessary 'else' clause in loop
  * @description An 'else' clause in a 'for' or 'while' statement that does not contain a 'break' is redundant.
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

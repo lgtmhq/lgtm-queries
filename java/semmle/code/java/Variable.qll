@@ -98,12 +98,6 @@ class Parameter extends Element, @param, LocalScopeVariable {
     isVarargsParam(this)
   }
 
-  /** A call to the callable that declares this formal parameter. */
-  pragma[noinline]
-  private Call getACall() {
-    result = getCallable().getAReference()
-  }
-
   /**
    * An argument for this parameter in any call to the callable that declares this formal
    * parameter.
@@ -112,9 +106,10 @@ class Parameter extends Element, @param, LocalScopeVariable {
    */
   Expr getAnArgument() {
     not isVarargs() and
-    exists(Call c |
-      c = getACall() |
-      result = c.getArgument(getPosition())
-    )
+    result = getACallArgument(getPosition())
+  }
+  
+  private pragma[noinline] Expr getACallArgument(int i) {
+    result = getCallable().getAReference().getArgument(i)
   }
 }

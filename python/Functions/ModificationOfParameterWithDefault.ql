@@ -16,9 +16,11 @@
  * @description Modifying the default value of a parameter can lead to unexpected
  *              results.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       maintainability
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

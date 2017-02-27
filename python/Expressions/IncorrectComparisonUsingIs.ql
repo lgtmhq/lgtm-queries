@@ -15,9 +15,11 @@
  * @name Comparison using is when operands support __eq__
  * @description Comparison using 'is' when equivalence is not the same as identity
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision high
  */
 
 import python

@@ -15,9 +15,11 @@
  * @name Inconsistent equality and hashing
  * @description Defining equality for a class without also defining hashability (or vice-versa) violates the object model.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

@@ -15,8 +15,10 @@
  * @name Redundant comparison
  * @description The result of a comparison is implied by a previous comparison.
  * @kind problem
- * @problem.severity warning
  * @tags useless-code
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision high
  */
 
 import python

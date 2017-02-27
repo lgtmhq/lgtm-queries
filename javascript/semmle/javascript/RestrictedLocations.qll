@@ -11,38 +11,58 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for restricting the locations reported for program elements. */
+
 import Locations
 
 /**
- * Restrict the location of a syntactic element to its first line, unless the element
+ * A program element with its location restricted to its first line, unless the element
  * is less than one line long to begin with.
  *
  * This is useful for avoiding multi-line violations.
  */
 class FirstLineOf extends Locatable {
-  predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
+  /**
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   */
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                             int endline, int endcolumn) {
     exists (int xl, int xc |
-      getLocation().hasLocationInfo(filepath, bl, bc, xl, xc) and
-      bl = el and
-      if xl = bl then
-        ec = xc
+      getLocation().hasLocationInfo(filepath, startline, startcolumn, xl, xc) and
+      startline = endline and
+      if xl = startline then
+        endcolumn = xc
       else
-        exists (Line l | l.getLocation().hasLocationInfo(filepath, bl, 1, bl, ec))
+        exists (Line l | l.getLocation().hasLocationInfo(filepath, startline, 1,
+                                                                   startline, endcolumn))
     )
   }
 }
+
 /**
- * Restrict the location of a syntactic element to its last line, unless the element
+ * A program element with its location restricted to its last line, unless the element
  * is less than one line long to begin with.
  *
  * This is useful for avoiding multi-line violations.
  */
 class LastLineOf extends Locatable {
-  predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
+  /**
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   */
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                             int endline, int endcolumn) {
     exists (int xl, int xc |
-      getLocation().hasLocationInfo(filepath, xl, xc, el, ec)
-      and bl = el
-      and if xl = el then bc = xc else bc = 1
+      getLocation().hasLocationInfo(filepath, xl, xc, endline, endcolumn)
+      and startline = endline
+      and if xl = endline then startcolumn = xc else startcolumn = 1
     )
   }
 }

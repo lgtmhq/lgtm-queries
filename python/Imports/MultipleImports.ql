@@ -15,9 +15,11 @@
  * @name Module is imported more than once
  * @description Importing a module a second time has no effect and impairs readability
  * @kind problem
- * @problem.severity recommendation
  * @tags maintainability
  *       useless-code
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

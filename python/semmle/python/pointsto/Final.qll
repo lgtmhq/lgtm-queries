@@ -30,11 +30,9 @@
   * 2. Required to be public as they may be needed for custom points-to extensions.
   * 2. Provide predicate for the next layer up. Will be marked "INTERNAL -- Do not not use"
   * 4. Internal to a layer -- these are marked private
-  * 
-  * 
+  *
   */
- 
- 
+
 import python
 private import Base
 private import semmle.python.types.Extensions
@@ -366,7 +364,7 @@ private predicate final_attribute_points_to_candidate(ControlFlowNode f, Object 
     exists(Object obj, string name |
         f.isLoad() and
         final_points_to(f.(AttrNode).getObject(name), obj, _, _) and
-        py_cmembers(obj, name, value) and origin = f and
+        py_cmembers_versioned(obj, name, value, major_version().toString()) and origin = f and
         cls = builtin_object_type(value)
     )
     or
@@ -381,17 +379,29 @@ private predicate final_attribute_points_to_candidate(ControlFlowNode f, Object 
 }
 
 private predicate final_class_attribute_points_to_impl(AttrNode f, Object value, ClassObject cls, ObjectOrCfg origin_or_obj) {
-    f.isLoad() and   
+    f.isLoad() and
     exists(ControlFlowNode fval, string name |
         fval = f.getObject(name) |
+        /* The 'obvious' formulation of this:
+           exists(ClassObject obj |
+              final_points_to(fval, obj, _, _) and
+              final_class_attribute_lookup(obj, name, value, cls, origin_or_obj)
+           )
+         * makes for a very large (and thus slow) recursive layer. So we break the recursion.
+         * In order to partially make up for the reduction in accuracy, we use both prev/this and this/prev versions.
+         */
         exists(ClassObject obj |
             final_points_to(fval, obj, _, _) and
-            // Break cycle for performance
             penultimate_class_attribute_lookup(obj, name, value, cls, origin_or_obj)
+        )
+        or
+        exists(ClassObject obj |
+            penultimate_points_to(fval, obj, _, _) and
+            final_class_attribute_lookup(obj, name, value, cls, origin_or_obj)
         )
     )
 }
-    
+
 private predicate final_class_attribute_points_to(AttrNode f, Object value, ClassObject cls, ControlFlowNode origin) {
     exists(ObjectOrCfg origin_or_obj |
         final_class_attribute_points_to_impl(f, value, cls, origin_or_obj)
@@ -547,17 +557,17 @@ private predicate final_from_import_points_to(ImportMemberNode f, Object value, 
      */
     exists(ImportMember im, string name |
         im.getAFlowNode() = f and name = im.getName() |
-        exists(ModuleObject module, ObjectOrCfg origin_or_obj |
-            final_points_to(f.getModule(name), module, _, _) and
-            final_module_attribute_points_to(module, name, value, cls, origin_or_obj) |
+        exists(ModuleObject mod, ObjectOrCfg origin_or_obj |
+            final_points_to(f.getModule(name), mod, _, _) and
+            final_module_attribute_points_to(mod, name, value, cls, origin_or_obj) |
             origin = origin_or_obj /* 1. */
             or
             not origin_or_obj instanceof ControlFlowNode and origin = f /* 2. */
         )
         or
-        not exists(ModuleObject module | /* 3. */
-            penultimate_points_to(f.getModule(name), module, _, _) and
-            penultimate_module_attribute_points_to(module, name, _, _, _)
+        not exists(ModuleObject mod | /* 3. */
+            penultimate_points_to(f.getModule(name), mod, _, _) and
+            penultimate_module_attribute_points_to(mod, name, _, _, _)
         ) and f = origin and value = f and cls = final_global_type(value) 
     )
     and
@@ -603,6 +613,7 @@ private predicate nonlocal_variable_points_to(NameNode f, Object value, ClassObj
     )
 }
 
+/** Whether global variable use `n` refers to `value, cls, origin` and is either a builtin or an import */
 private predicate global_builtin_or_import(NameNode n, Object value, ClassObject cls, ControlFlowNode origin) {
    n.isGlobal() 
    and
@@ -613,7 +624,7 @@ private predicate global_builtin_or_import(NameNode n, Object value, ClassObject
    (
        value =  builtin_object(n.getId()) and py_cobjecttypes(value, cls) and origin = n
        or
-       /* Defined by import * */
+       /* Defined by import */
        global_import_defn(n, value, cls, origin)
    )
 }
@@ -795,7 +806,7 @@ predicate final_super_method_call(CallNode call, ClassObject self_type, Function
         attr = call.getFunction() and
         exists(CallNode super_call, ClassObject start_type, string name |
             final_super_call_types(super_call, self_type, start_type) |
-            super_call = attr.getObject(name) and
+            penultimate_points_to(attr.getObject(name), super_call, _, _) and
             /* super().name lookup */
             final_class_lookup_in_mro(self_type, start_type, name, method)
         )
@@ -1222,21 +1233,21 @@ predicate final_package_attributes(PackageObject package, string name, Object ob
       or
       not final_module_defines_name(package.getInitModule().getModule(), name)
       and
-      exists(ModuleObject module |
-          module.getModule() = package.getModule().getSubModule(name) and
-          origin = module.getModule().getEntryNode() and
-           obj = module and
-          final_explicitly_imported(module) and
+      exists(ModuleObject mod |
+          mod.getModule() = package.getModule().getSubModule(name) and
+          origin = mod.getModule().getEntryNode() and
+           obj = mod and
+          final_explicitly_imported(mod) and
           cls = theModuleType()
       )
     )
 }
 
 /** Whether the module is explicitly imported somewhere */
-private predicate final_explicitly_imported(ModuleObject module) {
-    exists(ImportExpr ie | final_module_imported_as(module, ie.getAnImportedModuleName()))
+private predicate final_explicitly_imported(ModuleObject mod) {
+    exists(ImportExpr ie | final_module_imported_as(mod, ie.getAnImportedModuleName()))
     or
-    exists(ImportMember im | final_module_imported_as(module, im.getImportedModuleName()))
+    exists(ImportMember im | final_module_imported_as(mod, im.getImportedModuleName()))
 }
 
 /** Return the Object(s) which can be bound to 'name' upon completion of the code defining this namespace */
@@ -1330,7 +1341,23 @@ private predicate final_has_import_star(Module m, ImportStar im, ModuleObject im
  cached 
 predicate final_module_imported_as(ModuleObject m, string name) {
     extensional_name(name) and (
-      m.getName() = name
+      /* Normal imports */
+      m.getName() = name and
+      (
+          /* Priority:
+           * 1. modules not in the stdlib or modules that are the standard lib for this major version
+           * 2. modules that are the standard lib for other versions
+           *    (in case we run the extractor under a different version)
+           */
+          not m.getModule().getFile().inStdlib()
+          or
+          m.getModule().getFile().inStdlib(major_version(), _)
+          or
+          not exists(Module other |
+              other.getName() = name and
+              other.getFile().inStdlib(major_version(), _)
+          ) and m.getModule().getFile().inStdlib()
+      )
       or
       /* sys.modules['name'] = m */
       exists(ControlFlowNode sys_modules_flow, ControlFlowNode n, ControlFlowNode mod |
@@ -1415,9 +1442,9 @@ private predicate final_boolean_const(ControlFlowNode f, boolean value) {
     or
     exists(string os |
         final_os_test(f, os) |
-        value = true and py_flags("sys.platform", os)
+        value = true and py_flags_versioned("sys.platform", os, major_version().toString())
         or
-        value = false and not py_flags("sys.platform", os)
+        value = false and not py_flags_versioned("sys.platform", os, major_version().toString())
     )
     or
     f.getNode() instanceof True and value = true
@@ -1642,104 +1669,42 @@ FunctionObject final_get_a_callee(Scope s) {
     )
 }
 
+// Helper for scope_precedes
+private predicate final_scope_executes(Scope caller, Scope callee, ControlFlowNode exec) {
+    exists(FunctionObject f |
+        caller = exec.getScope() and f.getFunction() = callee and exec = penultimate_get_a_call(f)
+    )
+    or
+    caller = exec.getScope() and
+    exec.getNode().(ClassExpr).getInnerScope() = callee
+}
+
+// Helper for scope_precedes
+private predicate final_scope_calls(Scope caller, Scope callee) {
+    final_scope_executes(caller, callee, _)
+    or
+    exists(Scope mid |
+        final_scope_calls(mid, callee) and
+        final_scope_calls(caller, mid)
+    )
+}
+
 // Temporal scope ordering.
-predicate final_scope_precedes(Scope pre, Scope post) {
-    not exists(FunctionObject callee, Scope caller |
-        callee = penultimate_get_a_callee(caller) |
-        pre = caller and post = callee.getFunction()
-        or
-        post  = caller and pre = callee.getFunction()
-    )
-    and
-    (
-        base_scope_precedes(pre, post, 2)
-        or
-        base_scope_precedes(pre, post, 1) and not base_scope_precedes(_, post, 2)
-    )
+predicate final_scope_precedes(Scope pre, Scope post, int ranking) {
+    not final_scope_calls(pre, post) and
+    not final_scope_calls(post, pre) and
+    base_scope_precedes(pre, post, ranking)
 }
 
-/*
-DefinitionNode final_definition_of_global_reaches_start_bb(GlobalVariable v, BasicBlock b)  {
-    not exists(simple_global_defn(v)) and (
-      result = final_definition_of_global_reaches_end_bb(v, b.getAPredecessor())
-      or
-      not exists(b.getAPredecessor()) and 
-      exists(Scope pre |
-          penultimate_scope_precedes(pre, b.getScope()) and
-          result = final_definition_of_global_reaches_end_scope(v, pre)
-      )
-      or
-      not exists(b.getAPredecessor()) and 
-      exists(BasicBlock defblock, int i |
-          indexed_callsite_for_class(b.getScope(), defblock, i) |
-          exists(int j | j < i |
-              result = final_definition_of_global_in_bb(v, defblock, j)
-          )
-          or
-          not exists(int j | j < i | exists(penultimate_definition_of_global_in_bb(v, defblock, j)))
-          and result = final_definition_of_global_reaches_start_bb(v, defblock)
-      )
-    )
-}
-
-DefinitionNode final_definition_of_global_reaches_end_bb(GlobalVariable v, BasicBlock b)  {
-    result = final_definition_of_global_reaches_start_bb(v, b) and not exists(penultimate_definition_of_global_in_bb(v, b, _))
-    or
-    exists(int i |
-        result = final_definition_of_global_in_bb(v, b, i) and
-        not exists(int j | exists(penultimate_definition_of_global_in_bb(v, b, j)) and j > i)
-    )
-}
-
-DefinitionNode final_definition_of_global_reaches_end_scope(GlobalVariable v, Scope s)  {
-    result = final_definition_of_global_reaches_end_bb(v, s.getANormalExit().getBasicBlock())
-}
-
-pragma [nomagic]
-DefinitionNode final_definition_of_global_in_bb(GlobalVariable v, BasicBlock b, int i)  {
-    not exists(simple_global_defn(v)) and 
-    result.(NameNode).defines(v) and 
-    b.getNode(i) = result
-    or
-    exists(FunctionObject callee |
-        b.getNode(i) = penultimate_get_a_call(callee) and
-        result = final_definition_of_global_reaches_end_scope(v, callee.getFunction())
-    )
-}
-
-DefinitionNode final_relevant_definition_of_global_in_bb(NameNode n) {
-    n.isGlobal() and
-    exists(GlobalVariable var  |
-        n.uses(var) |
-        exists(BasicBlock b, int i, int j |
-            i < j and
-            result = final_definition_of_global_in_bb(var, b, i) and
-            b.getNode(j) = n
-        )
-    )
-}
-
-DefinitionNode final_relevant_definition_of_global(NameNode n) {
-    n.isGlobal() and
-    exists(GlobalVariable var  |
-        n.uses(var) |
-        result = final_relevant_definition_of_global_in_bb(n)
-        or
-        not exists(final_relevant_definition_of_global_in_bb(n)) and
-        result = final_definition_of_global_reaches_start_bb(var, n.getBasicBlock())
-        or
-        result = simple_global_defn(var)
-    )
-}
-*/
 /** Do not use -- For testing purposes */
 predicate final_global_phi_definition(GlobalVariable v, BasicBlock phi) {
     exists(BasicBlock x, ControlFlowNode defnode | 
         defnode = x.getNode(_) and
-        x.dominanceFrontier(phi) and final_global_ssa_defn(v, defnode)
+        x.dominanceFrontier(phi) and final_global_ssa_defn(v, defnode, _)
     )
 }
 
+/** Whether scope `s` uses`v` either directly in one of its callees. */
 private predicate final_scope_uses_global(GlobalVariable v, Scope s) {
     v.getALoad().getScope() = s
     or
@@ -1749,6 +1714,7 @@ private predicate final_scope_uses_global(GlobalVariable v, Scope s) {
    )
 }
 
+/** Whether scope `s` defines `v` either directly in one of its callees. */
 private predicate final_scope_defines_global(GlobalVariable v, Scope s) {
     v.getAStore().getScope() = s
     or
@@ -1758,31 +1724,48 @@ private predicate final_scope_defines_global(GlobalVariable v, Scope s) {
    )
 }
 
-/** Do not use -- For testing only */
-predicate final_global_prev_scope(GlobalVariable v, ControlFlowNode node, Scope pre) {
+/** Do not use -- For testing only.
+ * Whether scope `pre` pre-defines `v` for the global-SSA variable `(v, entry)` where `entry` is the entry point to a scope.
+ */
+predicate final_global_prev_scope(GlobalVariable v, ControlFlowNode entry, Scope pre) {
     exists(Scope post |
-        final_scope_precedes(pre, post) and
-        post.getEntryNode() = node and
-        exists(final_get_global_ssa_defn_at_scope_end(v, pre)) and
-        final_scope_uses_global(v, post)
+        post.getEntryNode() = entry and
+        final_scope_uses_global(v, post) and
+        exists(final_get_global_ssa_defn_at_scope_end(v, pre)) |
+        final_scope_precedes(pre, post, 1) or
+        final_scope_precedes(pre, post, 2) and
+        not exists(Scope better, ControlFlowNode defn |
+            defn.getScope() = better and
+            final_scope_precedes(better, post, 1) and
+            penultimate_global_ssa_defn(v, defn, _)
+        )
     )
 }
 
-private predicate final_global_enclosing_scope(GlobalVariable v, ControlFlowNode entry, ControlFlowNode caller) {
-    exists(ControlFlowNode defn |
-        final_global_ssa_defn(v, defn) and
-        defn.strictlyDominates(caller)
+pragma [noopt]
+private predicate final_global_defn_from_callsite(GlobalVariable v, ControlFlowNode entry, ControlFlowNode callsite, ControlFlowNode defn) {
+    exists(Scope callee |
+        non_module_scope_defines_or_uses_global(callee, v) and
+        final_scope_executes(_, callee, callsite) and
+        entry = callee.getEntryNode()
     ) and
-    exists(Class inner |
-        inner instanceof ImportTimeScope and
-        entry = inner.getEntryNode() and
-        exists(ClassExpr expr | 
-            expr.getInnerScope() = inner and caller.getNode() = expr
-        ) and
-        v.getScope() = inner.getEnclosingModule() and
-        exists(NameNode n, ImportTimeScope uses |
-            n.getScope() = uses and uses.getScope*() = inner |
-            n.uses(v) or n.defines(v)
+    final_global_ssa_defn(v, defn, _) and
+    // manually inlined ControlFlowNode.strictlyDominates so that we can use pragma[noopt]
+    (
+        exists(BasicBlock bb1, BasicBlock bb2 |
+            defn.getBasicBlock() = bb1
+            and
+            callsite.getBasicBlock() = bb2
+            and
+            bb1.strictlyDominates(bb2)
+        )
+        or
+        exists(BasicBlock b, int i, int j |
+            defn = b.getNode(i)
+            and
+            callsite = b.getNode(j)
+            and
+            i < j
         )
     )
 }
@@ -1795,49 +1778,65 @@ private predicate final_global_builtin_definition(GlobalVariable v, ControlFlowN
     )
 }
 
-/** DO NOT USE -- Internal, for testing. */
-predicate final_global_ssa_defn(GlobalVariable v, ControlFlowNode node) {
-    final_global_builtin_definition(v, node, _, _)
-    or
-    final_global_phi_definition(v, node)
-    or
-    node.(NameNode).defines(v)
-    or
-    node.(NameNode).deletes(v)
-    or
-    final_global_callsite_defn(v, node, _)
-    or
-    final_global_prev_scope(v, node, _)
-    or
-    final_global_enclosing_scope(v, node, _)
+private predicate final_global_defn_in_class(GlobalVariable v, ControlFlowNode defn, Class scope) {
+    exists(ClassExpr cls |
+        cls.getAFlowNode() = defn  and
+        scope = cls.getInnerScope() |
+        final_scope_defines_global(v, scope)
+    )
 }
 
-private predicate final_global_callsite_defn(GlobalVariable v, CallNode call, Function f) {
-    final_scope_defines_global(v, f) and
+/** DO NOT USE -- Internal, for testing. 
+ * Whether `node` is the location of a global-SSA definition of `v`. `kind` describes the sort of definition for testing purposes.
+ */
+predicate final_global_ssa_defn(GlobalVariable v, ControlFlowNode node, string kind) {
+    final_global_builtin_definition(v, node, _, _) and kind = "builtin"
+    or
+    final_global_phi_definition(v, node) and kind = "phi"
+    or
+    node.(NameNode).defines(v) and kind = "assignment"
+    or
+    node.(NameNode).deletes(v) and kind = "deletion"
+    or
+    final_global_callsite_defines_variable(v, node, _) and kind = "callsite"
+    or
+    final_global_prev_scope(v, node, _) and kind = "previous scope"
+    or
+    final_global_defn_from_callsite(v, node, _, _) and kind = "caller scope"
+    or
+    final_global_defn_in_class(v, node, _) and kind = "in class"
+}
+
+/** 
+ * Whether the function `callee`, called from `callsite`, defines the global variable `v`
+ */
+private predicate final_global_callsite_defines_variable(GlobalVariable v, CallNode callsite, Function callee) {
+    final_scope_defines_global(v, callee) and
+    v.getScope() = callsite.getEnclosingModule() and
     exists(PyFunctionObject fo |
-        f = fo.getFunction() and
-        call = penultimate_get_a_call(fo)
+        callee = fo.getFunction() and
+        callsite = penultimate_get_a_call(fo)
     )
 }
 
 pragma[noopt]
 private ControlFlowNode final_get_global_ssa_defn_candidate(GlobalVariable v, NameNode use) {
-    use.uses(v) and final_global_ssa_defn(v, result) and
+    use.uses(v) and final_global_ssa_defn(v, result, _) and
     // manually inlined ControlFlowNode.dominates so that we can use pragma[noopt]
     (
         exists(BasicBlock bb1, BasicBlock bb2 | 
             result.getBasicBlock() = bb1 
-            and  
+            and
             use.getBasicBlock() = bb2 
-            and 
+            and
             bb1.strictlyDominates(bb2)
         )
         or
         exists(BasicBlock b, int i, int j |
             result = b.getNode(i) 
-            and 
+            and
             use = b.getNode(j) 
-            and 
+            and
             i <= j
         )
     )
@@ -1863,11 +1862,14 @@ private predicate scope_exit(ControlFlowNode node, ControlFlowNode exit, Scope f
 
 /** INTERNAL -- Do not use */
 ControlFlowNode final_get_global_ssa_defn_at_scope_end_candidate(GlobalVariable v, Scope f) {
-    final_global_ssa_defn(v, result) and
+    final_global_ssa_defn(v, result, _) and
     scope_exit(result, _, f)
 }
 
-/** Do not use -- testing only */ 
+/** Do not use -- testing only.
+ * Get the best (closest) definition of `v` reaching the end of scope `f`
+ */
+pragma[nomagic]
 ControlFlowNode final_get_global_ssa_defn_at_scope_end(GlobalVariable v, Scope f) {
     result = final_get_global_ssa_defn_at_scope_end_candidate(v, f) and
     not exists(ControlFlowNode better |
@@ -1876,54 +1878,55 @@ ControlFlowNode final_get_global_ssa_defn_at_scope_end(GlobalVariable v, Scope f
     )
 }
 
-
+/** Get the best (closest dominating) definition of `v` for callsite `call` (and callee entry point `entry`) */
 private 
-ControlFlowNode final_get_defn_for_call_candidate(GlobalVariable v, ControlFlowNode call) {
-     final_global_enclosing_scope(v, _, call) and
-     final_global_ssa_defn(v, result) and
-     result.strictlyDominates(call)
-}
-
-private 
-ControlFlowNode final_get_defn_for_call(GlobalVariable v, ControlFlowNode call) {
-    result = final_get_defn_for_call_candidate(v, call) and
+ControlFlowNode final_get_best_defn_for_callsite(GlobalVariable v, ControlFlowNode call, ControlFlowNode entry) {
+    final_global_defn_from_callsite(v, entry, call, result) and
     not exists(ControlFlowNode better |
-        better = final_get_defn_for_call_candidate(v, call) and
+        final_global_defn_from_callsite(v, entry, call, better) and
         result.strictlyDominates(better)
     )
 }
 
+/** Whether the global SSA variable `(v, defn)` points-to `(value, cls, origin)` where `defn` is the entry point of a function. */ 
 private 
-predicate final_global_inner_scope_ssa_points_to(GlobalVariable v, ControlFlowNode defn, Object value, ClassObject cls, ControlFlowNode origin) {
+predicate final_global_callee_ssa_points_to(GlobalVariable v, ControlFlowNode defn, Object value, ClassObject cls, ControlFlowNode origin) {
     exists(ControlFlowNode call, ControlFlowNode outer_defn |
-        outer_defn = final_get_defn_for_call(v, call) and 
-        final_global_enclosing_scope(v, defn, call) and
-        final_global_ssa_points_to(v, outer_defn, value, cls, origin)
+        outer_defn = final_get_best_defn_for_callsite(v, call, defn) and
+        final_global_ssa_points_to(v, outer_defn, value, cls, origin, _)
     )
 }
 
-/** Do not use -- testing only */ 
+/** Do not use -- testing only.
+ * Whether the global SSA variable `(v, defn)` points-to `(value, cls, origin)`. The `kind` string is for testing.
+ */
 pragma [nomagic]
-predicate final_global_ssa_points_to(GlobalVariable v, ControlFlowNode defn, Object value, ClassObject cls, ControlFlowNode origin) {
-    final_global_builtin_definition(v, defn, value, cls) and origin = defn
+predicate final_global_ssa_points_to(GlobalVariable v, ControlFlowNode defn, Object value, ClassObject cls, ControlFlowNode origin, string kind) {
+    final_global_builtin_definition(v, defn, value, cls) and origin = defn and kind = "builtin"
     or
     exists(Function f, ControlFlowNode d |
-        final_global_callsite_defn(v, defn, f) and 
+        final_global_callsite_defines_variable(v, defn, f) and
         d = final_get_global_ssa_defn_at_scope_end(v, f) and
-        final_global_ssa_points_to(v, d, value, cls, origin)
-    )
+        final_global_ssa_points_to(v, d, value, cls, origin, _)
+    ) and kind = "callsite"
     or
-    defn.(NameNode).defines(v) and final_points_to(defn, value, cls, origin)
+    defn.(NameNode).defines(v) and final_points_to(defn, value, cls, origin) and kind = "assignment"
     or
-    final_global_ssa_phi_points_to(v, defn, value, cls, origin)
+    final_global_ssa_phi_points_to(v, defn, value, cls, origin) and kind = "phi"
     or
     exists(Scope pre, ControlFlowNode def |
-        final_global_prev_scope(v, defn, pre) and 
+        final_global_prev_scope(v, defn, pre) and
         def = final_get_global_ssa_defn_at_scope_end(v, pre) and
-        final_global_ssa_points_to(v, def, value, cls, origin)
-    )
+        final_global_ssa_points_to(v, def, value, cls, origin, _)
+    ) and kind = "previous scope"
     or
-    final_global_inner_scope_ssa_points_to(v, defn, value, cls, origin)
+    final_global_callee_ssa_points_to(v, defn, value, cls, origin) and kind = "caller scope"
+    or
+    exists(Class inner, ControlFlowNode d |
+        final_global_defn_in_class(v, defn, inner) and
+        d = final_get_global_ssa_defn_at_scope_end(v, inner) and
+        final_global_ssa_points_to(v, d, value, cls, origin, _)
+    ) and kind = "in class"
 }
 
 /** What the the SSA variable 'var' may point to, provided that it is a phi node, taking care to account 
@@ -1936,7 +1939,7 @@ predicate final_global_ssa_phi_points_to(GlobalVariable v, BasicBlock phi, Objec
         incoming_defn = final_get_phi_argument_for_predecessor_block(v, phi, pred) |
         not final_global_prohibited_on_edge(v, incoming_defn, pred, phi, value, cls) and
         not final_global_must_have_boolean_value_on_edge(v, incoming_defn, pred, phi, value.booleanValue().booleanNot()) and
-        final_global_ssa_points_to(v, incoming_defn, value, cls, origin)
+        final_global_ssa_points_to(v, incoming_defn, value, cls, origin, _)
     )
 }
 /** INTERNAL -- Do not not use */
@@ -1966,7 +1969,7 @@ predicate final_global_must_have_boolean_value_on_edge(GlobalVariable var, Contr
 pragma[nomagic]
 private predicate defn_for_phi(ControlFlowNode defn, ControlFlowNode phi, GlobalVariable v) {
     final_global_phi_definition(v, phi) and
-    final_global_ssa_defn(v, defn)
+    final_global_ssa_defn(v, defn, _)
 }
 
 pragma [noopt]
@@ -1993,7 +1996,7 @@ ControlFlowNode final_get_phi_argument_for_predecessor_block(GlobalVariable v, B
 predicate final_global_use_points_to(NameNode use, Object value, ClassObject cls, ControlFlowNode origin) {
     exists(GlobalVariable v, ControlFlowNode defn, ControlFlowNode ssa_origin |
         defn = final_get_global_ssa_defn(v, use) and
-        final_global_ssa_points_to(v, defn, value, cls, ssa_origin) 
+        final_global_ssa_points_to(v, defn, value, cls, ssa_origin, _) 
         |
         if exists(Module m | ssa_origin = m.getEntryNode()) then
             origin = use
@@ -2001,7 +2004,7 @@ predicate final_global_use_points_to(NameNode use, Object value, ClassObject cls
             origin = ssa_origin
     )
     or
-    use.isGlobal() and not exists(GlobalVariable v | use.uses(v)) and
+    use.isGlobal() and not exists(final_get_global_ssa_defn(_, use)) and
     value = builtin_object(use.getId()) and py_cobjecttypes(value, cls) and
     origin = use
 }

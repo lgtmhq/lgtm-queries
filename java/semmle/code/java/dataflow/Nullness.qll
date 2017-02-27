@@ -80,7 +80,7 @@ private predicate unboxed(Expr e) {
     exists(ConditionalExpr cond | cond.getType() instanceof PrimitiveType | cond.getTrueExpr() = e or cond.getFalseExpr() = e) or
     exists(ConditionNode cond | cond.getCondition() = e) or
     exists(Parameter p | p.getType() instanceof PrimitiveType and p.getAnArgument() = e) or
-    exists(ReturnStmt ret | ret.getEnclosingCallable().getType() instanceof PrimitiveType and ret.getResult() = e)
+    exists(ReturnStmt ret | ret.getEnclosingCallable().getReturnType() instanceof PrimitiveType and ret.getResult() = e)
   )
 }
 

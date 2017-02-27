@@ -35,6 +35,12 @@ class SensitiveSource extends FlowSource {
     // being a technical subclass
     this instanceof SensitiveExpr
   }
+
+  /** Whether this source flows to the `sink`. */
+  cached
+  predicate flowsToCached(Expr sink) {
+    this.flowsTo(sink)
+  }
 }
 
 /** 
@@ -43,10 +49,10 @@ class SensitiveSource extends FlowSource {
  *  of the entity being stored.
  */
 abstract class Storable extends FlowSource {
-  /** An "input" that is stored in an instance of this class. */
+  /** Gets an "input" that is stored in an instance of this class. */
   abstract Expr getAStore();
   
-  /** An expression where an instance of this class is stored (e.g. to disk). */
+  /** Gets an expression where an instance of this class is stored (e.g. to disk). */
   abstract Expr getAnInput();
 }
 
@@ -56,12 +62,12 @@ class Cookie extends Storable, ClassInstanceExpr {
     this.getConstructor().getDeclaringType().getQualifiedName() = "javax.servlet.http.Cookie"
   }
   
-  /** An input, for example `input` in `new Cookie("...", input);`. */
+  /** Gets an input, for example `input` in `new Cookie("...", input);`. */
   Expr getAnInput() {
     result = this.getArgument(1)
   }
   
-  /** A store, for example `response.addCookie(cookie);`. */
+  /** Gets a store, for example `response.addCookie(cookie);`. */
   Expr getAStore() {
     exists(MethodAccess m, Method def | 
       m.getMethod() = def
@@ -86,7 +92,7 @@ class Properties extends Storable, ClassInstanceExpr {
     this.getConstructor().getDeclaringType() instanceof TypeProperty
   }
   
-  /** An input, for example `input` in `props.setProperty("password", input);`. */
+  /** Gets an input, for example `input` in `props.setProperty("password", input);`. */
   Expr getAnInput() {
     exists(MethodAccess m |
       m.getMethod() instanceof PropertiesSetPropertyMethod
@@ -95,7 +101,7 @@ class Properties extends Storable, ClassInstanceExpr {
     )
   }
   
-  /** A store, for example `props.store(outputStream, "...")`. */
+  /** Gets a store, for example `props.store(outputStream, "...")`. */
   Expr getAStore() {
     exists(MethodAccess m |
       m.getMethod() instanceof PropertiesStoreMethod
@@ -116,29 +122,38 @@ abstract class ClassStore extends Storable, ClassInstanceExpr {
   string toString() {
     result = ClassInstanceExpr.super.toString()
   }
-
-  Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
 }
 
-/** The instantiation of a serializable class, which can be stored to disk. */
+/** Gets an input, for example `input` in `instance.password = input`. */
+private Expr getInstanceInput(ClassInstanceExpr instance) {
+  // Currently taints all instances if data is ever assigned.
+  exists(Field f |
+    f.getDeclaringType() = instance.getConstructor().getDeclaringType()
+    and result = f.getAnAssignedValue()
+  )
+}
+
+/**
+ * The instantiation of a serializable class, which can be stored to disk.
+ *
+ * Only includes tainted instances where data from a `SensitiveSource` may flow
+ * to an input of the `Serializable`.
+ */
 class Serializable extends ClassStore {
   Serializable() {
     this.getConstructor().getDeclaringType().getASupertype*() instanceof TypeSerializable
     // `Properties` are `Serializable`, but handled elsewhere.
     and not this instanceof Properties
+    // restrict attention to tainted instances
+    and exists(SensitiveSource data | data.flowsToCached(getInstanceInput(this)))
   }
   
-  /** An input, for example `input` in `instance.password = input`. */
+  /** Gets an input, for example `input` in `instance.password = input`. */
   Expr getAnInput() {
-    // Currently taints all instances if data is ever assigned.
-    exists(Field f |
-      f.getDeclaringType() = this.getConstructor().getDeclaringType()
-      and result = f.getAnAssignedValue()
-    )
+    result = getInstanceInput(this)
   }
   
-  /** A store, for example `outputStream.writeObject(instance)`. */
+  /** Gets a store, for example `outputStream.writeObject(instance)`. */
   Expr getAStore() {
     exists(MethodAccess m |
       result = m
@@ -154,16 +169,12 @@ class Marshallable extends ClassStore {
     this.getConstructor().getDeclaringType() instanceof JAXBElement
   }
   
-  /** An input, for example `input` in `instance.password = input`. */
+  /** Gets an input, for example `input` in `instance.password = input`. */
   Expr getAnInput() {
-    // Currently taints all instances if data is ever assigned.
-    exists(Field f |
-      f.getDeclaringType() = this.getConstructor().getDeclaringType()
-      and result = f.getAnAssignedValue()
-    )
+    result = getInstanceInput(this)
   }
   
-  /** A store, for example `marshaller.marshal(instance)`. */
+  /** Gets a store, for example `marshaller.marshal(instance)`. */
   Expr getAStore() {
     exists(MethodAccess m |
       result = m

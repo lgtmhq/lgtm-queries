@@ -19,14 +19,15 @@
  * @problem.severity warning
  * @tags changeability
  *       correctness
+ * @precision high
  */
 
 import javascript
 import semmle.javascript.RestrictedLocations
 
 /**
- * Statement `s1` is controlled by `ctrl`, and is immediately followed by `s2`, which is not;
- * hence `s2` should be less indented than `s1`.
+ * Holds if statement `s1` is controlled by `ctrl`, and is immediately followed by `s2`,
+ * which is not, suggesting that `s2` should be less indented than `s1`.
  *
  * We ignore the case where `s1` is not indented relative to `ctrl` in the first place.
  */
@@ -37,7 +38,9 @@ predicate shouldOutdent(ControlStmt ctrl, Stmt s1, Stmt s2) {
   not s2 = ctrl.getAControlledStmt()
 }
 
-/** Statement `s2` should be indented less than `s1`, but has in fact the same indentation. */
+/**
+ * Holds if statement `s2` should be indented less than `s1`, but has in fact the same indentation.
+ */
 predicate missingOutdent(Stmt s1, Stmt s2) {
   shouldOutdent(_, s1, s2) and
   s1.getLocation().getStartColumn() = s2.getLocation().getStartColumn() and

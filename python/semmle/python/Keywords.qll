@@ -64,10 +64,7 @@ class DictUnpacking extends DictUnpacking_, DictUnpackingOrKeyword, DictDisplayI
 
 }
 
-abstract class DictUnpackingOrKeyword extends DictItem, AstNode {
-
-
-    Location getLocation() { none() }
+abstract class DictUnpackingOrKeyword extends DictItem {
 
     abstract Expr getValue();
 
@@ -77,9 +74,7 @@ abstract class DictUnpackingOrKeyword extends DictItem, AstNode {
 
 }
 
-abstract class DictDisplayItem extends DictItem, AstNode {
-
-    Location getLocation() { none() }
+abstract class DictDisplayItem extends DictItem {
 
     abstract Expr getValue();
 
@@ -89,6 +84,7 @@ abstract class DictDisplayItem extends DictItem, AstNode {
 
 }
 
+/** A keyword argument in a call. For example `arg=expr` in `foo(0, arg=expr)` */
 class Keyword extends Keyword_, DictUnpackingOrKeyword  {
 
     Location getLocation() {

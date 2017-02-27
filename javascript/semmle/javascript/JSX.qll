@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with JSX code.
+ * Provides classes for working with JSX code.
  */
 
 import javascript
@@ -21,43 +21,43 @@ import javascript
  * A JSX element such as `<a href={linkTarget()}>{linkText()}</a>`.
  */
 class JSXElement extends Expr, @jsxelement {
-  /** Get the expression denoting the name of this element. */
+  /** Gets the expression denoting the name of this element. */
   JSXName getNameExpr() {
     result = getChildExpr(-1)
   }
 
-  /** Get the name of this element. */
+  /** Gets the name of this element. */
   string getName() {
     result = getNameExpr().getValue()
   }
 
-  /** Get the `i`-th attribute of this element. */
+  /** Gets the `i`th attribute of this element. */
   JSXAttribute getAttribute(int i) {
     properties(result, this, i, _, _)
   }
 
-  /** Get some attribute of this element. */
+  /** Gets an attribute of this element. */
   JSXAttribute getAnAttribute() {
     result = getAttribute(_)
   }
 
-  /** Get an attribute of this element with the given name. */
+  /** Gets the attribute of this element with the given name, if any. */
   JSXAttribute getAttributeByName(string name) {
     result = getAnAttribute() and result.getName() = name
   }
 
-  /** Get the `i`-th element in the body of this element. */
+  /** Gets the `i`th element in the body of this element. */
   Expr getBodyElement(int i) {
     i >= 0 and result = getChildExpr(-i-2)
   }
-  
-  /** Get an element in the body of this element. */
+
+  /** Gets an element in the body of this element. */
   Expr getABodyElement() {
     result = getBodyElement(_)
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getNameExpr().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getNameExpr().getFirstControlFlowNode()
   }
 }
 
@@ -66,7 +66,7 @@ class JSXElement extends Expr, @jsxelement {
  */
 class JSXAttribute extends ASTNode, @jsx_attribute {
   /**
-   * Get the expression denoting the name of this attribute.
+   * Gets the expression denoting the name of this attribute.
    *
    * This is not defined for spread attributes.
    */
@@ -75,7 +75,7 @@ class JSXAttribute extends ASTNode, @jsx_attribute {
   }
 
   /**
-   * Get the name of this attribute.
+   * Gets the name of this attribute.
    *
    * This is not defined for spread attributes.
    */
@@ -83,27 +83,27 @@ class JSXAttribute extends ASTNode, @jsx_attribute {
     result = getNameExpr().getValue()
   }
 
-  /** Get the expression denoting the value of this attribute. */
+  /** Gets the expression denoting the value of this attribute. */
   Expr getValue() {
     result = getChildExpr(1)
   }
 
-  /** Get the value of this attribute as a constant string, if possible. */
+  /** Gets the value of this attribute as a constant string, if possible. */
   string getStringValue() {
     result = getValue().getStringValue()
   }
 
-  /** Get the JSX element to which this attribute belongs. */
+  /** Gets the JSX element to which this attribute belongs. */
   JSXElement getElement() {
     this = result.getAnAttribute()
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getNameExpr().getFirstCFGNode() or
-    not exists(getNameExpr()) and result = getValue().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getNameExpr().getFirstControlFlowNode() or
+    not exists(getNameExpr()) and result = getValue().getFirstControlFlowNode()
   }
 
-  string toString() {
+  override string toString() {
     properties(this, _, _, _, result)
   }
 }
@@ -114,7 +114,7 @@ class JSXAttribute extends ASTNode, @jsx_attribute {
 class JSXSpreadAttribute extends JSXAttribute {
   JSXSpreadAttribute() { not exists(getNameExpr()) }
 
-  SpreadElement getValue() {
+  override SpreadElement getValue() {
     // override for more precise result type
     result = super.getValue()
   }
@@ -124,18 +124,18 @@ class JSXSpreadAttribute extends JSXAttribute {
  * A namespace-qualified name such as `n:a`.
  */
 class JSXQualifiedName extends Expr, @jsxqualifiedname {
-  /** Get the namespace component of this qualified name. */
+  /** Gets the namespace component of this qualified name. */
   Identifier getNamespace() {
     result = getChildExpr(0)
   }
 
-  /** Get the name component of this qualified name. */
+  /** Gets the name component of this qualified name. */
   Identifier getName() {
     result = getChildExpr(1)
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getNamespace().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getNamespace().getFirstControlFlowNode()
   }
 }
 
@@ -152,7 +152,7 @@ class JSXName extends Expr {
   }
 
   /**
-   * The string value of this name.
+   * Gets the string value of this name.
    */
   string getValue() {
     result = this.(Identifier).getName() or
@@ -172,13 +172,18 @@ class JSXEmptyExpr extends Expr, @jsxemptyexpr {
 }
 
 /**
- * A JSX attribute, viewed as a data flow node that writes properties to 
- * the JSX element it is in.
+ * A legacy `@jsx` pragma such as `@jsx React.DOM`.
  */
-library class JSXAttributeAsWrite extends PropWriteNode {
-  JSXAttributeAsWrite() { exists (JSXAttribute attr | this = attr.getNameExpr()) }
-  private JSXAttribute getAttribute() { result.getNameExpr() = this }
-  DataFlowNode getBase() { result = getAttribute().getElement() }
-  string getPropertyName() { result = this.(JSXName).getValue() }
-  DataFlowNode getRhs() { result = getAttribute().getValue() }
+class JSXPragma extends JSDocTag {
+  JSXPragma() {
+    getTitle() = "jsx"
+  }
+
+  /**
+   * Gets the DOM name specified by the pragma; for `@jsx React.DOM`,
+   * the result is `React.DOM`.
+   */
+  string getDOMName() {
+    result = getDescription().trim()
+  }
 }

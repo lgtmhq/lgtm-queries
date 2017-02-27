@@ -34,9 +34,10 @@ class SelfAttribute extends Attribute {
 
 /** Whether variable 'self' is the self variable in method 'method' */
 private predicate self_variable(Function method, Variable self) {
-    exists(FunctionObject fobj | fobj.getFunction() = method and fobj.isNormalMethod())
-    and
-    self.getAnAccess() = method.getArg(0)
+    exists(FunctionObject fobj | 
+        final_self_param(self.getAnAccess().getAFlowNode(), fobj) |
+        fobj.getFunction() = method
+    )
 }
 
 /** Whether attribute is an access of the form `self.attr` in the body of the class 'cls' */
@@ -44,7 +45,7 @@ private predicate self_attribute(Attribute attr, Class cls) {
     exists(Function f, Variable self |
         self_variable(f, self) |
         self.getAnAccess() = attr.getObject() and
-        cls = f.getScope()
+        cls = f.getScope+()
     )
 }
 
@@ -52,7 +53,16 @@ private predicate self_attribute(Attribute attr, Class cls) {
 class SelfAttributeRead extends SelfAttribute {
 
     SelfAttributeRead() {
-        this.getCtx() instanceof Load
+        this.getCtx() instanceof Load and
+        /* Be stricter for loads. 
+         * We want to generous as to what is defined (ie stores),
+         * but strict as to what needs to be defined (ie loads).
+         */
+        exists(ClassObject cls, FunctionObject func |
+            cls.declaredAttribute(_) = func |
+            func.getFunction() = this.getScope() and
+            cls.getPyClass() = this.getClass()
+        )
     }
 
     predicate guardedByHasattr() {
@@ -88,11 +98,11 @@ class SelfAttributeStore extends SelfAttribute {
 }
 
 private Object object_getattribute() {
-    py_cmembers(theObjectType(), "__getattribute__", result)
+    py_cmembers_versioned(theObjectType(), "__getattribute__", result, major_version().toString())
 }
 
 private Object object_init() {
-    py_cmembers(theObjectType(), "__init__", result)
+    py_cmembers_versioned(theObjectType(), "__init__", result, major_version().toString())
 }
 
 /** Helper class for UndefinedClassAttribute.ql &amp; MaybeUndefinedClassAttribute.ql */
@@ -127,7 +137,8 @@ class CheckClass extends ClassObject {
 
     predicate sometimesDefines(string name) {
         this.alwaysDefines(name) or
-        exists(SelfAttributeStore sa | sa.getClass() = this.getAnImproperSuperType().getPyClass() |
+        exists(SelfAttributeStore sa | 
+            sa.getScope().getScope+() = this.getAnImproperSuperType().getPyClass() |
             name = sa.getName()
         )
     }

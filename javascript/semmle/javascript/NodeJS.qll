@@ -11,6 +11,8 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for working with Node.js modules. */
+
 import Modules
 import DataFlow
 
@@ -23,22 +25,22 @@ class NodeModule extends Module {
     isNodejs(this)
   }
 
-  /** Get the scope induced by this module. */
-  ModuleScope getScope() {
+  /** Gets the scope induced by this module. */
+  override ModuleScope getScope() {
     result.getScopeElement() = this
   }
 
-  /** Get a `require` import in this module. */
+  /** Gets a `require` import in this module. */
   Require getAnImport() {
     result.getTopLevel() = this
   }
 
-  /** Get a module imported by this module. */
-  NodeModule getAnImportedModule() {
+  /** Gets a module imported by this module. */
+  override NodeModule getAnImportedModule() {
     result = getAnImport().getImportedModule()
   }
 
-  /** Get an expression whose value flows into module.exports. */
+  /** Gets an expression whose value flows into `module.exports`. */
   DataFlowNode getAnExportedExpr() {
     result = getAnExportsAccess() or
     exists (Assignment assgn, PropAccess lhs |
@@ -46,39 +48,43 @@ class NodeModule extends Module {
       lhs = assgn.getTarget() and
       lhs = getAnExportsAccess() and
       // the result is an expression that may flow into the right hand side
-      result = assgn.getRhs().(DataFlowNode).getASource()
+      result = assgn.getRhs().(DataFlowNode).getALocalSource()
     )
   }
 
-  /** Get a symbol exported by this module. */
-  string getAnExportedSymbol() {
+  /** Gets a symbol exported by this module. */
+  override string getAnExportedSymbol() {
     result = super.getAnExportedSymbol() or
     result = getAnImplicitlyExportedSymbol()
   }
 
-  predicate exports(string name, ASTNode export) {
+  override predicate exports(string name, ASTNode export) {
     // a property write whose base is `exports` or `module.exports`
     exists (PropWriteNode pwn | export = pwn |
-      pwn.getBase().getASource() = getAnExportedExpr() and
+      pwn.getBase().getALocalSource() = getAnExportedExpr() and
       name = pwn.getPropertyName()
     ) or
     // an externs definition (where appropriate)
     exists (PropAccess pacc | export = pacc |
-      pacc.getBase().(DataFlowNode).getASource() = getAnExportedExpr() and
+      pacc.getBase().(DataFlowNode).getALocalSource() = getAnExportedExpr() and
       name = pacc.getPropertyName() and
       isExterns() and exists(pacc.getDocumentation())
     )
   }
 
-  /** Get a symbol that the module object inherits from its prototypes. */
+  /** Gets a symbol that the module object inherits from its prototypes. */
   private string getAnImplicitlyExportedSymbol() {
     exists (ExternalConstructor ec | ec = getPrototypeOfExportedExpr() |
-      result = ec.getAMember().getName() or
-      ec instanceof FunctionExternal and result = "prototype" or
-      ec instanceof ArrayExternal and exists (NumberLiteral nl | result = nl.getValue() and exists(result.toInt()))
+      result = ec.getAMember().getName()
+      or
+      ec instanceof FunctionExternal and result = "prototype"
+      or
+      ec instanceof ArrayExternal and
+      exists (NumberLiteral nl | result = nl.getValue() and exists(result.toInt()))
     )
   }
 
+  /** Gets an externs declaration of the prototype object of a value exported by this module. */
   private ExternalConstructor getPrototypeOfExportedExpr() {
     exists (DataFlowNode exported | exported = getAnExportedExpr() |
       result instanceof ObjectExternal or
@@ -87,35 +93,38 @@ class NodeModule extends Module {
     )
   }
 
-  /** Get a reference to `module.exports` in this module. */
+  /** Gets a reference to `module.exports` in this module. */
   ExportsAccess getAnExportsAccess() {
     result.getTopLevel() = this
   }
 
-  predicate searchRoot(PathExpr path, Folder searchRoot, int priority) {
+  override predicate searchRoot(PathExpr path, Folder searchRoot, int priority) {
     path.getTopLevel() = this and
     exists (string pathval | pathval = path.getValue() |
       // paths starting with `./` or `../` are resolved relative to the importing
       // module's folder
-      if pathval.regexpMatch("\\.\\.?(/.*)?") then
-        (searchRoot = getFile().getParent() and priority = 0)
+      pathval.regexpMatch("\\.\\.?(/.*)?") and
+      (searchRoot = getFile().getParent() and priority = 0)
+      or
       // paths starting with `/` are resolved relative to the file system root
-      else if pathval.prefix(1) = "/" then
-        (searchRoot.getName() = "" and priority = 0)
-      // other paths are resolved relative to `node_modules` folders
-      else
-        findNodeModulesFolder(getFile().getParent(), searchRoot, priority)
+      pathval.matches("/%") and
+      (searchRoot.getName() = "" and priority = 0)
+      or
+      // paths that do not start with `./`, `../` or `/` are resolved relative
+      // to `node_modules` folders
+      not pathval.regexpMatch("\\.\\.?(/.*)?|/.*") and
+      findNodeModulesFolder(getFile().getParent(), searchRoot, priority)
     )
   }
 }
 
 /**
+ * Holds if `nodeModules` is a folder of the form `<prefix>/node_modules`, where
+ * `<prefix>` is a (not necessarily proper) prefix of `f` and does not end in `/node_modules`,
+ * and `distance` is the number of path elements of `f` that are missing from `<prefix>`.
+ *
  * This predicate implements the `NODE_MODULES_PATHS` procedure from the
- * [specification of `require.resolve`](https://nodejs.org/api/modules.html#modules_all_together):
- * for a folder `f`, it finds all folders `nodeModules` whose path is of
- * the form `<prefix>/node_modules`, such that `<prefix>` is a (not necessarily
- * proper) prefix of the path of `f` and does not end in `/node_modules`;
- * `distance` is the number of path elements of `f` that are missing from `<prefix>`.
+ * [specification of `require.resolve`](https://nodejs.org/api/modules.html#modules_all_together).
  *
  * For example, if `f` is `/a/node_modules/b`, we get the following results:
  *
@@ -134,14 +143,14 @@ private predicate findNodeModulesFolder(Folder f, Folder nodeModules, int distan
 /**
  * A Node.js `require` variable.
  */
-library class RequireVariable extends Variable {
+private class RequireVariable extends Variable {
   RequireVariable() {
     exists (ModuleScope m | this = m.getVariable("require"))
   }
 }
 
 /**
- * Helper predicate relating node modules and the files in which they occur.
+ * Holds if node module `nm` is in file `f`.
  */
 private predicate nodeModuleFile(NodeModule nm, File f) {
   nm.getFile() = f
@@ -157,20 +166,20 @@ class Require extends CallExpr, Import {
     )
   }
 
-  PathExpr getImportedPath() {
+  override PathExpr getImportedPath() {
     result = getArgument(0)
   }
 
-  NodeModule getEnclosingModule() {
+  override NodeModule getEnclosingModule() {
     this = result.getAnImport()
   }
 
-  NodeModule resolveImportedPath() {
+  override NodeModule resolveImportedPath() {
     nodeModuleFile(result, load(min(int prio | nodeModuleFile(_, load(prio)))))
   }
 
   /**
-   * Get the file that is imported by this `require`.
+   * Gets the file that is imported by this `require`.
    *
    * The result can be a JavaScript file, a JSON file or a `.node` file.
    * Externs files are not treated differently from other files by this predicate.
@@ -180,13 +189,16 @@ class Require extends CallExpr, Import {
   }
 
   /**
-   * Resolve this `require` to a file (which may not be a JavaScript file),
-   * following the [specification of `require.resolve`](https://nodejs.org/api/modules.html#modules_all_together).
+   * Gets the file that this `require` refers to (which may not be a JavaScript file),
+   * using the root folder of priority `priority`.
    *
-   * Module resolution order is modelled using the `priority` parameter as follows.
+   * This predicate implements the specification of
+   * [`require.resolve`](https://nodejs.org/api/modules.html#modules_all_together).
+   *
+   * Module resolution order is modeled using the `priority` parameter as follows.
    *
    * Each candidate folder in which the path may be resolved is assigned
-   * a priority (this is actually done by `Module.searchRoot`, but we repeat it
+   * a priority (this is actually done by `Module.searchRoot`, but we explain it
    * here for completeness):
    *
    *   - if the path starts with `'./'`, `'../'`, or `/`, it has a single candidate
@@ -234,11 +246,12 @@ class Require extends CallExpr, Import {
       result = loadAsDirectory(this, r, priority-(11*r+4))
     )
   }
-
-  string toString() { result = CallExpr.super.toString() }
-  CFGNode getFirstCFGNode() { result = CallExpr.super.getFirstCFGNode() }
 }
 
+/**
+ * Gets the resolution target with the given `priority` of `req`
+ * when resolved from the root with priority `rootPriority`.
+ */
 private File loadAsFile(Require req, int rootPriority, int priority) {
   exists (PathExpr path | path = req.getImportedPath() |
     result = path.resolve(rootPriority) and priority = 0 or
@@ -248,15 +261,21 @@ private File loadAsFile(Require req, int rootPriority, int priority) {
   )
 }
 
+/**
+ * Gets the default main module of the folder that is the resolution target
+ * with the given `priority` of `req` when resolved from the root with
+ * priority `rootPriority`.
+ */
 private File loadAsDirectory(Require req, int rootPriority, int priority) {
   exists (Folder dir | dir = req.getImportedPath().resolve(rootPriority) |
-    exists (PackageJSON pkgjson | pkgjson.getFile() = dir.getAFile() |
-      result = resolveMainModule(pkgjson, priority)
-    ) or
+    result = resolveMainModule(dir.(NPMPackage).getPackageJSON(), priority) or
     result = tryExtensions(dir, "index", priority-4)
   )
 }
 
+/**
+ * Gets the main module described by `pkgjson` with the given `priority`.
+ */
 private File resolveMainModule(PackageJSON pkgjson, int priority) {
   exists (Folder dir, string main |
     dir = pkgjson.getFile().getParent() and main = pkgjson.getMain() |
@@ -265,7 +284,12 @@ private File resolveMainModule(PackageJSON pkgjson, int priority) {
   )
 }
 
-pragma[inline]
+/**
+ * Gets a file in folder `dir` whose name is of the form `basename.extension`,
+ * where `extension` has the given `priority` (0 for `js`, 1 for `json`, and
+ * 2 for `node`).
+ */
+bindingset[basename]
 private File tryExtensions(Folder dir, string basename, int priority) {
   result = dir.getFile(basename + ".js") and priority = 0 or
   result = dir.getFile(basename + ".json") and priority = 1 or
@@ -273,19 +297,17 @@ private File tryExtensions(Folder dir, string basename, int priority) {
 }
 
 /** A literal path expression appearing in a `require` import. */
-library class LiteralRequiredPath extends PathExpr {
+private class LiteralRequiredPath extends PathExprInModule, @stringliteral {
   LiteralRequiredPath() {
-    this instanceof StringLiteral and
     exists (Require req | this.getParentExpr*() = req.getArgument(0))
   }
 
-  string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(StringLiteral).getValue() }
 }
 
 /** A literal path expression appearing in a call to `require.resolve`. */
-library class LiteralRequireResolvePath extends PathExpr {
+private class LiteralRequireResolvePath extends PathExprInModule, @stringliteral {
   LiteralRequireResolvePath() {
-    this instanceof StringLiteral and
     exists (RequireVariable req, MethodCallExpr reqres |
       reqres.getReceiver() = req.getAnAccess() and
       reqres.getMethodName() = "resolve" and
@@ -293,42 +315,38 @@ library class LiteralRequireResolvePath extends PathExpr {
     )
   }
 
-  string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(StringLiteral).getValue() }
 }
 
-/** A __dirname path expression. */
-library class DirNamePath extends PathExpr, VarAccess {
+/** A `__dirname` path expression. */
+private class DirNamePath extends PathExprInModule, VarAccess {
   DirNamePath() {
     getName() = "__dirname" and
     getVariable().getScope() instanceof ModuleScope
   }
 
-  string getValue() {
+  override string getValue() {
     result = getFile().getParent().getPath()
   }
-
-  predicate isImpure() { VarAccess.super.isImpure() }
 }
 
-/** A __filename path expression. */
-library class FileNamePath extends PathExpr, VarAccess {
+/** A `__filename` path expression. */
+private class FileNamePath extends PathExprInModule, VarAccess {
   FileNamePath() {
     getName() = "__filename" and
     getVariable().getScope() instanceof ModuleScope
   }
 
-  string getValue() {
+  override string getValue() {
     result = getFile().getPath()
   }
-
-  predicate isImpure() { VarAccess.super.isImpure() }
 }
 
 /**
  * A path expression of the form `path.join(p, "...")` where
  * `p` is also a path expression.
  */
-library class JoinedPath extends PathExpr {
+private class JoinedPath extends PathExprInModule, @callexpr {
   JoinedPath() {
     exists (MethodCallExpr call | call = this |
       call.getReceiver().(VarAccess).getName() = "path" and
@@ -339,7 +357,7 @@ library class JoinedPath extends PathExpr {
     )
   }
 
-  string getValue() {
+  override string getValue() {
     exists (CallExpr call, PathExpr left, StringLiteral right |
       call = this and
       left = call.getArgument(0) and right = call.getArgument(1) |
@@ -365,7 +383,7 @@ class ExportsAccess extends Expr {
       this = ms.getVariable("exports").getAnAccess()
     ) or
     exists (PropAccess pacc | pacc = this |
-      pacc.getBase().(DataFlowNode).getASource() instanceof ModuleAccess and
+      pacc.getBase().(DataFlowNode).getALocalSource() instanceof ModuleAccess and
       pacc.getPropertyName() = "exports"
     )
   }

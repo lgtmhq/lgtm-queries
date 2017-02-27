@@ -15,9 +15,11 @@
  * @name Iterable can be either a string or a sequence
  * @description Iteration over either a string or a sequence in the same loop can cause errors that are hard to find.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       maintainability
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

@@ -15,44 +15,19 @@
  * @name Potentially uninitialized local variable
  * @description Using a local variable before it is initialized causes an UnboundLocalError.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python
+import Loop
 
 predicate defined_and_used_in_condition(Name use) {
     exists(If i1, If i2, Name defn | i1 != i2 and defn.defines(use.getVariable()) |
         i1.getASubStatement().contains(defn) and i2.getASubStatement().contains(use)
-    )
-}
-
-private predicate empty_sequence(Expr e) {
-    exists(SsaVariable var | var.getAUse().getNode() = e | empty_sequence(var.getDefinition().getNode())) or
-    e instanceof List and not exists(e.(List).getAnElt()) or
-    e instanceof Tuple and not exists(e.(Tuple).getAnElt()) or
-    e.(StrConst).getText().length() = 0
-}
-
-/* This has the potential for refinement, but we err on the side of fewer false positives for now. */
-private predicate probably_non_empty_sequence(Expr e) {
-    not empty_sequence(e)
-}
-
-/** A loop which probably defines v */
-Stmt loop_probably_defines(Variable v) {
-    exists(Name defn | defn.defines(v) and result.contains(defn) |
-        probably_non_empty_sequence(result.(For).getIter())
-        or
-        probably_non_empty_sequence(result.(While).getTest())
-    )
-}
-
-predicate probably_defined_in_loop(Name use) {
-    exists(Stmt loop |
-        loop = loop_probably_defines(use.getVariable()) |
-        loop.getAFlowNode().strictlyReaches(use.getAFlowNode())
     )
 }
 

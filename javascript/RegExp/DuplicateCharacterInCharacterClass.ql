@@ -16,10 +16,11 @@
  * @description If a character class in a regular expression contains the same character twice, this may
  *              indicate a bug.
  * @kind problem
- * @problem.severity error
+ * @problem.severity warning
  * @tags reliability
  *       correctness
  *       regular-expressions
+ * @precision very-high
  */
 
 import javascript

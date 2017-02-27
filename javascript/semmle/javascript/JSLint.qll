@@ -12,21 +12,20 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with JSLint/JSHint directives.
+ * Provides classes for working with JSLint/JSHint directives.
  */
 
 import Comments
 
+/** Gets the name of the directive represented by `c`. */
 private string getDirectiveName(SlashStarComment c) {
   result = c.getText().regexpCapture("(?s)\\s*(\\w+)\\b.*", 1)
 }
 
-/**
- * Common superclass for all JSLint directives.
- */
+/** A JSLint directive. */
 abstract class JSLintDirective extends SlashStarComment {
   /**
-   * The content of this directive, not including the directive name itself,
+   * Gets the content of this directive, not including the directive name itself,
    * and with end-of-line characters replaced by spaces.
    */
   string getContent() {
@@ -35,7 +34,7 @@ abstract class JSLintDirective extends SlashStarComment {
   }
 
   /**
-   * The name of this directive.
+   * Gets the name of this directive.
    *
    * Like JSHint (but unlike JSLint), this predicate allows whitespace before the
    * directive name.
@@ -44,6 +43,9 @@ abstract class JSLintDirective extends SlashStarComment {
     result = getDirectiveName(this)
   }
 
+  /**
+   * Gets the function surrounding this directive, if any.
+   */
   private Function getASurroundingFunction() {
     exists (Token tk | tk = getNextToken() |
       tk = result.getAToken() and
@@ -54,7 +56,7 @@ abstract class JSLintDirective extends SlashStarComment {
   }
 
   /**
-   * The scope of this directive. This is either the closest enclosing
+   * Gets the scope of this directive, which is either the closest enclosing
    * function, or the toplevel.
    */
   StmtContainer getScope() {
@@ -63,26 +65,27 @@ abstract class JSLintDirective extends SlashStarComment {
     or
     not exists(getASurroundingFunction()) and result = getTopLevel()
   }
-  
+
   /**
-   * Get a flag defined by this directive; 'value' is set to the value of
-   * the flag, or to the empty string if no value is provided.
+   * Holds if this directive sets flag `name` to `value`.
+   *
+   * If a flag is set without providing an explicit value, `value`
+   * is the empty string.
    */
   predicate definesFlag(string name, string value) {
-    exists (string defn |
-      defn = getContent().splitAt(",").trim() and
-      (if defn.matches("%:%") then
+    exists (string defn | defn = getContent().splitAt(",").trim() |
+      if defn.matches("%:%") then
         (name = defn.splitAt(":", 0).trim() and
          value = defn.splitAt(":", 1).trim())
-       else
+      else
         (name = defn and
-         value = ""))
+         value = "")
     )
   }
-  
+
   /**
-   * Determine whether this directive applies to the given statement.
-   * This is the case if the expression or statement is nested in the directive's scope.
+   * Holds if this directive applies to statement or expression `s`, meaning that
+   * `s` is nested in the directive's scope.
    */
   predicate appliesTo(ExprOrStmt s) {
     getScope() = s.(Stmt).getContainer().getEnclosingContainer*()
@@ -92,44 +95,44 @@ abstract class JSLintDirective extends SlashStarComment {
 }
 
 /**
- * A JSLint directive declaring global variables. This is either
- * an explicit 'global' directive, or a 'jslint' directive that implicitly
+ * A JSLint directive declaring global variables.
+ *
+ * This is either an explicit `global` directive, or a `jslint` directive that implicitly
  * declares a group of related global variables.
  */
 abstract class JSLintGlobal extends JSLintDirective {
   /**
-   * Get a global variable declared by this directive. The parameter
-   * 'writable' indicates whether the variable is declared to be
-   * writable or not.
+   * Holds if `name` is a global variable declared by this directive, with
+   * `writable` indicating whether the variable is declared to be writable or not.
    */
   abstract predicate declaresGlobal(string name, boolean writable);
 }
 
-/** A JSLint 'global' directive. */
+/** A JSLint `global` directive. */
 class JSLintExplicitGlobal extends JSLintGlobal {
   JSLintExplicitGlobal() {
     getDirectiveName(this) = "global"
   }
 
-  predicate declaresGlobal(string name, boolean writable) {
-    exists (string value |
-      ((writable = true and value = "true") or
-       (writable = false and (value = "false" or value = ""))) and
-      definesFlag(name, value)
+  override predicate declaresGlobal(string name, boolean writable) {
+    exists (string value | definesFlag(name, value) |
+      writable = true and value = "true"
+      or
+      writable = false and (value = "false" or value = "")
     )
   }
 }
 
-/** A JSLint 'properties' directive. */
+/** A JSLint `properties` directive. */
 class JSLintProperties extends JSLintDirective {
   JSLintProperties() {
     exists (string name | name = getDirectiveName(this) |
       name = "property" or name = "properties" or name = "members"
     )
   }
-  
+
   /**
-   * Get a property declared by this directive.
+   * Gets a property declared by this directive.
    */
   string getAProperty() {
     result = getContent().splitAt(",").trim()
@@ -143,8 +146,11 @@ class JSLintOptions extends JSLintDirective {
   }
 }
 
-// cf. http://www.jslint.com/help.html#global
+/**
+ * Gets an implicit JSLint global of the given `category`.
+ */
 private string jsLintImplicitGlobal(string category) {
+  // cf. http://www.jslint.com/help.html#global
   (category = "browser" and
    (result = "clearInterval" or result = "clearTimeout" or result = "document" or
     result = "event" or result = "frames" or result = "history" or result = "Image" or
@@ -174,7 +180,7 @@ private string jsLintImplicitGlobal(string category) {
 /**
  * A JSLint options directive implicitly declaring a group of globals.
  */
-library class JSLintImplicitGlobal extends JSLintOptions, JSLintGlobal {
+private class JSLintImplicitGlobal extends JSLintOptions, JSLintGlobal {
   JSLintImplicitGlobal() {
     exists (string category |
       definesFlag(category, "true") and
@@ -182,7 +188,7 @@ library class JSLintImplicitGlobal extends JSLintOptions, JSLintGlobal {
     )
   }
 
-  predicate declaresGlobal(string name, boolean writable) {
+  override predicate declaresGlobal(string name, boolean writable) {
     writable = false and
     exists (string category |
       definesFlag(category, "true") and

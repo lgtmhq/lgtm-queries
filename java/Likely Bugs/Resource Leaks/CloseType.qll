@@ -59,9 +59,9 @@ class SqlResourceOpeningMethodAccess extends MethodAccess {
   SqlResourceOpeningMethodAccess() {
     exists(Method m | this.getMethod() = m |
       m.getDeclaringType().(RefType).hasQualifiedName("java.sql", _) and
-      m.getType().(RefType).hasQualifiedName("java.sql", _) and
+      m.getReturnType().(RefType).hasQualifiedName("java.sql", _) and
       m.getName().regexpMatch("(create|prepare|execute).*") and
-      closeableType(m.getType())
+      closeableType(m.getReturnType())
     )
   }
 }

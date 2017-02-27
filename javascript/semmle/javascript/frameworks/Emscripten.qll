@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Classes for working with Emscripten-generated code.
+ * Provides classes for working with Emscripten-generated code.
  */
 
 import javascript

@@ -15,10 +15,13 @@
  * @name Module-level cyclic import
  * @description Module uses member of cyclically imported module, which can lead to failure at import time.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
  *       types
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
+ * @comprehension 0.5
  */
 
 import python

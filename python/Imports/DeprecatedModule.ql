@@ -15,9 +15,11 @@
  * @name Import of deprecated module
  * @description Import of a deprecated module
  * @kind problem
- * @problem.severity warning
  * @tags changeability
  *       maintainability
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

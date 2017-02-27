@@ -16,9 +16,10 @@
  * @description Returning a value from a setter function is useless, since it will
  *              always be ignored.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
  * @tags maintainability
  *       language-features
+ * @precision very-high
  */
 
 import javascript

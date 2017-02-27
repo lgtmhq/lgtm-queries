@@ -15,9 +15,11 @@
  * @name Comparison of constants
  * @description Comparison of constants is always constant, but is harder to read than a simple constant.
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

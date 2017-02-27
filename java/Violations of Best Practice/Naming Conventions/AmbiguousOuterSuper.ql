@@ -23,10 +23,10 @@
 import java
 
 RefType nestedSupertypePlus(RefType t) {
-  t.getASupertype().getSourceDeclaration() = result and
+  t.getASourceSupertype() = result and
   t instanceof NestedType or
   exists(RefType mid | mid = nestedSupertypePlus(t) |
-    mid.getASupertype().getSourceDeclaration() = result
+    mid.getASourceSupertype() = result
   )
 }
 
@@ -63,7 +63,7 @@ from MethodAccess ma, Method m, NestedType nt, string signature
 where callToInheritedMethod(nt, ma, signature) and
       m = methodInEnclosingType(nt, signature) and
       // There is actually scope for confusion.
-      not nt.getASupertype+().getSourceDeclaration() = m.getDeclaringType()
+      not nt.getASourceSupertype+() = m.getDeclaringType()
 select ma, "A $@ is called instead of a $@.",
   ma.getMethod(),  "method declared in a superclass",
   m, "method with the same signature in an enclosing class"

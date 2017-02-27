@@ -46,12 +46,12 @@ class MapMethod extends Method {
   
   /** The type of keys of the map to which this method belongs. */
   RefType getReceiverKeyType() {
-    result = ((MapType)this.getDeclaringType()).getKeyType()
+    result = this.getDeclaringType().(MapType).getKeyType()
   }
   
   /** The type of values of the map to which this method belongs. */
   RefType getReceiverValueType() {
-    result = ((MapType)this.getDeclaringType()).getValueType()
+    result = this.getDeclaringType().(MapType).getValueType()
   }
 }
 

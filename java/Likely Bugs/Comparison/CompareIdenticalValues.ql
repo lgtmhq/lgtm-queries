@@ -57,7 +57,7 @@ predicate sameVariable(VarAccess left, VarAccess right, Variable v) {
 predicate equal(Expr left, Expr right) {
   toCompare(left, right) and
   (
-    left.(Literal).getLiteral() = right.(Literal).getLiteral() or
+    left.(Literal).getValue() = right.(Literal).getValue() or
     sameVariable(left, right, _) or
     exists(BinaryExpr bLeft, BinaryExpr bRight | bLeft = left and bRight = right |
       bLeft.getKind() = bRight.getKind() and

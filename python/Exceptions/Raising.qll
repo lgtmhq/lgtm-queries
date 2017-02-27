@@ -14,10 +14,9 @@
 import python
 
 /** Whether the raise statement 'r' raises 'type' from origin 'orig' */ 
-predicate type_or_typeof(Raise r, ClassObject type, ControlFlowNode orig) {
-     exists(RaisingNode raise, ControlFlowNode exception |
-        raise.getNode() = r and
-        exception = raise.getExceptionNode() |
+predicate type_or_typeof(Raise r, ClassObject type, AstNode orig) {
+     exists(Expr exception |
+        exception = r.getRaised() |
         exception.refersTo(type, _, orig)
         or
         not exists(ClassObject exc_type | exception.refersTo(exc_type)) and

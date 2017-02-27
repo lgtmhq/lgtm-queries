@@ -18,6 +18,7 @@
  * @problem.severity error
  * @tags maintainability
  *       language-features
+ * @precision very-high
  */
 
 import javascript
@@ -26,4 +27,4 @@ from YieldExpr yield, Function f
 where f = yield.getEnclosingFunction() and
       not f.isGenerator()
 select yield, "This yield expression is contained in $@ which is not marked as a generator.",
-       f.getFirstToken(), "a function"
+       f.getFirstToken(), f.describe()

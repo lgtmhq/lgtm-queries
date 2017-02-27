@@ -15,10 +15,12 @@
  * @name Except block handles 'BaseException'
  * @description Handling 'BaseException' means that system exits and keyboard interrupts may be mis-handled.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       readability
  *       convention
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

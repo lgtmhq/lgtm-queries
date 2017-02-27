@@ -15,8 +15,10 @@
  * @name Use of exit() or quit()
  * @description exit() or quit() may fail if the interpreter is run with the -S option.
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

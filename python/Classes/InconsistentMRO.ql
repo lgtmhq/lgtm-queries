@@ -15,9 +15,11 @@
  * @name Inconsistent method resolution order
  * @description Class definition will raise a type error at runtime due to inconsistent method resolution order(MRO)
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

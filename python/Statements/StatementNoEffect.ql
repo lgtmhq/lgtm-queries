@@ -15,29 +15,38 @@
  * @name Statement has no effect
  * @description A statement has no effect
  * @kind problem
- * @problem.severity recommendation
  * @tags maintainability
  *       useless-code
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision high
  */
 
 import python
 
-/* Conservative estimate of whether attribute lookup has a side effect */
-predicate maybe_side_effecting_attribute(Attribute attr) {
-    exists(string name, ClassObject cls |
-        attr.getObject().refersTo(_, cls, _) and
+predicate understood_attribute(Attribute attr, ClassObject cls, ClassObject attr_cls) {
+    exists(string name |
         attr.getName() = name |
-        exists(Object val |
-            val = cls.lookupAttribute(name) |
-            side_effecting_dcesrciptor_type(val.getAnInferredType())
-            or
-            /* If we don't know the type, we have to assume it may cause a side effect */
-            not exists(val.getAnInferredType())
-        )
+        attr.getObject().refersTo(_, cls, _) and
+        cls.attributeRefersTo(name, _, attr_cls, _)
     )
 }
 
-predicate side_effecting_dcesrciptor_type(ClassObject descriptor) {
+/* Conservative estimate of whether attribute lookup has a side effect */
+predicate side_effecting_attribute(Attribute attr) {
+    exists(ClassObject cls, ClassObject attr_cls |
+        understood_attribute(attr, cls, attr_cls) and
+        side_effecting_descriptor_type(attr_cls)
+    )
+}
+
+predicate maybe_side_effecting_attribute(Attribute attr) {
+    not understood_attribute(attr, _, _) and not attr.refersTo(_)
+    or
+    side_effecting_attribute(attr)
+}
+
+predicate side_effecting_descriptor_type(ClassObject descriptor) {
     descriptor.isDescriptorType() and
     /* Technically all descriptor gets have side effects, 
      * but some are indicative of a missing call and 
@@ -47,13 +56,59 @@ predicate side_effecting_dcesrciptor_type(ClassObject descriptor) {
    not descriptor = theClassMethodType()
 }
 
+/** Side effecting binary operators are rare, so we assume they are not
+ * side-effecting unless we know otherwise.
+ */
+predicate side_effecting_binary(Expr b) {
+    exists(Expr sub, string method_name |
+        sub = b.(BinaryExpr).getLeft() and
+        method_name = b.(BinaryExpr).getOp().getSpecialMethodName()
+        or
+        exists(Cmpop op |
+            b.(Compare).compares(sub, op, _) and
+            method_name = op.getSpecialMethodName()
+        )
+        |
+        exists(ClassObject cls |
+            sub.refersTo(_, cls, _) and
+            cls.hasAttribute(method_name)
+            and
+            not exists(ClassObject declaring |
+                declaring.declaresAttribute(method_name)
+                and declaring = cls.getAnImproperSuperType() and
+                declaring.isBuiltin() and not declaring = theObjectType()
+            )
+        )
+    )
+}
+
+predicate is_notebook(File f) {
+    exists(Comment c |
+        c.getLocation().getFile() = f |
+        c.getText().regexpMatch("#\\s*<nbformat>.+</nbformat>\\s*")
+    )
+}
+
+/** Expression (statement) in a jupyter/ipython notebook */
+predicate in_notebook(Expr e) {
+    is_notebook(e.getScope().(Module).getFile())
+}
+
 predicate no_effect(Expr e) {
     not e instanceof StrConst and
     not ((StrConst)e).isDocString() and
     not e.hasSideEffects() and
-    not maybe_side_effecting_attribute(e.getASubExpression*())
+    forall(Expr sub |
+        sub = e.getASubExpression*()
+        |
+        not side_effecting_binary(sub)
+        and
+        not maybe_side_effecting_attribute(sub)
+    ) and
+    not in_notebook(e)
 }
 
 from ExprStmt stmt
 where no_effect(stmt.getValue())
 select stmt, "This statement has no effect."
+

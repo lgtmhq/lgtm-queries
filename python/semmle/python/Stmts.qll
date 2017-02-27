@@ -31,7 +31,7 @@ class Stmt extends Stmt_, AstNode {
     }
 
     Location getLocation() {
-    	result = Stmt_.super.getLocation()
+        result = Stmt_.super.getLocation()
     }
 
     /** Gets an immediate (non-nested) sub-expression of this statement */
@@ -88,6 +88,32 @@ class AugAssign extends AugAssign_ {
     Stmt getASubStatement() {
         none()
     }
+}
+
+/** An annotated assignment statement, such as `x: int = 0` */
+class AnnAssign extends AnnAssign_ {
+
+    Expr getASubExpression() {
+        result = this.getAnnotation() or
+        result = this.getTarget() or
+        result = this.getValue()
+    }
+
+    Stmt getASubStatement() {
+        none()
+    }
+
+    /** Holds if the value of the annotation of this assignment is stored at runtime. */
+    predicate isStored() {
+        not this.getScope() instanceof Function
+        and
+        exists(Name n |
+            n = this.getTarget()
+            and
+            not n.isParenthesised()
+        )
+    }
+
 }
 
 /** An exec statement */
@@ -308,13 +334,26 @@ class Raise extends Raise_ {
         py_exprs(result, _, this, _)
     }
 
-
-    /** The exception raised. = getType() for Python2, getExc() for Python3 */
-    Expr getException()
-    {
-        major_version() = 2 and result = this.getType()
+    /** The expression immediately following the `raise`, this is the
+     * exception raised, but not accounting for tuples in Python 2.
+     */
+    Expr getException() {
+        result = this.getType()
         or
-        major_version() = 3 and result = this.getExc()
+        result = this.getExc()
+    }
+
+    /** The exception raised, accounting for tuples in Python 2. */
+    Expr getRaised()
+    {
+        exists(Expr raw |
+            raw = this.getException() |
+            if (not major_version() = 2 or not exists(raw.(Tuple).getAnElt())) then
+                result = raw
+            else
+                /* In Python 2 raising a tuple will result in the first element of the tuple being raised. */
+                result = raw.(Tuple).getElt(0)
+        )
     }
 }
 

@@ -19,28 +19,53 @@
  * @problem.severity warning
  * @tags maintainability
  *       frameworks/node.js
+ * @precision high
  */
 
 import javascript
+import DOM.DOM
 
 /**
- * The NPM package `pkg` declares a dependency on package `name`, and `dep`
- * is the corresponding declaration in the `package.json` file.
+ * Holds if the NPM package `pkg` declares a dependency on package `name`,
+ * and `dep` is the corresponding declaration in the `package.json` file.
  */
 predicate declaresDependency(NPMPackage pkg, string name, JSONValue dep) {
   dep = pkg.getPackageJSON().getDependencies().getPropValue(name)
 }
 
 /**
- * The NPM package `pkg` declares a dependency on package `name`, and uses
- * it at least once.
+ * Gets a path expression in a module belonging to `pkg`.
+ */
+PathExpr getAPathExpr(NPMPackage pkg) {
+  result.getTopLevel() = pkg.getAModule()
+}
+
+/**
+ * Gets a URL-valued attribute in a module or HTML file belonging to `pkg`.
+ */
+URLValuedAttribute getAURLAttribute(NPMPackage pkg) {
+  result.getFile() = pkg.getAFile()
+}
+
+/**
+ * Holds if the NPM package `pkg` declares a dependency on package `name`,
+ * and uses it at least once.
  */
 predicate usesDependency(NPMPackage pkg, string name) {
   declaresDependency(pkg, name, _) and
-  exists (PathExpr pathExpr, string path |
-    pathExpr.getTopLevel() = pkg.getAModule() and path = pathExpr.getValue() |
-    name = path or
-    name + "/" = path.prefix(name.length()+1)
+  (
+    // there is a path expression (e.g., in a `require` or `import`) that
+    // references `pkg`
+    exists (PathExpr path | path = getAPathExpr(pkg) |
+      // check whether the path is `name` or starts with `name/`
+      path.getValue().regexpMatch("\\Q" + name + "\\E(/.*)?")
+    )
+    or
+    // there is an HTML URL attribute that may reference `pkg`
+    exists (URLValuedAttribute attr | attr = getAURLAttribute(pkg) |
+      // check whether the URL contains `node_modules/name`
+      attr.getURL().regexpMatch(".*\\bnode_modules/\\Q" + name + "\\E(/.*)?")
+    )
   )
 }
 

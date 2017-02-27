@@ -15,9 +15,11 @@
  * @name Duplication in regular expression character set
  * @description Duplicate characters in a class have no effect and may indicate an error in the regular expression.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       readability
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

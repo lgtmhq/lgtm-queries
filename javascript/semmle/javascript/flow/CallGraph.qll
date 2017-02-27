@@ -12,27 +12,37 @@
 // permissions and limitations under the License.
 
 /**
- * A call graph builder based on intra-procedural data flow.
+ * Provides classes for working with call graphs derived from intra-procedural data flow.
  */
 
 import semmle.javascript.Expr
 import Analysis
-private import AbstractValuesImpl
 private import InferredTypes
 
-/** Entry point for call graph construction. */
+/**
+ * Holds if `v` is an abstract value representing a concrete value that,
+ * when called, invokes function `f`.
+ */
+private predicate isCallable(AbstractValue v, Function f) {
+  f = v.(AbstractFunction).getFunction() or
+  f = v.(AbstractClass).getClass().getConstructor().getBody()
+}
+
+/** A function call or `new` expression, with information about its potential callees. */
 class CallSite extends InvokeExpr {
+  /** Gets an abstract value representing possible callees of this call site. */
   private AbstractValue getACalleeValue() {
     result = getCallee().(AnalysedFlowNode).getAValue()
   }
 
+  /** Gets a potential callee of this call site. */
   Function getACallee() {
-    getACalleeValue() = TAbstractFunction(result)
+    isCallable(getACalleeValue(), result)
   }
 
   /**
-   * Is our approximation of possible callees for this call site likely
-   * to be imprecise?
+   * Holds if our approximation of possible callees for this call site is
+   * likely to be imprecise.
    *
    * We currently track one specific source of imprecision: call
    * resolution relies on flow through global variables, and the flow
@@ -42,13 +52,16 @@ class CallSite extends InvokeExpr {
    * imprecision.
    */
   predicate isImprecise() {
-    getACalleeValue().isIndefinite("global") and
-    getACalleeValue().(DefiniteAbstractValue).getType() != TTFunction()
+    getACalleeValue().isIndefinite("global")
+    and
+    exists (DefiniteAbstractValue v | v = getACalleeValue() |
+      not isCallable(v, _)
+    )
   }
 
   /**
-   * Is our approximation of possible callees for this call site likely
-   * to be incomplete?
+   * Holds if our approximation of possible callees for this call site is
+   * likely to be incomplete.
    */
   predicate isIncomplete() {
     // the flow analysis identifies a source of incompleteness other than
@@ -57,8 +70,8 @@ class CallSite extends InvokeExpr {
   }
 
   /**
-   * Is our approximation of possible callees for this call site likely
-   * to be imprecise or incomplete?
+   * Holds if our approximation of possible callees for this call site is
+   * likely to be imprecise or incomplete.
    */
   predicate isUncertain() {
     isImprecise() or isIncomplete()

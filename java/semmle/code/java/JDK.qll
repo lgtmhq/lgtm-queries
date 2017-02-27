@@ -354,7 +354,7 @@ class EqualsMethod extends Method {
   EqualsMethod() {
     this.hasName("equals") and
     this.getNumberOfParameters() = 1 and
-    ((RefType)this.getParameter(0).getType()).hasQualifiedName("java.lang", "Object")
+    this.getParameter(0).getType().(RefType).hasQualifiedName("java.lang", "Object")
   }
 
   /** The single parameter of this method. */
@@ -387,7 +387,7 @@ class MainMethod extends Method {
   MainMethod() {
     this.isPublic() and 
     this.isStatic() and
-    this.getType().hasName("void") and
+    this.getReturnType().hasName("void") and
     this.hasName("main") and
     this.getNumberOfParameters() = 1 and 
     exists(Array a | a = this.getAParameter().getType() and
@@ -401,7 +401,7 @@ class PreMainMethod extends Method {
   PreMainMethod() {
     this.isPublic() and
     this.isStatic() and
-    this.getType().hasName("void") and
+    this.getReturnType().hasName("void") and
     this.getNumberOfParameters() < 3 and
     this.getParameter(0).getType() instanceof TypeString and
     (exists(this.getParameter(1)) implies

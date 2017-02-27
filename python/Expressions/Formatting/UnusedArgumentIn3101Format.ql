@@ -15,9 +15,11 @@
  * @name Unused argument in a formatting call
  * @description Including surplus arguments in a formatting call makes code more difficult to read and may indicate an error.
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision high
  */
 
 import python

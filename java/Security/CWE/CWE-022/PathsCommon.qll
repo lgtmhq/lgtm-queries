@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 import java
-import semmle.code.java.controlflow.Dominance
+import semmle.code.java.dataflow.Guards
 
 abstract class PathCreation extends Expr {
   abstract Expr getInput();
@@ -101,10 +101,10 @@ predicate inWeakCheck(Expr e) {
 // Ignore cases where the variable has been checked somehow,
 // but allow some particularly obviously bad cases.
 predicate guarded(VarAccess e) {
-  exists(IfStmt i, Expr c | 
-    i.getCondition().getAChildExpr*() = c and 
+  exists(ConditionBlock cb, Expr c |
+    cb.getCondition().getAChildExpr*() = c and
     c = e.getVariable().getAnAccess() and
-    dominates(i, e.getEnclosingStmt()) and
+    cb.controls(e.getBasicBlock(), true) and
     // Disallow a few obviously bad checks.
     not inWeakCheck(c)
   )

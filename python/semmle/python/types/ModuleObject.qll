@@ -29,6 +29,10 @@ abstract class ModuleObject extends Object {
         none()
     }
 
+    Container getPath() {
+        none()
+    }
+
     /** Gets the name of this scope */
     abstract string getName();
 
@@ -100,16 +104,16 @@ class BuiltinModuleObject extends ModuleObject {
     }
 
     Object getAttribute(string name) {
-        py_cmembers(this, name, result)
+        py_cmembers_versioned(this, name, result, major_version().toString())
     }
 
     predicate exports(string name) {
-        py_cmembers(this, name, _) and
+        py_cmembers_versioned(this, name, _, major_version().toString()) and
         not name.matches("\\_%")
     }
 
     predicate hasAttribute(string name) {
-        py_cmembers(this, name, _)
+        py_cmembers_versioned(this, name, _, major_version().toString())
     }
 
     predicate attributeRefersTo(string name, Object value, ControlFlowNode origin) {
@@ -141,6 +145,10 @@ class PythonModuleObject extends ModuleObject {
 
     Module getModule() {
         result = this.getOrigin()
+    }
+
+    Container getPath() {
+        result = this.getModule().getFile()
     }
 
     cached Object getAttribute(string name) {
@@ -204,6 +212,13 @@ class PackageObject extends ModuleObject {
         result = this.getOrigin()
     }
 
+    Container getPath() {
+        exists(ModuleObject m | 
+            m.getPackage() = this |
+            result = m.getPath().getParent()
+        )
+    }
+
     ModuleObject submodule(string name) {
         result.getPackage() = this and
         name = result.getShortName()
@@ -239,6 +254,15 @@ class PackageObject extends ModuleObject {
 
     predicate attributeRefersTo(string name, Object value, ClassObject cls, ControlFlowNode origin) {
         final_package_attributes(this, name, value, cls, origin)
+    }
+
+    Location getLocation() {
+        none()
+    }
+
+    predicate hasLocationInfo(string path, int bl, int bc, int el, int ec) {
+        path = this.getPath().getName() and
+        bl = 0 and bc = 0 and el = 0 and ec = 0
     }
 
 }

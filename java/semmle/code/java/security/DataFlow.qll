@@ -39,7 +39,7 @@ class FlowSource extends Expr {
   predicate flowsTo(Expr sink) {
     flowsToAndLocal((FlowExpr) sink)
   }
-  
+
   /**
    * The same as `flowsTo(sink,fromArg)`, plus `localFlow` and reads from instance fields.
    * This gives us a little bit of flow through instance fields, without
@@ -94,8 +94,7 @@ class FlowSource extends Expr {
       // Flow into a method.
       or exists(Call c, Callable m, Parameter p, int i |
         flowsTo(tracked, _) and
-        c.getArgument(i) = tracked and
-        m = responder(c) and
+        m = responderForArg(c, i, tracked) and
         m.getParameter(i) = p and
         exists(UseStmt u | parameterUse(p, u) and sink = u.getAUse(p)) and
         fromArg = true
@@ -112,8 +111,8 @@ class FlowSource extends Expr {
   }
 
   /**
-   * A version of `flowsTo` that searches backwards from the `sink` instead of 
-   * forwards from the source. This does not include flow paths across methods. 
+   * A version of `flowsTo` that searches backwards from the `sink` instead of
+   * forwards from the source. This does not include flow paths across methods.
    */
   predicate flowsToReverse(Expr sink) {
     sink instanceof FlowExpr and
@@ -158,7 +157,8 @@ class FlowExpr extends Expr {
   }
 }
 
-/** The responders for a `call` with given argument. */ 
+/** The responders for a `call` with given argument. */
+pragma[nomagic]
 private Callable responderForArg(Call call, int i, FlowExpr tracked) {
   call.getArgument(i) = tracked and
   result = responder(call)
@@ -202,37 +202,41 @@ private Expr parameterFlow(Method method, int arg) {
  */
 cached private predicate localFlowStep(Expr tracked, Expr sink) {
   variableStep(tracked, sink)
-  
+
   // A concatenation of a tracked expression.
-  or ((AddExpr) sink).getAnOperand() = tracked
- 
+  or sink.(AddExpr).getAnOperand() = tracked
+
   // A parenthesized tracked expression.
-  or ((ParExpr) sink).getExpr() = tracked
- 
+  or sink.(ParExpr).getExpr() = tracked
+
   // A cast of a tracked expression.
-  or ((CastExpr) sink).getExpr() = tracked
- 
+  or sink.(CastExpr).getExpr() = tracked
+
+  // A conditional expression with a tracked branch.
+  or sink.(ConditionalExpr).getTrueExpr() = tracked
+  or sink.(ConditionalExpr).getFalseExpr() = tracked
+
   // An array initialization or creation expression.
-  or ((ArrayCreationExpr)sink).getInit() = tracked
-  or ((ArrayInit)sink).getAnInit() = tracked
+  or sink.(ArrayCreationExpr).getInit() = tracked
+  or sink.(ArrayInit).getAnInit() = tracked
 
   // An access to an element of a tracked array.
-  or ((ArrayAccess) sink).getArray() = tracked
- 
+  or sink.(ArrayAccess).getArray() = tracked
+
   or arrayAccessStep(tracked, sink)
-   
+
   or constructorStep(tracked, sink)
-  
+
   or qualifierToMethodStep(tracked, sink)
 
   or argToMethodStep(tracked, sink)
-   
+
   // An unsafe attempt to escape tainted input.
-  or (unsafeEscape(sink) and ((MethodAccess)sink).getQualifier() = tracked)
+  or (unsafeEscape(sink) and sink.(MethodAccess).getQualifier() = tracked)
 
   // A logic expression.
-  or ((LogicExpr) sink).getAnOperand() = tracked
-   
+  or sink.(LogicExpr).getAnOperand() = tracked
+
   or comparisonStep(tracked, sink)
 
   or stringBuilderStep(tracked, sink)
@@ -242,7 +246,7 @@ cached private predicate localFlowStep(Expr tracked, Expr sink) {
 
 /** A use of a variable that has been assigned a `tracked` expression. */
 private predicate variableStep(Expr tracked, VarAccess sink) {
-  exists(Variable v, DefStmt def, UseStmt use | 
+  exists(Variable v, DefStmt def, UseStmt use |
     def.getADef(v).getSource() = tracked and
     use.getAUse(v) = sink and
     defUsePair(v, def, use)
@@ -250,7 +254,7 @@ private predicate variableStep(Expr tracked, VarAccess sink) {
 }
 
 private predicate staticFieldStep(Expr tracked, FieldAccess sink) {
-  exists(Field f | 
+  exists(Field f |
     f.isStatic() and
     f.getAnAssignedValue() = tracked | f.getAnAccess() = sink
   )
@@ -259,7 +263,7 @@ private predicate staticFieldStep(Expr tracked, FieldAccess sink) {
 /** An access to an array that has been assigned a `tracked` element. */
 private predicate arrayAccessStep(Expr tracked, Expr sink) {
   exists(Assignment assign | assign.getSource() = tracked |
-    sink = ((VarAccess)((ArrayAccess)assign.getDest()).getArray()).getVariable().getAnAccess()
+    sink = assign.getDest().(ArrayAccess).getArray().(VarAccess).getVariable().getAnAccess()
   )
 }
 
@@ -282,14 +286,14 @@ private predicate argToMethodStep(Expr tracked, MethodAccess sink) {
 private predicate comparisonStep(Expr tracked, Expr sink) {
   exists(Expr other |
     (
-      exists(BinaryExpr e | e instanceof ComparisonExpr or e instanceof EqualityTest | 
+      exists(BinaryExpr e | e instanceof ComparisonExpr or e instanceof EqualityTest |
         e = sink
         and e.getAnOperand() = tracked
         and e.getAnOperand() = other
       )
       or
-      exists(MethodAccess m | m.getMethod() instanceof EqualsMethod | 
-        m = sink 
+      exists(MethodAccess m | m.getMethod() instanceof EqualsMethod |
+        m = sink
         and (
           (m.getQualifier() = tracked and m.getArgument(0) = other) or
           (m.getQualifier() = other and m.getArgument(0) = tracked)
@@ -304,7 +308,7 @@ private predicate comparisonStep(Expr tracked, Expr sink) {
 /** Flow through a `StringBuilder`. */
 private predicate stringBuilderStep(Expr tracked, Expr sink) {
   exists(StringBuilderVar sbvar |
-    exists(MethodAccess input, int arg | 
+    exists(MethodAccess input, int arg |
       input = sbvar.getAnInput(arg) and
       tracked = input.getArgument(arg)
     )
@@ -324,7 +328,7 @@ private predicate serializationStep(Expr tracked, Expr sink) {
     ) and
     exists(LocalVariableDecl v2, UseStmt use, ClassInstanceExpr cie |
       cie = def.getADef(v).getSource() and
-      v2 = ((RValue)cie.getArgument(0)).getVariable() and
+      v2 = cie.getArgument(0).(RValue).getVariable() and
       useUsePair(v2, def, use) and
       use.getAUse(v2) = sink
     )
@@ -370,7 +374,7 @@ class StringBuilderVar extends LocalVariableDecl {
    */
   MethodAccess getAnInput(int arg) {
     result.getQualifier() = getAChainedReference()
-    and 
+    and
     (
       result.getMethod().getName() = "append" and arg = 0
       or result.getMethod().getName() = "insert" and arg = 1
@@ -394,7 +398,7 @@ class StringBuilderVar extends LocalVariableDecl {
     and result.getMethod().getName() = "toString"
   }
 
-  /** 
+  /**
    * An expression that refers to this `StringBuilder`, possibly after some chained calls.
    */
   Expr getAChainedReference() {
@@ -408,7 +412,33 @@ class StringBuilderVar extends LocalVariableDecl {
 
 private MethodAccess callReturningSameType(Expr ref) {
   ref = result.getQualifier() and
-  result.getMethod().getType() = ref.getType()
+  result.getMethod().getReturnType() = ref.getType()
+}
+
+private class BulkData extends RefType {
+  BulkData() {
+    this.(Array).getElementType().(PrimitiveType).getName().regexpMatch("byte|char") or
+    exists(RefType t | this.getASourceSupertype*() = t |
+      t.hasQualifiedName("java.io", "InputStream") or
+      t.hasQualifiedName("java.nio", "ByteBuffer") or
+      t.hasQualifiedName("java.lang", "Readable") or
+      t.hasQualifiedName("java.io", "DataInput") or
+      t.hasQualifiedName("java.nio.channels", "ReadableByteChannel")
+    )
+  }
+}
+
+/**
+ * Holds if `c` is a constructor for a subclass of `java.io.InputStream` that
+ * wraps an underlying data source. The underlying data source is given as a
+ * the `argi`'th parameter to the constructor.
+ *
+ * An object construction of such a wrapper is likely to preserve the data flow
+ * status of its argument.
+ */
+private predicate inputStreamWrapper(Constructor c, int argi) {
+  c.getParameterType(argi) instanceof BulkData and
+  c.getDeclaringType().getASourceSupertype().hasQualifiedName("java.io", "InputStream")
 }
 
 /** An object construction that preserves the data flow status of any of its arguments. */
@@ -425,6 +455,10 @@ predicate constructorStep(Expr tracked, ConstructorCall sink) {
       // data preserved through streams
       s = "java.io.ObjectInputStream" and argi = 0  or
       s = "java.io.ByteArrayInputStream" and argi = 0  or
+      s = "java.io.DataInputStream" and argi = 0  or
+      s = "java.io.BufferedInputStream" and argi = 0  or
+      s = "com.esotericsoftware.kryo.io.Input" and argi = 0  or
+      s = "java.beans.XMLDecoder" and argi = 0  or
       // a tokenizer preserves the content of a string
       s = "java.util.StringTokenizer" and argi = 0  or
       // unzipping the stream preserves content
@@ -436,10 +470,20 @@ predicate constructorStep(Expr tracked, ConstructorCall sink) {
       // a cookie with tainted ingredients is tainted
       s = "javax.servlet.http.Cookie" and argi = 0 or
       s = "javax.servlet.http.Cookie" and argi = 1
-    )
-    or exists(RefType t | t.getQualifiedName() = "java.lang.Number" |
-      hasSubtypeStar(t, sink.getConstructedType())) and argi = 0
-    )
+    ) or
+    exists(RefType t | t.getQualifiedName() = "java.lang.Number" |
+      hasSubtypeStar(t, sink.getConstructedType())
+    ) and argi = 0 or
+    // wrappers constructed by extension
+    exists(Constructor c, Parameter p, SuperConstructorInvocationStmt sup |
+      c = sink.getConstructor() and
+      p = c.getParameter(argi) and
+      sup.getEnclosingCallable() = c and
+      constructorStep(p.getAnAccess(), sup)
+    ) or
+    // a custom InputStream that wraps a tainted data source is tainted
+    inputStreamWrapper(sink.getConstructor(), argi)
+  )
 }
 
 /** Access to a method that passes taint from the qualifier. */
@@ -453,13 +497,14 @@ predicate qualifierToMethodStep(Expr tracked, MethodAccess sink) {
  */
 class DataPreservingMethod extends Method {
   DataPreservingMethod() {
-    ( 
+    (
       this.getDeclaringType() instanceof TypeString and
       (
         this.getName() = "endsWith" or
         this.getName() = "getBytes" or
         this.getName() = "split" or
         this.getName() = "substring" or
+        this.getName() = "toCharArray" or
         this.getName() = "toLowerCase" or
         this.getName() = "toString" or
         this.getName() = "toUpperCase" or
@@ -532,11 +577,23 @@ predicate dataPreservingArgument(Method method, int arg) {
       method.getDeclaringType().hasQualifiedName("java.lang", "StringBuffer")
     ) and
     (
-      method.getName() = "append" and arg = 0 
-      or 
+      method.getName() = "append" and arg = 0
+      or
       method.getName() = "insert" and arg = 1
       or
       method.getName() = "replace" and arg = 2
+    )
+  ) or
+  (
+    (
+      method.getDeclaringType().hasQualifiedName("java.util", "Base64$Encoder") or
+      method.getDeclaringType().hasQualifiedName("java.util", "Base64$Decoder")
+    ) and
+    (
+      method.getName() = "encode" and arg = 0 and method.getNumberOfParameters() = 1 or
+      method.getName() = "decode" and arg = 0 and method.getNumberOfParameters() = 1 or
+      method.getName() = "encodeToString" and arg = 0 or
+      method.getName() = "wrap" and arg = 0
     )
   )
 }
@@ -556,8 +613,8 @@ predicate unsafeEscape(MethodAccess ma) {
   // Removing `<script>` tags using a string-replace method is
   // unsafe if such a tag is embedded inside another one (e.g. `<scr<script>ipt>`).
   exists(StringReplaceMethod m | ma.getMethod() = m |
-    ma.getArgument(0).(StringLiteral).getLiteral() = "\"(<script>)\"" and
-    ma.getArgument(1).(StringLiteral).getLiteral() = "\"\""
+    ma.getArgument(0).(StringLiteral).getRepresentedString() = "(<script>)" and
+    ma.getArgument(1).(StringLiteral).getRepresentedString() = ""
   )
 }
 
@@ -582,14 +639,16 @@ class RemoteUserInput extends UserInput {
     or exists (JaxWsEndpoint endpoint |
        endpoint.getARemoteMethod().getAParameter().getAnAccess() = this
     )
-    or exists (JaxRsService service |
-       service.getARemoteMethod().getAParameter().getAnAccess() = this
+    // Parameters to Jax Rs methods.
+    or exists (JaxRsResourceClass service |
+       service.getAnInjectableCallable().getAParameter().getAnAccess() = this or
+       service.getAnInjectableField().getAnAccess() = this
     )
-    
+
     // Reverse DNS. Try not to trigger on `localhost`.
     or exists(MethodAccess m | m = this |
       m.getMethod() instanceof ReverseDNSMethod and
-      not exists(MethodAccess l | 
+      not exists(MethodAccess l |
         (variableStep(l, m.getQualifier()) or l = m.getQualifier())
         and l.getMethod().getName() = "getLocalHost"
       )
@@ -604,18 +663,18 @@ class EnvInput extends LocalUserInput {
   EnvInput() {
     // Parameters to a main method.
     exists (MainMethod main | this = main.getParameter(0).getAnAccess())
-    
+
     // Args4j arguments.
     or exists (Field f | this = f.getAnAccess() | f.getAnAnnotation().getType().getQualifiedName() = "org.kohsuke.args4j.Argument")
-  
+
     // Results from various specific methods.
-    or ((MethodAccess)this).getMethod() instanceof EnvTaintedMethod
-    
+    or this.(MethodAccess).getMethod() instanceof EnvTaintedMethod
+
     // Access to `System.in`.
     or exists(Field f | this = f.getAnAccess() | f instanceof SystemIn)
 
     // Access to files.
-    or ((ConstructorCall)this).getConstructedType().hasQualifiedName("java.io", "FileInputStream")
+    or this.(ConstructorCall).getConstructedType().hasQualifiedName("java.io", "FileInputStream")
   }
 }
 

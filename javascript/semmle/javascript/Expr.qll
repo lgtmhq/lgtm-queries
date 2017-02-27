@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * QL classes for working with expressions.
+ * Provides classes for working with expressions.
  */
 
 import Locations
@@ -21,50 +21,55 @@ import Regexp
 
 /** An expression. */
 class Expr extends @expr, ExprOrStmt {
-  /** Get the statement in which this expression appears. */
+  /** Gets the statement in which this expression appears. */
   Stmt getEnclosingStmt() {
     enclosingStmt(this, result)
   }
-  
-  /** Get the function (if any) in which this expression appears. */
+
+  /** Gets the function in which this expression appears, if any. */
   Function getEnclosingFunction() {
     result = getContainer()
   }
-  
-  /** Get the statement container (function or toplevel) in which
-   * this expression appears. */
-  StmtContainer getContainer() {
+
+  /**
+   * Gets the statement container (function or toplevel) in which
+   * this expression appears.
+   */
+  override StmtContainer getContainer() {
     exprContainers(this, result)
   }
-  
-  /** Get this expression, with any surrounding parentheses removed. */
+
+  /** Gets this expression, with any surrounding parentheses removed. */
   Expr stripParens() {
     result = this
   }
 
-  /** If this expression evaluates to a constant integer value, return it. */
+  /** Gets the constant integer value this expression evaluates to, if any. */
   int getIntValue() {
     none()
   }
 
-  /** If this expression evaluates to a constant string value, return it. */
+  /** Gets the constant string value this expression evaluates to, if any. */
   string getStringValue() {
     none()
   }
 
-  /** Is this expression impure, that is, could its evaluation have side effects? */
+  /** Holds if this expression is impure, that is, its evaluation could have side effects. */
   predicate isImpure() {
     any()
   }
 
-  /** Is this expression pure, that is, is its evaluation guaranteed to be side effect-free? */
+  /**
+   * Holds if this expression is pure, that is, is its evaluation is guaranteed to be
+   * side effect-free.
+   */
   predicate isPure() {
     not isImpure()
   }
 
   /**
-   * Get the kind of this expression, which is an integer
-   * value representing the expression's node type.
+   * Gets the kind of this expression, which is an integer value representing the expression's
+   * node type.
    *
    * _Note_: The mapping from node types to integers is considered an implementation detail
    * and may change between versions of the extractor.
@@ -74,11 +79,11 @@ class Expr extends @expr, ExprOrStmt {
   }
 
   /**
-   * Get the JSDoc comment associated with this expression or its parent statement, if any.
+   * Gets the JSDoc comment associated with this expression or its parent statement, if any.
    */
   JSDoc getDocumentation() {
     result = getOwnDocumentation() or
-    // if there is no JSDoc attached to the expression itself, check the enclosing property or statement
+    // if there is no JSDoc for the expression itself, check the enclosing property or statement
     (not exists(getOwnDocumentation()) and
      if getParent() instanceof Property then
        result = getParent().(Property).getDocumentation()
@@ -86,19 +91,20 @@ class Expr extends @expr, ExprOrStmt {
        result = getEnclosingStmt().getDocumentation())
   }
 
-  /** Get a JSDoc comment that is immediately before this expression (ignoring parentheses). */
+  /** Gets a JSDoc comment that is immediately before this expression (ignoring parentheses). */
   private JSDoc getOwnDocumentation() {
     exists (Token tk | tk = result.getComment().getNextToken() |
-      tk = this.getFirstToken() or exists (Expr p | p.stripParens() = this | tk = p.getFirstToken())
+      tk = this.getFirstToken() or
+      exists (Expr p | p.stripParens() = this | tk = p.getFirstToken())
     )
   }
-  
-  string toString() {
+
+  override string toString() {
     exprs(this, _, _, _, result)
   }
 
   /**
-   * Get the expression that is parent of this expression in the AST, if any.
+   * Gets the expression that is the parent of this expression in the AST, if any.
    *
    * Note that for property names and property values the associated object expression or pattern
    * is returned, skipping the property node itself (which is not an expression).
@@ -114,12 +120,12 @@ class Expr extends @expr, ExprOrStmt {
 
 /** An identifier. */
 class Identifier extends @identifier, Expr {
-  /** Get the name of this identifier. */
+  /** Gets the name of this identifier. */
   string getName() {
     literals(result, _, this)
   }
 
-  predicate isImpure() {
+  override predicate isImpure() {
     none()
   }
 }
@@ -133,38 +139,40 @@ class Label extends @label, Identifier {
 
 /** A literal. */
 class Literal extends @literal, Expr {
-  /** Get the value of this literal, as a string. */
+  /** Gets the value of this literal, as a string. */
   string getValue() {
     literals(result, _, this)
   }
-  
-  /** Get the raw source text of this literal. For string literals,
-   * this includes quotes. */
+
+  /**
+   * Gets the raw source text of this literal, including quotes for
+   * string literals.
+   */
   string getRawValue() {
     literals(_, result, this)
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     none()
   }
 }
 
 /** A parenthesized expression. */
 class ParExpr extends @parexpr, Expr {
-  /** Get the expression within parentheses. */
+  /** Gets the expression within parentheses. */
   Expr getExpression() {
     result = this.getChildExpr(0)
   }
-  
-  Expr stripParens() {
+
+  override Expr stripParens() {
     result = getExpression().stripParens()
   }
 
-  int getIntValue() {
+  override int getIntValue() {
     result = getExpression().getIntValue()
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getExpression().isImpure()
   }
 }
@@ -177,12 +185,12 @@ class BooleanLiteral extends @booleanliteral, Literal {}
 
 /** A numeric literal. */
 class NumberLiteral extends @numberliteral, Literal {
-  /** Get the integer value of this literal. */
-  int getIntValue() {
+  /** Gets the integer value of this literal. */
+  override int getIntValue() {
     result = getValue().toInt()
   }
-  
-  /** Get the floating point value of this literal. */
+
+  /** Gets the floating point value of this literal. */
   int getFloatValue() {
     result = getValue().toFloat()
   }
@@ -190,33 +198,29 @@ class NumberLiteral extends @numberliteral, Literal {
 
 /** A string literal. */
 class StringLiteral extends @stringliteral, Literal {
-  string getStringValue() {
+  override string getStringValue() {
     result = getValue()
   }
 }
 
 /** A regular expression literal. */
 class RegExpLiteral extends @regexpliteral, Literal, RegExpParent {
-  string toString() {
-    result = Literal.super.toString()
-  }
-  
-  /** Get the flags of this regular expression. */
+  /** Gets the flags of this regular expression. */
   string getFlags() {
     result = getValue().regexpCapture(".*/(\\w*)$", 1)
   }
-  
-  /** Does this regular expression have an `m` flag? */
+
+  /** Holds if this regular expression has an `m` flag. */
   predicate isMultiline() {
     getFlags().matches("%m%")
   }
-  
-  /** Does this regular expression have a `g` flag? */
+
+  /** Holds if this regular expression has a `g` flag. */
   predicate isGlobal() {
     getFlags().matches("%g%")
   }
-  
-  /** Does this regular expression have an `i` flag? */
+
+  /** Holds if this regular expression has an `i` flag. */
   predicate isIgnoreCase() {
     getFlags().matches("%i%")
   }
@@ -224,80 +228,92 @@ class RegExpLiteral extends @regexpliteral, Literal, RegExpParent {
 
 /** A `this` expression. */
 class ThisExpr extends @thisexpr, Expr {
-  predicate isImpure() {
+  override predicate isImpure() {
     none()
+  }
+
+  /**
+   * Gets the function whose `this` binding this expression refers to,
+   * which is the nearest enclosing non-arrow function.
+   */
+  Function getBinder() {
+    result = getEnclosingFunction().getThisBinder()
   }
 }
 
 /** An array literal. */
 class ArrayExpr extends @arrayexpr, Expr {
-  /** Get the i-th element of this array literal. */
+  /** Gets the `i`th element of this array literal. */
   Expr getElement(int i) {
     result = this.getChildExpr(i)
   }
-  
-  /** Get some element of this array literal. */
+
+  /** Gets an element of this array literal. */
   Expr getAnElement() {
     result = this.getAChildExpr()
   }
-  
-  /** Get the number of elements in this array literal. */
+
+  /** Gets the number of elements in this array literal. */
   int getSize() {
     arraySize(this, result)
   }
-  
-  /** Does this array literal include a trailing comma after the
-   * last element? */
+
+  /**
+   * Holds if this array literal includes a trailing comma after the
+   * last element.
+   */
   predicate hasTrailingComma() {
     this.getLastToken().getPreviousToken().getValue() = ","
   }
-  
-  /** Is the i-th element of this array literal omitted? */
+
+  /** Holds if the `i`th element of this array literal is omitted. */
   predicate elementIsOmitted(int i) {
     i in [0..getSize()-1] and
     not exists (getElement(i))
   }
-  
-  /** Does this array literal have an omitted element? */
+
+  /** Holds if this array literal has an omitted element. */
   predicate hasOmittedElement() {
     elementIsOmitted(_)
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getAnElement().isImpure()
   }
 }
 
 /** An object literal. */
 class ObjectExpr extends @objexpr, Expr {
-  /** Get the i-th property in this object literal. */
+  /** Gets the `i`th property in this object literal. */
   Property getProperty(int i) {
     properties(result, this, i, _, _)
   }
-  
-  /** Get some property in this object literal. */
+
+  /** Gets a property in this object literal. */
   Property getAProperty() {
     exists (int i | result = this.getProperty(i))
   }
-  
-  /** Get the number of properties in this object literal. */
+
+  /** Gets the number of properties in this object literal. */
   int getNumProperty() {
     result = count(this.getAProperty())
   }
-  
-  /** Get the property with the given name, if any. */
+
+  /** Gets the property with the given name, if any. */
   Property getPropertyByName(string name) {
     result = this.getAProperty() and
     result.getName() = name
   }
-  
-  /** Does this object literal include a trailing comma after the
-   * last property? */
+
+  /**
+   * Holds if this object literal includes a trailing comma after the
+   * last property.
+   */
   predicate hasTrailingComma() {
     this.getLastToken().getPreviousToken().getValue() = ","
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getAProperty().isImpure()
   }
 }
@@ -313,83 +329,82 @@ class Property extends @property, ASTNode {
   }
 
   /**
-   * Get the expression specifying the name of the property. For normal
-   * properties, this is either an identifier, a string literal, or a
-   * numeric literal; for computed properties it can be an arbitrary
-   * expression.
+   * Gets the expression specifying the name of this property.
    *
-   * For spread properties, the name is not defined.
+   * For normal properties, this is either an identifier, a string literal, or a
+   * numeric literal; for computed properties it can be an arbitrary expression;
+   * for spread properties, it is not defined.
    */
   Expr getNameExpr() {
     result = this.getChildExpr(0)
   }
-  
-  /** Get the expression specifying the initial value of the property. */
+
+  /** Gets the expression specifying the initial value of this property. */
   Expr getInit() {
     result = this.getChildExpr(1)
   }
-  
-  /** Get the name of this property. */
+
+  /** Gets the name of this property. */
   string getName() {
     result = ((Identifier)getNameExpr()).getName() or
     result = ((Literal)getNameExpr()).getValue()
   }
-  
-  /** Is the name of this property computed? */
+
+  /** Holds if the name of this property is computed. */
   predicate isComputed() {
     isComputed(this)
   }
 
-  /** Is this property defined using method syntax? */
+  /** Holds if this property is defined using method syntax. */
   predicate isMethod() {
     isMethod(this)
   }
 
-  /** Is this property defined using shorthand syntax? */
+  /** Holds if this property is defined using shorthand syntax. */
   predicate isShorthand() {
     getNameExpr().getLocation() = getInit().getLocation()
   }
-  
-  /** Get the object literal this property belongs to. */
+
+  /** Gets the object literal this property belongs to. */
   ObjectExpr getObjectExpr() {
     properties(this, result, _, _, _)
   }
 
-  /** Get the (0-based) index at which this property appears in its enclosing literal. */
+  /** Gets the (0-based) index at which this property appears in its enclosing literal. */
   int getIndex() {
     this = getObjectExpr().getProperty(result)
   }
 
-  /** Get the JSDoc comment for this property, if any. */
+  /** Gets the JSDoc comment for this property, if any. */
   JSDoc getDocumentation() {
     result.getComment().getNextToken() = getFirstToken()
   }
-  
-  /** Get the function or toplevel in which this property occurs. */
+
+  /** Gets the function or toplevel in which this property occurs. */
   StmtContainer getContainer() {
     result = getObjectExpr().getContainer()
   }
 
   /**
-   * Is this property impure, that is, could the evaluation of its name or
-   * its initializer expression have side effects?
+   * Holds if this property is impure, that is, the evaluation of its name or
+   * its initializer expression could have side effects.
    */
   predicate isImpure() {
     (isComputed() and getNameExpr().isImpure()) or
     getInit().isImpure()
   }
 
-  string toString() {
+  override string toString() {
     properties(this, _, _, _, result)
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getNameExpr().getFirstCFGNode() or
-    not exists(getNameExpr()) and result = getInit().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getNameExpr().getFirstControlFlowNode() or
+    not exists(getNameExpr()) and result = getInit().getFirstControlFlowNode()
   }
 
   /**
-   * Get the kind of this expression, which is an opaque integer
+   * Gets the kind of this property, which is an opaque integer
    * value indicating whether this property is a value property,
    * a property getter, or a property setter.
    */
@@ -398,17 +413,17 @@ class Property extends @property, ASTNode {
   }
 
   /**
-   * The `i`-th decorator applied to this property.
+   * Gets the `i`th decorator applied to this property.
    *
    * For example, the property `@A @B x: 42` has
-   * `@A` as its 0-th decorator, and `@B` as its first decorator.
+   * `@A` as its 0th decorator, and `@B` as its first decorator.
    */
   Decorator getDecorator(int i) {
     result = getChildExpr(-(i+1))
   }
 
   /**
-   * A decorator applied to this property, if any.
+   * Gets a decorator applied to this property.
    *
    * For example, the property `@A @B x: 42` has
    * decorators `@A` and `@B`.
@@ -424,8 +439,7 @@ class ValueProperty extends Property, @value_property {
 
 /** A property getter or setter in an object literal. */
 class PropertyAccessor extends Property, @property_accessor {
-  /* covariant override to reflect the fact that accessors are functions */
-  FunctionExpr getInit() {
+  override FunctionExpr getInit() {
     result = Property.super.getInit()
   }
 }
@@ -451,140 +465,139 @@ class SpreadProperty extends Property {
 
 /** A function expression. */
 class FunctionExpr extends @functionexpr, Expr, Function {
-  /** Get the name of this function expression, if any. */
-  string getName() {
+  /** Gets the name of this function expression, if any. */
+  override string getName() {
     result = getId().getName()
   }
-  
-  /** Is this function expression a property setter? */
+
+  /** Holds if this function expression is a property setter. */
   predicate isSetter() {
     exists (PropertySetter s | s.getInit() = this)
   }
 
-  /** Is this function expression a property getter? */
+  /** Holds if this function expression is a property getter. */
   predicate isGetter() {
     exists (PropertyGetter g | g.getInit() = this)
   }
-  
-  /** Is this function expression a property accessor? */
+
+  /** Holds if this function expression is a property accessor. */
   predicate isAccessor() {
     exists (PropertyAccessor acc | acc.getInit() = this)
   }
 
-  /** Get the JSDoc documentation for this function, if any. */
-  JSDoc getDocumentation() {
+  /** Gets the JSDoc documentation for this function, if any. */
+  override JSDoc getDocumentation() {
     result = Expr.super.getDocumentation()
   }
-  
-  Stmt getEnclosingStmt() {
+
+  /** Gets the statement in which this function expression appears. */
+  override Stmt getEnclosingStmt() {
     result = Expr.super.getEnclosingStmt()
   }
 
-  StmtContainer getEnclosingContainer() {
+  override StmtContainer getEnclosingContainer() {
     result = Expr.super.getContainer()
   }
-  
-  predicate isImpure() {
-    none()
-  }
 
-  string toString() {
-    result = Expr.super.toString()
+  override predicate isImpure() {
+    none()
   }
 }
 
 /** An arrow expression. */
 class ArrowFunctionExpr extends @arrowfunctionexpr, Expr, Function {
-  /** Get the statement in which this expression appears. */
-  Stmt getEnclosingStmt() {
+  /** Gets the statement in which this expression appears. */
+  override Stmt getEnclosingStmt() {
     result = Expr.super.getEnclosingStmt()
   }
 
-  StmtContainer getEnclosingContainer() {
+  override StmtContainer getEnclosingContainer() {
     result = Expr.super.getContainer()
   }
-  
-  /** Get the JSDoc documentation for this function, if any. */
-  JSDoc getDocumentation() {
+
+  /** Gets the JSDoc documentation for this function, if any. */
+  override JSDoc getDocumentation() {
     result = Expr.super.getDocumentation()
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     none()
   }
 
-  string toString() {
-    result = Expr.super.toString()
+  override Function getThisBinder() {
+    result = getEnclosingContainer().(Function).getThisBinder()
   }
 }
 
 /** A sequence expression (also known as comma expression). */
 class SeqExpr extends @seqexpr, Expr {
-  /** Get the i-th expression in this sequence. */
+  /** Gets the `i`th expression in this sequence. */
   Expr getOperand(int i) {
     result = getChildExpr(i)
   }
-  
-  /** Get some expression in this sequence. */
+
+  /** Gets an expression in this sequence. */
   Expr getAnOperand() {
     result = getOperand(_)
   }
-  
-  /** Get the number of expressions in this sequence. */
+
+  /** Gets the number of expressions in this sequence. */
   int getNumOperands() {
     result = count(getOperand(_))
   }
 
-  /** Get the last expression in this sequence. */
+  /** Gets the last expression in this sequence. */
   Expr getLastOperand() {
     result = getOperand(getNumOperands()-1)
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getAnOperand().isImpure()
   }
 
-  string getStringValue() {
+  override string getStringValue() {
     result = getLastOperand().getStringValue()
   }
 }
 
 /** A conditional expression. */
 class ConditionalExpr extends @conditionalexpr, Expr {
-  /** Get the condition expression of this conditional. */
+  /** Gets the condition expression of this conditional. */
   Expr getCondition() {
     result = getChildExpr(0)
   }
-  
-  /** Get the "then" expression of this conditional. */
+
+  /** Gets the 'then' expression of this conditional. */
   Expr getConsequent() {
     result = getChildExpr(1)
   }
-  
-  /** Get the "else" expression of this conditional. */
+
+  /** Gets the 'else' expression of this conditional. */
   Expr getAlternate() {
     result = getChildExpr(2)
   }
- 
-  /** Get either the "then" or the "else" expression of this conditional. */
+
+  /** Gets either the 'then' or the 'else' expression of this conditional. */
   Expr getABranch() {
     result = getConsequent() or result = getAlternate()
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getCondition().isImpure() or
     getABranch().isImpure()
   }
 }
 
-/** An invocation expression, that is, either a function call or
- * a `new` expression. */
+/**
+ * An invocation expression, that is, either a function call or
+ * a `new` expression.
+ */
 class InvokeExpr extends @invokeexpr, Expr {
-  /** Get the expression specifying the function to be called. */
+  /** Gets the expression specifying the function to be called. */
   Expr getCallee() {
     result = this.getChildExpr(-1)
   }
-  
+
   /** Return the name of the function or method being invoked, if it can be determined. */
   string getCalleeName() {
     exists (Expr callee | callee = getCallee().stripParens() |
@@ -592,27 +605,27 @@ class InvokeExpr extends @invokeexpr, Expr {
       result = ((PropAccess)callee).getPropertyName()
     )
   }
-  
-  /** Get the i-th argument of this invocation. */
+
+  /** Gets the `i`th argument of this invocation. */
   Expr getArgument(int i) {
     i >= 0 and result = this.getChildExpr(i)
   }
-  
-  /** Get some argument of this invocation. */
+
+  /** Gets an argument of this invocation. */
   Expr getAnArgument() {
     result = getArgument(_)
   }
-  
-  /** Get the number of arguments of this invocation. */
+
+  /** Gets the number of arguments of this invocation. */
   int getNumArgument() {
     result = count(getAnArgument())
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getCallee().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getCallee().getFirstControlFlowNode()
   }
 
-  /** Does the argument list of this function have a trailing comma? */
+  /** Holds if the argument list of this function has a trailing comma. */
   predicate hasTrailingComma() {
     // check whether the last token of this invocation is a closing
     // parenthesis, which itself is preceded by a comma
@@ -628,10 +641,12 @@ class NewExpr extends @newexpr, InvokeExpr {}
 
 /** A function call expression. */
 class CallExpr extends @callexpr, InvokeExpr {
-  /** Get the expression specifying the receiver on which the function
-   * is invoked, if any. */
+  /**
+   * Gets the expression specifying the receiver on which the function
+   * is invoked, if any.
+   */
   Expr getReceiver() {
-    result = ((PropAccess)getCallee()).getBase()
+    result = getCallee().(PropAccess).getBase()
   }
 }
 
@@ -642,41 +657,43 @@ class MethodCallExpr extends CallExpr {
   }
 
   /**
-   * Get the property access referencing the method to be invoked.
+   * Gets the property access referencing the method to be invoked.
    */
   private PropAccess getMethodRef() {
     result = getCallee().stripParens()
   }
 
   /**
-   * Get the receiver expression of this method call.
+   * Gets the receiver expression of this method call.
    */
-  Expr getReceiver() {
+  override Expr getReceiver() {
     result = getMethodRef().getBase()
   }
 
   /**
-   * Get the name of the invoked method, if it can be determined.
+   * Gets the name of the invoked method, if it can be determined.
    */
   string getMethodName() {
     result = getMethodRef().getPropertyName()
   }
 }
 
-/** A property access, that is, either a dot expression of the form
- * `e.f` or an index expression of the form `e[p]`. */
+/**
+ * A property access, that is, either a dot expression of the form
+ * `e.f` or an index expression of the form `e[p]`.
+ */
 class PropAccess extends @propaccess, Expr {
-  /** Get the base expression on which the property is accessed. */
+  /** Gets the base expression on which the property is accessed. */
   Expr getBase() {
     result = getChildExpr(0)
   }
-  
-  /** Get the name of the accessed property, if it can be determined. */
+
+  /** Gets the name of the accessed property, if it can be determined. */
   string getPropertyName() {
     none()
   }
 
-  /** Get the qualified name of the accessed property, if it can be determined. */
+  /** Gets the qualified name of the accessed property, if it can be determined. */
   string getQualifiedName() {
     exists (string basename |
       basename = getBase().(Identifier).getName() or
@@ -685,353 +702,360 @@ class PropAccess extends @propaccess, Expr {
     )
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getBase().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getBase().getFirstControlFlowNode()
   }
 }
 
 /** A dot expression. */
 class DotExpr extends @dotexpr, PropAccess {
-  string getPropertyName() {
-    result = ((Identifier)getChildExpr(1)).getName()
+  override string getPropertyName() {
+    result = getProperty().getName()
   }
-  
-  /** Get the identifier specifying the name of the accessed property. */
+
+  /** Gets the identifier specifying the name of the accessed property. */
   Identifier getProperty() {
    result = getChildExpr(1)
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getBase().isImpure()
   }
 }
 
 /** An index expression (also known as computed property access). */
 class IndexExpr extends @indexexpr, PropAccess {
-  /** Get the expression specifying the name of the accessed property. */
+  /** Gets the expression specifying the name of the accessed property. */
   Expr getIndex() {
     result = getChildExpr(1)
   }
-  
-  string getPropertyName() {
+
+  override string getPropertyName() {
     result = ((Literal)getIndex()).getValue()
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getBase().isImpure() or
     getIndex().isImpure()
   }
 }
 
-/* Unary operators */
-
 /** An expression with a unary operator. */
 class UnaryExpr extends @unaryexpr, Expr {
-  /** Get the operand of the unary operator. */
+  /** Gets the operand of this unary operator. */
   Expr getOperand() {
     result = getChildExpr(0)
   }
-  
-  /** Get the operator of this expression. */
+
+  /** Gets the operator of this expression. */
   string getOperator() {
     none()
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getOperand().isImpure()
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getOperand().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getOperand().getFirstControlFlowNode()
   }
 }
 
 /** An arithmetic negation expression (also known as unary minus). */
 class NegExpr extends @negexpr, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "-"
   }
 }
 
 /** A unary plus expression. */
 class PlusExpr extends @plusexpr, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "+"
   }
 }
 
 /** A logical negation expression. */
 class LogNotExpr extends @lognotexpr, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "!"
   }
 }
 
 /** A bitwise negation expression. */
 class BitNotExpr extends @bitnotexpr, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "~"
   }
 }
 
 /** A `typeof` expression. */
 class TypeofExpr extends @typeofexpr, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "typeof"
   }
 }
 
 /** A `void` expression. */
 class VoidExpr extends @voidexpr, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "void"
   }
 }
 
 /** A `delete` expression. */
 class DeleteExpr extends @deleteexpr, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "delete"
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     any()
   }
 }
 
 /** A spread element. */
 class SpreadElement extends @spreadelement, UnaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "..."
   }
 }
 
-/* Binary Operators */
-
 /** An expression with a binary operator. */
 class BinaryExpr extends @binaryexpr, Expr {
-  /** Get the left operand of the binary operator. */
+  /** Gets the left operand of this binary operator. */
   Expr getLeftOperand() {
     result = getChildExpr(0)
   }
-  
-  /** Get the right operand of the binary operator. */
+
+  /** Gets the right operand of this binary operator. */
   Expr getRightOperand() {
     result = getChildExpr(1)
   }
-  
-  /** Get some operand of the binary operator. */
+
+  /** Gets an operand of this binary operator. */
   Expr getAnOperand() {
     result = getAChildExpr()
   }
 
-  /** Are e and f (in either order) the two operands of this expression? */
+  /** Holds if `e` and `f` (in either order) are the two operands of this expression. */
   predicate hasOperands(Expr e, Expr f) {
     e = getAnOperand() and
     f = getAnOperand() and
     e != f
   }
-  
-  /** Get the operator of this expression. */
+
+  /** Gets the operator of this expression. */
   string getOperator() {
     none()
   }
-  
-  predicate isImpure() {
+
+  override predicate isImpure() {
     getAnOperand().isImpure()
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getLeftOperand().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getLeftOperand().getFirstControlFlowNode()
   }
 }
 
-/** A comparison expression, that is, either an equality test
+/**
+ * A comparison expression, that is, either an equality test
  * (`==`, `!=`, `===`, `!==`) or a relational expression
- * (`<`, `<=`, `>=`, `>`). */
+ * (`<`, `<=`, `>=`, `>`).
+ */
 class Comparison extends @comparison, BinaryExpr {}
 
 /** An equality test using `==`, `!=`, `===` or `!==`. */
-class EqualityTest extends @equalitytest, Comparison {}
+class EqualityTest extends @equalitytest, Comparison {
+  /** Gets the polarity of this test: `true` for equalities, `false` for inequalities. */
+  boolean getPolarity() {
+    (this instanceof EqExpr or this instanceof StrictEqExpr) and result = true
+    or
+    (this instanceof NEqExpr or this instanceof StrictNEqExpr) and result = false
+  }
+}
 
 /** An equality test using `==`. */
 class EqExpr extends @eqexpr, EqualityTest {
-  string getOperator() {
+  override string getOperator() {
     result = "=="
   }
 }
 
 /** An inequality test using `!=`. */
 class NEqExpr extends @neqexpr, EqualityTest {
-  string getOperator() {
+  override string getOperator() {
     result = "!="
   }
 }
 
 /** A strict equality test using `===`. */
 class StrictEqExpr extends @eqqexpr, EqualityTest {
-  string getOperator() {
+  override string getOperator() {
     result = "==="
   }
 }
 
 /** A strict inequality test using `!==`. */
 class StrictNEqExpr extends @neqqexpr, EqualityTest {
-  string getOperator() {
+  override string getOperator() {
     result = "!=="
   }
 }
 
 /** A less-than expression. */
 class LTExpr extends @ltexpr, Comparison {
-  string getOperator() {
+  override string getOperator() {
     result = "<"
   }
 }
 
 /** A less-than-or-equal expression. */
 class LEExpr extends @leexpr, Comparison {
-  string getOperator() {
+  override string getOperator() {
     result = "<="
   }
 }
 
 /** A greater-than expression. */
 class GTExpr extends @gtexpr, Comparison {
-  string getOperator() {
+  override string getOperator() {
     result = ">"
   }
 }
 
 /** A greater-than-or-equal expression. */
 class GEExpr extends @geexpr, Comparison {
-  string getOperator() {
+  override string getOperator() {
     result = ">="
   }
 }
 
 /** A left-shift expression using `<<`. */
 class LShiftExpr extends @lshiftexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "<<"
   }
 }
 
 /** A right-shift expression using `>>`. */
 class RShiftExpr extends @rshiftexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = ">>"
   }
 }
 
 /** An unsigned right-shift expression using `>>>`. */
 class URShiftExpr extends @urshiftexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = ">>>"
   }
 }
 
 /** An addition expression. */
 class AddExpr extends @addexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "+"
   }
 
-  string getStringValue() {
+  override string getStringValue() {
     result = getLeftOperand().getStringValue() + getRightOperand().getStringValue()
   }
 }
 
 /** A subtraction expression. */
 class SubExpr extends @subexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "-"
   }
 }
 
 /** A multiplication expression. */
 class MulExpr extends @mulexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "*"
   }
 }
 
 /** A division expression. */
 class DivExpr extends @divexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "/"
   }
 }
 
 /** A modulo expression. */
 class ModExpr extends @modexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "%"
   }
 }
 
 /** An exponentiation expression. */
 class ExpExpr extends @expexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "**"
   }
 }
 
-/** A bitwise or expression. */
+/** A bitwise 'or' expression. */
 class BitOrExpr extends @bitorexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "|"
   }
 }
 
-/** An exclusive-or expression. */
+/** An exclusive 'or' expression. */
 class XOrExpr extends @xorexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "^"
   }
 }
 
-/** A bitwise and expression. */
+/** A bitwise 'and' expression. */
 class BitAndExpr extends @bitandexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "&"
   }
 }
 
 /** An `in` expression. */
 class InExpr extends @inexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "in"
   }
 }
 
 /** An `instanceof` expression. */
 class InstanceofExpr extends @instanceofexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "instanceof"
   }
 }
 
-/** A logical and expression. */
+/** A logical 'and' expression. */
 class LogAndExpr extends @logandexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "&&"
   }
 
-  CFGNode getFirstCFGNode() { result = this }
+  override ControlFlowNode getFirstControlFlowNode() { result = this }
 }
 
-/** A logical or expression. */
+/** A logical 'or' expression. */
 class LogOrExpr extends @logorexpr, BinaryExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "||"
   }
 
-  CFGNode getFirstCFGNode() { result = this }
+  override ControlFlowNode getFirstControlFlowNode() { result = this }
 }
 
-/** A logical binary expression, that is, either a logical
- * or or a logical and expression. */
+/**
+ * A logical binary expression, that is, either a logical
+ * 'or' or a logical 'and' expression.
+ */
 class LogicalBinaryExpr extends BinaryExpr {
   LogicalBinaryExpr() {
     this instanceof LogAndExpr or
@@ -1039,8 +1063,10 @@ class LogicalBinaryExpr extends BinaryExpr {
   }
 }
 
-/** A bitwise binary expression, that is, either a bitwise
- * and, a bitwise or, or an exclusive-or expression. */
+/**
+ * A bitwise binary expression, that is, either a bitwise
+ * 'and', a bitwise 'or', or an exclusive 'or' expression.
+ */
 class BitwiseBinaryExpr extends BinaryExpr {
   BitwiseBinaryExpr() {
     this instanceof BitAndExpr or
@@ -1058,27 +1084,25 @@ class ShiftExpr extends BinaryExpr {
   }
 }
 
-/* Assignments */
-
 /** An assignment expression, either compound or simple. */
 class Assignment extends @assignment, Expr {
-  /** Get the left hand side of this assignment. */
+  /** Gets the left hand side of this assignment. */
   Expr getLhs() {
     result = getChildExpr(0)
   }
-  
-  /** Get the right hand side of this assignment. */
+
+  /** Gets the right hand side of this assignment. */
   Expr getRhs() {
     result = getChildExpr(1)
   }
 
-  /** Get the variable or property this assignment writes to, if any. */
+  /** Gets the variable or property this assignment writes to, if any. */
   Expr getTarget() {
     result = getLhs().stripParens()
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getLhs().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getLhs().getFirstControlFlowNode()
   }
 }
 
@@ -1115,93 +1139,92 @@ class AssignRShiftExpr extends @assignrshiftexpr, CompoundAssignExpr {}
 /** A compound unsigned-right-shift-assign expression. */
 class AssignURShiftExpr extends @assignurshiftexpr, CompoundAssignExpr {}
 
-/** A compound bitwise-or-assign expression. */
+/** A compound bitwise-'or'-assign expression. */
 class AssignOrExpr extends @assignorexpr, CompoundAssignExpr {}
 
-/** A compound exclusive-or-assign expression. */
+/** A compound exclusive-'or'-assign expression. */
 class AssignXOrExpr extends @assignxorexpr, CompoundAssignExpr {}
 
-/** A compound bitwise-and-assign expression. */
+/** A compound bitwise-'and'-assign expression. */
 class AssignAndExpr extends @assignandexpr, CompoundAssignExpr {}
-
-/* Update operators */
 
 /** An update expression, that is, an increment or decrement expression. */
 class UpdateExpr extends @updateexpr, Expr {
-  /** Get the operand of the update .*/
+  /** Gets the operand of this update. */
   Expr getOperand() {
     result = getChildExpr(0)
   }
-  
-  /** Is this a prefix increment or prefix decrement? */
+
+  /** Holds if this is a prefix increment or prefix decrement expression. */
   predicate isPrefix() {
     none()
   }
-  
-  /** Get the operator of this update expression. */
+
+  /** Gets the operator of this update expression. */
   string getOperator() {
     none()
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getOperand().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getOperand().getFirstControlFlowNode()
   }
 }
 
 /** A prefix increment expression. */
 class PreIncExpr extends @preincexpr, UpdateExpr {
-  predicate isPrefix() {
+  override predicate isPrefix() {
     any()
   }
-  
-  string getOperator() {
+
+  override string getOperator() {
     result = "++"
   }
 }
 
 /** A postfix increment expression. */
 class PostIncExpr extends @postincexpr, UpdateExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "++"
   }
 }
 
 /** A prefix decrement expression. */
 class PreDecExpr extends @predecexpr, UpdateExpr {
-  predicate isPrefix() {
+  override predicate isPrefix() {
     any()
   }
-  
-  string getOperator() {
+
+  override string getOperator() {
     result = "--"
   }
 }
 
 /** A postfix decrement expression. */
 class PostDecExpr extends @postdecexpr, UpdateExpr {
-  string getOperator() {
+  override string getOperator() {
     result = "--"
   }
 }
 
-/** A yield expression. */
+/** A `yield` expression. */
 class YieldExpr extends @yieldexpr, Expr {
-  /** Get the operand of the yield expression. */
+  /** Gets the operand of this `yield` expression. */
   Expr getOperand() {
     result = getChildExpr(0)
   }
 
-  /** Is this a `yield*` expression? */
+  /** Holds if this is a `yield*` expression. */
   predicate isDelegating() {
     isDelegating(this)
   }
 
-  predicate isImpure() {
+  override predicate isImpure() {
     any()
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getOperand().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getOperand().getFirstControlFlowNode() or
+    not exists(getOperand()) and result = this
   }
 }
 
@@ -1210,7 +1233,7 @@ class YieldExpr extends @yieldexpr, Expr {
  * expression or a generator expression.
  */
 class ComprehensionExpr extends @comprehensionexpr, Expr {
-  /** Get the n'th comprehension block in this comprehension. */
+  /** Gets the `n`th comprehension block in this comprehension. */
   ComprehensionBlock getBlock(int n) {
     exists (int idx |
       result = getChildExpr(idx) and
@@ -1219,17 +1242,17 @@ class ComprehensionExpr extends @comprehensionexpr, Expr {
     )
   }
 
-  /** Get some comprehension block in this comprehension. */
+  /** Gets a comprehension block in this comprehension. */
   ComprehensionBlock getABlock() {
     result = getBlock(_)
   }
 
-  /** Get the number of comprehension blocks in this comprehension. */
+  /** Gets the number of comprehension blocks in this comprehension. */
   int getNumBlock() {
     result = count(getABlock())
   }
 
-  /** Get the n'th filter expression in this comprehension. */
+  /** Gets the `n`th filter expression in this comprehension. */
   Expr getFilter(int n) {
     exists (int idx |
       result = getChildExpr(idx) and
@@ -1238,28 +1261,28 @@ class ComprehensionExpr extends @comprehensionexpr, Expr {
     )
   }
 
-  /** Get some filter expression in this comprehension. */
+  /** Gets a filter expression in this comprehension. */
   Expr getAFilter() {
     result = getFilter(_)
   }
 
-  /** Get the number of filter expressions in this comprehension. */
+  /** Gets the number of filter expressions in this comprehension. */
   int getNumFilter() {
     result = count(getAFilter())
   }
 
-  /** Get the body expression of this comprehension. */
+  /** Gets the body expression of this comprehension. */
   Expr getBody() {
     result = getChildExpr(0)
   }
 
-  predicate isImpure() {
+  override predicate isImpure() {
     getABlock().isImpure() or
     getAFilter().isImpure() or
     getBody().isImpure()
   }
 
-  /** Is this a legacy postfix comprehension expression? */
+  /** Holds if this is a legacy postfix comprehension expression. */
   predicate isPostfix() {
     exists (Token tk | tk = getFirstToken().getNextToken() |
       not tk.getValue().regexpMatch("if|for")
@@ -1277,27 +1300,27 @@ class GeneratorExpr extends @generatorexpr, ComprehensionExpr {
 
 /** A comprehension block. */
 class ComprehensionBlock extends @comprehensionblock, Expr {
-  /** Get the iterating variable or pattern of this comprehension block. */
+  /** Gets the iterating variable or pattern of this comprehension block. */
   BindingPattern getIterator() {
     result = getChildExpr(0)
   }
 
-  /** Get the domain over which this comprehension block iterates. */
+  /** Gets the domain over which this comprehension block iterates. */
   Expr getDomain() {
     result = getChildExpr(1)
   }
 
-  predicate isImpure() {
+  override predicate isImpure() {
     getIterator().isImpure() or
     getDomain().isImpure()
   }
 }
 
-/** A for-in comprehension block. */
+/** A `for`-`in` comprehension block. */
 class ForInComprehensionBlock extends @forincomprehensionblock, ComprehensionBlock {
 }
 
-/** A for-of comprehension block. */
+/** A `for`-`of` comprehension block. */
 class ForOfComprehensionBlock extends @forofcomprehensionblock, ComprehensionBlock {
 }
 
@@ -1355,7 +1378,7 @@ class RelationalComparison extends Comparison {
   }
 
   /**
-   * Get the lesser operand of this comparison, that is, the left operand for
+   * Gets the lesser operand of this comparison, that is, the left operand for
    * a `<` or `<=` comparison, and the right operand for `>=` or `>`.
    */
   Expr getLesserOperand() {
@@ -1364,7 +1387,7 @@ class RelationalComparison extends Comparison {
   }
 
   /**
-   * Get the greater operand of this comparison, that is, the right operand for
+   * Gets the greater operand of this comparison, that is, the right operand for
    * a `<` or `<=` comparison, and the left operand for `>=` or `>`.
    */
   Expr getGreaterOperand() {
@@ -1383,28 +1406,27 @@ class DecExpr extends UpdateExpr {
 }
 
 
-/** An old-style let expression of the form `let(vardecls) expr`. */
+/** An old-style `let` expression of the form `let(vardecls) expr`. */
 class LegacyLetExpr extends Expr, @legacy_letexpr {
-  /** Get the i-th declarator in this let expression. */
+  /** Gets the `i`th declarator in this `let` expression. */
   VariableDeclarator getDecl(int i) {
     result = getChildExpr(i) and i >= 0
   }
-  
-  /** Get some declarator in this declaration statement. */
+
+  /** Gets a declarator in this declaration expression. */
   VariableDeclarator getADecl() {
     result = getDecl(_)
   }
 
-  /** Get the expression this let expression scopes over. */
+  /** Gets the expression this `let` expression scopes over. */
   Expr getBody() {
     result = getChildExpr(-1)
   }
 }
 
 /**
- * A helper predicate that binds `invk` to an immediate invocation of
- * function `f`, and kind to a string describing how `invk`
- * invokes `f`:
+ * Holds if `invk` is an immediate invocation of function expression `f`,
+ * where `kind` is a string describing how `invk` invokes `f`:
  *
  * - if `invk` is a direct function call, `kind` is `"direct"`;
  * - if `invk` is a reflective function call through `call` or `apply`,
@@ -1427,12 +1449,23 @@ class ImmediatelyInvokedFunctionExpr extends Function {
     iife(_, this, _)
   }
 
-  /** Get the invocation of this IIFE. */
+  /** Gets the invocation of this IIFE. */
   InvokeExpr getInvocation() {
     iife(result, this, _)
   }
 
-  /** Bind p to a parameter of the IIFE and arg to the corresponding argument. */
+  /**
+   * Gets a string describing the way this IIFE is invoked
+   * (one of `"direct"`, `"call"` or `"apply"`).
+   */
+  string getInvocationKind() {
+    iife(_, this, result)
+  }
+
+  /**
+   * Holds if `p` is a parameter of this IIFE and `arg` is
+   * the corresponding argument.
+   */
   predicate argumentPassing(SimpleParameter p, Expr arg) {
     exists (int i, InvokeExpr invk, string kind |
       p = getParameter(i) and not p.isRestParameter() and
@@ -1443,19 +1476,19 @@ class ImmediatelyInvokedFunctionExpr extends Function {
   }
 }
 
-/** An await expression. */
+/** An `await` expression. */
 class AwaitExpr extends @awaitexpr, Expr {
-  /** Get the operand of the await expression. */
+  /** Gets the operand of this `await` expression. */
   Expr getOperand() {
     result = getChildExpr(0)
   }
 
-  predicate isImpure() {
+  override predicate isImpure() {
     any()
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getOperand().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getOperand().getFirstControlFlowNode()
   }
 }
 
@@ -1467,7 +1500,7 @@ class AwaitExpr extends @awaitexpr, Expr {
  * of the generator.
  */
 class FunctionSentExpr extends @functionsentexpr, Expr {
-  predicate isImpure() {
+  override predicate isImpure() {
     none()
   }
 }
@@ -1480,7 +1513,7 @@ class FunctionSentExpr extends @functionsentexpr, Expr {
  */
 class Decorator extends @decorator, Expr {
   /**
-   * The element the decorator is applied to.
+   * Gets the element this decorator is applied to.
    *
    * For example, in the class declaration `@A class C { }`,
    * the element decorator `@A` is applied to is `C`.
@@ -1490,7 +1523,7 @@ class Decorator extends @decorator, Expr {
   }
 
   /**
-   * The expression of the decorator.
+   * Gets the expression of this decorator.
    *
    * For example, the decorator `@A` has expression `A`,
    * and `@testable(true)` has expression `testable(true)`.
@@ -1499,8 +1532,8 @@ class Decorator extends @decorator, Expr {
     result = getChildExpr(0)
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getExpression().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getExpression().getFirstControlFlowNode()
   }
 }
 
@@ -1516,7 +1549,7 @@ class Decoratable extends ASTNode {
   }
 
   /**
-   * The `i`-th decorator applied to this element.
+   * Gets the `i`th decorator applied to this element.
    */
   Decorator getDecorator(int i) {
     result = this.(Class).getDecorator(i) or
@@ -1525,7 +1558,7 @@ class Decoratable extends ASTNode {
   }
 
   /**
-   * A decorator applied to this element, if any.
+   * Gets a decorator applied to this element, if any.
    */
   Decorator getADecorator() {
     result = this.getDecorator(_)
@@ -1538,22 +1571,20 @@ class Decoratable extends ASTNode {
  */
 class FunctionBindExpr extends @bindexpr, Expr {
   /**
-   * The object of the function bind expression; undefined for
+   * Gets the object of this function bind expression; undefined for
    * expressions of the form `::b.f`.
    */
   Expr getObject() {
     result = getChildExpr(0)
   }
 
-  /**
-   * The callee of the function bind expression.
-   */
+  /** Gets the callee of this function bind expression. */
   Expr getCallee() {
     result = getChildExpr(1)
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getObject().getFirstCFGNode() or
-    not exists(getObject()) and result = getCallee().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getObject().getFirstControlFlowNode() or
+    not exists(getObject()) and result = getCallee().getFirstControlFlowNode()
   }
 }

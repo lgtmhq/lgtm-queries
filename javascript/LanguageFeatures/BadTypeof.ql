@@ -21,14 +21,14 @@
  * @tags maintainability
  *       correctness
  *       language-features
+ * @precision very-high
  */
 
 import javascript
 
 /**
- * Common abstraction for equality tests and switch cases. Switch
- * statements are recast as equality tests between the discriminant
- * and the case expressions. 
+ * A comparison construct, that is, either an equality test or a switch case
+ * (which is implicitly compared to the switch statement's discriminant).
  */
 class EqOrSwitch extends ASTNode {
   EqOrSwitch() {
@@ -36,8 +36,19 @@ class EqOrSwitch extends ASTNode {
     this instanceof Case
   }
 
+  /**
+   * Gets an operand of this comparison.
+   *
+   * For equality tests, the result is one of the operands; for switch cases,
+   * the result is either the case expression or the discriminant of the
+   * switch statement.
+   *
+   * Thus, the operands of `x !== 0` are `x` and `0`, while the operands
+   * of `case 1:` in `switch (y) { case 1: ... }` are `y` and `1`.
+   */
   Expr getAnOperand() {
-    result = ((EqualityTest)this).getAnOperand() or
+    result = ((EqualityTest)this).getAnOperand()
+    or
     exists (Case c | c = this |
       result = c.getSwitch().getExpr() or
       result = c.getExpr()

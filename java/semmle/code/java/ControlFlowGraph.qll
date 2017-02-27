@@ -55,7 +55,7 @@
  * label of the edge, thus creating an edge-labelled CFG.
  *
  * An important goal of the CFG is to get the order of side-effects correct.
- * Most expressions can have side-effects and must therefore be modelled in the
+ * Most expressions can have side-effects and must therefore be modeled in the
  * CFG in AST post-order. For example, a `MethodAccess` evaluates its arguments
  * before the call. Most statements don't have side-effects, but merely affect
  * the control-flow and some could therefore be excluded from the CFG. However,
@@ -64,18 +64,18 @@
  * pre-order. A few notable exceptions are `ReturnStmt`, `ThrowStmt`,
  * `SynchronizedStmt`, `ThisConstructorInvocationStmt`, and
  * `SuperConstructorInvocationStmt`, which all have side-effects and therefore
- * are modelled in side-effect order. Loop statement nodes are only passed on
+ * are modeled in side-effect order. Loop statement nodes are only passed on
  * entry, after which control goes back and forth between body and loop
  * condition.
  *
  * Some out-going edges from boolean expressions have a known value and in some
  * contexts this affects the possible successors. For example, in `if(A || B)`
  * a short-circuit edge that skips `B` must be true and can therefore only lead
- * to the then-branch. If the `||` is modelled in post-order then this
+ * to the then-branch. If the `||` is modeled in post-order then this
  * information is lost, and consequently it is better to model `||` and `&&` in
- * pre-order. The conditional expression `? :` is also modelled in pre-order to
+ * pre-order. The conditional expression `? :` is also modeled in pre-order to
  * achieve consistent CFGs for the equivalent `A && B` and `A ? B : false`.
- * Finally, the logical negation is also modelled in pre-order to achieve
+ * Finally, the logical negation is also modeled in pre-order to achieve
  * consistent CFGs for the equivalent `!(A || B)` and `!A && !B`. The boolean
  * value `b` is tracked with the completion `booleanCompletion(b, _)`.
  *
@@ -309,7 +309,7 @@ private Method nonReturningMethod() {
     body = result.getBody() and
     not exists(ReturnStmt ret | ret.getEnclosingCallable() = result)
     |
-    not result.getType() instanceof VoidType or
+    not result.getReturnType() instanceof VoidType or
     body.getLastStmt() = nonReturningStmt()
   )
 }

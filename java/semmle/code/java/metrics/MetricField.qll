@@ -19,9 +19,6 @@ import semmle.code.java.Member
 
 /** This class provides access to metrics information for fields. */
 class MetricField extends Field {
-  /** A printable representation of this field. */
-  string toString() { result = Field.super.toString() }
-
   /**
    * The afferent coupling of a field is defined as
    * the number of callables that access it.

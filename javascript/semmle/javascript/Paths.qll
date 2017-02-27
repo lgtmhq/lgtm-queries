@@ -12,76 +12,227 @@
 // permissions and limitations under the License.
 
 /**
- * Classes and methods for working with program expressions that denote file system paths.
+ * Provides classes for working with file system paths and program expressions
+ * that denote them.
  */
 
 import Expr
 
 /**
- * An expression that represents a (relative or absolute) file system path.
+ * Internal representation of paths as lists of components.
  */
-abstract class PathExpr extends Expr {
-  /** Get the path represented by this expression. */
-  abstract string getValue();
+private newtype TPath =
+  /** The path of the file system root. */
+  TRootPath()
+  or
+  /** A path of the form `<parent>/<component>`.*/
+  TConsPath(Path parent, string component) {
+    // make sure we can represent paths of files in snapshot
+    exists (Folder f | f = parent.getContainer() |
+      exists (f.getChild(component))
+    )
+    or
+    // make sure we can resolve path strings
+    exists (PathString p, int n |
+      p.resolveUpTo(n, _) = parent and
+      p.getComponent(n) = component and
+      // the empty string, `.` and `..` are not valid path components
+      not component.regexpMatch("\\.{0,2}")
+    )
+  }
 
-  /** Get the `i`-th component of this path. */
+/**
+ * Gets a textual representation of path `p` using slashes as delimiters;
+ * the empty path is represented as the empty string `""`.
+ */
+private string pp(TPath p) {
+  p = TRootPath() and result = ""
+  or
+  exists (TPath parent, string component | p = TConsPath(parent, component) |
+    result = pp(parent) + "/" + component
+  )
+}
+
+/**
+ * An absolute file system path referenced in the program,
+ * which may (but does not have to) correspond to a file or folder included
+ * in the snapshot.
+ */
+class Path extends TPath {
+  /**
+   * Gets the file or folder referred to by this path, if it exists.
+   */
+  Container getContainer() {
+    result.getPath() = this.toString()
+  }
+
+  /**
+   * Gets a textual representation of the path, using slashes as delimiters.
+   */
+  abstract string toString();
+}
+
+/**
+ * The empty path, which refers to the file system root.
+ */
+private class RootPath extends Path, TRootPath {
+  override string toString() {
+    result = "/"
+  }
+}
+
+/**
+ * A non-empty path of the form `<parent>/<component>`.
+ */
+private class ConsPath extends Path, TConsPath {
+  /** Gets the parent path of this path. */
+  Path getParent() {
+    this = TConsPath(result, _)
+  }
+
+  /** Gets the last component of this path. */
+  string getComponent() {
+    this = TConsPath(_, result)
+  }
+
+  override string toString() {
+    result = pp(this)
+  }
+}
+
+/**
+ * A string value that represents a (relative or absolute) file system path.
+ *
+ * Each path string is associated with one or more root folders relative to
+ * which the path may be resolved. For instance, paths inside a module are
+ * usually resolved relative to the module's folder, with a default
+ * lookup path as the fallback.
+ */
+abstract class PathString extends string {
+  bindingset[this] PathString() { any() }
+
+  /** Gets a root folder relative to which this path can be resolved. */
+  abstract Folder getARootFolder();
+
+  /** Gets the `i`th component of this path. */
   string getComponent(int i) {
-    result = getValue().splitAt("/", i)
+    result = this.splitAt("/", i)
   }
 
-  /** Get the number of components of this path. */
+  /** Gets the number of components of this path. */
   int getNumComponent() {
-    result = count(getValue().indexOf("/")) + 1
+    result = count(this.indexOf("/")) + 1
   }
 
-  /** Get the base name of the folder or file this path refers to. */
+  /** Gets the base name of the folder or file this path refers to. */
   string getBaseName() {
-    result = getValue().regexpCapture("(.*/|^)([^/]+)", 2)
+    result = this.regexpCapture("(.*/|^)([^/]+)", 2)
   }
 
   /**
-   * Resolve the first `n` components of this path.
+   * Gets the absolute path that the sub-path consisting of the first `n`
+   * components of this path refers to when resolved relative to the
+   * given `root` folder.
    */
-  Container resolveUpTo(int n) {
-    result = resolveUpTo(n, min(int p | exists(resolveUpTo(n, p))))
-  }
-
-  /**
-   * Resolve the first `n` components of this path relative
-   * to the root folder of the given priority.
-   *
-   * See `Module.searchRoot` for an explanation of roots and priorities.
-   */
-  Container resolveUpTo(int n, int priority) {
-    n = 0 and getTopLevel().(Module).searchRoot(this, (Folder)result, priority) or
-    exists (Container base | base = resolveUpTo(n-1, priority) |
+  Path resolveUpTo(int n, Folder root) {
+    n = 0 and result.getContainer() = root and root = getARootFolder() or
+    exists (Path base | base = resolveUpTo(n-1, root) |
       exists (string next | next = getComponent(n-1) |
         // handle empty components and the special "." folder
-        (next = "" or next = ".") and result = (Folder)base or
+        (next = "" or next = ".") and result = base or
         // handle the special ".." folder
-        next = ".." and result = base.getParent() or
+        next = ".." and result = base.(ConsPath).getParent() or
         // special handling for Windows drive letters when resolving absolute path:
         // the extractor populates "C:/" as a folder that has path "C:/" but name ""
-        (next.regexpMatch("[A-Za-z]:") and base.(Folder).getName() = "" and
-         base.getPath() = next.toUpperCase() + "/" and result = base) or
+        n = 1 and next.regexpMatch("[A-Za-z]:") and
+        root.getName() = "" and root.toString() = next.toUpperCase() + "/" and
+        result = base or
         // default case
-        result = base.(Folder).getChild(next)
+        result = TConsPath(base, next)
       )
     )
   }
 
   /**
-   * Resolve this path relative to the root folder of the given priority.
-   *
-   * See `Module.searchRoot` for an explanation of roots and priorities.
+   * Gets the absolute path that this path refers to when resolved relative to
+   * `root`.
+   */
+  Path resolve(Folder root) {
+    result = resolveUpTo(getNumComponent(), root)
+  }
+}
+
+/**
+ * An expression whose value represents a (relative or absolute) file system path.
+ *
+ * Each path expression is associated with one or more root folders, each of which
+ * has a priority. Root folders with numerically smaller properties are preferred,
+ * meaning that a path expression is interpreted relative to the root folder with
+ * the smallest priority for which the path can be resolved.
+ *
+ * For example, path expressions inside a module may have that module's folder
+ * as their highest-priority root, with default library paths as additional roots
+ * of lower priority.
+ */
+abstract class PathExpr extends Expr {
+  /** Gets the (unresolved) path represented by this expression. */
+  abstract string getValue();
+
+  /** Gets the root folder of priority `priority` associated with this path expression. */
+  abstract Folder getSearchRoot(int priority);
+
+  /** Gets the `i`th component of this path. */
+  string getComponent(int i) {
+    result = getValue().(PathString).getComponent(i)
+  }
+
+  /** Gets the number of components of this path. */
+  int getNumComponent() {
+    result = getValue().(PathString).getNumComponent()
+  }
+
+  /** Gets the base name of the folder or file this path refers to. */
+  string getBaseName() {
+    result = getValue().(PathString).getBaseName()
+  }
+
+  /**
+   * Gets the file or folder that the first `n` components of this path refer to
+   * when resolved relative to the root folder of the given `priority`.
+   */
+  Container resolveUpTo(int n, int priority) {
+    result = getValue().(PathString).resolveUpTo(n, getSearchRoot(priority)).getContainer()
+  }
+
+  /**
+   * Gets the file or folder that this path refers to when resolved relative to
+   * the root folder of the given `priority`.
    */
   Container resolve(int priority) {
     result = resolveUpTo(getNumComponent(), priority)
   }
 
-  /** Resolve this path to a file or a folder. */
+  /**
+   * Gets the file or folder that the first `n` components of this path refer to.
+   */
+  Container resolveUpTo(int n) {
+    result = resolveUpTo(n, min(int p | exists(resolveUpTo(n, p))))
+  }
+
+  /** Gets the file or folder that this path refers to. */
   Container resolve() {
     result = resolveUpTo(getNumComponent())
+  }
+}
+
+/** A path string derived from a path expression. */
+private class PathExprString extends PathString {
+  PathExprString() {
+    this = any(PathExpr pe).getValue()
+  }
+
+  override Folder getARootFolder() {
+    result = any(PathExpr pe | this = pe.getValue()).getSearchRoot(_)
   }
 }
 
@@ -89,7 +240,7 @@ abstract class PathExpr extends Expr {
  * A path expression of the form `p + q`, where both `p` and `q`
  * are path expressions.
  */
-library class ConcatPath extends PathExpr {
+private class ConcatPath extends PathExpr {
   ConcatPath() {
     exists (AddExpr add | this = add |
       add.getLeftOperand() instanceof PathExpr and
@@ -97,11 +248,15 @@ library class ConcatPath extends PathExpr {
     )
   }
 
-  string getValue() {
+  override string getValue() {
     exists (AddExpr add, PathExpr left, PathExpr right |
       this = add and
       left = add.getLeftOperand() and right = add.getRightOperand() |
       result = left.getValue() + right.getValue()
     )
+  }
+
+  override Folder getSearchRoot(int priority) {
+    result = this.(AddExpr).getAnOperand().(PathExpr).getSearchRoot(priority)
   }
 }

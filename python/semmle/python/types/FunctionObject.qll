@@ -116,6 +116,16 @@ abstract class FunctionObject extends Object {
      */
     abstract string getQualifiedName();
 
+    /** Whether `name` is a legal argument name for this function */
+    bindingset[name]
+    predicate isLegalArgumentName(string name) {
+        this.getFunction().getAnArg().asName().getId() = name
+        or
+        this.getFunction().getAKeywordOnlyArg().getId() = name
+        or
+        this.getFunction().hasKwArg()
+    }
+
 }
 
 class PyFunctionObject extends FunctionObject {
@@ -192,7 +202,7 @@ class PyFunctionObject extends FunctionObject {
     string getQualifiedName() {
         result = this.getFunction().getQualifiedName()
     }
-    
+
     predicate unconditionallyReturnsParameter(int n) {
         exists(SsaVariable pvar |
             exists(Parameter p | p = this.getFunction().getArg(n) |
@@ -218,7 +228,7 @@ abstract class BuiltinCallable extends FunctionObject {
             rt = theNoneType()
         )
     }
-    
+
     abstract string getQualifiedName();
 
 }
@@ -228,7 +238,7 @@ class BuiltinMethodObject extends BuiltinCallable {
     BuiltinMethodObject() {
         py_cobjecttypes(this, theMethodDescriptorType())
         or
-        py_cobjecttypes(this, theBuiltinFunctionType()) and exists(ClassObject c | py_cmembers(c, _, this))
+        py_cobjecttypes(this, theBuiltinFunctionType()) and exists(ClassObject c | py_cmembers_versioned(c, _, this, major_version().toString()))
         or
         exists(ClassObject wrapper_descriptor | 
             py_cobjecttypes(this, wrapper_descriptor) and
@@ -238,11 +248,11 @@ class BuiltinMethodObject extends BuiltinCallable {
 
     string getQualifiedName() {
         exists(ClassObject cls |
-            py_cmembers(cls, _, this) |
+            py_cmembers_versioned(cls, _, this, major_version().toString()) |
             result = cls.getName() + "." + this.getName()
         )
         or
-        not exists(ClassObject cls | py_cmembers(cls, _, this)) and
+        not exists(ClassObject cls | py_cmembers_versioned(cls, _, this, major_version().toString())) and
         result = this.getName()
     }
 
@@ -285,7 +295,7 @@ class BuiltinMethodObject extends BuiltinCallable {
 class BuiltinFunctionObject extends BuiltinCallable {
 
     BuiltinFunctionObject() {
-        py_cobjecttypes(this, theBuiltinFunctionType()) and exists(ModuleObject m | py_cmembers(m, _, this))
+        py_cobjecttypes(this, theBuiltinFunctionType()) and exists(ModuleObject m | py_cmembers_versioned(m, _, this, major_version().toString()))
     }
 
     string getName() {

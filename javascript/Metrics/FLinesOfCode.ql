@@ -21,6 +21,7 @@
  * @metricAggregate avg sum max
  * @tags maintainability
  */
+
 import javascript
 
 from File f, int n

@@ -111,9 +111,9 @@ private predicate brace_pair(PossibleAdvancedFormatString fmt, int start, int en
      not escaped_brace(fmt, start) and
      exists(string prefix, string postfix, int innerstart, int innerend |
           brace_pair(fmt, innerstart, innerend) and
-          prefix = fmt.getText().regexpFind("\\{([^{}]|\\{\\{)*+\\}", _, start)  and
+          prefix = fmt.getText().regexpFind("\\{([^{}]|\\{\\{)+\\{", _, start)  and
           innerstart = start+prefix.length()-1 and
-          postfix = fmt.getText().regexpFind("\\{([^{}]|\\{\\{)*+\\}", _, innerend-1) and
+          postfix = fmt.getText().regexpFind("\\}([^{}]|\\}\\})*\\}", _, innerend-1) and
           end = innerend + postfix.length()-1
      )
 }

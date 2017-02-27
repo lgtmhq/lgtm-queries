@@ -15,9 +15,11 @@
  * @name Property in old-style class
  * @description Using property descriptors in old-style classes does not work from Python 2.1 onward.
  * @kind problem
- * @problem.severity error
  * @tags portability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

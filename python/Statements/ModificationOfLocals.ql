@@ -15,9 +15,11 @@
  * @name Modification of dictionary returned by locals()
  * @description Modifications of the dictionary returned by locals() are not propagated to the local variables of a function.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

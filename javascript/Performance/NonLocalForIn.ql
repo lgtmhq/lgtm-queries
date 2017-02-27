@@ -12,23 +12,37 @@
 // permissions and limitations under the License.
 
 /**
- * @name For-in loop with non-local iteration variable
- * @description For-in loops whose iteration variable is not a purely local variable may
+ * @name Iteration using non-local variable
+ * @description For-in/for-of loops whose iteration variable is not a purely local variable may
  *              prevent optimization of the surrounding function.
  * @kind problem
  * @problem.severity warning
  * @tags efficiency
  *       maintainability
+ * @precision very-high
  */
 
 import javascript
 
-from ForInStmt f, string reason
-where // exclude toplevel statements, since the toplevel is unlikely to be optimized anyway
-      not f.getContainer() instanceof TopLevel and
-      (f.getIterator() instanceof PropAccess and reason = "a property" or
-       exists (Variable v | v = f.getAnIterationVariable() |
-         v.isGlobal() and reason = "a global variable" or
-         v.isLocal() and v.isCaptured() and reason = "captured"
-       ))
-select f.getIterator(), "This for-in loop may prevent optimization because its iteration variable is " + reason + "."
+/**
+ * Holds if the loop `f` iterates over a non-local variable, with `descr`
+ * explaining why the variable is not local.
+ */
+predicate nonLocalIterator(EnhancedForLoop f, string descr) {
+  // iterator is a property as in `for (x.p in o) ...`
+  f.getIterator() instanceof PropAccess and descr = "a property"
+  or
+  // iterator is not a purely local variable:
+  exists (Variable v | v = f.getAnIterationVariable() |
+    // either it is global...
+    v.isGlobal() and descr = "a global variable" or
+    // ...or it is captured by an inner function
+    v.isLocal() and v.isCaptured() and descr = "captured"
+  )
+}
+
+from EnhancedForLoop f, string reason
+where nonLocalIterator(f, reason) and
+      // exclude toplevel statements, since the toplevel is unlikely to be optimized anyway
+      not f.getContainer() instanceof TopLevel
+select f.getIterator(), "This loop may prevent optimization because its iteration variable is " + reason + "."

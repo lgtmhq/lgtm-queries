@@ -15,10 +15,12 @@
  * @name Non-exception in 'except' clause
  * @description An exception handler specifying a non-exception type will never handle any exception.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
  *       types
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

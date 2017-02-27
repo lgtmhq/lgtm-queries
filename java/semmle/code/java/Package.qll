@@ -44,9 +44,6 @@ class Package extends Element, Annotatable, @package {
     exists(RefType t | t.fromSource() and t.getPackage() = this) 
   }
 
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/package.png" }
-
   /** Cast this package to a class that provides access to metrics information. */
   MetricPackage getMetrics() { result = this }
   

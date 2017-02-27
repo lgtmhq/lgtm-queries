@@ -14,24 +14,30 @@
 /**
  * @name Signature mismatch in overriding method
  * @description Overriding a method without ensuring that both methods accept the same
- *              number and type of parameters causes an error when there is a mismatch.
+ *              number and type of parameters has the potential to cause an error when there is a mismatch.
  * @kind problem
- * @problem.severity error
+ * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python
+import Expressions.CallArgs
 
 from FunctionObject base, PyFunctionObject derived
 where
+  // Exclude case where both base and derived are called as that is handled by by "wong name/number of arguments in call" query.
+  not overridden_call(base, derived, _) and
   derived.getName() != "__init__" and
   derived.isNormalMethod() and
-  derived.overrides(base) and
   not derived.getFunction().isSpecialMethod() and
+  // call to overrides distributed for efficiency
   (
-    derived.minParameters() > base.maxParameters()
+    (derived.overrides(base) and derived.minParameters() > base.maxParameters())
     or
-    derived.maxParameters() < base.minParameters()
+    (derived.overrides(base) and derived.maxParameters() < base.minParameters())
   )
 select derived, "Overriding method '" + derived.getName() + "' has signature mismatch with $@.", base, "overridden method"

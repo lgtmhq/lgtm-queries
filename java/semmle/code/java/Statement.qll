@@ -578,7 +578,7 @@ class JumpStmt extends Stmt {
    */
   LabeledStmt getTargetLabel() {
     this.getParent+() = result and
-    namestrings(result.getLabel(), this)
+    namestrings(result.getLabel(), _, this)
   }
   
   private Stmt getLabelTarget() {
@@ -608,7 +608,7 @@ class JumpStmt extends Stmt {
 /** A `break` statement. */
 class BreakStmt extends Stmt,@breakstmt {
   /** The label targeted by this `break` statement, if any. */
-  string getLabel() { namestrings(result,this) }
+  string getLabel() { namestrings(result,_,this) }
 
   /** Whether this `break` statement has an explicit label. */
   predicate hasLabel() { exists(string s | s = this.getLabel()) }
@@ -628,7 +628,7 @@ class BreakStmt extends Stmt,@breakstmt {
 /** A `continue` statement. */
 class ContinueStmt extends Stmt,@continuestmt {
   /** The label targeted by this `continue` statement, if any. */
-  string getLabel() { namestrings(result,this) }
+  string getLabel() { namestrings(result,_,this) }
 
   /** Whether this `continue` statement has an explicit label. */
   predicate hasLabel() { exists(string s | s = this.getLabel()) }
@@ -691,7 +691,7 @@ class LabeledStmt extends Stmt,@labeledstmt {
   Stmt getStmt() { result.getParent() = this }
 
   /** The label of this labeled statement. */
-  string getLabel() { namestrings(result,this) }
+  string getLabel() { namestrings(result,_,this) }
 
   /** A printable representation of this statement. May include more detail than `toString()`. */
   string pp() {
@@ -764,10 +764,10 @@ class LocalClassDeclStmt extends Stmt,@localclassdeclstmt {
 /** An explicit `this(...)` constructor invocation. */
 class ThisConstructorInvocationStmt extends Stmt, ConstructorCall, @constructorinvocationstmt {
   /** An argument of this constructor invocation. */
-  Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
+  override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
 
   /** The argument at the specified (zero-based) position in this constructor invocation. */
-  Expr getArgument(int index) {
+  override Expr getArgument(int index) {
     result = this.getAnArgument() and
     result.getIndex() = index
   }
@@ -784,14 +784,14 @@ class ThisConstructorInvocationStmt extends Stmt, ConstructorCall, @constructori
   /** The constructor invoked by this constructor invocation. */
   Constructor getConstructor() { callableBinding(this,result) }
 
-  Expr getQualifier() { none() }
+  override Expr getQualifier() { none() }
 
   /** The immediately enclosing callable of this constructor invocation. */
-  Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
+  override Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
 
   /** The immediately enclosing statement of this constructor invocation. */
-  Stmt getEnclosingStmt() { result = this }
-  
+  override Stmt getEnclosingStmt() { result = this }
+
   /** A printable representation of this statement. May include more detail than `toString()`. */
   string pp() {
     result = "this(...)"
@@ -807,10 +807,10 @@ class ThisConstructorInvocationStmt extends Stmt, ConstructorCall, @constructori
 /** An explicit `super(...)` constructor invocation. */
 class SuperConstructorInvocationStmt extends Stmt, ConstructorCall, @superconstructorinvocationstmt {
   /** An argument of this constructor invocation. */
-  Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
+  override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
 
   /** The argument at the specified (zero-based) position in this constructor invocation. */
-  Expr getArgument(int index) {
+  override Expr getArgument(int index) {
     result = this.getAnArgument() and
     result.getIndex() = index
   }
@@ -828,14 +828,14 @@ class SuperConstructorInvocationStmt extends Stmt, ConstructorCall, @superconstr
   Constructor getConstructor() { callableBinding(this,result) }
 
   /** The qualifier expression of this `super(...)` constructor invocation, if any. */
-  Expr getQualifier() { result.isNthChildOf(this, -1) }
+  override Expr getQualifier() { result.isNthChildOf(this, -1) }
 
   /** The immediately enclosing callable of this constructor invocation. */
-  Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
+  override Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
 
   /** The immediately enclosing statement of this constructor invocation. */
-  Stmt getEnclosingStmt() { result = this }
-  
+  override Stmt getEnclosingStmt() { result = this }
+
   /** A printable representation of this statement. May include more detail than `toString()`. */
   string pp() {
     result = "super(...)"

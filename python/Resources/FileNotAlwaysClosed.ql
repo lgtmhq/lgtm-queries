@@ -15,10 +15,12 @@
  * @name File is not always closed
  * @description Opening a file without ensuring that it is always closed may cause resource leaks.
  * @kind problem
- * @problem.severity error
  * @tags efficiency
  *       correctness
  *       resources
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision high
  */
 
 import python
@@ -53,6 +55,13 @@ predicate is_true_guard(IsTrue istrue, ControlFlowNode open) {
      )
 }
 
+/** A test of the form `obj.closed` or `not obj.closed`, etc. */
+predicate closed_test(ControlFlowNode test, ControlFlowNode obj, boolean sense) {
+    obj = test.(AttrNode).getObject("closed") and sense = true
+    or
+    closed_test(test.getAPredecessor(), obj, sense.booleanNot()) and test.(UnaryExprNode).getNode().getOp() instanceof Not
+}
+
 predicate is_close(ControlFlowNode close, ControlFlowNode open) {
     opens_file(open) and
     exists(SsaVariable v |
@@ -65,6 +74,13 @@ predicate is_close(ControlFlowNode close, ControlFlowNode open) {
         exists(With with |
             with.getAFlowNode() = close |
             with.getContextExpr().getAFlowNode() = v.getAUse()
+        )
+        or
+        /* `if f.closed:` implies that the file is closed on its true edge */
+        exists(ControlFlowNode branch |
+            closed_test(branch, v.getAUse(), true) and close = branch.getATrueSuccessor()
+            or
+            closed_test(branch, v.getAUse(), false) and close = branch.getAFalseSuccessor()
         )
     )
 }
@@ -168,21 +184,24 @@ predicate opened_in_enter_closed_in_exit(AttrNode open, AttrNode close) {
     )
 }
 
-
+predicate file_not_closed_at_scope_exit(ControlFlowNode defn, boolean exceptional)  {
+    exists(Scope s, ControlFlowNode exit | 
+        exit = s.getANormalExit() and
+        file_is_open(exit, defn, exceptional)
+        or
+        exit.(RaisingNode).viableExceptionalExit(s, _) and
+        file_is_open(exit, defn, _) and exceptional = true
+    )
+}
 
 /* Check to see if a file is opened but not closed or returned */
 from ControlFlowNode defn, string message
-where 
-exists(Scope s, ControlFlowNode f, boolean ex | file_is_open(f, defn, ex) |
-    f = s.getANormalExit() and ex = false and message = "File is opened but is not closed."
+where
+not opened_in_enter_closed_in_exit(defn, _) and
+(
+    file_not_closed_at_scope_exit(defn, false) and message = "File is opened but is not closed."
     or
-    (f.(RaisingNode).viableExceptionalExit(s, _) or
-     f = s.getANormalExit() and file_is_open(f, defn, true)
-    )
-    and message = "File may not be closed if an exception is raised." and
-    not file_is_open(s.getANormalExit(), defn, false)
-) and
-not opened_in_enter_closed_in_exit(defn, _)
+    not file_not_closed_at_scope_exit(defn, false) and file_not_closed_at_scope_exit(defn, true) and message = "File may not be closed if an exception is raised."
+)
 
 select defn.getNode(), message
-

@@ -15,9 +15,11 @@
  * @name Maybe missing 'self' in comparison
  * @description Comparison of identical values, the intent of which is unclear.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       maintainability
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

@@ -29,17 +29,6 @@ int integralTypeWidth (IntegralType t) {
 
 int eval (Expr e) {
   result = e.(CompileTimeConstantExpr).getIntValue()
-  or
-  // Hex and octal literals not handled by `getIntValue`.
-  exists (string l | l = e.(Literal).getLiteral() |
-    l.regexpMatch("0x0|00")    and result = 0
-    or
-    l.regexpMatch("0x1|01")    and result = 1
-    or
-    l.regexpMatch("0x20|040")  and result = 32
-    or
-    l.regexpMatch("0x40|0100") and result = 64
-  )
 }
 
 predicate isConstantExp (Expr e) {
@@ -85,11 +74,11 @@ predicate isConstantExp (Expr e) {
   )
   or
   exists (AndLogicalExpr a | a = e |
-    a.getAnOperand().getProperExpr().(Literal).getLiteral() = "false"
+    a.getAnOperand().getProperExpr().(BooleanLiteral).getBooleanValue() = false
   )
   or
   exists (OrLogicalExpr o | o = e |
-    o.getAnOperand().getProperExpr().(Literal).getLiteral() = "true"
+    o.getAnOperand().getProperExpr().(BooleanLiteral).getBooleanValue() = true
   )
 }
 
@@ -101,5 +90,5 @@ where isConstantExp(e)
       )
   and not e instanceof CompileTimeConstantExpr
   // Exclude expressions that appear to be disabled deliberately (e.g. `false && ...`).
-  and not e.(AndLogicalExpr).getAnOperand().(Literal).getLiteral() = "false"
+  and not e.(AndLogicalExpr).getAnOperand().(BooleanLiteral).getBooleanValue() = false
 select e, "Expression always evaluates to the same value."

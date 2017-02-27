@@ -145,12 +145,17 @@ RefType parameterisationTypeArgument(GenericType g, ParameterizedType t, int ind
   result = t.getTypeArgument(index)
 }
 
+private predicate varianceCandidate(ParameterizedType pt) {
+  pt.getATypeArgument() instanceof Wildcard
+}
+
 /**
  * Whether every type argument of `s` (up to `n`) contains the corresponding type argument of `t`.
  * Both `s` and `t` are constrained to being parameterizations of `g`.
  */
 private
 predicate typeArgumentsContain(GenericType g, ParameterizedType s, ParameterizedType t, int n) {
+  varianceCandidate(s) and
   contains(g, s, t, n) and
   (n = 0 or typeArgumentsContain(g, s, t, n-1))
 }
@@ -164,10 +169,15 @@ predicate typeArgumentsContain(GenericType g, ParameterizedType s, Parameterized
 private 
 predicate contains(GenericType g, ParameterizedType sParm, ParameterizedType tParm, int n) {
   exists (RefType s, RefType t |
-    s = parameterisationTypeArgument(g, sParm, n) and
-    t = parameterisationTypeArgument(g, tParm, n) |
-    typeArgumentContains(s,t)
+    containsAux(g, tParm, n, s, t) and
+    s = parameterisationTypeArgument(g, sParm, n)
   )
+}
+
+pragma[nomagic]
+private predicate containsAux(GenericType g, ParameterizedType tParm, int n, RefType s, RefType t) {
+  typeArgumentContains(s,t) and
+  t = parameterisationTypeArgument(g, tParm, n)
 }
 
 /**
@@ -330,6 +340,29 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /** A direct or indirect supertype of this type, including itself. */
   RefType getAnAncestor() { hasSubtypeStar(result, this) }
 
+  /**
+   * The source declaration of a direct supertype of this type, excluding itself.
+   *
+   * Note, that a generic type is the source declaration of a direct supertype
+   * of itself, namely the corresponding raw type, and this case is thus
+   * explicitly excluded. See also `getSourceDeclaration()`.
+   */
+  RefType getASourceSupertype() {
+    result = this.getASupertype().getSourceDeclaration() and
+    result != this
+  }
+
+  /**
+   * Holds if `t` is an immediate super-type of this type using only the immediate
+   * `extends` or `implements` relationships.  In particular, this excludes
+   * parameter containment sub-typing for parameterized types.
+   */
+  predicate extendsOrImplements(RefType t) {
+    extendsReftype(this, t) or
+    implInterface(this, t) or
+    typeVarSubtypeBound(t, this)
+  }
+
   /** Whether this type declares any members. */
   predicate hasMember() { exists(getAMember()) }
 
@@ -371,12 +404,75 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
    */
   cached
   predicate hasMethod(Method m, RefType declaringType) {
-    m = getAMethod() and this = declaringType or
-    (
-      getASupertype().hasMethod(m, declaringType) and
+    hasNonInterfaceMethod(m, declaringType) or
+    hasInterfaceMethod(m, declaringType)
+  }
+
+  private predicate noMethodExtraction() {
+    not methods(_,_,_,_,this,_) and
+    exists(Method m | methods(m,_,_,_,getSourceDeclaration(),_) and m.isInheritable())
+  }
+
+  private predicate canInheritFrom(RefType t) {
+    t = getASupertype() and
+    (noMethodExtraction() implies supertypeSrcDecl(t, getSourceDeclaration()))
+  }
+
+  pragma[nomagic]
+  private predicate supertypeSrcDecl(RefType sup, RefType srcDecl) {
+    sup = getASupertype() and
+    srcDecl = sup.getSourceDeclaration()
+  }
+
+  private predicate hasNonInterfaceMethod(Method m, RefType declaringType) {
+    m = getAMethod() and this = declaringType and not declaringType instanceof Interface or
+    exists(RefType sup |
+      sup = getASupertype() and
+      (if m.isPackageProtected() then sup.getPackage() = this.getPackage() else any()) and
+      (not sup instanceof Interface or this instanceof Interface) and
+      canInheritFrom(sup) and
+      sup.hasNonInterfaceMethod(m, declaringType) and
       exists(string signature | methods(m,_,signature,_,_,_) and not methods(_,_,signature,_,this,_)) and
       m.isInheritable()
     )
+  }
+
+  private predicate cannotInheritInterfaceMethod(string signature) {
+    methods(_,_,signature,_,this,_) or
+    exists(Method m | hasNonInterfaceMethod(m, _) and methods(m,_,signature,_,_,_))
+  }
+
+  private predicate interfaceMethodCandidateWithSignature(Method m, string signature, RefType declaringType) {
+    m = getAMethod() and this = declaringType and declaringType instanceof Interface and methods(m,_,signature,_,_,_) or
+    exists(RefType sup |
+      sup = getASupertype() and
+      sup.interfaceMethodCandidateWithSignature(m, signature, declaringType) and
+      not cannotInheritInterfaceMethod(signature) and
+      canInheritFrom(sup) and
+      m.isInheritable()
+    )
+  }
+
+  pragma[nomagic]
+  private predicate overrideEquivalentInterfaceMethodCandidates(Method m1, Method m2) {
+    exists(string signature |
+      interfaceMethodCandidateWithSignature(m1, signature, _) and
+      interfaceMethodCandidateWithSignature(m2, signature, _) and
+      m1 != m2
+    )
+  }
+
+  pragma[noinline]
+  private predicate overriddenInterfaceMethodCandidate(Method m) {
+    exists(Method m2 |
+      overrideEquivalentInterfaceMethodCandidates(m, m2) and
+      m2.overrides(m)
+    )
+  }
+
+  private predicate hasInterfaceMethod(Method m, RefType declaringType) {
+    interfaceMethodCandidateWithSignature(m, _, declaringType) and
+    not overriddenInterfaceMethodCandidate(m)
   }
 
   /** Whether this type declares or inherits the specified member. */
@@ -427,7 +523,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /**
    * The source declaration of this type.
    *
-   * For parameterized instances of generic types, the
+   * For parameterized instances of generic types and raw types, the
    * source declaration is the corresponding generic type.
    *
    * For non-parameterized types declared inside a parameterized
@@ -458,8 +554,8 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
    */
   pragma[inline]
   RefType commonSubtype(RefType other) {
-    sourceSuperType*(result, erase(this)) and
-    sourceSuperType*(result, erase(other))
+    result.getASourceSupertype*() = erase(this) and
+    result.getASourceSupertype*() = erase(other)
   }
 }
 
@@ -470,9 +566,6 @@ class Class extends RefType, @class {
 
   /** Whether this class is a local class. */
   predicate isLocal() { isLocalClass(this,_) }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/class.png" }
 
   RefType getSourceDeclaration() { classes(this,_,_,result) }
 
@@ -558,12 +651,6 @@ class TopLevelType extends RefType {
 
 /** A top-level class. */
 class TopLevelClass extends TopLevelType, Class {
-  RefType getSourceDeclaration() { result = Class.super.getSourceDeclaration() }
-
-  /**
-   * An annotation that applies to this class.
-   */
-  Annotation getAnAnnotation() { result = Class.super.getAnAnnotation() }
 }
 
 /** A nested type is a type declared within another type. */
@@ -629,17 +716,6 @@ class NestedType extends RefType {
  * local classes and anonymous classes.
  */
 class NestedClass extends NestedType, Class {
-  RefType getSourceDeclaration() { result = Class.super.getSourceDeclaration() }
-
-  /** The immediately enclosing type of this  nested class. */
-  RefType getEnclosingType() { result = NestedType.super.getEnclosingType() }
-
-  /** An annotation that applies to this nested class. */
-  Annotation getAnAnnotation() { result = Class.super.getAnAnnotation() }
-
-  predicate isStatic() { NestedType.super.isStatic() }
-  predicate isPublic() { NestedType.super.isPublic() }
-  predicate isStrictfp() { NestedType.super.isStrictfp() }
 }
 
 /**
@@ -654,9 +730,6 @@ class InnerClass extends NestedClass {
 
 /** An interface. */
 class Interface extends RefType, @interface {
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/interface.png" }
-
   RefType getSourceDeclaration() { interfaces(this,_,_,result) }
 
   predicate isAbstract() {
@@ -815,9 +888,6 @@ class EnumType extends Class {
     fields(result,_,_,this,_)
   }
 
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/enum.png" }
-
   predicate isFinal() {
     // JLS 8.9: An enum declaration is implicitly `final` unless it contains
     // at least one enum constant that has a class body.
@@ -842,10 +912,6 @@ class EnumConstant extends Field {
  */
 deprecated RefType intersect(RefType t1, RefType t2) {
   result = t1.commonSubtype(t2)
-}
-
-private predicate sourceSuperType(RefType sub, RefType sup) {
-  sub.getASupertype().getSourceDeclaration() = sup
 }
 
 /**
@@ -881,7 +947,7 @@ predicate haveIntersection(RefType t1, RefType t2) {
     e1 instanceof TypeObject or e2 instanceof TypeObject
     or
     not e1 instanceof TypeObject and not e2 instanceof TypeObject and
-    exists(RefType commonSub | sourceSuperType*(commonSub, e1) and sourceSuperType*(commonSub, e2))
+    exists(RefType commonSub | commonSub.getASourceSupertype*() = e1 and commonSub.getASourceSupertype*() = e2)
   )
 }
 

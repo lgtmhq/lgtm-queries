@@ -15,9 +15,11 @@
  * @name Unmatchable caret in regular expression
  * @description Regular expressions containing a caret '^' in the middle cannot be matched, whatever the input.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

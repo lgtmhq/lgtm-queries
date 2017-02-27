@@ -15,9 +15,11 @@
  * @name Inconsistent equality and inequality
  * @description Defining only an equality method or an inequality method for a class violates the object model.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

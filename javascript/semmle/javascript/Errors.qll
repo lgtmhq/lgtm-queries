@@ -11,26 +11,28 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for working with syntax errors. */
+
 import javascript
 
 /** An error encountered during extraction. */
 abstract class Error extends Locatable {
-  /** Get the message associated with this error. */
+  /** Gets the message associated with this error. */
   abstract string getMessage();
-  
-  string toString() {
+
+  override string toString() {
     result = getMessage()
   }
 }
 
 /** A JavaScript parse error encountered during extraction. */
 class JSParseError extends @js_parse_error, Error {
-  /** Get the toplevel element this error occurs in. */
+  /** Gets the toplevel element this error occurs in. */
   TopLevel getTopLevel() {
     jsParseErrors(this, result, _)
   }
 
-  string getMessage() {
+  override string getMessage() {
     jsParseErrors(this, _, result)
   }
 }

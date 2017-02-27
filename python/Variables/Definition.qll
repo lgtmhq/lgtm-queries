@@ -155,3 +155,20 @@ predicate name_acceptable_for_unused_variable(Variable var) {
         name.regexpMatch("__.*")
     )
 }
+
+
+class ListComprehensionDeclaration extends ListComp {
+
+    Name getALeakedVariableUse() {
+        major_version() = 2 and
+        this.getIterationVariable(_).getId() = result.getId() and
+        result.getScope() = this.getScope() and
+        this.getAFlowNode().strictlyReaches(result.getAFlowNode()) and
+        result.isUse()
+    }
+
+    Name getDefinition() {
+        result = this.getIterationVariable(0).getAStore()
+    }
+
+}

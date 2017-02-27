@@ -25,13 +25,17 @@ class Function extends Function_, Scope, AstNode {
     /** The scope in which this function occurs, will be a class for a method,
      *  another function for nested functions, generator expressions or comprehensions, 
      * or a module for a plain function. */
-    Scope getScope() {
+    Scope getEnclosingScope() {
         result = this.getParent().(Expr).getScope()
+    }
+
+    Scope getScope() {
+        result = this.getEnclosingScope()
     }
 
     /** Whether this function is declared in a class */
     predicate isMethod() {
-        exists(Class cls | this.getScope() = cls)
+        exists(Class cls | this.getEnclosingScope() = cls)
     }
 
     /** Whether this is a special method, that is does its name have the form `__xxx__` (except `__init__`) */
@@ -139,12 +143,12 @@ class Function extends Function_, Scope, AstNode {
      * Should return the same name as the `__qualname__` attribute on functions in Python 3.
      */
     string getQualifiedName() {
-        this.getScope() instanceof Module and result = this.getName()
+        this.getEnclosingScope() instanceof Module and result = this.getName()
         or
         exists(string enclosing_name |
-            enclosing_name = this.getScope().(Function).getQualifiedName()
+            enclosing_name = this.getEnclosingScope().(Function).getQualifiedName()
             or
-            enclosing_name = this.getScope().(Class).getQualifiedName() |
+            enclosing_name = this.getEnclosingScope().(Class).getQualifiedName() |
             result = enclosing_name + "." + this.getName()
         )
     }
@@ -157,6 +161,14 @@ class Function extends Function_, Scope, AstNode {
     /** Gets a keyword-only parameter of this function. */
     Name getAKeywordOnlyArg() {
         result = this.getKeywordOnlyArg(_)
+    }
+
+    Scope getEvaluatingScope() {
+        major_version() = 2 and exists(Comp comp | comp.getFunction() = this | result = comp.getEvaluatingScope())
+        or
+        not exists(Comp comp | comp.getFunction() = this) and result = this
+        or 
+        major_version() = 3 and result = this
     }
 
 }
@@ -285,10 +297,6 @@ class FunctionExpr extends FunctionExpr_, CallableExpr {
         result = FunctionExpr_.super.getArgs()
     }
 
-    string toString() {
-        result = FunctionExpr_.super.toString()
-    }
-
 }
 
 /** A lambda expression, such as lambda x:x*x  */
@@ -315,10 +323,6 @@ class Lambda extends Lambda_, CallableExpr {
 
     Arguments getArgs() {
         result = Lambda_.super.getArgs()
-    }
-
-    string toString() {
-        result = Lambda_.super.toString()
     }
 
 }

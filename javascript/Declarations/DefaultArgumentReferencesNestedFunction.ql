@@ -20,6 +20,7 @@
  * @problem.severity error
  * @tags reliability
  *       correctness
+ * @precision very-high
  */
 
 import javascript

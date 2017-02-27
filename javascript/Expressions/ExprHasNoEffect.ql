@@ -19,12 +19,16 @@
  * @problem.severity warning
  * @tags maintainability
  *       correctness
+ * @precision high
  */
 
 import javascript
 import DOMProperties
 import semmle.javascript.frameworks.xUnit
 
+/**
+ * Holds if `e` appears in a syntactic context where its value is discarded.
+ */
 predicate inVoidContext(Expr e) {
   exists (ExprStmt parent |
     // e is a toplevel expression in an expression statement
@@ -45,7 +49,7 @@ predicate inVoidContext(Expr e) {
 }
 
 /**
- * Check whether 'e' is of the form 'x;' or 'e.p;' and has a JSDoc comment containing a tag.
+ * Holds if `e` is of the form `x;` or `e.p;` and has a JSDoc comment containing a tag.
  * In that case, it is probably meant as a declaration and shouldn't be flagged by this query.
  *
  * This will still flag cases where the JSDoc comment contains no tag at all (and hence carries
@@ -58,7 +62,7 @@ predicate isDeclaration(Expr e) {
 }
 
 /**
- * Check whether `name` is potentially a getter.
+ * Holds if there exists a getter for a property called `name` anywhere in the program.
  */
 predicate isGetterProperty(string name) {
   // there is a call of the form `Object.defineProperty(..., name, { get: ..., ... })`
@@ -74,14 +78,17 @@ predicate isGetterProperty(string name) {
   exists (ObjectExpr obj | obj.getPropertyByName(name) instanceof PropertyGetter)
 }
 
+/**
+ * A property access that may invoke a getter.
+ */
 class GetterPropertyAccess extends PropAccess {
-  predicate isImpure() {
+  override predicate isImpure() {
     isGetterProperty(getPropertyName())
   }
 }
 
 /**
- * `c` is an indirect eval call of the form `(dummy, eval)(...)`, where
+ * Holds if `c` is an indirect eval call of the form `(dummy, eval)(...)`, where
  * `dummy` is some expression whose value is discarded, and which simply
  * exists to prevent the call from being interpreted as a direct eval.
  */
@@ -94,7 +101,7 @@ predicate isIndirectEval(CallExpr c, Expr dummy) {
 }
 
 /**
- * `c` is a call of the form `(dummy, e[p])(...)`, where `dummy` is
+ * Holds if `c` is a call of the form `(dummy, e[p])(...)`, where `dummy` is
  * some expression whose value is discarded, and which simply exists
  * to prevent the call from being interpreted as a method call.
  */
@@ -108,10 +115,10 @@ predicate isReceiverSuppressingCall(CallExpr c, Expr dummy, PropAccess callee) {
 
 from Expr e
 where e.isPure() and inVoidContext(e) and
-      // disregard pure expressions wrapped in a void(...) 
+      // disregard pure expressions wrapped in a void(...)
       not e instanceof VoidExpr and
       // filter out directives
-      not e.getParent() instanceof Directive and
+      not exists (Directive d | e = d.getExpr()) and
       // or about externs
       not e.inExternsFile() and
       // don't complain about declarations

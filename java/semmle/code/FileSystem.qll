@@ -71,9 +71,6 @@ class Container extends @container, Top {
 
   /** The parent of this container. */
   Container getParentContainer() { result.getAChildContainer() = this }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/folder.png" }
 }
 
 /** A folder holds files. */
@@ -107,7 +104,45 @@ class File extends Container, @file {
   
   /** The URL of this file. */
   string getURL() { result = "file://" + this.getFullName() + ":0:0:0:0" }
+}
 
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/file.png" }
+/**
+ * A Java archive file with a ".jar" extension.
+ */
+class JarFile extends File {
+  JarFile() {
+    getExtension() = "jar"
+  }
+
+  /**
+   * Gets the main attribute with the specified `key`
+   * from this JAR file's manifest.
+   */
+  string getManifestMainAttribute(string key) {
+    jarManifestMain(this, key, result)
+  }
+
+  /**
+   * Gets the "Specification-Version" main attribute
+   * from this JAR file's manifest.
+   */
+  string getSpecificationVersion() {
+    result = getManifestMainAttribute("Specification-Version")
+  }
+
+  /**
+   * Gets the "Implementation-Version" main attribute
+   * from this JAR file's manifest.
+   */
+  string getImplementationVersion() {
+    result = getManifestMainAttribute("Implementation-Version")
+  }
+
+  /**
+   * Gets the per-entry attribute for the specified `entry` and `key`
+   * from this JAR file's manifest.
+   */
+  string getManifestEntryAttribute(string entry, string key) {
+    jarManifestEntries(this, entry, key, result)
+  }
 }

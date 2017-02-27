@@ -11,261 +11,269 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for modeling program variables. */
+
 import Expr
 import Locations
 import Functions
 
 /** A scope in which variables can be declared. */
 class Scope extends @scope {
+  /** Gets a textual representation of this element. */
   string toString() {
     none()
   }
-  
-  /** Get the scope in which this scope is nested, if any. */
+
+  /** Gets the scope in which this scope is nested, if any. */
   Scope getOuterScope() {
-  	scopenesting(this, result)
+    scopenesting(this, result)
   }
-  
-  /** Get a scope nested in this one, if any. */
+
+  /** Gets a scope nested in this one, if any. */
   Scope getAnInnerScope() {
-  	result.getOuterScope() = this
+    result.getOuterScope() = this
   }
-  
-  /** Get the program element this scope is associated with, if any. */
+
+  /** Gets the program element this scope is associated with, if any. */
   ASTNode getScopeElement() {
-  	scopenodes(result, this)
+    scopenodes(result, this)
   }
-  
-  /** Get the location of the program element this scope is associated with, if any. */
+
+  /** Gets the location of the program element this scope is associated with, if any. */
   Location getLocation() {
     result = getScopeElement().getLocation()
   }
 
-  /**
-   * Is there a strict mode declaration in this scope?
-   *
-   * DEPRECATED: Use `StmtContainer.isStrict()` instead.
-   */
-  deprecated
-  predicate isStrict() {
-    exists (StrictModeDecl smd | getScopeElement() = smd.getContainer())
-  }
-  
-  /** Get a variable declared in this scope. */
+  /** Gets a variable declared in this scope. */
   Variable getAVariable() {
     result.getScope() = this
   }
-  
-  /** Get the variable with the given name declared in this scope. */
+
+  /** Gets the variable with the given name declared in this scope. */
   Variable getVariable(string name) {
-  	result = getAVariable() and
-  	result.getName() = name
+    result = getAVariable() and
+    result.getName() = name
   }
 }
 
 /** The global scope. */
 class GlobalScope extends Scope, @globalscope {
-  string toString() {
+  override string toString() {
     result = "global scope"
   }
 }
 
 /**
- * The scope induced by a Node.js or ES2015 module
+ * A scope induced by a Node.js or ES2015 module
  */
 class ModuleScope extends Scope, @modulescope {
-  /** Get the module to which this scope belongs. */
+  /** Gets the module that induces this scope. */
   Module getModule() {
     result = getScopeElement()
   }
 
-  string toString() {
+  override string toString() {
     result = "module scope"
   }
 }
 
 /** A scope induced by a function. */
 class FunctionScope extends Scope, @functionscope {
-  /** Get the function inducing this scope. */
+  /** Gets the function that induces this scope. */
   Function getFunction() {
     result = getScopeElement()
   }
-  
-  string toString() {
+
+  override string toString() {
     result = "function scope"
   }
 }
 
 /** A scope induced by a catch clause. */
 class CatchScope extends Scope, @catchscope {
-  /** Get the catch scope inducing this scope. */
+  /** Gets the catch clause that induces this scope. */
   CatchClause getCatchClause() {
     result = getScopeElement()
   }
-  
-  string toString() {
+
+  override string toString() {
     result = "catch scope"
   }
 }
 
 /** A scope induced by a block of statements. */
 class BlockScope extends Scope, @blockscope {
-  /** Get the block of statements inducing this scope. */
+  /** Gets the block of statements that induces this scope. */
   BlockStmt getBlock() {
     result = getScopeElement()
   }
 
-  string toString() {
+  override string toString() {
     result = "block scope"
   }
 }
 
-/** A scope induced by a for statements. */
+/** A scope induced by a `for` statement. */
 class ForScope extends Scope, @forscope {
-  /** Get the for statement inducing this scope. */
+  /** Gets the `for` statement that induces this scope. */
   ForStmt getLoop() {
     result = getScopeElement()
   }
 
-  string toString() {
+  override string toString() {
     result = "for scope"
   }
 }
 
-/** A scope induced by a for-in or for-of statements. */
+/** A scope induced by a `for`-`in` or `for`-`of` statement. */
 class ForInScope extends Scope, @forinscope {
-  /** Get the for-in or for-of statement inducing this scope. */
+  /** Gets the `for`-`in` or `for`-`of` statement that induces this scope. */
   EnhancedForLoop getLoop() {
     result = getScopeElement()
   }
 
-  string toString() {
+  override string toString() {
     result = "for-in scope"
   }
 }
 
 /** A scope induced by a comprehension block. */
 class ComprehensionBlockScope extends Scope, @comprehensionblockscope {
-  /** Get the comprehension block inducing this scope. */
+  /** Gets the comprehension block that induces this scope. */
   ComprehensionBlock getComprehensionBlock() {
     result = getScopeElement()
   }
 
-  string toString() {
+  override string toString() {
     result = "comprehension block scope"
   }
 }
 
 /** A variable declared in a scope. */
 class Variable extends @variable {
-  /** Get the name of this variable. */
+  /** Gets the name of this variable. */
   string getName() {
     variables(this, result, _)
   }
-  
-  /** Get the scope this variable is declared in. */
+
+  /** Gets the scope this variable is declared in. */
   Scope getScope() {
     variables(this, _, result)
   }
-  
-  /** Is this a global variable? */
+
+  /** Holds if this is a global variable. */
   predicate isGlobal() {
     getScope() instanceof GlobalScope
   }
 
-  /** Is this a local variable or a parameter? */
+  /**
+   * Holds if this is a local variable.
+   *
+   * Parameters and `arguments` variables are considered to be local.
+   */
   predicate isLocal() {
     not isGlobal()
   }
 
-  /** Is this variable a parameter? */
+  /** Holds if this variable is a parameter. */
   predicate isParameter() {
     exists (Parameter p | p.getAVariable() = this)
   }
 
-  /** Get an access to this variable. */
+  /** Gets an access to this variable. */
   VarAccess getAnAccess() {
-  	result.getVariable() = this
-  }
-  
-  /** Get a declaration declaring this variable, if any. */
-  VarDecl getADeclaration() {
-  	result.getVariable() = this
+    result.getVariable() = this
   }
 
-  /** Get a declaration statement declaring this variable, if any. */
+  /** Gets a declaration declaring this variable, if any. */
+  VarDecl getADeclaration() {
+    result.getVariable() = this
+  }
+
+  /** Gets a declaration statement declaring this variable, if any. */
   DeclStmt getADeclarationStatement() {
     result.getADecl().getBindingPattern().getAVariable() = this
   }
-  
-  /** Get an expression that is directly stored in this variable. */
+
+  /** Gets an expression that is directly stored in this variable. */
   Expr getAnAssignedValue() {
     // result is an expression that this variable is initialized to
-    exists (VariableDeclarator vd | vd.getBindingPattern().(VarDecl).getVariable() = this | result = vd.getInit()) or
+    exists (VariableDeclarator vd |
+      vd.getBindingPattern().(VarDecl).getVariable() = this |
+      result = vd.getInit()
+    ) or
     // if this variable represents a function binding, return the function
     exists (Function fn | fn.getVariable() = this | result = fn) or
     // there is an assignment to this variable
     exists (Assignment assgn | assgn.getLhs() = getAnAccess() and assgn.getRhs() = result)
   }
 
-  /** Is this variable ever captured in the closure of a nested function? */
+  /**
+   * Holds if this variable is captured in the closure of a nested function.
+   *
+   * Global variables are always considered to be captured.
+   */
   predicate isCaptured() {
-    exists (Function f | f = getAnAccess().getContainer() |
-      this instanceof GlobalVariable or
-      this.(LocalVariable).getScope() = f.getScope().getOuterScope+()
-    )
+    this instanceof GlobalVariable or
+    getAnAccess().getContainer() != this.(LocalVariable).getDeclaringContainer()
   }
 
-  /** Is there any declaration of this variable in `tl`? */
+  /** Holds if there is a declaration of this variable in `tl`. */
   predicate declaredIn(TopLevel tl) {
     getADeclaration().getTopLevel() = tl
   }
-  
+
+  /** Gets a textual representation of this element. */
   string toString() {
     result = getName()
   }
 }
 
-/** An 'arguments' variable implicitly declared by a function. */
-class ArgumentsObject extends Variable {
-  ArgumentsObject() {
+/** An `arguments` variable of a function. */
+class ArgumentsVariable extends Variable {
+  ArgumentsVariable() {
     isArgumentsObject(this)
   }
-  
-  FunctionScope getScope() {
+
+  override FunctionScope getScope() {
     result = Variable.super.getScope()
   }
 
-  /** Get the function declaring this 'arguments' variable. */
+  /** Gets the function declaring this 'arguments' variable. */
   Function getFunction() {
     result = getScope().getFunction()
   }
 }
 
-/** An identifier that refers to a variable, either in a declaration or in a variable read/write. */
+/**
+ * DEPRECATED: Use `ArgumentsVariable` instead.
+ *
+ * An `arguments` variable of a function.
+ */
+deprecated class ArgumentsObject extends ArgumentsVariable {}
+
+/** An identifier that refers to a variable, either in a declaration or in a variable access. */
 abstract class VarRef extends @varref, Identifier, BindingPattern {
-  /** Get the variable this identifier refers to. */
+  /** Gets the variable this identifier refers to. */
   abstract Variable getVariable();
 
-  VarRef getABindingVarRef() { result = this }
-
-  predicate isImpure() { Identifier.super.isImpure() }
+  override VarRef getABindingVarRef() { result = this }
 }
 
 /** An identifier that refers to a variable in a non-declaring position. */
 class VarAccess extends @varaccess, VarRef {
-  Variable getVariable() {
+  override Variable getVariable() {
     bind(this, result)
   }
 
-  predicate isLValue() {
+  override predicate isLValue() {
     exists (Assignment assgn | assgn.getTarget() = this) or
     exists (UpdateExpr upd | upd.getOperand().stripParens() = this) or
     exists (EnhancedForLoop efl | efl.getIterator() = this) or
     exists (BindingPattern p | this = p.getABindingVarRef() and p.isLValue())
   }
 
-  Variable getAVariable() {
+  override Variable getAVariable() {
     result = getVariable()
   }
 }
@@ -282,9 +290,30 @@ class LocalVariable extends Variable {
   LocalVariable() {
     isLocal()
   }
+
+  /**
+   * Gets the function or toplevel in which this variable is declared;
+   * `arguments` variables are taken to be implicitly declared in the function
+   * to which they belong.
+   *
+   * Note that for a function expression `function f() { ... }` the variable
+   * `f` is declared in the function itself, while for a function statement
+   * it is declared in the enclosing container.
+   */
+  StmtContainer getDeclaringContainer() {
+    this = result.getScope().getAVariable() or
+    exists (VarDecl d | d = getADeclaration() |
+      if d = any(FunctionDeclStmt fds).getId() then
+        exists (FunctionDeclStmt fds | d = fds.getId() |
+          result = fds.getEnclosingContainer()
+        )
+      else
+        result = d.getContainer()
+    )
+  }
 }
 
-/** A local variable or parameter that is not captured. */
+/** A local variable that is not captured. */
 class PurelyLocalVariable extends LocalVariable {
   PurelyLocalVariable() {
     not isCaptured()
@@ -293,9 +322,9 @@ class PurelyLocalVariable extends LocalVariable {
 
 /** An identifier that refers to a global variable. */
 class GlobalVarAccess extends VarAccess {
-	GlobalVarAccess() {
+  GlobalVarAccess() {
     getVariable().isGlobal()
-	}
+  }
 }
 
 /**
@@ -308,29 +337,29 @@ class GlobalVarAccess extends VarAccess {
  * the ECMAScript standard for more details.
  */
 class BindingPattern extends @pattern, Expr {
-  /** Get a variable reference in binding position within this pattern; overridden by subclasses. */
+  /** Gets a variable reference in binding position within this pattern. */
   VarRef getABindingVarRef() { none() }
 
-  /** Get a variable bound by this pattern. */
+  /** Gets a variable bound by this pattern. */
   Variable getAVariable() { result = getABindingVarRef().getVariable() }
 
-  /** Is this pattern used in an l-value position? */
+  /** Holds if this pattern appears in an l-value position. */
   predicate isLValue() {
     any()
   }
 }
 
-/** A destructuring pattern, i.e., either an array pattern or an object pattern. */
+/** A destructuring pattern, that is, either an array pattern or an object pattern. */
 abstract class DestructuringPattern extends BindingPattern {
 }
 
 /** An identifier that declares a variable. */
 class VarDecl extends @vardecl, VarRef {
-  Variable getVariable() {
+  override Variable getVariable() {
     decl(this, result)
   }
 
-  predicate isLValue() {
+  override predicate isLValue() {
     exists (VariableDeclarator vd | vd.getBindingPattern() = this |
       exists (vd.getInit()) or
       exists (EnhancedForLoop efl | this = efl.getIterator())
@@ -348,96 +377,96 @@ class GlobalVarDecl extends VarDecl {
 
 /** An array pattern. */
 class ArrayPattern extends DestructuringPattern, @arraypattern {
-  /** Get the i-th element of this array pattern. */
+  /** Gets the `i`th element of this array pattern. */
   Expr getElement(int i) {
     i >= 0 and
     result = this.getChildExpr(i)
   }
-  
-  /** Get some element of this array pattern. */
+
+  /** Gets an element of this array pattern. */
   Expr getAnElement() {
     exists (int i | i >= -1 | result = this.getChildExpr(i))
   }
 
-  /** Get the default expression for the i-th element of this array pattern, if any. */
+  /** Gets the default expression for the `i`th element of this array pattern, if any. */
   Expr getDefault(int i) {
     i in [0..getSize()-1] and
     result = getChildExpr(-2 - i)
   }
 
-  /** Does the i-th element of this array pattern have a default expression? */
+  /** Holds if the `i`th element of this array pattern has a default expression. */
   predicate hasDefault(int i) {
     exists(getDefault(i))
   }
 
-  /** Get the rest pattern of this array pattern, if any. */
+  /** Gets the rest pattern of this array pattern, if any. */
   Expr getRest() {
     result = getChildExpr(-1)
   }
 
-  /** Does this array pattern have a rest pattern? */
+  /** Holds if this array pattern has a rest pattern. */
   predicate hasRest() {
     exists(getRest())
   }
-  
-  /** Get the number of elements in this array pattern, not including any rest pattern. */
+
+  /** Gets the number of elements in this array pattern, not including any rest pattern. */
   int getSize() {
     arraySize(this, result)
   }
-  
-  /** Is the i-th element of this array pattern omitted? */
+
+  /** Holds if the `i`th element of this array pattern is omitted. */
   predicate elementIsOmitted(int i) {
     i in [0..getSize()-1] and
     not exists (getElement(i))
   }
-  
-  /** Does this array pattern have an omitted element? */
+
+  /** Holds if this array pattern has an omitted element. */
   predicate hasOmittedElement() {
     elementIsOmitted(_)
   }
 
-  predicate isImpure() {
+  override predicate isImpure() {
     getAnElement().isImpure()
   }
 
-  VarRef getABindingVarRef() {
+  override VarRef getABindingVarRef() {
     result = getAnElement().(BindingPattern).getABindingVarRef()
   }
 }
 
 /** An object pattern. */
 class ObjectPattern extends DestructuringPattern, @objectpattern {
-  /** Get the i-th property pattern in this object pattern. */
+  /** Gets the `i`th property pattern in this object pattern. */
   PropertyPattern getPropertyPattern(int i) {
     properties(result, this, i, _, _)
   }
-  
-  /** Get some property pattern in this object pattern. */
+
+  /** Gets a property pattern in this object pattern. */
   PropertyPattern getAPropertyPattern() {
     result = this.getPropertyPattern(_)
   }
-  
-  /** Get the number of property patterns in this object pattern. */
+
+  /** Gets the number of property patterns in this object pattern. */
   int getNumProperty() {
     result = count(this.getAPropertyPattern())
   }
-  
-  /** Get the property pattern with the given name, if any. */
+
+  /** Gets the property pattern with the given name, if any. */
   PropertyPattern getPropertyPatternByName(string name) {
     result = this.getAPropertyPattern() and
     result.getName() = name
   }
 
-  /** Get the rest property pattern of this object pattern, if any. */
+  /** Gets the rest property pattern of this object pattern, if any. */
   Expr getRest() {
     result = getChildExpr(-1)
   }
 
-  predicate isImpure() {
+  override predicate isImpure() {
     getAPropertyPattern().isImpure()
   }
 
-  VarRef getABindingVarRef() {
+  override VarRef getABindingVarRef() {
     result = getAPropertyPattern().getValuePattern().(BindingPattern).getABindingVarRef() or
     result = getRest().(BindingPattern).getABindingVarRef()
   }
@@ -450,106 +479,108 @@ class PropertyPattern extends @property, ASTNode {
     exists (ObjectPattern obj | properties(this, obj, _, _, _))
   }
 
-  /** Is the name of this property pattern computed? */
+  /** Holds if the name of this property pattern is computed. */
   predicate isComputed() {
     isComputed(this)
   }
 
-  /** Get the expression specifying the name of the matched property. */
+  /** Gets the expression specifying the name of the matched property. */
   Expr getNameExpr() {
     result = this.getChildExpr(0)
   }
 
-  /** Get the expression the matched property value is assigned to. */
+  /** Gets the expression the matched property value is assigned to. */
   Expr getValuePattern() {
     result = this.getChildExpr(1)
   }
 
-  /** Get the default value of this property pattern, if any. */
+  /** Gets the default value of this property pattern, if any. */
   Expr getDefault() {
     result = this.getChildExpr(2)
   }
 
-  /** Is this property pattern a shorthand pattern? */
+  /** Holds if this property pattern is a shorthand pattern. */
   predicate isShorthand() {
     getNameExpr().getLocation() = getValuePattern().getLocation()
   }
-  
-  /** Get the name of the property matched by this pattern. */
+
+  /** Gets the name of the property matched by this pattern. */
   string getName() {
     (not isComputed() and
      result = ((Identifier)getNameExpr()).getName()) or
     result = ((Literal)getNameExpr()).getValue()
   }
-  
-  /** Get the object pattern this property pattern belongs to. */
+
+  /** Gets the object pattern this property pattern belongs to. */
   ObjectPattern getObjectPattern() {
     properties(this, result, _, _, _)
   }
 
-  /** Get the nearest enclosing function or toplevel in which this property pattern occurs. */
+  /** Gets the nearest enclosing function or toplevel in which this property pattern occurs. */
   StmtContainer getContainer() {
     result = getObjectPattern().getContainer()
   }
 
-  /** Is this pattern impure, that is, could its evaluation have side effects? */
+  /** Holds if this pattern is impure, that is, if its evaluation could have side effects. */
   predicate isImpure() {
     (isComputed() and getNameExpr().isImpure()) or
     getValuePattern().isImpure()
   }
 
-  string toString() {
+  override string toString() {
     properties(this, _, _, _, result)
   }
 
-  CFGNode getFirstCFGNode() {
-    result = getNameExpr().getFirstCFGNode()
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getNameExpr().getFirstControlFlowNode()
   }
 }
 
 /** A variable declarator declaring a local or global variable. */
 class VariableDeclarator extends Expr, @vardeclarator {
-	/** Get the pattern specifying the declared variable(s). */
-	BindingPattern getBindingPattern() {
-		result = this.getChildExpr(0)
+  /** Gets the pattern specifying the declared variable(s). */
+  BindingPattern getBindingPattern() {
+    result = this.getChildExpr(0)
   }
-	
-	/** Get the expression specifying the initial value of the declared variable, if any. */
-	Expr getInit() {
-		result = this.getChildExpr(1)
-	}
 
-	/** Get the declaration statement this declarator belongs to, if any. */
-	DeclStmt getDeclStmt() {
-		this = result.getADecl()
-	}
+  /** Gets the expression specifying the initial value of the declared variable(s), if any. */
+  Expr getInit() {
+    result = this.getChildExpr(1)
+  }
 
-  CFGNode getFirstCFGNode() {
-    result = getBindingPattern().getFirstCFGNode()
+  /** Gets the declaration statement this declarator belongs to, if any. */
+  DeclStmt getDeclStmt() {
+    this = result.getADecl()
+  }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getBindingPattern().getFirstControlFlowNode()
   }
 }
 
-/** A syntactic entity that declares parameters, that is, either a function or
- * a catch clause. */
+/**
+ * A program element that declares parameters, that is, either a function or
+ * a catch clause.
+ */
 class Parameterized extends @parameterized, ASTNode {
-  /** Get a parameter declared by this entity. */
-	Parameter getAParameter() {
-		this = result.getParent()
-	}
-	
-	/** Get the number of parameters declared by this entity. */
-	int getNumParameter() {
-		result = count(getAParameter())
-	}
+  /** Gets a parameter declared by this element. */
+  Parameter getAParameter() {
+    this = result.getParent()
+  }
 
-	/** Get a variable of the given name that is a parameter of this entity. */
-	Variable getParameterVariable(string name) {
-		result = getAParameter().getAVariable() and
-		result.getName() = name
-	}
+  /** Gets the number of parameters declared by this element. */
+  int getNumParameter() {
+    result = count(getAParameter())
+  }
 
-	/** Get a JSDoc comment attached to this entity, if any. */
-	abstract JSDoc getDocumentation();
+  /** Gets a variable of the given name that is a parameter of this element. */
+  Variable getParameterVariable(string name) {
+    result = getAParameter().getAVariable() and
+    result.getName() = name
+  }
+
+  /** Gets the JSDoc comment attached to this element, if any. */
+  abstract JSDoc getDocumentation();
 }
 
 /** A parameter declaration. */
@@ -562,24 +593,24 @@ class Parameter extends BindingPattern {
   }
 
   /**
-   * Get the index of this parameter within the parameter list of its
+   * Gets the index of this parameter within the parameter list of its
    * declaring entity.
    */
   int getIndex() {
     exists (Parameterized p | this = p.getChildExpr(result))
   }
-  
-  /** Get the entity declaring this parameter. */
-  Parameterized getParent() {
+
+  /** Gets the element declaring this parameter. */
+  override Parameterized getParent() {
     result = super.getParent()
   }
 
-  /** Get the default expression for this parameter, if any. */
+  /** Gets the default expression for this parameter, if any. */
   Expr getDefault() {
     exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(n+3)))
   }
 
-  /** Is this parameter a rest parameter? */
+  /** Holds if this parameter is a rest parameter. */
   predicate isRestParameter() {
     exists (Function f, int n | this = f.getParameter(n) |
       n = f.getNumParameter()-1 and
@@ -587,26 +618,21 @@ class Parameter extends BindingPattern {
     )
   }
 
-  predicate isLValue() {
+  override predicate isLValue() {
     any()
   }
 }
 
 /** A parameter declaration that is not an object or array pattern. */
 class SimpleParameter extends Parameter, VarDecl {
-  /** Get the entity declaring this parameter. */
-  Parameterized getParent() { result = Parameter.super.getParent() }
-
-  predicate isImpure() { VarDecl.super.isImpure() }
-  VarRef getABindingVarRef() { result = VarDecl.super.getABindingVarRef() }
-  predicate isLValue() { Parameter.super.isLValue() }
+  override predicate isLValue() { Parameter.super.isLValue() }
 }
 
-/** Is e a variable reference or property access referring to the global variable g? */
+/** Holds if `e` is a variable access or property access referring to the global variable `g`. */
 predicate accessesGlobal(Expr e, string g) {
   // direct global variable access
   ((GlobalVarAccess)e).getName() = g or
-  
+
   // property access through 'window'
   exists (PropAccess pacc |
     pacc = e and

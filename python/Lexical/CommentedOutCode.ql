@@ -15,10 +15,12 @@
  * @name Commented out code
  * @description Commented out code causes visual clutter as it is neither code nor comment.
  * @kind problem
- * @problem.severity recommendation
  * @tags maintainability
  *       readability
  *       documentation
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision high
  */
 
 import python

@@ -15,9 +15,11 @@
  * @name 'apply' function used
  * @description The builtin function 'apply' is obsolete and should not be used.
  * @kind problem
- * @problem.severity warning
  * @tags changeability
  *       maintainability
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

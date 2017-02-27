@@ -23,13 +23,22 @@ import semmle.javascript.GeneratedCode
 import semmle.javascript.frameworks.Testing
 import semmle.javascript.dependencies.FrameworkLibraries
 
-predicate classify(File f, string tag) {
-  isGenerated(f.getATopLevel()) and tag = "generated" or
-  exists (Test t | t.getFile() = f | tag = "test") or
-  f.getATopLevel().isExterns() and tag = "externs" or
-  f.getATopLevel() instanceof FrameworkLibraryInstance and tag = "library"
+/**
+ * Holds if `f` is classified as belonging to `category`.
+ *
+ * There are currently four categories:
+ *   - `"generated"`: `f` contains generated or minified code;
+ *   - `"test"`: `f` contains test code;
+ *   - `"externs"`: `f` contains externs declarations;
+ *   - `"library"`: `f` contains library code.
+ */
+predicate classify(File f, string category) {
+  isGenerated(f.getATopLevel()) and category = "generated" or
+  exists (Test t | t.getFile() = f | category = "test") or
+  f.getATopLevel().isExterns() and category = "externs" or
+  f.getATopLevel() instanceof FrameworkLibraryInstance and category = "library"
 }
 
-from File f, string tag
-where classify(f, tag)
-select f, tag
+from File f, string category
+where classify(f, category)
+select f, category

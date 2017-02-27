@@ -21,17 +21,30 @@
  * @kind problem
  * @problem.severity error
  * @tags correctness
+ * @precision very-high
  */
 
 import javascript
 
-/** Check whether `test` bounds `v` in `direction`. */
+/**
+ * Holds if `test` bounds `v` in `direction`, which is either `"upward"`
+ * or `"downward"`.
+ *
+ * For example, `x < 42` bounds `x` upward, while `y >= 0` bounds `y`
+ * downward.
+ */
 predicate bounds(RelationalComparison test, Variable v, string direction) {
   test.getLesserOperand() = v.getAnAccess() and direction = "upward" or
   test.getGreaterOperand() = v.getAnAccess() and direction = "downward"
 }
 
-/** Check whether `upd` updates `v` in `direction`. */
+/**
+ * Holds if `upd` updates `v` in `direction`, which is either `"upward"`
+ * or `"downward"`.
+ *
+ * For example, `++x` updates `x` upward, while `y--` updates `y`
+ * downward.
+ */
 predicate updates(UpdateExpr upd, Variable v, string direction) {
   upd.getOperand() = v.getAnAccess() and
   (upd instanceof IncExpr and direction = "upward" or

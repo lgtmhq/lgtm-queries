@@ -15,9 +15,11 @@
  * @name Duplicate key in dict literal
  * @description Duplicate key in dict literal. All but the last will be lost.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

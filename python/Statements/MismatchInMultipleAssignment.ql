@@ -16,10 +16,12 @@
  * @description Assigning multiple variables without ensuring that you define a
  *              value for each variable causes an exception at runtime.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
  *       types
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

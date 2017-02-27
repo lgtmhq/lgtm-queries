@@ -187,7 +187,7 @@ class CookieGetValueMethod extends Method {
   CookieGetValueMethod() {
     getDeclaringType() instanceof TypeCookie and
     hasName("getValue") and
-    getType() instanceof TypeString
+    getReturnType() instanceof TypeString
   }
 }
 

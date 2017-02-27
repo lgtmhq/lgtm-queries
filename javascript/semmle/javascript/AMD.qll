@@ -12,13 +12,16 @@
 // permissions and limitations under the License.
 
 /**
- * Modelling of Asynchronous Module Definitions (https://github.com/amdjs/amdjs-api/wiki/AMD).
+ * Provides classes for working with
+ * [Asynchronous Module Definitions](https://github.com/amdjs/amdjs-api/wiki/AMD).
  */
 
 import Modules
 
 /**
- * An AMD `define` call of the form
+ * An AMD `define` call.
+ *
+ * Example:
  *
  * ```
  * define(['a', 'b'], function(a, b) {
@@ -44,33 +47,36 @@ class AMDModuleDefinition extends CallExpr {
     )
   }
 
-  /** Get the array of module dependencies, if any. */
+  /** Gets the array of module dependencies, if any. */
   ArrayExpr getDependencies() {
     result = getArgument(0) or
     result = getArgument(1)
   }
 
-  /** Get the i-th dependency of this module definition. */
+  /** Gets the `i`th dependency of this module definition. */
   PathExpr getDependency(int i) {
     result = getDependencies().getElement(i)
   }
 
-  /** Get some dependency of this module definition. */
+  /** Gets a dependency of this module definition. */
   PathExpr getADependency() {
     result = getDependency(_) or
     result = getARequireCall().getAnArgument()
   }
 
-  /** Get the factory expression of this module definition, which may be a function or a literal. */
+  /**
+   * Gets the factory expression of this module definition,
+   * which may be a function or a literal.
+   */
   Expr getFactoryExpr() {
-    result = getArgument(getNumArgument()-1).(DataFlowNode).getASource() and
+    result = getArgument(getNumArgument()-1).(DataFlowNode).getALocalSource() and
     (result instanceof Function or
      result instanceof Literal or
      result instanceof ArrayExpr or
      result instanceof ObjectExpr)
   }
 
-  /** Get the expression defining this module. */
+  /** Gets the expression defining this module. */
   Expr getModuleExpr() {
     exists (Expr f | f = getFactoryExpr() |
       if f instanceof Function then
@@ -83,7 +89,17 @@ class AMDModuleDefinition extends CallExpr {
   }
 
   /**
-   * Get the parameter corresponding to dependency `name`.
+   * Holds if `p` is the parameter corresponding to dependency `dep`.
+   */
+  private predicate dependencyParameter(PathExpr dep, Parameter p) {
+    exists (int i |
+      dep = getDependency(i) and
+      p = getFactoryExpr().(Function).getParameter(i)
+    )
+  }
+
+  /**
+   * Gets the parameter corresponding to dependency `name`.
    *
    * For instance, in the module definition
    *
@@ -94,64 +110,71 @@ class AMDModuleDefinition extends CallExpr {
    * parameters `pdep1` and `pdep2` correspond to dependencies
    * `dep1` and `dep2`.
    */
-  private SimpleParameter getDependencyParameter(string name) {
-    exists (int i, Function f |
-      f = getFactoryExpr() and
-      getDependency(i).getValue() = name and
-      result = f.getParameter(i)
+  private Variable getDependencyParameter(string name) {
+    exists (PathExpr dep, SimpleParameter p | dependencyParameter(dep, p) |
+      dep.getValue() = name and
+      result = p.getVariable()
     )
   }
 
   /**
-   * Get the parameter corresponding to the pseudo-dependency `require`.
+   * Gets the `i`th parameter of the factory function of this module.
    */
-  private SimpleParameter getRequireParameter() {
+  private SimpleParameter getFactoryParameter(int i) {
+    result = getFactoryExpr().(Function).getParameter(i)
+  }
+
+  /**
+   * Gets the parameter corresponding to the pseudo-dependency `require`.
+   */
+  private Variable getRequireParameter() {
     result = getDependencyParameter("require") or
     // if no dependencies are listed, the first parameter is assumed to be `require`
-    not exists(getDependencies()) and result = getFactoryExpr().(Function).getParameter(0)
+    not exists(getDependencies()) and result = getFactoryParameter(0).getVariable()
   }
 
   /**
-   * Get the parameter corresponding to the pseudo-dependency `exports`.
+   * Gets the parameter corresponding to the pseudo-dependency `exports`.
    */
-  private SimpleParameter getExportsParameter() {
+  private Variable getExportsParameter() {
     result = getDependencyParameter("exports") or
     // if no dependencies are listed, the second parameter is assumed to be `exports`
-    not exists(getDependencies()) and result = getFactoryExpr().(Function).getParameter(1)
+    not exists(getDependencies()) and result = getFactoryParameter(1).getVariable()
   }
 
   /**
-   * Get the parameter corresponding to the pseudo-dependency `module`.
+   * Gets the parameter corresponding to the pseudo-dependency `module`.
    */
-  private SimpleParameter getModuleParameter() {
+  private Variable getModuleParameter() {
     result = getDependencyParameter("module") or
     // if no dependencies are listed, the third parameter is assumed to be `module`
-    not exists(getDependencies()) and result = getFactoryExpr().(Function).getParameter(2)
+    not exists(getDependencies()) and result = getFactoryParameter(2).getVariable()
   }
 
   /**
-   * Get an access to this module's `module` parameter, if any.
+   * Gets an access to this module's `module` parameter, if any.
    */
   private VarAccess getAModuleAccess() {
-    result = getModuleParameter().getVariable().getAnAccess()
+    result = getModuleParameter().getAnAccess()
   }
 
   /**
-   * Get an access to this module's `exports`, either through the corresponding
+   * Gets an access to this module's `exports`, either through the corresponding
    * parameter or through `module.exports`.
    */
   private Expr getAnExportsAccess() {
-    result = getExportsParameter().getVariable().getAnAccess() or
+    result = getExportsParameter().getAnAccess() or
     exists (PropAccess pacc | result = pacc |
-      pacc.getBase().(DataFlowNode).getASource() = getAModuleAccess() and
+      pacc.getBase().(DataFlowNode).getALocalSource() = getAModuleAccess() and
       pacc.getPropertyName() = "exports"
     )
   }
 
   /**
-   * Get an expression that may be exported by this module, either by virtue
-   * of being returned from the factory function, or by being assigned to
-   * `module.exports`. The `exports` parameter itself also always counts as being
+   * Gets an expression that may be exported by this module.
+   *
+   * This includes both expressions returned from the factory function and expressions
+   * assigned to `module.exports`. The `exports` parameter itself is always implicitly
    * exported.
    */
   DataFlowNode getAnExportedExpr() {
@@ -160,41 +183,39 @@ class AMDModuleDefinition extends CallExpr {
     exists (Assignment assgn |
       assgn.getTarget() instanceof PropAccess and
       assgn.getTarget() = getAnExportsAccess() and
-      result = assgn.getRhs().(DataFlowNode).getASource()
+      result = assgn.getRhs().(DataFlowNode).getALocalSource()
     )
   }
 
   /**
-   * Get a call to `require` inside this module.
+   * Gets a call to `require` inside this module.
    */
   CallExpr getARequireCall() {
-    result.getCallee().stripParens() = getRequireParameter().getVariable().getAnAccess()
+    result.getCallee().stripParens() = getRequireParameter().getAnAccess()
   }
 }
 
 /** A path expression appearing in the list of dependencies of an AMD module. */
-library class AMDDependencyPath extends PathExpr {
+private class AMDDependencyPath extends PathExprInModule, @stringliteral {
   AMDDependencyPath() {
-    this instanceof StringLiteral and
     exists (AMDModuleDefinition amd | this.getParentExpr*() = amd.getDependencies().getAnElement())
   }
 
-  string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(StringLiteral).getValue() }
 }
 
 /** A path expression appearing in a `require` call in an AMD module. */
-library class AMDRequirePath extends PathExpr {
+private class AMDRequirePath extends PathExprInModule, @stringliteral {
   AMDRequirePath() {
-    this instanceof StringLiteral and
     exists (AMDModuleDefinition amd | this.getParentExpr*() = amd.getARequireCall().getAnArgument())
   }
 
-  string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(StringLiteral).getValue() }
 }
 
 /**
- * Helper predicate: `def` is an AMD module definition in `tl`, and it is
- * not nested inside another module definition.
+ * Holds if `def` is an AMD module definition in `tl` which is not
+ * nested inside another module definition.
  */
 private predicate amdModuleTopLevel(AMDModuleDefinition def, TopLevel tl) {
   def.getTopLevel() = tl and
@@ -209,16 +230,16 @@ class AMDModule extends Module {
     strictcount (AMDModuleDefinition def | amdModuleTopLevel(def, this)) = 1
   }
 
-  /** Get the definition of this module. */
+  /** Gets the definition of this module. */
   AMDModuleDefinition getDefine() {
     amdModuleTopLevel(result, this)
   }
 
-  Module getAnImportedModule() {
+  override Module getAnImportedModule() {
     result.getFile() = resolve(getDefine().getADependency())
   }
 
-  predicate exports(string name, ASTNode export) {
+  override predicate exports(string name, ASTNode export) {
     exists (PropWriteNode pwn | pwn = export |
       pwn.getBase() = getDefine().getAnExportedExpr() and
       name = pwn.getPropertyName()

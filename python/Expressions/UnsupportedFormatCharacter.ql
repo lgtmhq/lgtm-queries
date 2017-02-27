@@ -15,9 +15,11 @@
  * @name Unsupported format character
  * @description An unsupported format character in a format string
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

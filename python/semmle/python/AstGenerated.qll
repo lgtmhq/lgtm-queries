@@ -29,6 +29,32 @@ library class And_ extends @py_And, Boolop {
 
 }
 
+library class AnnAssign_ extends @py_AnnAssign, Stmt {
+
+
+    /** Gets the value of this annotated assignment. */
+    Expr getValue() {
+        py_exprs(result, _, this, 1)
+    }
+
+
+    /** Gets the annotation of this annotated assignment. */
+    Expr getAnnotation() {
+        py_exprs(result, _, this, 2)
+    }
+
+
+    /** Gets the target of this annotated assignment. */
+    Expr getTarget() {
+        py_exprs(result, _, this, 3)
+    }
+
+    string toString() {
+        result = "AnnAssign"
+    }
+
+}
+
 library class Assert_ extends @py_Assert, Stmt {
 
 
@@ -110,7 +136,7 @@ library class AugAssign_ extends @py_AugAssign, Stmt {
 
 
     /** Gets the operation of this augmented assignment statement. */
-    Expr getOperation() {
+    BinaryExpr getOperation() {
         py_exprs(result, _, this, 1)
     }
 
@@ -768,6 +794,32 @@ library class For_ extends @py_For, Stmt {
 
 }
 
+library class FormattedValue_ extends @py_FormattedValue, Expr {
+
+
+    /** Gets the the expression to be formatted of this formatted value. */
+    Expr getValue() {
+        py_exprs(result, _, this, 2)
+    }
+
+
+    /** Gets the type conversion of this formatted value. */
+    string getConversion() {
+        py_strs(result, this, 3)
+    }
+
+
+    /** Gets the format specifier of this formatted value. */
+    Fstring getFormatSpec() {
+        py_exprs(result, _, this, 4)
+    }
+
+    string toString() {
+        result = "FormattedValue"
+    }
+
+}
+
 library class Function_ extends @py_Function {
 
 
@@ -1143,6 +1195,35 @@ library class IsNot_ extends @py_IsNot, Cmpop {
 
     string toString() {
         result = "IsNot"
+    }
+
+}
+
+library class Fstring_ extends @py_Fstring, Expr {
+
+
+    /** Gets the values of this formatted string literal. */
+    ExprList getValues() {
+        py_expr_lists(result, this, 2)
+    }
+
+
+    /** Gets the nth value of this formatted string literal. */
+    Expr getValue(int index) {
+        result = this.getValues().getItem(index)
+    }
+
+    /** Gets a value of this formatted string literal. */
+    Expr getAValue() {
+        result = this.getValues().getAnItem()
+    }
+
+    ExprParent getParent() {
+        py_exprs(this, _, result, _)
+    }
+
+    string toString() {
+        result = "Fstring"
     }
 
 }
@@ -1724,30 +1805,30 @@ library class Store_ extends @py_Store, ExprContext {
 library class Str_ extends @py_Str, Expr {
 
 
-    /** Gets the text of this unicode literal. */
+    /** Gets the text of this string literal. */
     string getS() {
         py_strs(result, this, 2)
     }
 
 
-    /** Gets the prefix of this unicode literal. */
+    /** Gets the prefix of this string literal. */
     string getPrefix() {
         py_strs(result, this, 3)
     }
 
 
-    /** Gets the implicitly_concatenated_parts of this unicode literal. */
+    /** Gets the implicitly_concatenated_parts of this string literal. */
     StringPartList getImplicitlyConcatenatedParts() {
         py_StringPart_lists(result, this)
     }
 
 
-    /** Gets the nth implicitly_concatenated_part of this unicode literal. */
+    /** Gets the nth implicitly_concatenated_part of this string literal. */
     StringPart getImplicitlyConcatenatedPart(int index) {
         result = this.getImplicitlyConcatenatedParts().getItem(index)
     }
 
-    /** Gets an implicitly_concatenated_part of this unicode literal. */
+    /** Gets an implicitly_concatenated_part of this string literal. */
     StringPart getAnImplicitlyConcatenatedPart() {
         result = this.getImplicitlyConcatenatedParts().getAnItem()
     }

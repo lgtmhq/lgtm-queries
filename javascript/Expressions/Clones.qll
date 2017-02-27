@@ -12,16 +12,13 @@
 // permissions and limitations under the License.
 
 /**
- * Library for detecting pairs of identical AST subtrees.
+ * Provides predicates for detecting pairs of identical AST subtrees.
  */
 
 import javascript
 
 /**
- * Helper function for encoding the type of an AST node as
- * an integer.
- *
- * Note that every AST node has exactly one kind.
+ * Gets an opaque integer value encoding the type of AST node `nd`.
  */
 private int kindOf(ASTNode nd) {
   // map expression kinds to even non-negative numbers
@@ -35,10 +32,10 @@ private int kindOf(ASTNode nd) {
 }
 
 /**
- * Associate AST nodes with their literal value, if they have one.
- * For identifiers, we consider the name to be their value.
+ * Gets the literal value of AST node `nd`, if any, or the name
+ * of `nd` if it is an identifier.
  *
- * Note that every AST node has at most one value.
+ * Every AST node has at most one value.
  */
 private string valueOf(ASTNode nd) {
   result = nd.(Literal).getRawValue() or
@@ -48,19 +45,20 @@ private string valueOf(ASTNode nd) {
 
 /**
  * A base class for doing structural comparisons of program elements.
- * 
- * Clients are must override the `candidate()` method to identify the
+ *
+ * Clients must override the `candidate()` method to identify the
  * nodes for which structural comparison will be interesting.
  */
 abstract class StructurallyCompared extends ASTNode {
   /**
-   * Get a candidate node that we may want to structurally compare this node to.
+   * Gets a candidate node that we may want to structurally compare this node to.
    */
   abstract ASTNode candidate();
 
   /**
-   * A predicate that recursively extends `candidate()` to also take corresponding
-   * children into account.
+   * Gets a node that structurally corresponds to this node, either because it is
+   * a candidate node, or because it is at the same position relative to a
+   * candidate node as this node.
    */
   ASTNode candidateInternal() {
     // in order to correspond, nodes need to have the same kind and shape
@@ -70,9 +68,8 @@ abstract class StructurallyCompared extends ASTNode {
   }
 
   /**
-   * If this node is the i-th child of a node that is also structurally
-   * compared, then the results of this predicate are all nodes corresponding
-   * to that parent node.
+   * Gets a node that structurally corresponds to the parent node of this node,
+   * where this node is the `i`th child of its parent.
    */
   private ASTNode getAStructuralUncle(int i) {
     exists (StructurallyCompared parent | this = parent.getChild(i) |
@@ -81,10 +78,9 @@ abstract class StructurallyCompared extends ASTNode {
   }
 
   /**
-   * Do structural equality on all nodes that are potentially relevant to the
-   * comparison.
-   *
-   * This reports equality on all nodes that correspond via `candidateInternal()`.
+   * Holds if the subtree rooted at this node is structurally equal to the subtree
+   * rooted at node `that`, where `that` structurally corresponds to `this` as
+   * determined by `candidateInternal`.
    */
   private predicate sameInternal(ASTNode that) {
     that = this.candidateInternal() and
@@ -106,7 +102,9 @@ abstract class StructurallyCompared extends ASTNode {
   }
 
   /**
-   * Compare this node structurally to a candidate node.
+   * Holds if the subtree rooted at this node is structurally equal to the subtree
+   * rooted at node `that`, which must be a candidate node as determined by
+   * `candidate`.
    */
   predicate same(ASTNode that) {
     that = this.candidate() and
@@ -115,45 +113,47 @@ abstract class StructurallyCompared extends ASTNode {
 }
 
 /**
- * Helper class for marking children of nodes that are comparison
- * candidates to themselves be comparison candidates.
+ * A child of a node that is subject to structural comparison.
  */
-library class InternalCandidate extends StructurallyCompared {
+private class InternalCandidate extends StructurallyCompared {
   InternalCandidate() {
     exists (getParent().(StructurallyCompared).candidateInternal())
   }
 
-  ASTNode candidate() { none() }
+  override ASTNode candidate() { none() }
 }
 
 /**
- * Clone detector for finding comparisons where both operands are the same.
+ * A clone detector for finding comparisons where both operands are
+ * structurally identical.
  */
 class OperandComparedToSelf extends StructurallyCompared {
   OperandComparedToSelf() {
     exists (Comparison comp | this = comp.getLeftOperand())
   }
 
-  Expr candidate() {
+  override Expr candidate() {
     result = getParent().(Comparison).getRightOperand()
   }
 }
 
 /**
- * Clone detector for finding assignments where lhs and rhs are the same.
+ * A clone detector for finding assignments where both sides are
+ * structurally identical.
  */
 class SelfAssignment extends StructurallyCompared {
   SelfAssignment() {
     exists (AssignExpr assgn | this = assgn.getLhs())
   }
 
-  Expr candidate() {
+  override Expr candidate() {
     result = getParent().(AssignExpr).getRhs()
   }
 }
 
 /**
- * Clone detector for finding structurally identical property initialisers.
+ * A clone detector for finding structurally identical property
+ * initializers.
  */
 class DuplicatePropertyInitDetector extends StructurallyCompared {
   DuplicatePropertyInitDetector() {
@@ -163,7 +163,7 @@ class DuplicatePropertyInitDetector extends StructurallyCompared {
     )
   }
 
-  Expr candidate() {
+  override Expr candidate() {
     exists (ObjectExpr oe, string p |
       this = oe.getPropertyByName(p).getInit() and
       result = oe.getPropertyByName(p).getInit() and

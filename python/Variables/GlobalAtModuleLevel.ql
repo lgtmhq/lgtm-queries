@@ -15,9 +15,11 @@
  * @name Use of 'global' at module level
  * @description Use of the 'global' statement at module level
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

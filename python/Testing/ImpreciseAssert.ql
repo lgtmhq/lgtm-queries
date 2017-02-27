@@ -15,9 +15,11 @@
  * @name Imprecise assert
  * @description Using 'assertTrue' or 'assertFalse' rather than a more specific assertion can give uninformative failure messages.
  * @kind problem
- * @problem.severity recommendation
  * @tags maintainability
  *       testability
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

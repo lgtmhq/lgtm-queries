@@ -19,6 +19,8 @@
  * @problem.severity error
  * @tags portability
  *       correctness
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

@@ -47,6 +47,15 @@ class ResourcesAnnotation extends Annotation {
   }
 }
 
+/**
+ * A javax.annotation.ManagedBean annotation.
+ */
+class JavaxManagedBeanAnnotation extends Annotation {
+  JavaxManagedBeanAnnotation() {
+    this.getType().hasQualifiedName("javax.annotation", "ManagedBean")
+  }
+}
+
 /*
  * javax.annotation.security annotations
  */

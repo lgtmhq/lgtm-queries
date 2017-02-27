@@ -96,7 +96,7 @@ class ResultSetGetStringMethod extends Method {
   ResultSetGetStringMethod() {
     getDeclaringType() instanceof TypeResultSet and
     hasName("getString") and
-    getType() instanceof TypeString
+    getReturnType() instanceof TypeString
   }
 }
 

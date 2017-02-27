@@ -24,11 +24,11 @@ class Version extends int {
 }
 
 Object theSysVersionInfoTuple() {
-    py_cmembers(theSysModuleObject(), "version_info", result)
+    py_cmembers_versioned(theSysModuleObject(), "version_info", result, major_version().toString())
 }
 
 Object theSysHexVersionNumber() {
-    py_cmembers(theSysModuleObject(), "hexversion", result)
+    py_cmembers_versioned(theSysModuleObject(), "hexversion", result, major_version().toString())
 }
 
 string reversed(Cmpop op) {

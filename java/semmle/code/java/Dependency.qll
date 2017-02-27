@@ -52,7 +52,7 @@ predicate depends(RefType t, RefType dep) {
     ) or
     // the return type of any method declared in `t`,
     exists(Method m | m.getDeclaringType() = t |
-      usesType(m.getType(), dep)
+      usesType(m.getReturnType(), dep)
     ) or
     // the type of any parameter of a callable in `t`,
     exists(Callable c | c.getDeclaringType() = t |
