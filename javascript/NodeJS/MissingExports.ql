@@ -19,11 +19,12 @@
  * @problem.severity error
  * @tags maintainability
  *       frameworks/node.js
+ * @precision high
  */
 
 import javascript
 
-/** Is variable `v` assigned to somewhere in module `m`? */
+/** Holds if variable `v` is assigned somewhere in module `m`. */
 predicate definedInModule(GlobalVariable v, NodeModule m) {
   exists (GlobalVarAccess def | def = v.getAnAccess() |
     def.getTopLevel() = m and def.isLValue()
@@ -43,6 +44,9 @@ where m.exports(f.getName(), export) and
       ) and
 
       // don't flag if there is an externs declaration for the variable
-      not exists (ExternalGlobalDecl egd | egd.getName() = f.getName())
+      not exists (ExternalGlobalDecl egd | egd.getName() = f.getName()) and
+
+      // don't flag if the invocation could refer to a property introduced by `with`
+      not exists (WithStmt with | with.mayAffect(invk.getCallee()))
 select invk, "'" + f.getName() + "' references an undeclared global variable, "
      + "not the variable exported $@.", export, "here"

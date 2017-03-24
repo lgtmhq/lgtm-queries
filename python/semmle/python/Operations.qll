@@ -16,6 +16,9 @@ import python
 /** Base class for operators */
 class Operator extends Operator_ {
 
+    /** Gets the name of the special method used to implement this operator */
+    string getSpecialMethodName() { none() }
+
 }
 
 /* Unary Expression and its operators */
@@ -32,25 +35,36 @@ class UnaryExpr extends UnaryExpr_ {
 /** A unary operator: `+`, `-`, `~` or `not` */
 class Unaryop extends Unaryop_ {
 
+    /** Gets the name of the special method used to implement this operator */
+    string getSpecialMethodName() { none() }
+
 }
 
 /** An invert (`~`) unary operator */
 class Invert extends Invert_ {
+
+    string getSpecialMethodName() { result = "__invert__" }
 
 }
 
 /** A positive (`+`) unary operator */ 
 class UAdd extends UAdd_ {
 
+    string getSpecialMethodName() { result = "__pos__" }
+
 }
 
 /** A negation (`-`) unary operator */
 class USub extends USub_ {
 
+    string getSpecialMethodName() { result = "__neg__" }
+
 }
 
 /** A `not` unary operator */
 class Not extends Not_ {
+
+    string getSpecialMethodName() { none() }
 
 }
 
@@ -68,66 +82,93 @@ class BinaryExpr extends BinaryExpr_ {
 
 /** A power (`**`) binary operator */
 class Pow extends Pow_ {
+  
+    string getSpecialMethodName() { result = "__pow__" }
 
 }
 
 /** A right shift (`>>`) binary operator */
 class RShift extends RShift_ {
 
+    string getSpecialMethodName() { result = "__rshift__" }
 }
 
 /** A subtract (`-`) binary operator */
 class Sub extends Sub_ {
+
+    string getSpecialMethodName() { result = "__sub__" }
 
 }
 
 /** A bitwise and (`&`) binary operator */
 class BitAnd extends BitAnd_ {
 
+    string getSpecialMethodName() { result = "__and__" }
+
 }
 
 /** A bitwise or (`|`) binary operator */
 class BitOr extends BitOr_ {
+
+    string getSpecialMethodName() { result = "__or__" }
 
 }
 
 /** A bitwise exclusive-or (`^`) binary operator */
 class BitXor extends BitXor_ {
 
+    string getSpecialMethodName() { result = "__xor__" }
+
 }
 
 /** An add (`+`) binary operator */
 class Add extends Add_ {
 
+    string getSpecialMethodName() { result = "__add__" }
 }
 
 /** An (true) divide (`/`) binary operator */
 class Div extends Div_ {
 
+    string getSpecialMethodName() { 
+        result = "__truediv__"
+        or
+        major_version() = 2 and result = "__div__"
+    }
 }
 
 /** An floor divide (`//`) binary operator */
 class FloorDiv extends FloorDiv_ {
+
+    string getSpecialMethodName() { result = "__floordiv__" }
 
 }
 
 /** A left shift (`<<`) binary operator */
 class LShift extends LShift_ {
 
+    string getSpecialMethodName() { result = "__lshift__" }
+
 }
 
 /** A modulo (`%`) binary operator, which includes  string formatting */
 class Mod extends Mod_ {
+
+    string getSpecialMethodName() { result = "__mod__" }
 
 }
 
 /** A multiplication (`*`) binary operator */
 class Mult extends Mult_ {
 
+    string getSpecialMethodName() { result = "__mul__" }
+
 }
 
 /** A matrix multiplication (`@`) binary operator */
 class MatMult extends MatMult_ {
+
+    string getSpecialMethodName() { result = "__matmul__" }
 
 }
 
@@ -159,91 +200,105 @@ class CmpopList extends CmpopList_ {
 /** A comparison operator */
 abstract class Cmpop extends Cmpop_ {
 
-  string getSymbol() {
-      none() 
-  }
+    string getSymbol() {
+        none() 
+    }
+
+    string getSpecialMethodName() { none() }
 
 }
 
 /** A greater than (`>`) comparison operator */
 class Gt extends Gt_ {
 
-  string getSymbol() {
-      result = ">" 
-  }
+    string getSymbol() {
+        result = ">" 
+    }
+
+    string getSpecialMethodName() { result = "__gt__" }
 
 }
 
 /** A greater than or equals (`>=`) comparison operator */
 class GtE extends GtE_ {
-  
-  string getSymbol() {
-      result = ">=" 
-  }
-  
+
+    string getSymbol() {
+        result = ">=" 
+    }
+
+    string getSpecialMethodName() { result = "__ge__" }
+
 }
 
 /** An `in` comparison operator */
 class In extends In_ {
-  
-  string getSymbol() {
-      result = "in" 
-  }
-  
+
+    string getSymbol() {
+        result = "in" 
+    }
+
 }
 
 /** An `is` comparison operator */
 class Is extends Is_ {
-  
-  string getSymbol() {
-      result = "is" 
-  }
-  
+
+    string getSymbol() {
+        result = "is" 
+    }
+
 }
 
 /** An `is not` comparison operator */
 class IsNot extends IsNot_ {
-  
-  string getSymbol() {
-      result = "is not" 
-  }
-  
+
+    string getSymbol() {
+        result = "is not" 
+    }
+
 }
 
 /** An equals (`==`) comparison operator */
 class Eq extends Eq_ {
-  
-  string getSymbol() {
-      result = "==" 
-  }
-  
+
+    string getSymbol() {
+        result = "==" 
+    }
+
+    string getSpecialMethodName() { result = "__eq__" }
+
 }
 
 /** A less than (`<`) comparison operator */
 class Lt extends Lt_ {
-  
-  string getSymbol() {
-      result = "<" 
-  }
-  
+
+    string getSymbol() {
+        result = "<" 
+    }
+
+    string getSpecialMethodName() { result = "__lt__" }
+
 }
 
 /** A less than or equals (`<=`) comparison operator */
 class LtE extends LtE_ {
-  
-  string getSymbol() {
-      result = "<=" 
-  }
-  
+
+    string getSymbol() {
+        result = "<=" 
+    }
+
+    string getSpecialMethodName() { result = "__le__" }
+
 }
 
 /** A not equals (`!=`) comparison operator */
 class NotEq extends NotEq_ {
-  
-  string getSymbol() {
-      result = "!=" 
-  }
-  
+
+    string getSymbol() {
+        result = "!=" 
+    }
+
+    string getSpecialMethodName() { result = "__ne__" }
+
 }
 
 /** An `not in` comparison operator */

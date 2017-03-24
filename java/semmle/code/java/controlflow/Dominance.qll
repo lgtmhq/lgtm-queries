@@ -33,13 +33,8 @@ private predicate bbSucc(BasicBlock pre, BasicBlock post) {
   post = pre.getABBSuccessor()
 }
 
-private predicate bbIDominatesAux(Stmt entry, BasicBlock dom, BasicBlock node)
-  = idominance(flowEntry/1, bbSucc/2)(entry, dom, node)
-
 /** The immediate dominance relation for basic blocks. */
-predicate bbIDominates(BasicBlock dom, BasicBlock node) {
-  bbIDominatesAux(_, dom, node)
-}
+predicate bbIDominates(BasicBlock dom, BasicBlock node) = idominance(flowEntry/1, bbSucc/2)(_, dom, node)
 
 /** Exit points for control-flow. */
 private predicate flowExit(Callable exit) {
@@ -56,13 +51,8 @@ private predicate bbPred(BasicBlock post, BasicBlock pre) {
   post = pre.getABBSuccessor()
 }
 
-private predicate bbIPostDominatesAux(BasicBlock exit, BasicBlock dominator, BasicBlock node)
-  = idominance(bbSink/1,bbPred/2)(exit, dominator, node)
-
 /** The immediate post-dominance relation on basic blocks. */
-predicate bbIPostDominates(BasicBlock dominator, BasicBlock node) {
-  bbIPostDominatesAux(_, dominator, node)
-}
+predicate bbIPostDominates(BasicBlock dominator, BasicBlock node) = idominance(bbSink/1,bbPred/2)(_, dominator, node)
 
 /** Whether `dom` strictly dominates `node`. */
 predicate bbStrictlyDominates(BasicBlock dom, BasicBlock node) { bbIDominates+(dom, node) }

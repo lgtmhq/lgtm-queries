@@ -15,9 +15,11 @@
  * @name Unguarded next in generator
  * @description Calling next() in a generator may cause unintended early termination of an iteration.
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       portability
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

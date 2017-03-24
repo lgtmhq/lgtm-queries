@@ -11,61 +11,76 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for detecting duplicate or similar code. */
+
 import semmle.javascript.Files
 
+/** Gets the relative path of `file`, with backslashes replaced by forward slashes. */
 private
 string relativePath(File file) {
   result = file.getRelativePath().replaceAll("\\", "/")
 }
 
-// This relation is cached to prevent inlining for performance reasons
-private cached
-predicate tokenLocation(File file, int sl, int sc, int ec, int el, Copy copy, int index) {
+/**
+ * Holds if the `index`-th token of block `copy` is in file `file`, spanning
+ * column `sc` of line `sl` to column `ec` of line `el`.
+ *
+ * For more information, see [LGTM locations](https://lgtm.com/docs/ql/locations).
+ */
+pragma[noinline]
+private predicate tokenLocation(File file, int sl, int sc, int ec, int el, Copy copy, int index) {
   file = copy.sourceFile() and
   tokens(copy, index, sl, sc, ec, el)
 }
 
-class Copy extends @duplication_or_similarity
-{
-  private
-  int lastToken() {
+/** A token block used for detection of duplicate and similar code. */
+class Copy extends @duplication_or_similarity {
+  /** Gets the index of the last token in this block. */
+  private int lastToken() {
     result = max(int i | tokens(this, i, _, _, _, _) | i)
   }
 
+  /** Gets the index of the token in this block starting at the location `loc`, if any. */
   int tokenStartingAt(Location loc) {
-    tokenLocation(loc.getFile(), loc.getStartLine(), loc.getStartColumn(),
-      _, _, this, result)
+    tokenLocation(loc.getFile(), loc.getStartLine(), loc.getStartColumn(), _, _, this, result)
   }
 
+  /** Gets the index of the token in this block ending at the location `loc`, if any. */
   int tokenEndingAt(Location loc) {
-    tokenLocation(loc.getFile(), _, _,
-      loc.getEndLine(), loc.getEndColumn(), this, result)
+    tokenLocation(loc.getFile(), _, _, loc.getEndLine(), loc.getEndColumn(), this, result)
   }
 
+  /** Gets the line on which the first token in this block starts. */
   int sourceStartLine() {
     tokens(this, 0, result, _, _, _)
   }
 
+  /** Gets the column on which the first token in this block starts. */
   int sourceStartColumn() {
     tokens(this, 0, _, result, _, _)
   }
 
+  /** Gets the line on which the last token in this block ends. */
   int sourceEndLine() {
     tokens(this, this.lastToken(), _, _, result, _)
   }
 
+  /** Gets the column on which the last token in this block ends. */
   int sourceEndColumn() {
     tokens(this, this.lastToken(), _, _, _, result)
   }
 
+  /** Gets the number of lines containing at least (part of) one token in this block. */
   int sourceLines() {
     result = this.sourceEndLine() + 1 - this.sourceStartLine()
   }
 
+  /** Gets an opaque identifier for the equivalence class of this block. */
   int getEquivalenceClass() {
     duplicateCode(this, _, result) or similarCode(this, _, result)
   }
 
+  /** Gets the source file in which this block appears. */
   File sourceFile() {
     exists(string name |
       duplicateCode(this, name, _) or similarCode(this, name, _) |
@@ -73,7 +88,15 @@ class Copy extends @duplication_or_similarity
     )
   }
 
-  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
+  /**
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   */
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                             int endline, int endcolumn) {
       sourceFile().getPath() = filepath and
       startline = sourceStartLine() and
       startcolumn = sourceStartColumn() and
@@ -81,70 +104,100 @@ class Copy extends @duplication_or_similarity
       endcolumn = sourceEndColumn()
   }
 
+  /** Gets a textual representation of this element. */
   string toString() { none() }
 
+  /**
+   * Gets a block that extends this one, that is, its first token is also
+   * covered by this block, but they are not the same block.
+   */
   Copy extendingBlock() {
-    exists(File file, int sl, int sc, int ec, int el |
+    exists (File file, int sl, int sc, int ec, int el |
       tokenLocation(file, sl, sc, ec, el, this, _) and
-      tokenLocation(file, sl, sc, ec, el, result, 0)) and
+      tokenLocation(file, sl, sc, ec, el, result, 0)
+    ) and
     this != result
   }
 }
 
-predicate similar_extension(SimilarBlock start1, SimilarBlock start2, SimilarBlock ext1, SimilarBlock ext2, int start, int ext) {
+/**
+ * Holds if there is a sequence of `SimilarBlock`s `start1, ..., end1` and another sequence
+ * `start2, ..., end2` such that each block extends the previous one and corresponding blocks
+ * have the same equivalence class, with `start` being the equivalence class of `start1` and
+ * `start2`, and `end` the equivalence class of `end1` and `end2`.
+ */
+predicate similar_extension(SimilarBlock start1, SimilarBlock start2,
+                            SimilarBlock end1, SimilarBlock end2, int start, int end) {
     start1.getEquivalenceClass() = start and
     start2.getEquivalenceClass() = start and
-    ext1.getEquivalenceClass() = ext and
-    ext2.getEquivalenceClass() = ext and
+    end1.getEquivalenceClass() = end and
+    end2.getEquivalenceClass() = end and
     start1 != start2 and
-    (ext1 = start1 and ext2 = start2 or
-     similar_extension(start1.extendingBlock(), start2.extendingBlock(), ext1, ext2, _, ext)
+    (end1 = start1 and end2 = start2 or
+     similar_extension(start1.extendingBlock(), start2.extendingBlock(), end1, end2, _, end)
     )
 }
 
-predicate duplicate_extension(DuplicateBlock start1, DuplicateBlock start2, DuplicateBlock ext1, DuplicateBlock ext2, int start, int ext) {
+/**
+ * Holds if there is a sequence of `DuplicateBlock`s `start1, ..., end1` and another sequence
+ * `start2, ..., end2` such that each block extends the previous one and corresponding blocks
+ * have the same equivalence class, with `start` being the equivalence class of `start1` and
+ * `start2`, and `end` the equivalence class of `end1` and `end2`.
+ */
+predicate duplicate_extension(DuplicateBlock start1, DuplicateBlock start2,
+                              DuplicateBlock end1, DuplicateBlock end2, int start, int end) {
     start1.getEquivalenceClass() = start and
     start2.getEquivalenceClass() = start and
-    ext1.getEquivalenceClass() = ext and
-    ext2.getEquivalenceClass() = ext and
+    end1.getEquivalenceClass() = end and
+    end2.getEquivalenceClass() = end and
     start1 != start2 and
-    (ext1 = start1 and ext2 = start2 or
-     duplicate_extension(start1.extendingBlock(), start2.extendingBlock(), ext1, ext2, _, ext)
+    (end1 = start1 and end2 = start2 or
+     duplicate_extension(start1.extendingBlock(), start2.extendingBlock(), end1, end2, _, end)
     )
 }
 
-
-class DuplicateBlock extends Copy, @duplication
-{
-  string toString() {
+/** A block of duplicated code. */
+class DuplicateBlock extends Copy, @duplication {
+  override string toString() {
     result = "Duplicate code: " + sourceLines() + " duplicated lines."
   }
 }
 
-class SimilarBlock extends Copy, @similarity
-{
-  string toString() {
+/** A block of similar code. */
+class SimilarBlock extends Copy, @similarity {
+  override string toString() {
     result = "Similar code: " + sourceLines() + " almost duplicated lines."
   }
 }
 
-private
-predicate stmtInContainer(Stmt s, StmtContainer c) {
-  s.getContainer() = c and
+/** Holds if statement `s` is in function or toplevel `sc`. */
+private predicate stmtInContainer(Stmt s, StmtContainer sc) {
+  s.getContainer() = sc and
   not s instanceof BlockStmt
 }
 
-predicate duplicateStatement(StmtContainer container1, StmtContainer container2, Stmt stmt1, Stmt stmt2) {
-     exists(int equivstart, int equivend, int first, int last |
-        stmtInContainer(stmt1, container1) and
-        stmtInContainer(stmt2, container2) and
-        duplicateCoversStatement(equivstart, equivend, first, last, stmt1) and
-        duplicateCoversStatement(equivstart, equivend, first, last, stmt2) and
-        stmt1 != stmt2 and
-        container1 != container2
-    )
+/**
+ * Holds if `stmt1` and `stmt2` are duplicate statements in function or toplevel `sc1` and `sc2`,
+ * respectively, where `sc1` and `sc2` are not the same.
+ */
+predicate duplicateStatement(StmtContainer sc1, StmtContainer sc2, Stmt stmt1, Stmt stmt2) {
+   exists(int equivstart, int equivend, int first, int last |
+    stmtInContainer(stmt1, sc1) and
+    stmtInContainer(stmt2, sc2) and
+    duplicateCoversStatement(equivstart, equivend, first, last, stmt1) and
+    duplicateCoversStatement(equivstart, equivend, first, last, stmt2) and
+    stmt1 != stmt2 and
+    sc1 != sc2
+  )
 }
 
+/**
+ * Holds if statement `stmt` is covered by a sequence of `DuplicateBlock`s, where `first`
+ * is the index of the token in the first block that starts at the beginning of `stmt`,
+ * while `last` is the index of the token in the last block that ends at the end of `stmt`,
+ * and `equivstart` and `equivend` are the equivalence classes of the first and the last
+ * block, respectively.
+ */
 private
 predicate duplicateCoversStatement(int equivstart, int equivend, int first, int last, Stmt stmt) {
   exists(DuplicateBlock b1, DuplicateBlock b2, Location loc |
@@ -157,37 +210,52 @@ predicate duplicateCoversStatement(int equivstart, int equivend, int first, int 
   )
 }
 
+/**
+ * Holds if `sc1` is a function or toplevel with `total` lines, and `sc2` is a function or
+ * toplevel that has `duplicate` lines in common with `sc1`.
+ */
 private
-predicate duplicateStatements(StmtContainer c1, StmtContainer c2, int duplicate, int total) {
-  duplicate = strictcount(Stmt stmt | duplicateStatement(c1, c2, stmt, _)) and
-  total = strictcount(Stmt stmt | stmtInContainer(stmt, c1))
+predicate duplicateStatements(StmtContainer sc1, StmtContainer sc2, int duplicate, int total) {
+  duplicate = strictcount(Stmt stmt | duplicateStatement(sc1, sc2, stmt, _)) and
+  total = strictcount(Stmt stmt | stmtInContainer(stmt, sc1))
 }
 
 /**
- * Find pairs of functions or toplevels that have more than 90% duplicate statements.
+ * Holds if `sc` and `other` are functions or toplevels where `percent` is the percentage
+ * of lines they have in common, which is greater than 90%.
  */
-predicate duplicateContainers(StmtContainer s, StmtContainer other, float percent) {
-    exists(int total, int duplicate |
-      duplicateStatements(s, other, duplicate, total) |
-      percent = 100.0*duplicate/total and
-      percent > 90.0
+predicate duplicateContainers(StmtContainer sc, StmtContainer other, float percent) {
+  exists(int total, int duplicate |
+    duplicateStatements(sc, other, duplicate, total) |
+    percent = 100.0*duplicate/total and
+    percent > 90.0
    )
 }
 
-private
-predicate similarStatement(StmtContainer container1, StmtContainer container2, Stmt stmt1, Stmt stmt2) {
-     exists(int start, int end, int first, int last |
-        stmtInContainer(stmt1, container1) and
-        stmtInContainer(stmt2, container2) and
-        similarCoversStatement(start, end, first, last, stmt1) and
-        similarCoversStatement(start, end, first, last, stmt2) and
-        stmt1 != stmt2 and
-        container1 != container2
-    )
+/**
+ * Holds if `stmt1` and `stmt2` are similar statements in function or toplevel `sc1` and `sc2`,
+ * respectively, where `sc1` and `sc2` are not the same.
+ */
+private predicate similarStatement(StmtContainer sc1, StmtContainer sc2, Stmt stmt1, Stmt stmt2) {
+   exists(int start, int end, int first, int last |
+    stmtInContainer(stmt1, sc1) and
+    stmtInContainer(stmt2, sc2) and
+    similarCoversStatement(start, end, first, last, stmt1) and
+    similarCoversStatement(start, end, first, last, stmt2) and
+    stmt1 != stmt2 and
+    sc1 != sc2
+  )
 }
 
-private
-predicate similarCoversStatement(int equivstart, int equivend, int first, int last, Stmt stmt) {
+/**
+ * Holds if statement `stmt` is covered by a sequence of `SimilarBlock`s, where `first`
+ * is the index of the token in the first block that starts at the beginning of `stmt`,
+ * while `last` is the index of the token in the last block that ends at the end of `stmt`,
+ * and `equivstart` and `equivend` are the equivalence classes of the first and the last
+ * block, respectively.
+ */
+private predicate similarCoversStatement(int equivstart, int equivend, int first, int last,
+                                         Stmt stmt) {
   exists(SimilarBlock b1, SimilarBlock b2, Location loc |
     stmt.getLocation() = loc and
     first = b1.tokenStartingAt(loc) and
@@ -198,19 +266,23 @@ predicate similarCoversStatement(int equivstart, int equivend, int first, int la
   )
 }
 
-private
-predicate similarStatements(StmtContainer s1, StmtContainer s2, int similar, int total) {
-  similar = strictcount(Stmt stmt | similarStatement(s1, s2, stmt, _)) and
-  total = strictcount(Stmt stmt | stmtInContainer(stmt, s1))
+/**
+ * Holds if `sc1` is a function or toplevel with `total` lines, and `sc2` is a function or
+ * toplevel that has `similar` similar lines to `sc1`.
+ */
+private predicate similarStatements(StmtContainer sc1, StmtContainer sc2, int similar, int total) {
+  similar = strictcount(Stmt stmt | similarStatement(sc1, sc2, stmt, _)) and
+  total = strictcount(Stmt stmt | stmtInContainer(stmt, sc1))
 }
 
 /**
- * Find pairs of functions or toplevels that have more than 90% similar statements.
+ * Holds if `sc` and `other` are functions or toplevels where `percent` is the percentage
+ * of similar lines between the two, which is greater than 90%.
  */
-predicate similarContainers(StmtContainer s, StmtContainer other, float percent) {
-    exists(int total, int similar |
-      similarStatements(s, other, similar, total) |
-      percent = 100.0*similar/total and
-      percent > 90.0
-    )
+predicate similarContainers(StmtContainer sc, StmtContainer other, float percent) {
+  exists(int total, int similar |
+    similarStatements(sc, other, similar, total) |
+    percent = 100.0*similar/total and
+    percent > 90.0
+  )
 }

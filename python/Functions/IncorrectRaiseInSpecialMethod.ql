@@ -15,10 +15,12 @@
  * @name Non-standard exception raised in special method
  * @description Raising a non-standard exception in a special method alters the expected interface of that method.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       maintainability
  *       convention
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

@@ -23,12 +23,6 @@ import MetricCallable
 
 /** This class provides access to metrics information for packages. */
 class MetricPackage extends Package, MetricElement  {
-
-  /**
-   * Whether at least one reference type in this package is from source code.
-   */
-  predicate fromSource() { Package.super.fromSource() }
-
   /** The percentage of lines in this package that consist of comments. */
   float getPercentageOfComments() { 
     exists(float n | 

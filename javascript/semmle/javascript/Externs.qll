@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * External declarations described in Closure-style externs files.
+ * Provides classes for working with external declarations from Closure-style externs files.
  *
  * A declaration may either declare a type alias, a global variable or a member variable.
  * Member variables may either be static variables, meaning that they are directly attached
@@ -35,7 +35,7 @@
  * </pre>
  *
  * Examples of static member variable declarations are
- * 
+ *
  * <pre>
  * Math.PI;
  * Object.keys = function(obj) {};
@@ -54,18 +54,18 @@ import AST
 
 /** A declaration in an externs file. */
 abstract class ExternalDecl extends ASTNode {
-  /** Get the name of this declaration. */
+  /** Gets the name of this declaration. */
   abstract string getName();
 
-  /** Get the qualified name of this declaration. */
+  /** Gets the qualified name of this declaration. */
   abstract string getQualifiedName();
 
-  string toString() {
+  override string toString() {
     result = getQualifiedName()
   }
 }
 
-// helper predicate
+/** Holds if statement `s` has a JSDoc comment with a `@typedef` tag in it. */
 private predicate hasTypedefAnnotation(Stmt s) {
   s.getDocumentation().getATag().getTitle() = "typedef"
 }
@@ -78,37 +78,35 @@ class ExternalTypedef extends ExternalDecl, VariableDeclarator {
     hasTypedefAnnotation(getDeclStmt())
   }
 
-  string getName() {
+  override string getName() {
     result = getBindingPattern().(Identifier).getName()
   }
 
-  string getQualifiedName() {
+  override string getQualifiedName() {
     result = getName()
   }
 
-  string toString() { result = VariableDeclarator.super.toString() }
-  CFGNode getFirstCFGNode() { result = VariableDeclarator.super.getFirstCFGNode() }
+  override string toString() { result = VariableDeclarator.super.toString() }
 }
 
 /** A variable or function declaration in an externs file. */
 abstract class ExternalVarDecl extends ExternalDecl, ASTNode {
   /**
-   * Get the initializer associated with this declaration, if any. This can be either
-   * a function or an expression.
-   */ 
+   * Gets the initializer associated with this declaration, if any.
+   *
+   * The result can be either a function or an expression.
+   */
   abstract ASTNode getInit();
 
   /**
-   * Get the documentation comment associated with this declaration, if any.
+   * Gets the documentation comment associated with this declaration, if any.
    */
   abstract JSDoc getDocumentation();
-
-  string toString() { result = ExternalDecl.super.toString() }
 }
 
 /** A global declaration of a function or variable in an externs file. */
 abstract class ExternalGlobalDecl extends ExternalVarDecl {
-  string getQualifiedName() {
+  override string getQualifiedName() {
     result = getName()
   }
 }
@@ -119,19 +117,19 @@ class ExternalGlobalFunctionDecl extends ExternalGlobalDecl, FunctionDeclStmt {
     inExternsFile()
   }
 
-  /** Get the name of this declaration. */
-  string getName() {
+  /** Gets the name of this declaration. */
+  override string getName() {
     result = FunctionDeclStmt.super.getName()
   }
 
-  ASTNode getInit() {
+  override ASTNode getInit() {
     result = this
   }
 
-  string toString() { result = FunctionDeclStmt.super.toString() }
+  override string toString() { result = FunctionDeclStmt.super.toString() }
 
-  /** Get the JSDoc comment associated with this declaration, if any. */
-  JSDoc getDocumentation() { result = FunctionDeclStmt.super.getDocumentation() }
+  /** Gets the JSDoc comment associated with this declaration, if any. */
+  override JSDoc getDocumentation() { result = FunctionDeclStmt.super.getDocumentation() }
 }
 
 /** A global variable declaration in an externs file. */
@@ -143,20 +141,19 @@ class ExternalGlobalVarDecl extends ExternalGlobalDecl, VariableDeclarator {
     not hasTypedefAnnotation(getDeclStmt())
   }
 
-  string getName() {
+  override string getName() {
     result = getBindingPattern().(Identifier).getName()
   }
 
-  /** Get the initializer associated with this declaration, if any. */
-  Expr getInit() {
+  /** Gets the initializer associated with this declaration, if any. */
+  override Expr getInit() {
     result = VariableDeclarator.super.getInit()
   }
 
-  string toString() { result = VariableDeclarator.super.toString() }
-  CFGNode getFirstCFGNode() { result = VariableDeclarator.super.getFirstCFGNode() }
+  override string toString() { result = VariableDeclarator.super.toString() }
 
-  /** Get the JSDoc comment associated with this declaration, if any. */
-  JSDoc getDocumentation() { result = VariableDeclarator.super.getDocumentation() }
+  /** Gets the JSDoc comment associated with this declaration, if any. */
+  override JSDoc getDocumentation() { result = VariableDeclarator.super.getDocumentation() }
 }
 
 /** A member variable declaration in an externs file. */
@@ -168,43 +165,43 @@ class ExternalMemberDecl extends ExternalVarDecl, ExprStmt {
   }
 
   /**
-   * Get the property access describing the declared member.
+   * Gets the property access describing the declared member.
    */
   PropAccess getProperty() {
     result = getExpr() or
     result = getExpr().(AssignExpr).getLhs()
   }
 
-  Expr getInit() {
+  override Expr getInit() {
     result = getExpr().(AssignExpr).getRhs()
   }
 
-  string getQualifiedName() {
+  override string getQualifiedName() {
     result = getProperty().getQualifiedName()
   }
 
-  string getName() {
+  override string getName() {
     result = getProperty().getPropertyName()
   }
 
   /**
-   * Get the name of the base type to which the member declared by this declaration belongs.
+   * Gets the name of the base type to which the member declared by this declaration belongs.
    */
   string getBaseName() {
     none()
   }
 
   /**
-   * Get the base type to which the member declared by this declaration belongs.
+   * Gets the base type to which the member declared by this declaration belongs.
    */
   ExternalType getDeclaringType() {
     result.getQualifiedName() = getBaseName()
   }
 
-  string toString() { result = ExprStmt.super.toString() }
+  override string toString() { result = ExprStmt.super.toString() }
 
-  /** Get the documentation comment associated with this declaration, if any. */
-  JSDoc getDocumentation() { result = ExprStmt.super.getDocumentation() }
+  /** Gets the documentation comment associated with this declaration, if any. */
+  override JSDoc getDocumentation() { result = ExprStmt.super.getDocumentation() }
 }
 
 /**
@@ -218,7 +215,7 @@ class ExternalStaticMemberDecl extends ExternalMemberDecl {
     getProperty().getBase() instanceof Identifier
   }
 
-  string getBaseName() {
+  override string getBaseName() {
     result = getProperty().getBase().(Identifier).getName()
   }
 }
@@ -238,7 +235,7 @@ class ExternalInstanceMemberDecl extends ExternalMemberDecl {
     )
   }
 
-  string getBaseName() {
+  override string getBaseName() {
     result = getProperty().getBase().(PropAccess).getBase().(Identifier).getName()
   }
 }
@@ -251,7 +248,7 @@ class ExternalEntity extends ASTNode {
     exists (ExternalVarDecl d | d.getInit() = this)
   }
 
-  /** Get the variable declaration to which this entity belongs. */
+  /** Gets the variable declaration to which this entity belongs. */
   ExternalVarDecl getDecl() {
     result.getInit() = this
   }
@@ -262,7 +259,7 @@ class ExternalEntity extends ASTNode {
  */
 class ExternalFunction extends ExternalEntity, Function {
   /**
-   * Does the last parameter of this external function have a rest parameter type annotation?
+   * Holds if the last parameter of this external function has a rest parameter type annotation.
    */
   predicate isVarArgs() {
     exists (SimpleParameter lastParm, JSDocParamTag pt |
@@ -282,8 +279,8 @@ class ConstructorTag extends JSDocTag {
 }
 
 /** A JSDoc tag that refers to a named type. */
-abstract library class NamedTypeReferent extends JSDocTag {
-  /** Get the name of the type to which this tag refers. */
+abstract private class NamedTypeReferent extends JSDocTag {
+  /** Gets the name of the type to which this tag refers. */
   string getTarget() {
     result = getType().(JSDocNamedTypeExpr).getName() or
     result = getType().(JSDocAppliedTypeExpr).getHead().(JSDocNamedTypeExpr).getName()
@@ -308,22 +305,22 @@ class ExtendsTag extends NamedTypeReferent {
  * A constructor or interface function defined in an externs file.
  */
 abstract class ExternalType extends ExternalGlobalFunctionDecl {
-  /** Get a type which this type extends. */
+  /** Gets a type which this type extends. */
   ExternalType getAnExtendedType() {
     getDocumentation().getATag().(ExtendsTag).getTarget() = result.getQualifiedName()
   }
 
-  /** Get a type which this type implements. */
+  /** Gets a type which this type implements. */
   ExternalType getAnImplementedType() {
     getDocumentation().getATag().(ImplementsTag).getTarget() = result.getQualifiedName()
   }
 
-  /** Get a supertype of this type. */
+  /** Gets a supertype of this type. */
   ExternalType getASupertype() {
     result = getAnExtendedType() or result = getAnImplementedType()
   }
 
-  /** Get the declaration of a member of this type. */
+  /** Gets a declaration of a member of this type. */
   ExternalMemberDecl getAMember() {
     result.getDeclaringType() = this
   }

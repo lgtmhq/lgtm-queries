@@ -248,9 +248,7 @@ class CompileTimeConstantExpr extends Expr {
    * Note that this does not handle the following cases:
    *
    * - values of type `long`,
-   * - hexadecimal, octal or binary `int` literals,
-   * - `char` literals,
-   * - `int` literals with underscores.
+   * - `char` literals.
    *
    * No constant-folding over bitwise operations is performed.
    */
@@ -260,9 +258,9 @@ class CompileTimeConstantExpr extends Expr {
     )
     and
     (
-      exists(string lit | lit = this.(Literal).getLiteral() |
-        // Octal integers may get parsed incorrectly as decimal, so disallow.
-        not (lit.regexpMatch("-?0[0-7][0-7]*")) and
+      exists(string lit | lit = this.(Literal).getValue() |
+        // `char` literals may get parsed incorrectly, so disallow.
+        not this instanceof CharacterLiteral and
         result = lit.toInt()
       )
       or
@@ -464,7 +462,10 @@ class AssignURShiftExpr extends AssignOp,@assignurshiftexpr { string getOp() { r
 /** A common super-class to represent constant literals. */
 class Literal extends Expr,@literal {
   /** A string representation of this literal. */
-  string getLiteral() { namestrings(result,this) }
+  string getLiteral() { namestrings(result,_,this) }
+
+  /** A string representation of the value of this literal. */
+  string getValue() { namestrings(_,result,this) }
 
   /** A printable representation of this expression. */
   string toString() { result = this.getLiteral() }
@@ -499,7 +500,7 @@ class IntegerLiteral extends Literal,@integerliteral {
 
   /** Get the int representation of this literal. */
   int getIntValue() {
-    result = getLiteral().toInt()
+    result = getValue().toInt()
   }
 }
 
@@ -522,13 +523,14 @@ class StringLiteral extends Literal,@stringliteral {
    * Return the literal string without the quotes.
    */
   string getRepresentedString() {
-    result = getLiteral().substring(1, getLiteral().length() - 1)
+    result = getValue()
   }
 }
 
 /** The null literal, written `null`. */
 class NullLiteral extends Literal,@nullliteral {
-   string getLiteral() { result = "null" }
+  string getLiteral() { result = "null" }
+  string getValue() { result = "null" }
 }
 
 
@@ -767,13 +769,13 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   int getNumArgument() { count(this.getAnArgument()) = result }
 
   /** An argument provided to the constructor of this class instance creation expression. */
-  Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
+  override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
 
   /**
    * The argument provided to the constructor of this class instance creation expression
    * at the specified (zero-based) position.
    */
-  Expr getArgument(int index) {
+  override Expr getArgument(int index) {
     result.getIndex() = index and
     result = this.getAnArgument()
   }
@@ -792,7 +794,7 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   Expr getTypeArgument(int index) { result = this.getTypeName().(TypeAccess).getTypeArgument(index) }
 
   /** The qualifier of this class instance creation expression, if any. */
-  Expr getQualifier() { result.isNthChildOf(this, -2) }
+  override Expr getQualifier() { result.isNthChildOf(this, -2) }
 
   /**
    * The access to the type that is instantiated or subclassed by this
@@ -816,10 +818,10 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   }
 
   /** The immediately enclosing callable of this class instance creation expression. */
-  Callable getEnclosingCallable() { result = Expr.super.getEnclosingCallable() }
+  override Callable getEnclosingCallable() { result = Expr.super.getEnclosingCallable() }
 
   /** The immediately enclosing statement of this class instance creation expression. */
-  Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
+  override Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
 
   /** A printable representation of this expression. */
   string toString() { result = "new " + this.getConstructor().getName() + "(...)" }
@@ -1122,16 +1124,16 @@ class RValue extends VarAccess {
 /** A method access is an invocation of a method with a list of arguments. */
 class MethodAccess extends Expr, Call, @methodaccess {
   /** The qualifying expression of this method access, if any. */
-  Expr getQualifier() { result.isNthChildOf(this, -1) }
+  override Expr getQualifier() { result.isNthChildOf(this, -1) }
 
   /** Whether this method access has a qualifier. */
   predicate hasQualifier() { exists(getQualifier()) }
 
   /** An argument supplied to the method that is invoked using this method access. */
-  Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
+  override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
 
   /** The argument at the specified (zero-based) position in this method access. */
-  Expr getArgument(int index) { exprs(result, _, _, this, index) and index >= 0 }
+  override Expr getArgument(int index) { exprs(result, _, _, this, index) and index >= 0 }
 
   /** A type argument supplied as part of this method access, if any. */
   Expr getATypeArgument() { result.getIndex() <= -2 and result.getParent() = this }
@@ -1146,10 +1148,10 @@ class MethodAccess extends Expr, Call, @methodaccess {
   Method getMethod() { callableBinding(this,result) }
   
   /** The immediately enclosing callable that contains this method access. */
-  Callable getEnclosingCallable() { result = Expr.super.getEnclosingCallable() }
+  override Callable getEnclosingCallable() { result = Expr.super.getEnclosingCallable() }
 
   /** The immediately enclosing statement that contains this method access. */
-  Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
+  override Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
   
   /** A printable representation of this expression. */
   string toString() { result = this.printAccess() }
@@ -1289,17 +1291,17 @@ class WildcardTypeAccess extends Expr,@wildcardtypeaccess {
  * This includes method calls, constructor and super constructor invocations,
  * and constructors invoked through class instantiation.
  */
-abstract class Call extends Top {
+class Call extends Top, @caller {
   /** An argument supplied in this call. */
-  abstract Expr getAnArgument();
+  /*abstract*/ Expr getAnArgument() { none() }
   /** The argument specified at the (zero-based) position in this call. */
-  abstract Expr getArgument(int n);
+  /*abstract*/ Expr getArgument(int n) { none() }
   /** The immediately enclosing callable that contains this call. */
-  abstract Callable getEnclosingCallable();
+  /*abstract*/ Callable getEnclosingCallable() { none() }
   /** The qualifying expression of this call, if any. */
-  abstract Expr getQualifier();
+  /*abstract*/ Expr getQualifier() { none() }
   /** The enclosing statement of this call. */
-  abstract Stmt getEnclosingStmt();
+  /*abstract*/ Stmt getEnclosingStmt() { none() }
   
   /** The number of arguments provided in this call. */
   int getNumArgument() { count(this.getAnArgument()) = result }
@@ -1318,7 +1320,7 @@ abstract class Call extends Top {
 /** A polymorphic call to an instance method. */
 class VirtualMethodAccess extends MethodAccess { 
   VirtualMethodAccess() {
-    not this.getMethod().isStatic() and
+    this.getMethod().isVirtual() and
     not this.getQualifier() instanceof SuperAccess
   }
 }

@@ -19,10 +19,6 @@ import semmle.code.java.Member
 
 /** This class provides access to metrics information for callables. */
 class MetricCallable extends Callable {
-  
-  /** A printable representation of this callable. */
-  string toString() { result = Callable.super.toString() }
-
   /**
    * A callable on which this callable depends.
    *
@@ -54,13 +50,6 @@ class MetricCallable extends Callable {
    */
   int getEfferentCoupling() {
      result = count(MetricCallable m | this.getADependency() = m)
-  }
-
-  /**
-   * The number of parameters of this callable.
-   */
-  int getNumberOfParameters() {
-    result = Callable.super.getNumberOfParameters()
   }
 
   /**

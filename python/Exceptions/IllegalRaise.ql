@@ -15,10 +15,12 @@
  * @name Illegal raise
  * @description Raising a non-exception object or type will result in a TypeError being raised instead.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
  *       types
+ * @problem.severity error
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

@@ -20,6 +20,7 @@
  * @tags portability
  *       maintainability
  *       language-features
+ * @precision very-high
  */
 
 import javascript

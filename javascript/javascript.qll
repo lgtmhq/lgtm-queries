@@ -11,6 +11,10 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/**
+ * Provides classes for working with JavaScript programs, as well as JSON, YAML and HTML.
+ */
+
 import semmle.javascript.Files
 import semmle.javascript.Paths
 import semmle.javascript.AST
@@ -37,5 +41,5 @@ import semmle.javascript.Modules
 import semmle.javascript.ES2015Modules
 import semmle.javascript.JSX
 import semmle.javascript.HTML
-
 import semmle.javascript.StandardLibrary
+import semmle.javascript.Util

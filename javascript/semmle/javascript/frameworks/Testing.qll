@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with testing frameworks for JavaScript.
+ * Provides classes for working with JavaScript testing frameworks.
  */
 
 import javascript
@@ -34,7 +34,7 @@ class QUnitTest extends Test, MethodCallExpr {
     getMethodName() = "test"
   }
 
-  string toString() { result = MethodCallExpr.super.toString() }
+  override string toString() { result = MethodCallExpr.super.toString() }
 }
 
 /**
@@ -46,10 +46,10 @@ class BDDTest extends Test, CallExpr {
   BDDTest() {
     getCallee().(VarAccess).getName() = "it" and
     exists(getArgument(0).getStringValue()) and
-    getArgument(1).(DataFlowNode).getASource() instanceof Function
+    getArgument(1).(DataFlowNode).getALocalSource() instanceof Function
   }
 
-  string toString() { result = CallExpr.super.toString() }
+  override string toString() { result = CallExpr.super.toString() }
 }
 
 /**

@@ -11,29 +11,29 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for working with ECMAScript 2015-style template expressions. */
+
 import Expr
 
 /** A tagged template literal expression. */
 class TaggedTemplateExpr extends Expr, @taggedtemplateexpr {
-  /** Get the tagging expression of this tagged template. */
+  /** Gets the tagging expression of this tagged template. */
   Expr getTag() {
     result = getChildExpr(0)
   }
 
-  /** Get the tagged template itself. */
+  /** Gets the tagged template itself. */
   TemplateLiteral getTemplate() {
     result = getChildExpr(1)
   }
 
-  predicate isImpure() {
-    any()
-  }
+  override predicate isImpure() { any() }
 }
 
 /** A template literal. */
 class TemplateLiteral extends Expr, @templateliteral {
   /**
-   * Get the i-th element of this template literal, which may either
+   * Gets the `i`th element of this template literal, which may either
    * be an interpolated expression or a constant template element.
    */
   Expr getElement(int i) {
@@ -41,30 +41,26 @@ class TemplateLiteral extends Expr, @templateliteral {
   }
 
   /**
-   * Get an element of this template literal.
+   * Gets an element of this template literal.
    */
   Expr getAnElement() {
     result = getElement(_)
   }
 
-  predicate isImpure() {
-    getAnElement().isImpure()
-  }
+  override predicate isImpure() { getAnElement().isImpure() }
 }
 
 /** A constant template element. */
 class TemplateElement extends Expr, @templateelement {
-  /** Get the value of this template element. */
+  /** Gets the value of this template element. */
   string getValue() {
     literals(result, _, this)
   }
-  
-  /** Get the raw value of this template element. */
+
+  /** Gets the raw value of this template element. */
   string getRawValue() {
     literals(_, result, this)
   }
 
-  predicate isImpure() {
-    none()
-  }
+  override predicate isImpure() { none() }
 }

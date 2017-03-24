@@ -22,11 +22,6 @@ import semmle.code.java.UnitTests
 
 /** This class provides access to metrics information for reference types. */
 class MetricRefType extends RefType, MetricElement {
-  /**
-   * The compilation unit in which this reference type occurs.
-   */
-  CompilationUnit getCompilationUnit() { result = RefType.super.getCompilationUnit() }
-
   /** The percentage of lines in this reference type that consist of comments. */
   float getPercentageOfComments() { 
     exists(float n | 
@@ -245,7 +240,7 @@ class MetricRefType extends RefType, MetricElement {
   int getADepth() {
     (this.hasQualifiedName("java.lang", "Object") and result = 0)
     or
-    (not cyclic() and result = ((MetricRefType)this.getASupertype()).getADepth() + 1)
+    (not cyclic() and result = this.getASupertype().(MetricRefType).getADepth() + 1)
   }
 
   /**
@@ -269,7 +264,7 @@ class MetricRefType extends RefType, MetricElement {
   int getADepth(RefType reference) {
     (this = reference and result=0)
     or
-    (not cyclic() and result = ((MetricRefType)this.getASupertype()).getADepth(reference) + 1)
+    (not cyclic() and result = this.getASupertype().(MetricRefType).getADepth(reference) + 1)
   }
 
   private predicate cyclic() { getASupertype+() = this }

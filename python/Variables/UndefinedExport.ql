@@ -16,9 +16,11 @@
  * @description Including an undefined attribute in __all__ causes an exception when
  *              the module is imported using '*'
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       maintainability
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

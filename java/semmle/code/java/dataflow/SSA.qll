@@ -114,37 +114,35 @@ private predicate ssaDef(LocalScopeVariable v, ControlFlowNode n, BasicBlock b, 
  * dominance.
  */
 
-/** `earlier` strictly dominates `later` inside a basic block. */
-private predicate multipleDefsInBlock(LocalScopeVariable v, SsaDefinition earlier, SsaDefinition later) {
-  exists(BasicBlock b, int i, int j |
-    ssaDef(v, earlier, b, i) and
-    ssaDef(v, later, b, j) and
-    i < j
-  )
+/**
+ * A ranking of the indices `i` at which there is an SSA definition or use of
+ * `v` in the basic block `b`.
+ *
+ * Basic block indices are translated to rank indices in order to skip
+ * irrelevant indices at which there is no definition or use when traversing
+ * basic blocks.
+ */
+private predicate defUseRank(LocalScopeVariable v, BasicBlock b, int rankix, int i) {
+  i = rank[rankix](int j | ssaDef(v, _, b, j) or variableUse(v, _, b, j))
 }
 
-/** `def` dominates `use` inside a basic block. */
-private predicate defUseInBlock(LocalScopeVariable v, SsaDefinition def, RValue use) {
-  exists(BasicBlock b, int i, int j |
+/** The maximum rank index for the given variable and basic block. */
+private int lastRank(LocalScopeVariable v, BasicBlock b) {
+  result = max(int rankix | defUseRank(v, b, rankix, _))
+}
+
+/** A definition of an SSA variable occurring at the specified rank index in basic block `b`. */
+private predicate ssaDefRank(LocalScopeVariable v, SsaDefinition def, BasicBlock b, int rankix) {
+  exists(int i |
     ssaDef(v, def, b, i) and
-    variableUse(v, use, b, j) and
-    i <= j
+    defUseRank(v, b, rankix, i)
   )
 }
 
-/** `dom` strictly dominates `other`. */
-private predicate ssaDefDominatesDef(LocalScopeVariable v, SsaDefinition dom, SsaDefinition other) {
-  multipleDefsInBlock(v, dom, other) or
-  exists (BasicBlock b1, BasicBlock b2 |
-    ssaDef(v, dom, b1, _) and
-    ssaDef(v, other, b2, _) and
-    bbStrictlyDominates(b1, b2)
-  )
-}
-
-/** The `BasicBlock` containing `def` dominates `b`; equivalently, `def` dominates the last node in `b`. */
-private predicate ssaDefDominatesBlock(LocalScopeVariable v, SsaDefinition def, BasicBlock b) {
-  exists (BasicBlock defb | ssaDef(v, def, defb, _) | bbDominates(defb, b))
+/** The SSA definition reaches the rank index `rankix` in its own basic block `b`. */
+private predicate ssaDefReachesRank(LocalScopeVariable v, SsaDefinition def, BasicBlock b, int rankix) {
+  ssaDefRank(v, def, b, rankix) or
+  ssaDefReachesRank(v, def, b, rankix-1) and rankix <= lastRank(v, b) and not ssaDefRank(v, _, b, rankix)
 }
 
 /**
@@ -153,9 +151,13 @@ private predicate ssaDefDominatesBlock(LocalScopeVariable v, SsaDefinition def, 
  */
 private predicate ssaDefReachesEndOfBlock(LocalScopeVariable v, SsaDefinition def, BasicBlock b) {
   liveAtExit(v, b) and
-  ssaDefDominatesBlock(v, def, b) and
-  not exists (SsaDefinition other |
-    ssaDefDominatesBlock(v, other, b) and ssaDefDominatesDef(v, def, other)
+  (
+    ssaDefReachesRank(v, def, b, lastRank(v, b)) or
+    exists(BasicBlock idom |
+      bbIDominates(idom, b) and // It is sufficient to traverse the dominator graph, cf. discussion above.
+      ssaDefReachesEndOfBlock(v, def, idom) and
+      not ssaDef(v, _, b, _)
+    )
   )
 }
 
@@ -164,8 +166,11 @@ private predicate ssaDefReachesEndOfBlock(LocalScopeVariable v, SsaDefinition de
  * without crossing another SSA definition of `v`.
  */
 private predicate ssaDefReachesUseWithinBlock(LocalScopeVariable v, SsaDefinition def, RValue use) {
-  defUseInBlock(v, def, use) and
-  not exists(SsaDefinition other | multipleDefsInBlock(v, def, other) and defUseInBlock(v, other, use))
+  exists(BasicBlock b, int rankix, int i |
+    ssaDefReachesRank(v, def, b, rankix) and
+    defUseRank(v, b, rankix, i) and
+    variableUse(v, use, b, i)
+  )
 }
 
 /**

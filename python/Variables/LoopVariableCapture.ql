@@ -15,8 +15,10 @@
  * @name Loop variable capture
  * @description Capture of a loop variable is not the same as capturing the value of a loop variable, and may be erroneous.
  * @kind problem
- * @problem.severity warning
  * @tags correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python
@@ -25,7 +27,7 @@ import python
 Scope iteration_variable_scope(AstNode loop) {
     result = loop.(For).getScope()
     or
-    result = loop.(Comp).getExecutingScope()
+    result = loop.(Comp).getFunction()
 }
 
 predicate capturing_looping_construct(CallableExpr capturing, AstNode loop, Variable var) {
@@ -44,14 +46,14 @@ predicate escaping_capturing_looping_construct(CallableExpr capturing, AstNode l
     and
     // Escapes if used out side of for loop or is a lambda in a comprehension
     (
-        exists(Expr e | e.refersTo(_, _, capturing) | not loop.(For).contains(e))
+        exists(Expr e, For forloop | forloop = loop and e.refersTo(_, _, capturing) | not forloop.contains(e))
         or
-        loop instanceof Comp
+        loop.(Comp).getElt() = capturing
+        or
+        loop.(Comp).getElt().(Tuple).getAnElt() = capturing
     )
 }
 
 from CallableExpr capturing, AstNode loop, Variable var
 where escaping_capturing_looping_construct(capturing, loop, var)
-
 select capturing, "Capture of loop variable '$@'", loop, var.getId()
-

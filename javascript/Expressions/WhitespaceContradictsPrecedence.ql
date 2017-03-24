@@ -19,13 +19,18 @@
  * @problem.severity warning
  * @tags maintainability
  *       correctness
+ * @precision high
  */
 
 import javascript
 
-/* A binary expression of the form x op y, which is itself an operand (say, the left) of
- * another binary expression (x op y) op' y' such that (x op y) op' y' = x op (y op' y),
- * disregarding overflow. */
+/**
+ * A nested associative expression.
+ *
+ * That is, a binary expression of the form `x op y`, which is itself an operand
+ * (say, the left) of another binary expression `(x op y) op' z` such that
+ * `(x op y) op' z = x op (y op' z)`, disregarding overflow.
+ */
 class AssocNestedExpr extends BinaryExpr {
   AssocNestedExpr() {
     exists(BinaryExpr parent, int idx | this = parent.getChildExpr(idx) |
@@ -45,8 +50,10 @@ class AssocNestedExpr extends BinaryExpr {
   }
 }
 
-/* A binary expression nested inside another binary expression where the inner operator ``obviously''
- * binds tighter than the outer one. This is obviously subjective. */
+/**
+ * A binary expression nested inside another binary expression where the relative
+ * precedence of the two operators is unlikely to cause confusion.
+ */
 class HarmlessNestedExpr extends BinaryExpr {
   HarmlessNestedExpr() {
     exists(BinaryExpr parent | this = parent.getAChildExpr() |
@@ -56,20 +63,21 @@ class HarmlessNestedExpr extends BinaryExpr {
   }
 }
 
-// two helper predicates to enforce good join order
+/** Holds if the right operand of `expr` starts on line `line`, at column `col`. */
 predicate startOfBinaryRhs(BinaryExpr expr, int line, int col) {
   exists(Location rloc | rloc = expr.getRightOperand().getLocation() |
     rloc.getStartLine() = line and rloc.getStartColumn() = col
   )
 }
 
+/** Holds if the left operand of `expr` ends on line `line`, at column `col`. */
 predicate endOfBinaryLhs(BinaryExpr expr, int line, int col) {
   exists(Location lloc | lloc = expr.getLeftOperand().getLocation() |
     lloc.getEndLine() = line and lloc.getEndColumn() = col
   )
 }
 
-/* Compute whitespace around the operator. */
+/** Gets the number of whitespace characters around the operator of `expr`. */
 int operatorWS(BinaryExpr expr) {
   exists(int line, int lcol, int rcol |
     endOfBinaryLhs(expr, line, lcol) and
@@ -78,7 +86,11 @@ int operatorWS(BinaryExpr expr) {
   )
 }
 
-/* Find nested binary expressions where the programmer may have made a precedence mistake. */
+/**
+ * Holds if `inner` is an operand of `outer`, and the relative precedence
+ * may not be immediately clear, but is important for the semantics of
+ * the expression (that is, the operators are not associative).
+ */
 predicate interestingNesting(BinaryExpr inner, BinaryExpr outer) {
   inner = outer.getAChildExpr() and
   not inner instanceof AssocNestedExpr and

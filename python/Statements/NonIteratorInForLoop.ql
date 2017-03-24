@@ -15,10 +15,12 @@
  * @name Non-iterator used in for loop
  * @description Using a non-iterable as the object in a 'for' loop causes a TypeError.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
  *       types
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

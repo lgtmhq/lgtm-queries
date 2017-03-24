@@ -16,24 +16,29 @@
  * @description Avoid using unstructured control flow statements (return, continue, or break) inside
  *              a 'finally' block.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
  * @tags reliability
  *       maintainability
  *       language-features
+ * @precision very-high
  */
 
 import javascript
 
+/**
+ * A "jump" statement, that is, `break`, `continue` or `return`.
+ */
 class Jump extends Stmt {
-	Jump() {
-		this instanceof BreakOrContinueStmt or
-		this instanceof ReturnStmt
-	}
-	
-	Stmt getTarget() {
-		result = ((BreakOrContinueStmt)this).getTarget() or
-		result = ((Function)((ReturnStmt)this).getContainer()).getBody()
-	}
+  Jump() {
+    this instanceof BreakOrContinueStmt or
+    this instanceof ReturnStmt
+  }
+
+  /** Gets the target to which this jump refers. */
+  Stmt getTarget() {
+    result = ((BreakOrContinueStmt)this).getTarget() or
+    result = ((Function)((ReturnStmt)this).getContainer()).getBody()
+  }
 }
 
 from TryStmt try, BlockStmt finally, Jump jump

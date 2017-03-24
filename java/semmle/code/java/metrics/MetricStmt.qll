@@ -23,7 +23,7 @@ class MetricStmt extends Stmt {
   /** A nesting depth of this statement. */
   int getANestingDepth() {
     not exists(Stmt s | s.getParent() = this) and result = 0
-    or result = ((MetricStmt)this.getAChild()).getANestingDepth() + 1
+    or result = this.getAChild().(MetricStmt).getANestingDepth() + 1
   }
 
   /** The maximum nesting depth of this statement. */

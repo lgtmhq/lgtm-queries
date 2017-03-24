@@ -11,16 +11,20 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/**
+ * Provides predicates for working with the DOM type hierarchy.
+ */
+
 import semmle.javascript.Externs
 
-/** Identify roots of the DOM type hierarchy. */
+/** Holds if `et` is a root interface of the DOM type hierarchy. */
 predicate isDOMRootType(ExternalType et) {
   exists (string n | n = et.getName() |
     n = "EventTarget" or n = "StyleSheet"
   )
 }
 
-/** Is 'p' declared as a property of a DOM class or interface? */
+/** Holds if `p` is declared as a property of a DOM class or interface. */
 predicate isDOMProperty(string p) {
   exists (ExternalMemberDecl emd | emd.getName() = p |
     isDOMRootType(emd.getDeclaringType().getASupertype*())

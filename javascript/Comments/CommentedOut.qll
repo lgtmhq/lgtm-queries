@@ -11,11 +11,11 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/** Library for recognizing commented-out code. */
+/** Provides predicates for recognizing commented-out code. */
 
 import semmle.javascript.Comments
 
-/** Get a line in comment c that looks like commented-out code? */
+/** Gets a line in comment `c` that looks like commented-out code. */
 private string getALineOfCommentedOutCode(Comment c) {
   result = c.getLine(_) and
   // line ends with ';', '{', or '}', optionally followed by a comma,
@@ -37,7 +37,10 @@ private string getALineOfCommentedOutCode(Comment c) {
    not result.regexpMatch(".*\\$NON-NLS-\\d+\\$.*")))
 }
 
-/** Comments containing code examples should be disregarded. */
+/**
+ * Holds if `c` is a comment containing code examples, and hence should be
+ * disregarded when looking for commented-out code.
+ */
 private predicate containsCodeExample(Comment c) {
   exists (string text | text = c.getText() |
     text.matches("%<pre>%</pre>%") or
@@ -47,7 +50,7 @@ private predicate containsCodeExample(Comment c) {
   )
 }
 
-/** Auxiliary predicate: comment c spans lines start to end in file f. */
+/** Holds if comment `c` spans lines `start` to `end` (inclusive) in file `f`. */
 private predicate commentOnLines(Comment c, File f, int start, int end) {
   exists (Location loc | loc = c.getLocation() |
     f = loc.getFile() and
@@ -57,9 +60,9 @@ private predicate commentOnLines(Comment c, File f, int start, int end) {
 }
 
 /**
- * Return comment that belongs to a run of consecutive comments starting
- * with c, where c itself contains commented-out code, but the comment
- * preceding it (if any) does not.
+ * Gets a comment that belongs to a run of consecutive comments in file `f`
+ * starting with `c`, where `c` itself contains commented-out code, but the comment
+ * preceding it, if any, does not.
  */
 private Comment getCommentInRun(File f, Comment c) {
   exists (int n |
@@ -79,41 +82,42 @@ private Comment getCommentInRun(File f, Comment c) {
 }
 
 /**
- * Return comment that follows c in a run of consecutive comments and
+ * Gets a comment that follows `c` in a run of consecutive comments and
  * does not contain a code example.
  */
 private Comment getRelevantCommentInRun(Comment c) {
   result = getCommentInRun(_, c) and not containsCodeExample(result)
 }
 
-/** How many lines in comment c look like commented-out code? */
+/** Gets the number of lines in comment `c` that look like commented-out code. */
 private int countCommentedOutLines(Comment c) {
   result = count(getALineOfCommentedOutCode(c))
 }
 
-/** How many non-blank lines does c have? */
+/** Gets the number of non-blank lines in comment `c`. */
 private int countNonBlankLines(Comment c) {
-	result = count(string line | line = c.getLine(_) and not line.regexpMatch("\\s*"))
+  result = count(string line | line = c.getLine(_) and not line.regexpMatch("\\s*"))
 }
 
 /**
- * How many lines in comment c and subsequent comments look like
- * commented-out code?
+ * Gets the number of lines in comment `c` and subsequent comments that look like
+ * they contain commented-out code.
  */
 private int countCommentedOutLinesInRun(Comment c) {
-	result = sum(Comment d | d = getRelevantCommentInRun(c) | countCommentedOutLines(d))
+  result = sum(Comment d | d = getRelevantCommentInRun(c) | countCommentedOutLines(d))
 }
 
-/** How many non-blank lines are there in c and subsequent comments? */
+/** Gets the number of non-blank lines in `c` and subsequent comments. */
 private int countNonBlankLinesInRun(Comment c) {
-	result = sum(Comment d | d = getRelevantCommentInRun(c) | countNonBlankLines(d))
+  result = sum(Comment d | d = getRelevantCommentInRun(c) | countNonBlankLines(d))
 }
 
 /**
- * Comments containing a high percentage of lines that look like commented-out code.
+ * A run of consecutive comments containing a high percentage of lines
+ * that look like commented-out code.
  *
- * To avoid false positives, we treat runs of consecutive comments as one comment by
- * means of the getNextComment predicate.
+ * This is represented by the comment that starts the run, with a special
+ * `hasLocationInfo` implementation that assigns it the entire run as its location.
  */
 class CommentedOutCode extends Comment {
   CommentedOutCode(){
@@ -126,25 +130,39 @@ class CommentedOutCode extends Comment {
       2*codeLines > nonBlankLines
     )
   }
-  
+
+  /**
+   * Gets the number of lines in this run of comments
+   * that look like they contain commented-out code.
+   */
   int getNumCodeLines() {
     result = countCommentedOutLinesInRun(this)
   }
-  
+
+  /**
+   * Gets the number of non-blank lines in this run of comments.
+   */
   int getNumNonBlankLines() {
-  	result = countNonBlankLinesInRun(this)
+    result = countNonBlankLinesInRun(this)
   }
-  
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+
+  /**
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   */
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists (Location loc, File f | loc = getLocation() and f = loc.getFile() |
-      path = f.getPath() and
-      sl = loc.getStartLine() and
-      sc = loc.getStartColumn() and
+      filepath = f.getPath() and
+      startline = loc.getStartLine() and
+      startcolumn = loc.getStartColumn() and
       exists(Location last |
         last = getCommentInRun(f, this).getLocation() and
         last.getEndLine() = max(getCommentInRun(f, this).getLocation().getEndLine()) |
-        el = last.getEndLine() and
-        ec = last.getEndColumn()
+        endline = last.getEndLine() and
+        endcolumn = last.getEndColumn()
       )
     )
   }

@@ -76,6 +76,26 @@ CompareOp le() { result = 4 }
 CompareOp gt() { result = 5 }
 CompareOp ge() { result = 6 }
 
+/* Workaround precision limits in floating point numbers */
+bindingset[x] private predicate ok_magnitude(float x) {
+    x > -9007199254740992.0 // -2**53
+    and
+    x < 9007199254740992.0 // 2**53
+}
+
+bindingset[x,y] private float add(float x, float y) {
+    ok_magnitude(x) and
+    ok_magnitude(y) and
+    ok_magnitude(result) and
+    result = x + y
+}
+
+bindingset[x,y] private float sub(float x, float y) {
+    ok_magnitude(x) and
+    ok_magnitude(y) and
+    ok_magnitude(result) and
+    result = x - y
+}
 
 /** Normalise equality cmp into the form `left op right + k`. */
 private predicate test(ControlFlowNode cmp, ControlFlowNode left, CompareOp op, ControlFlowNode right, float k) {
@@ -100,7 +120,7 @@ private predicate simple_test(CompareNode cmp, ControlFlowNode l, CompareOp cmpo
 private predicate add_test_left(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
   exists(BinaryExprNode lhs, float c, float x, Num n |
         lhs.getNode().getOp() instanceof Add and
-        test(cmp, lhs, op, r, c) and x = n.getN().toFloat() and k = c - x |
+        test(cmp, lhs, op, r, c) and x = n.getN().toFloat() and k = sub(c, x) |
         l = lhs.getLeft() and n = lhs.getRight().getNode()
         or
         l = lhs.getRight() and n = lhs.getLeft().getNode()
@@ -110,7 +130,7 @@ private predicate add_test_left(CompareNode cmp, ControlFlowNode l, CompareOp op
 private predicate add_test_right(CompareNode cmp, ControlFlowNode l, CompareOp op, ControlFlowNode r, float k) {
     exists(BinaryExprNode rhs, float c, float x, Num n |
         rhs.getNode().getOp() instanceof Add and
-        test(cmp, l, op, rhs, c) and x = n.getN().toFloat() and k = c + x |
+        test(cmp, l, op, rhs, c) and x = n.getN().toFloat() and k = add(c, x) |
         r = rhs.getLeft() and n = rhs.getRight().getNode()
         or
         r = rhs.getRight() and n = rhs.getLeft().getNode()
@@ -131,7 +151,7 @@ private predicate subtract_test_left(CompareNode cmp, ControlFlowNode l, Compare
         test(cmp, lhs, op, r, c) and
         l = lhs.getLeft() and n = lhs.getRight().getNode() and
         x = n.getN().toFloat() |
-        k = c + x
+        k = add(c, x)
     )
 }
 
@@ -141,7 +161,7 @@ private predicate subtract_test_right(CompareNode cmp, ControlFlowNode l, Compar
         test(cmp, l, op, rhs, c) and
         r = rhs.getRight() and n = rhs.getLeft().getNode() and
         x = n.getN().toFloat() |
-        k = c - x
+        k = sub(c, x)
     )
 }
 
@@ -179,7 +199,7 @@ class Comparison extends ControlFlowNode {
         exists(ControlFlowNode r, float x, float c |
             test(this, l, op, r, c) |
             x = r.getNode().(Num).getN().toFloat() and
-            k = c + x
+            k = add(c, x)
         )
     }
 
@@ -245,78 +265,80 @@ class Comparison extends ControlFlowNode {
      */
     predicate impliesThat(boolean thisIsTrue, Comparison that, boolean thatIsTrue) {
         /* `v == k` => `v == k` */
-        exists(SsaVariable v, float k |
-            this.equivalentToEq(thisIsTrue, v, k) and
-            that.equivalentToEq(thatIsTrue, v, k)
+        exists(SsaVariable v, float k1, float k2 |
+            this.equivalentToEq(thisIsTrue, v, k1) and
+            that.equivalentToEq(thatIsTrue, v, k2) and
+            eq(k1, k2)
             or
-            this.equivalentToNotEq(thisIsTrue, v, k) and
-            that.equivalentToNotEq(thatIsTrue, v, k)
+            this.equivalentToNotEq(thisIsTrue, v, k1) and
+            that.equivalentToNotEq(thatIsTrue, v, k2) and
+            eq(k1, k2)
         )
         or
         exists(SsaVariable v, float k1, float k2 |
             /* `v < k1` => `v != k2` iff k1 <= k2 */
             this.equivalentToLt(thisIsTrue, v, k1) and
             that.equivalentToNotEq(thatIsTrue, v, k2) and
-            k1 <= k2
+            le(k1, k2)
             or
             /* `v <= k1` => `v != k2` iff k1 < k2 */
             this.equivalentToLtEq(thisIsTrue, v, k1) and
             that.equivalentToNotEq(thatIsTrue, v, k2) and
-            k1 < k2
+            lt(k1, k2)
             or
             /* `v > k1` => `v != k2` iff k1 >= k2 */
             this.equivalentToGt(thisIsTrue, v, k1) and
             that.equivalentToNotEq(thatIsTrue, v, k2) and
-            k1 >= k2
+            ge(k1, k2)
             or
             /* `v >= k1` => `v != k2` iff k1 > k2 */
             this.equivalentToGtEq(thisIsTrue, v, k1) and
             that.equivalentToNotEq(thatIsTrue, v, k2) and
-            k1 > k2
+            gt(k1, k2)
         )
         or
         exists(SsaVariable v, float k1, float k2 |
             /* `v < k1` => `v < k2` iff k1 <= k2 */
             this.equivalentToLt(thisIsTrue, v, k1) and
             that.equivalentToLt(thatIsTrue, v, k2) and
-            k1 <= k2
+            le(k1, k2)
             or
             /* `v < k1` => `v <= k2` iff k1 <= k2 */
             this.equivalentToLt(thisIsTrue, v, k1) and
             that.equivalentToLtEq(thatIsTrue, v, k2) and
-            k1 <= k2
+            le(k1, k2)
             or
             /* `v <= k1` => `v < k2` iff k1 < k2 */
             this.equivalentToLtEq(thisIsTrue, v, k1) and
             that.equivalentToLt(thatIsTrue, v, k2) and
-            k1 < k2
+            lt(k1, k2)
             or
             /* `v <= k1` => `v <= k2` iff k1 <= k2 */
             this.equivalentToLtEq(thisIsTrue, v, k1) and
             that.equivalentToLtEq(thatIsTrue, v, k2) and
-            k1 <= k2
+            le(k1, k2)
         )
         or
         exists(SsaVariable v, float k1, float k2 |
             /* `v > k1` => `v >= k2` iff k1 >= k2 */
             this.equivalentToGt(thisIsTrue, v, k1) and
             that.equivalentToGt(thatIsTrue, v, k2) and
-            k1 >= k2
+            ge(k1, k2)
             or
             /* `v > k1` => `v >= k2` iff k1 >= k2 */
             this.equivalentToGt(thisIsTrue, v, k1) and
             that.equivalentToGtEq(thatIsTrue, v, k2) and
-            k1 >= k2
+            ge(k1, k2)
              or
             /* `v >= k1` => `v > k2` iff k1 > k2 */
             this.equivalentToGtEq(thisIsTrue, v, k1) and
             that.equivalentToGt(thatIsTrue, v, k2) and
-            k1 > k2
+            gt(k1, k2)
             or
             /* `v >= k1` => `v >= k2` iff k1 >= k2 */
             this.equivalentToGtEq(thisIsTrue, v, k1) and
             that.equivalentToGtEq(thatIsTrue, v, k2) and
-            k1 >= k2
+            ge(k1, k2)
         )
         or
         exists(SsaVariable v1, SsaVariable v2, float k |
@@ -332,70 +354,104 @@ class Comparison extends ControlFlowNode {
             /* `v1 < v2 + k1` => `v1 != v2 + k2` iff k1 <= k2 */
             this.equivalentToLt(thisIsTrue, v1, v2, k1) and
             that.equivalentToNotEq(thatIsTrue, v1, v2, k2) and
-            k1 <= k2
+            le(k1, k2)
             or
             /* `v1 <= v2 + k1` => `v1 != v2 + k2` iff k1 < k2 */
             this.equivalentToLtEq(thisIsTrue, v1, v2, k1) and
             that.equivalentToNotEq(thatIsTrue, v1, v2, k2) and
-            k1 < k2
+            lt(k1, k2)
             or
             /* `v1 > v2 + k1` => `v1 != v2 + k2` iff k1 >= k2 */
             this.equivalentToGt(thisIsTrue, v1, v2, k1) and
             that.equivalentToNotEq(thatIsTrue, v1, v2, k2) and
-            k1 >= k2
+            ge(k1, k2)
             or
             /* `v1 >= v2 + k1` => `v1 != v2 + k2` iff k1 > k2 */
             this.equivalentToGtEq(thisIsTrue, v1, v2, k1) and
             that.equivalentToNotEq(thatIsTrue, v1, v2, k2) and
-            k1 > k2
+            gt(k1, k2)
         )
         or
         exists(SsaVariable v1, SsaVariable v2, float k1, float k2 |
             /* `v1 <= v2 + k1` => `v1 <= v2 + k2` iff k1 <= k2 */
             this.equivalentToLtEq(thisIsTrue, v1, v2, k1) and
             that.equivalentToLtEq(thatIsTrue, v1, v2, k2) and
-            k1 <= k2
+            le(k1, k2)
             or
             /* `v1 < v2 + k1` => `v1 <= v2 + k2` iff k1 <= k2 */
             this.equivalentToLt(thisIsTrue, v1, v2, k1) and
             that.equivalentToLtEq(thatIsTrue, v1, v2, k2) and
-            k1 <= k2
+            le(k1, k2)
             or
             /* `v1 <= v2 + k1` => `v1 < v2 + k2` iff k1 < k2 */
             this.equivalentToLtEq(thisIsTrue, v1, v2, k1) and
             that.equivalentToLt(thatIsTrue, v1, v2, k2) and
-            k1 < k2
+            lt(k1, k2)
             or
             /* `v1 <= v2 + k1` => `v1 <= v2 + k2` iff k1 <= k2 */
             this.equivalentToLtEq(thisIsTrue, v1, v2, k1) and
             that.equivalentToLtEq(thatIsTrue, v1, v2, k2) and
-            k1 <= k2
+            le(k1, k2)
         )
         or
         exists(SsaVariable v1, SsaVariable v2, float k1, float k2 |
             /* `v1 > v2 + k1` => `v1 > v2 + k2` iff k1 >= k2 */
             this.equivalentToGt(thisIsTrue, v1, v2, k1) and
             that.equivalentToGt(thatIsTrue, v1, v2, k2) and
-            k1 >= k2
+            ge(k1, k2)
             or
             /* `v1 > v2 + k1` => `v2 >= v2 + k2` iff k1 >= k2 */
             this.equivalentToGt(thisIsTrue, v1, v2, k1) and
             that.equivalentToGtEq(thatIsTrue, v1, v2, k2) and
-            k1 >= k2
+            ge(k1, k2)
             or
             /* `v1 >= v2 + k1` => `v2 > v2 + k2` iff k1 > k2 */
             this.equivalentToGtEq(thisIsTrue, v1, v2, k1) and
             that.equivalentToGt(thatIsTrue, v1, v2, k2) and
-            k1 > k2
+            gt(k1, k2)
             or
             /* `v1 >= v2 + k1` => `v2 >= v2 + k2` iff k1 >= k2 */
             this.equivalentToGtEq(thisIsTrue, v1, v2, k1) and
             that.equivalentToGtEq(thatIsTrue, v1, v2, k2) and
-            k1 >= k2
+            ge(k1, k2)
         )
     }
 
 }
+
+/* Work around differences in floating-point comparisons between Python and QL */
+private predicate is_zero(float x) {
+    x = 0.0
+    or
+    x = -0.0
+}
+
+bindingset[x,y] private predicate lt(float x, float y) {
+    if is_zero(x) then
+        y > 0
+    else
+        x < y
+}
+
+bindingset[x,y] private predicate eq(float x, float y) {
+    if is_zero(x) then
+        is_zero(y)
+    else
+        x = y
+}
+
+bindingset[x,y] private predicate gt(float x, float y) {
+    lt(y, x)
+}
+
+bindingset[x,y] private predicate le(float x, float y) {
+    lt(x, y) or eq(x, y)
+}
+
+bindingset[x,y] private predicate ge(float x, float y) {
+    lt(y, x) or eq(x, y)
+}
+
 
 /** A basic block which terminates in a condition, splitting the subsequent control flow, 
  * in which the condition is an instance of `Comparison`

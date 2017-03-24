@@ -19,11 +19,21 @@ import python
 class Scope extends Scope_ {
 
     Module getEnclosingModule() {
-        result = this.getScope().getEnclosingModule()
+        result = this.getEnclosingScope().getEnclosingModule()
+    }
+
+    /** This method will be deprecated in the next release. Please use `getEnclosingScope()` instead.
+     * The reason for this is to avoid confusion around use of `x.getScope+()` where `x` might be an
+     * `AstNode` or a `Variable`. Forcing the users to write `x.getScope().getEnclosingScope*()` ensures that
+     * the apparent semantics and the actual semantics coincide.
+     * [ Gets the scope enclosing this scope (modules have no enclosing scope) ]
+     */
+    Scope getScope() {
+        none()
     }
 
     /** Gets the scope enclosing this scope (modules have no enclosing scope) */
-    Scope getScope() {
+    Scope getEnclosingScope() {
         none()
     }
 
@@ -86,27 +96,27 @@ class Scope extends Scope_ {
 
     /** Whether this a top-level (non-nested) class or function */
     predicate isTopLevel() {
-        this.getEnclosingModule() = this.getScope()
+        this.getEnclosingModule() = this.getEnclosingScope()
     }
 
     /** Whether this scope is deemed to be public */
     predicate isPublic() {
         /* Not inside a function */
-        not this.getScope() instanceof Function and
+        not this.getEnclosingScope() instanceof Function and
         /* Not implicitly private */
         this.getName().charAt(0) != "_" and
         (
             this instanceof Module 
             or
             exists(Module m | 
-                m = this.getScope() and m.isPublic() |
+                m = this.getEnclosingScope() and m.isPublic() |
                 /* If the module has an __all__, is this in it */
                 not exists(m.getAnExport())
                 or
                 m.getAnExport() = this.getName()
             )
             or
-            exists(Class c | c = this.getScope() |
+            exists(Class c | c = this.getEnclosingScope() |
                 this instanceof Function and
                 c.isPublic()
             )
@@ -116,15 +126,24 @@ class Scope extends Scope_ {
     predicate contains(Stmt s) {
         this.getBody().contains(s)
         or
-        exists(Scope inner | inner.getScope() = this | inner.contains(s))
+        exists(Scope inner | inner.getEnclosingScope() = this | inner.contains(s))
     }
-    
-    /** Whether this scope precedes the other.
+
+    /** Whether this scope (immediately) precedes the other.
      * That is, is it impossible for other to execute without
-     * this having executed at least once.
+     * this having executed at least once and of those scopes
+     * which must precede this scope, `other` is the most immediate.
      */
     predicate precedes(Scope other) {
-        final_scope_precedes(this, other)
+        final_scope_precedes(this, other, _)
+    }
+
+    /** Gets the evaluation scope for code in this (lexical) scope.
+     * This is usually the scope itself, but may be an enclosing scope.
+     * Notably, for list comprehensions in Python 2.
+     */
+    Scope getEvaluatingScope() {
+        result = this
     }
 
 }

@@ -16,10 +16,12 @@
  * @description Using a 'try-finally' block to ensure only that a resource is closed makes code more
  *              difficult to read.
  * @kind problem
- * @problem.severity recommendation
  * @tags maintainability
  *       readability
  *       convention
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

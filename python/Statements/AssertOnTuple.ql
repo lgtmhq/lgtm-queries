@@ -15,9 +15,11 @@
  * @name Asserting a tuple
  * @description Using an assert statement to test a tuple provides no validity checking.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       maintainability
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

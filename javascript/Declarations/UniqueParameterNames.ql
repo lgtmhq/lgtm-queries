@@ -13,23 +13,29 @@
 
 /**
  * @name Duplicate parameter names
- * @description If a function has two parameters with the same name, the second parameter shadows the first one,
- *              which makes the code hard to understand and error-prone.
+ * @description If a function has two parameters with the same name, the second parameter
+ *              shadows the first one, which makes the code hard to understand and error-prone.
  * @kind problem
  * @problem.severity error
  * @tags reliability
  *       correctness
+ * @precision very-high
  */
 
 import javascript
 
-/** The `i`-th parameter of `f`, viz. `p`, binds a variable `name`. */
+/**
+ * Holds if `p`, which is the `i`th parameter of `f`, binds a variable `name`.
+ */
 predicate parmBinds(Function f, int i, Parameter p, string name) {
   p = f.getParameter(i) and
   p.getAVariable().getName() = name
 }
 
-/** Parameter `p` is a dummy parameter: its name is `_`, and it is never accessed. */
+/**
+ * Holds if parameter `p` is a dummy parameter, that is, its name is `_`,
+ * and it is never accessed.
+ */
 predicate isDummy(SimpleParameter p) {
   p.getName() = "_" and
   not exists(p.getVariable().getAnAccess())

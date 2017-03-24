@@ -52,7 +52,7 @@ class TearDownMethod extends Method {
    TearDownMethod() {
       this.hasName("tearDown") and
       this.hasNoParameters() and
-      this.getType().hasName("void") and
+      this.getReturnType().hasName("void") and
       exists(Method m | m.getDeclaringType() instanceof TypeJUnitTestCase |
         this.overrides*(m)
       )
@@ -78,7 +78,7 @@ class JUnit3TestMethod extends Method {
     this.isPublic() and
     this.getDeclaringType() instanceof JUnit38TestClass and
     this.getName().matches("test%") and
-    this.getType().hasName("void")  and
+    this.getReturnType().hasName("void")  and
     this.hasNoParameters()
   }
 }
@@ -95,7 +95,7 @@ class JUnit3TestSuite extends Method {
       this.getDeclaringType().getAnAncestor() instanceof TypeJUnitTestSuite
     ) and
     this.hasName("suite") and
-    this.getType() instanceof TypeJUnitTest and
+    this.getReturnType() instanceof TypeJUnitTest and
     this.hasNoParameters()
   }
 }

@@ -13,18 +13,19 @@
 
 /**
  * @name Missing variable declaration
- * @description If a variable is not declared as a local variable, it becomes a global variable by default, which
- *              may be unintentional and could lead to unexpected behavior.
+ * @description If a variable is not declared as a local variable, it becomes a global variable
+ *              by default, which may be unintentional and could lead to unexpected behavior.
  * @kind problem
  * @problem.severity error
  * @tags reliability
  *       maintainability
+ * @precision high
  */
 
 import javascript
 
 /**
- * Find undeclared globals in `f`, that is, global variables that are accessed in `f`,
+ * Gets an undeclared global in `f`, that is, a global variable that is accessed in `f`,
  * but not declared in the same toplevel as `f`.
  */
 GlobalVariable undeclaredGlobalIn(Function f) {
@@ -33,28 +34,28 @@ GlobalVariable undeclaredGlobalIn(Function f) {
 }
 
 /**
- * Find accidental globals in `f`, that is, undeclared globals in `f` that are not
- * live at the entry of `f` (meaning the first access to them is always a write).
+ * Gets an accidental global in `f`, that is, an undeclared global in `f` that is not
+ * live at the entry of `f`, meaning that it is always written before being read the
+ * first time.
  */
 GlobalVariable accidentalGlobalIn(Function f) {
   result = undeclaredGlobalIn(f) and
-  not f.getEntryBB().isLiveAtEntry(result)
+  not f.getStartBB().isLiveAtEntry(result)
 }
 
 /**
- * Find accidental globals in `f` that are read at least once in reachable
- * code.
+ * Gets an accidental global in `f` that is read at least once in reachable code.
  *
  * This prevents duplication of results between this query and 'Useless assignment
  * to global variable'.
  */
 GlobalVariable candidateVariable(Function f) {
   result = accidentalGlobalIn(f) and
-  f.getEntryBB().getASuccessor*().useAt(_, result, _)
+  f.getStartBB().getASuccessor*().useAt(_, result, _)
 }
 
 /**
- * Get an access to `v` in function `f` at line `line` and column `column`.
+ * Gets an access to `v` in function `f` at line `line` and column `column`.
  */
 GlobalVarAccess getAccessAt(GlobalVariable v, Function f, int line, int column) {
   result.getEnclosingFunction() = f and
@@ -64,9 +65,9 @@ GlobalVarAccess getAccessAt(GlobalVariable v, Function f, int line, int column) 
     column = loc.getStartColumn()
   )
 }
- 
+
 /**
- * Get the (lexically) first access to variable `v` in function `f`.
+ * Gets the (lexically) first access to variable `v` in function `f`.
  */
 GlobalVarAccess getFirstAccessIn(GlobalVariable v, Function f) {
   exists (int l, int c |

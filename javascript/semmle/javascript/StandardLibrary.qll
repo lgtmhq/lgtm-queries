@@ -11,10 +11,12 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for working with standard library objects. */
+
 import javascript
 
 /**
- * A call to Object.defineProperty.
+ * A call to `Object.defineProperty`.
  */
 class CallToObjectDefineProperty extends CallExpr {
   CallToObjectDefineProperty() {
@@ -26,24 +28,32 @@ class CallToObjectDefineProperty extends CallExpr {
     )
   }
 
-  /**
-   * The object on which the property is defined.
-   */
+  /** Gets the expression denoting the object on which the property is defined. */
   Expr getBaseObject() {
     result = getArgument(0)
   }
 
-  /**
-   * The name of the property being defined.
-   */
+  /** Gets the name of the property being defined, if it can be determined. */
   string getPropertyName() {
     result = getArgument(1).(StringLiteral).getValue()
   }
 
-  /**
-   * The descriptor of the property being defined.
-   */
+  /** Gets the expression denoting the descriptor of the property being defined. */
   Expr getPropertyDescriptor() {
     result = getArgument(2)
+  }
+}
+
+/**
+ * A direct call to `eval`.
+ */
+class DirectEval extends CallExpr {
+  DirectEval() {
+    getCallee().(GlobalVarAccess).getName() = "eval"
+  }
+
+  /** Holds if this call could affect the value of `lv`. */
+  predicate mayAffect(LocalVariable lv) {
+    getParent+() = lv.getScope().getScopeElement()
   }
 }

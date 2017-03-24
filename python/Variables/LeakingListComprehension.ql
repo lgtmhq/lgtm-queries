@@ -15,32 +15,26 @@
  * @name List comprehension variable used in enclosing scope
  * @description Using the iteration variable of a list comprehension in the enclosing scope will result in different behavior between Python 2 and 3 and is confusing.
  * @kind problem
- * @problem.severity error
  * @tags portability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python
+import Definition
 
-SsaVariable py2_list_comp_variable(ListComp l) {
-    result.getDefinition().getNode() = l.getAGenerator().getTarget()
-}
-
-
-from ListComp l, SsaVariable v, Name use
+from ListComprehensionDeclaration l, Name use, Name defn
 where
-  v = py2_list_comp_variable(l) and
-  exists(SsaVariable uv |
-      uv.getAUse().getNode() = use |
-      uv.getAnUltimateDefinition() = v
-  ) and
-  not l.contains(use)
-  and
-  not use.deletes(_)
-select use, v.getId() + " may have a different value in Python 3, as the $@ will not be in scope.", v, "list comprehension variable" 
+  use = l.getALeakedVariableUse() and
+  defn = l.getDefinition() and
+  l.getAFlowNode().strictlyReaches(use.getAFlowNode()) and
+  not l.contains(use) and
+  not use.deletes(_) and
+  not exists(SsaVariable v |
+      v.getAUse() = use.getAFlowNode() and
+      not v.getDefinition().strictlyDominates(l.getAFlowNode())
+  )
 
-
-
-
-
-
+select use, use.getId() + " may have a different value in Python 3, as the $@ will not be in scope.", defn, "list comprehension variable" 

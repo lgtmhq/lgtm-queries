@@ -15,10 +15,12 @@
  * @name First argument to super() is not enclosing class
  * @description Calling super with something other than the enclosing class may cause incorrect object initialization.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       maintainability
  *       convention
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

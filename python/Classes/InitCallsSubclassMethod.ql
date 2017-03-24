@@ -16,9 +16,11 @@
  * @description Calling a method from __init__ that is overridden by a subclass may result in a partially
  *              initialized instance being observed.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision high
  */
 
 import python

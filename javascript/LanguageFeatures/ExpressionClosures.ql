@@ -20,10 +20,15 @@
  * @tags portability
  *       maintainability
  *       language-features
+ * @precision very-high
  */
 
 import javascript
 
+/**
+ * Holds if `nd` is a use of deprecated language feature `type`, and `replacement`
+ * is the recommended replacement.
+ */
 predicate deprecated_feature(ASTNode nd, string type, string replacement) {
   exists (FunctionExpr fe | fe = nd and fe.getBody() instanceof Expr |
     type = "expression closures" and replacement = "arrow expressions"

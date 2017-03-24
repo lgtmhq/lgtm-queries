@@ -11,13 +11,141 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes and predicates for working with variable definitions and uses. */
+
 import Expr
 import Stmt
+private import semmle.javascript.SSA
 
 /**
- * A CFGNode that defines (i.e., initializes or updates) a variable.
+ * Holds if `def` is a CFG node that assigns the value of `rhs` to `lhs`.
  *
- * The following program elements perform variable updates:
+ * This predicate covers four kinds of definitions:
+ *
+ * <table border="1">
+ * <tr><th>Example<th><code>def</code><th><code>lhs</code><th><code>rhs</code></tr>
+ * <tr><td><code>x = y</code><td><code>x = y</code><td><code>x</code><td><code>y</code></tr>
+ * <tr><td><code>var a = b</code><td><code>var a = b</code><td><code>a</code><td><code>b</code></tr>
+ * <tr><td><code>function f { ... }</code><td><code>f</code><td><code>f</code><td><code>function f { ... }</code></tr>
+ * <tr><td><code>class C { ... }</code><td><code>C</code><td><code>C</code><td><code>class C { ... }</code></tr>
+ * </table>
+ *
+ * Note that `def` and `lhs` are not in general the same: the latter
+ * represents the point where `lhs` is evaluated to an assignable reference,
+ * the former the point where the value of `rhs` is actually assigned
+ * to that reference.
+ */
+private predicate defn(ControlFlowNode def, Expr lhs, DataFlowNode rhs) {
+  exists (AssignExpr assgn | def = assgn |
+    lhs = assgn.getTarget() and rhs = assgn.getRhs()
+  ) or
+  exists (VariableDeclarator vd | def = vd |
+    lhs = vd.getBindingPattern() and rhs = vd.getInit()
+  ) or
+  exists (Function f | def = f.getId() |
+    lhs = def and rhs = f
+  ) or
+  exists (ClassDeclStmt c | def = c.getIdentifier() |
+    lhs = def and rhs = c
+  )
+}
+
+/**
+ * Holds if `def` is a CFG node that assigns to `lhs`.
+ *
+ * This predicate extends the three-argument version of `defn` to also cover definitions
+ * where there is no explicit right hand side:
+ *
+ * <table border="1">
+ * <tr><th>Example<th><code>def</code><th><code>lhs</code></tr>
+ * <tr><td><code>x += y</code><td><code>x += y</code><td><code>x</code></tr>
+ * <tr><td><code>++z.q</code><td><code>++z.q</code><td><code>z.q</code></tr>
+ * <tr><td><code>import { a as b } from 'm'</code><td><code>a as b</code><td><code>b</code></tr>
+ * <tr><td><code>for (var p in o) ...</code><td><code>var p</code><td><code>p</code></tr>
+ * </table>
+ *
+ * Additionally, parameters are also considered definitions, which are their own `lhs`.
+ */
+private predicate defn(ControlFlowNode def, Expr lhs) {
+  defn(def, lhs, _) or
+  lhs = def.(CompoundAssignExpr).getTarget() or
+  lhs = def.(UpdateExpr).getOperand().stripParens() or
+  lhs = def.(ImportSpecifier).getLocal() or
+  exists (EnhancedForLoop efl | def = efl.getIteratorExpr() |
+    lhs = def.(Expr).stripParens() or
+    lhs = def.(VariableDeclarator).getBindingPattern()
+  ) or
+  lhs = def and (
+    def instanceof Parameter or
+    def = any(ComprehensionBlock cb).getIterator()
+  )
+}
+
+/**
+ * Holds if `l` is one of the lvalues in the assignment `def`, or
+ * a destructuring pattern that contains some of the lvalues.
+ *
+ * For example, if `def` is `[{ x: y }] = e`, then `l` can be any
+ * of `y`, `{ x: y }` and `[{ x: y }]`.
+ */
+private predicate lvalAux(Expr l, ControlFlowNode def) {
+  defn(def, l)
+  or
+  exists (ArrayPattern ap | lvalAux(ap, def) | l = ap.getAnElement().stripParens())
+  or
+  exists (ObjectPattern op | lvalAux(op, def) |
+    l = op.getAPropertyPattern().getValuePattern().stripParens()
+  )
+}
+
+/**
+ * An expression that can be evaluated to a reference, that is,
+ * a variable reference or a property access.
+ */
+class RefExpr extends Expr {
+  RefExpr() {
+    this instanceof VarRef or
+    this instanceof PropAccess
+  }
+}
+
+/**
+ * A variable reference or property access that is written to.
+ *
+ * For instance, in the assignment `x.p = x.q`, `x.p` is written to
+ * and `x.q` is not; in the expression `++i`, `i` is written to
+ * (and also read from).
+ */
+class LValue extends RefExpr {
+  LValue() { lvalAux(this, _) }
+
+  /** Gets the definition in which this lvalue occurs. */
+  ControlFlowNode getDefNode() { lvalAux(this, result) }
+
+  /** Gets the source of the assignment. */
+  DataFlowNode getRhs() { defn(_, this, result) }
+}
+
+/**
+ * A variable reference or property access that is read from.
+ *
+ * For instance, in the assignment `x.p = x.q`, `x.q` is read from
+ * and `x.p` is not; in the expression `++i`, `i` is read from
+ * (and also written to).
+ */
+class RValue extends RefExpr {
+  RValue() {
+    not this instanceof LValue or
+    // in `x++` and `x += 1`, `x` is both RValue and LValue
+    this = any(CompoundAssignExpr a).getTarget() or
+    this = any(UpdateExpr u).getOperand().stripParens()
+  }
+}
+
+/**
+ * A ControlFlowNode that defines (that is, initializes or updates) variables or properties.
+ *
+ * The following program elements are definitions:
  *
  * - assignment expressions (`x = 42`)
  * - update expressions (`++x`)
@@ -27,82 +155,69 @@ import Stmt
  * - named functions (`function x() { ... }`)
  * - named classes (`class x { ... }`)
  * - import specifiers (`import { x } from 'm'`)
+ *
+ * Note that due to destructuring, a single `VarDef` may define multiple
+ * variables and/or properties; for example, `{ x, y: z.p } = e` defines variable
+ * `x` as well as property `p` of `z`.
  */
-class VarDef extends CFGNode {
+class VarDef extends ControlFlowNode {
   VarDef() {
-    // an assignment (simple or compound)
-    this instanceof Assignment or
-    // an increment/decrement expression
-    this instanceof UpdateExpr or
-    // a variable declaration with an initializer
-    exists (this.(VariableDeclarator).getInit()) or
-    // the iterator of a for-in/for-of statement
-    exists (EnhancedForLoop fl | this = fl.getIteratorExpr()) or
-    // a parameter of a function or catch clause
-    this instanceof Parameter or
-    // a function identifier
-    exists (Function fn | this = fn.getId()) or
-    // a class identifier
-    exists (ClassDefinition cd | this = cd.getIdentifier()) or
-    // a comprehension block
-    exists (ComprehensionBlock cb | this = cb.getIterator()) or
-    // an import
-    this instanceof ImportSpecifier
+    defn(this, _)
   }
 
   /**
-   * Get the target of this definition, which is either a simple variable
-   * reference, or a more complex destructuring pattern.
+   * Gets the target of this definition, which is either a simple variable
+   * reference, a destructuring pattern, or a property access.
    */
-  BindingPattern getTarget() {
-    result = this.(Assignment).getTarget() or
-    result = this.(UpdateExpr).getOperand().stripParens() or
-    result = this.(VariableDeclarator).getBindingPattern() or
-    result = this.(ImportSpecifier).getLocal() or
-    result = this
+  Expr getTarget() {
+    defn(this, result)
   }
 
-  /** Get a variable defined by this node. */
+  /** Gets a variable defined by this node, if any. */
   Variable getAVariable() {
-    result = getTarget().getAVariable()
+    result = getTarget().(BindingPattern).getAVariable()
   }
 
   /**
-   * If this definition assigns an expression to a single variable,
-   * return that expression.
+   * Gets the source of this definition, that is, the data flow node representing
+   * the value that this definition assigns to its target.
+   *
+   * This predicate is not defined for `VarDef`s where the source is implicit,
+   * such as `for-in` loops or parameters.
    */
-  Expr getSource() {
-    exists (VariableDeclarator vd | vd = this and vd.getBindingPattern() instanceof VarDecl |
-      result = vd.getInit()
-    ) or
-    exists (FunctionExpr fe | fe.getId() = this | result = fe) or
-    exists (ClassExpr ce | ce.getIdentifier() = this | result = ce) or
-    exists (AssignExpr assgn | this = assgn and assgn.getTarget() instanceof VarAccess |
-      result = assgn.getRhs()
+  DataFlowNode getSource() {
+    defn(this, _, result)
+  }
+
+  /**
+   * Holds if this definition of `v` is overwritten by another definition, that is,
+   * another definition of `v` is reachable from it in the CFG.
+   */
+  predicate isOverwritten(Variable v) {
+    exists (BasicBlock bb, int i | bb.defAt(i, v, this) |
+      exists (int j | bb.defAt(j, v, _) and j > i) or
+      bb.getASuccessor+().defAt(_, v, _)
     )
   }
 }
 
 /**
- * A CFGNode that uses a variable.
+ * A ControlFlowNode that uses (that is, reads from) a single variable.
  *
  * Some variable definitions are also uses, notably the operands of update expressions.
  */
-class VarUse extends CFGNode {
+class VarUse extends ControlFlowNode, @varaccess {
   VarUse() {
-    this instanceof VarAccess and
-    not exists (AssignExpr assgn | assgn.getTarget() = this) and
-    not exists (EnhancedForLoop ef | ef.getIterator() = this) and
-    not exists (DestructuringPattern p | this = p.getABindingVarRef())
+    this instanceof RValue
   }
 
-  /** Get the variable this use refers to. */
+  /** Gets the variable this use refers to. */
   Variable getVariable() {
     result = this.(VarAccess).getVariable()
   }
 
   /**
-   * A definition that may reach this use.
+   * Gets a definition that may reach this use.
    *
    * For global variables and variables that are captured in a closure, each definition is
    * considered to reach each use.
@@ -114,23 +229,25 @@ class VarUse extends CFGNode {
       result.getAVariable() = v
     )
   }
-}
 
-private predicate implicitDef(BasicBlock bb, Variable v, VarDef d) {
-  v = d.getAVariable() and
-  exists (StmtContainer sc | bb = sc.getEntry() |
-    d.(ImportSpecifier).getContainer() = sc 
-  )
+  /**
+   * Gets the unique SSA definition this use refers to.
+   *
+   * This predicate is only defined for uses of purely local variables.
+   */
+  SSADefinition getSSADef() {
+    result.getAUse() = this
+  }
 }
 
 /**
- * Does the definition of `v` in `def` reach `use` along some control flow path
- * without crossing another definition of `v`? 
+ * Holds if the definition of `v` in `def` reaches `use` along some control flow path
+ * without crossing another definition of `v`.
  */
 predicate definitionReaches(Variable v, VarDef def, VarUse use) {
   v = use.getVariable() and
   exists (BasicBlock bb, int i, int next |
-    next = nextDefAfter(bb, v, i, def) or implicitDef(bb, v, def) and i = -1 and next = bb.length() |
+    next = nextDefAfter(bb, v, i, def) |
     exists (int j | j in [i+1..next-1] | bb.useAt(j, v, use)) or
     exists (BasicBlock succ | succ = bb.getASuccessor() |
       succ.isLiveAtEntry(v, use) and
@@ -140,23 +257,19 @@ predicate definitionReaches(Variable v, VarDef def, VarUse use) {
 }
 
 /**
- * Alternative implementation of `definitionReaches` for purely local variables.
+ * Holds if the definition of local variable `v` in `def` reaches `use` along some control flow path
+ * without crossing another definition of `v`.
  */
-predicate localDefinitionReaches(PurelyLocalVariable v, VarDef def, VarUse use) {
-  v = use.getVariable() and
-  exists (BasicBlock bb, int i, int next |
-    next = nextDefAfter(bb, v, i, def) or implicitDef(bb, v, def) and i = -1 and next = bb.length() |
-    exists (int j | j in [i+1..next-1] | bb.useAt(j, v, use)) or
-    exists (BasicBlock succ | succ = bb.getASuccessor() |
-      succ.localIsLiveAtEntry(v, use) and
-      next = bb.length()
-    )
+predicate localDefinitionReaches(LocalVariable v, VarDef def, VarUse use) {
+  exists (SSAExplicitDefinition ssa |
+    ssa.defines(def, v) and
+    ssa = use.getSSADef().getAnUltimateDefinition()
   )
 }
 
 /**
- * For a definition `d` of `v` at index `i` in `bb`, get the next index in `bb` after
- * `i` at which the same variable is defined, or `bb.length()` if there is none.
+ * Holds if `d` is a definition of `v` at index `i` in `bb`, and the result is the next index
+ * in `bb` after `i` at which the same variable is defined, or `bb.length()` if there is none.
  */
 private int nextDefAfter(BasicBlock bb, Variable v, int i, VarDef d) {
   bb.defAt(i, v, d) and
@@ -164,14 +277,14 @@ private int nextDefAfter(BasicBlock bb, Variable v, int i, VarDef d) {
 }
 
 /**
- * Could the `later` definition of `v` overwrite its `earlier` definition?
+ * Holds if the `later` definition of `v` could overwrite its `earlier` definition.
  *
  * This is the case if there is a path from `earlier` to `later` that does not cross
  * another definition of `v`.
  */
-predicate localDefinitionOverwrites(PurelyLocalVariable v, VarDef earlier, VarDef later) {
+predicate localDefinitionOverwrites(LocalVariable v, VarDef earlier, VarDef later) {
   exists (BasicBlock bb, int i, int next |
-    next = nextDefAfter(bb, v, i, earlier) or implicitDef(bb, v, earlier) and i = -1 and next = bb.length() |
+    next = nextDefAfter(bb, v, i, earlier) |
     bb.defAt(next, v, later) or
     exists (BasicBlock succ | succ = bb.getASuccessor() |
       succ.localMayBeOverwritten(v, later) and

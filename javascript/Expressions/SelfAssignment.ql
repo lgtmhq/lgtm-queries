@@ -18,13 +18,24 @@
  * @problem.severity error
  * @tags reliability
  *       correctness
+ * @precision high
  */
 
 import Clones
 import DOMProperties
 
+/**
+ * Gets a description of expression `e`, which is assumed to be the left-hand
+ * side of an assignment.
+ *
+ * For variable accesses, the description is the variable name. For property
+ * accesses, the description is of the form `"property <name>"`, where
+ * `<name>` is the name of the property, except if `<name>` is a numeric index,
+ * in which case `element <name>` is used instead.
+ */
 string describe(Expr e) {
-  exists (VarAccess va | va = e | result = "variable " + va.getName()) or
+  exists (VarAccess va | va = e | result = "variable " + va.getName())
+  or
   exists (string name | name = e.(PropAccess).getPropertyName() |
     if exists(name.toInt()) then
       result = "element " + name

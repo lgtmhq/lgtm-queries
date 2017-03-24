@@ -13,7 +13,6 @@
 
 import python
 
-
 private predicate excluded_objects(@py_object obj) {
     /* CFG nodes for numeric literals, all of which have a @py_cobject for the value of that literal */
     obj.(ControlFlowNode).getNode() instanceof ImmutableLiteral
@@ -85,8 +84,8 @@ class Object extends @py_object {
 
     string toString() { 
         this.isC() and
-            exists(Object type, string typename, string objname |
-                py_cobjecttypes(this, type) and py_cobjectnames(this, objname) and py_cobjectnames(type, typename) |
+            exists(ClassObject type, string typename, string objname |
+                py_cobjecttypes(this, type) and py_cobjectnames(this, objname) and typename = type.getName() |
                 result = typename + " " + objname
             )
         or
@@ -267,6 +266,12 @@ abstract class SequenceObject extends Object {
         result = this.(SequenceNode).getElement(n)
     }
 
+    Object getInferredElement(int n) {
+        result = this.getBuiltinElement(n)
+        or
+        this.getSourceElement(n).refersTo(result)
+    }
+
 }
 
 class TupleObject extends SequenceObject {
@@ -291,7 +296,9 @@ class ListObject extends SequenceObject {
 
 /** The `builtin` module */
 BuiltinModuleObject theBuiltinModuleObject() {
-    py_special_objects(result, "builtin_module")
+    py_special_objects(result, "builtin_module_2") and major_version() = 2
+    or
+    py_special_objects(result, "builtin_module_3") and major_version() = 3
 }
 
 /** The `sys` module */
@@ -300,7 +307,7 @@ BuiltinModuleObject theSysModuleObject() {
 }
 
 Object builtin_object(string name) {
-    py_cmembers(theBuiltinModuleObject(), name, result)
+    py_cmembers_versioned(theBuiltinModuleObject(), name, result, major_version().toString())
 }
 
 /** The built-in object None */
@@ -340,7 +347,7 @@ Object builtin_object(string name) {
 
 /** The builtin function open */
  Object theOpenFunction() {
-    py_special_objects(result, "open")
+    result = builtin_object("open")
 }
 
 /** The builtin function print (Python 2.7 upwards) */
@@ -365,7 +372,7 @@ Object builtin_object(string name) {
 
 /** The builtin function sys.exit */
  Object theExitFunctionObject() {
-    py_special_objects(result, "sys.exit")
+    py_cmembers_versioned(theSysModuleObject(), "exit", result, major_version().toString())
 }
 
 /** The NameError class */

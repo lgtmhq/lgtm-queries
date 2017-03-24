@@ -16,8 +16,9 @@
 import python
 
 /** A single static assignment variable.
-		SSA variables consist of a single definition or phi-node (which defines the variable at a join in the flow graph)
-		and one or more uses. Definitions without uses do not get have a SSA variable.
+ * An SSA variable is a variable which is only assigned once (statically).
+ * SSA variables can be defined as normal variables or by a phi node which can occur at joins in the flow graph.
+ * Definitions without uses do not have a SSA variable.
  */
 class SsaVariable extends @py_ssa_var{
 
@@ -42,14 +43,14 @@ class SsaVariable extends @py_ssa_var{
 
     /** Gets an argument of the phi function defining this variable.
      * This predicate uses the raw SSA form produced by the extractor.
-     * In general, you should use getAPrunedPhiInput() instead. */
+     * In general, you should use `getAPrunedPhiInput()` instead. */
     SsaVariable getAPhiInput() {
         py_ssa_phi(this, result)
     }
-    
+
     /** Gets the edge(s) (result->this.getDefinition()) on which the SSA variable 'input' defines this SSA variable.
-     * Assuming this phi-node is the start of block B, then for each incoming edge X->B, only one of the input SSA variables 
-     * for this phi-node is live. This predicate returns the predecessor block such that the variable 'input' 
+     * For each incoming edge `X->B`, where `B` is the the basic block containing this phi-node, only one of the input SSA variables
+     * for this phi-node is live. This predicate returns the predecessor block such that the variable 'input'
      * is the live variable on the edge result->B.
      */
     BasicBlock getPredecessorBlockForPhiArgument(SsaVariable input) {
@@ -165,7 +166,7 @@ class SsaVariable extends @py_ssa_var{
 
     /** Gets the global variable that is accessed if this local is undefined. 
      *  Only applies to local variables in class scopes.
-     */  
+     */
     GlobalVariable getFallbackGlobal() {
         exists(LocalVariable local, Class cls | this.getVariable() = local |
             local.getScope() = cls and
@@ -227,4 +228,111 @@ private predicate auto_name(string name) {
 /** Whether this name is (almost) always defined, ie. it is a builtin or VM defined name */
 predicate globallyDefinedName(string name) {
    builtin_constant(name) or auto_name(name)
+}
+
+private newtype TGlobalSsaVariable = 
+    TGlobalSsaVariableDefn(GlobalVariable v, ControlFlowNode node) {
+        final_global_ssa_defn(v, node, _)
+    }
+
+/** A global single static assignment variable.
+ * A GSSA variable is a global variable which is only assigned once (statically).
+ * GSSA variables are like SSA variables, but for global variables.
+ * Like SSA variables they can by defined like normal variables or by phi nodes.
+ * In addition they can be defined in several other ways:
+ * 
+ * 1. At a call-site, when the callee redefines the global variable
+ * 2. At scope entry when a temporally-preceding scope has defined the global variable.
+ * 3. At function entry, inheriting the GSSA value from a caller
+ * 4. At class entry, inheriting the GSSA value from the enclosing scope.
+ */
+
+class GlobalSsaVariable extends TGlobalSsaVariable {
+
+    GlobalVariable getVariable() {
+        this = TGlobalSsaVariableDefn(result, _)
+    }
+
+    string getId() {
+        result = this.getVariable().getId()
+    }
+
+    ControlFlowNode getDefinition() {
+        this = TGlobalSsaVariableDefn(_, result)
+    }
+
+    string toString() {
+        result = "GSSA Variable " + this.getId()
+    }
+
+    NameNode getAUse() {
+        this.getDefinition() = final_get_global_ssa_defn(this.getVariable(), result)
+    }
+
+
+    /** Whether this variable may be undefined. */
+    predicate maybeUndefined() {
+        this.getDefinition().isDelete()
+    }
+
+}
+
+class PhiGlobalSsaVariable extends GlobalSsaVariable {
+
+    PhiGlobalSsaVariable() {
+        final_global_phi_definition(this.getVariable(), this.getDefinition())
+    }
+
+    /** Gets the edge(s) `result->this.getDefinition()` on which the GSSA variable 'input' defines this GSSA variable.
+     * For each incoming edge `X->B`, where `B` is the the basic block containing this phi-node, only one of the input GSSA variables
+     * for this phi-node is live. This predicate returns the predecessor block such that the variable 'input'
+     * is the live variable on the edge `result->B`.
+     *
+     * This may include inputs that are inferred by type-inference to be highly unlikely or impossible.
+     * In general, you should use `getPrunedPredecessorBlockForArgument(input)` instead.
+     */
+    BasicBlock getPredecessorBlockForArgument(GlobalSsaVariable input) {
+        input = TGlobalSsaVariableDefn(this.getVariable(),
+            final_get_phi_argument_for_predecessor_block(this.getVariable(), this.getDefinition(), result)
+        )
+    }
+
+    /** As `getPredecessorBlockForPhiArgument(input)`, but pruned of unlikely edges. */
+    BasicBlock getPrunedPredecessorBlockForArgument(GlobalSsaVariable input) {
+        result = getPredecessorBlockForArgument(input) and
+        not result.unlikelySuccessor(input.getDefinition())
+    }
+
+    /** Gets an argument of the phi function defining this variable.
+     * This may include inputs that are inferred by type-inference to be highly unlikely or impossible.
+     * In general, you should use `getAPrunedInput()` instead. */
+    GlobalSsaVariable getAPhiInput() {
+        exists(this.getPredecessorBlockForArgument(result))
+    }
+
+    /** Gets an argument of the phi function defining this variable, pruned of unlikely edges. */
+    GlobalSsaVariable getAPrunedInput() {
+        exists(this.getPrunedPredecessorBlockForArgument(result))
+    }
+
+    /** Whether this variable may be undefined. */
+    predicate maybeUndefined() {
+        exists(GlobalSsaVariable var | var = this.getAPrunedInput() | var.maybeUndefined())
+        or
+        /* For phi-nodes, there must be a corresponding phi-input for each control-flow
+         * predecessor. Otherwise, the variable will be undefined on that incoming edge.
+         * For example,
+         * if cond:
+         *    x0 = "eggs"
+         * x1 = phi(x0) # x1 is may be undefined as there is no phi input if `cond` is false.
+         */
+        exists(BasicBlock incoming |
+            reaches_end(incoming) and
+            incoming.getASuccessor() = this.getDefinition() and
+            not exists(GlobalSsaVariable input |
+                incoming = this.getPrunedPredecessorBlockForArgument(input)
+            )
+        )
+    }
+
 }

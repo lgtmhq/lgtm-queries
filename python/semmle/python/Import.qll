@@ -24,16 +24,6 @@ class Alias extends Alias_ {
 
 }
 
-private
-predicate hasFromFutureImportAbsoluteImport(Module module) {
-    exists(Import i, ImportMember im, ImportExpr ie, Alias a, Name name |
-        im.getModule() = ie and ie.getName() = "__future__" and
-        a.getAsname() = name and name.getId() = "absolute_import" and
-        i.getASubExpression() = im and
-        i.getAName() = a and
-        i.getEnclosingModule() = module)
-}
-
 private predicate valid_module_name(string name) {
     exists(Module m | m.getName() = name)
     or
@@ -53,7 +43,7 @@ class ImportExpr extends ImportExpr_ {
          // relative imports are no longer allowed in Python 3
         major_version() < 3 and
         // and can be explicitly turned off in later versions of Python 2
-        not hasFromFutureImportAbsoluteImport(getEnclosingModule())
+        not getEnclosingModule().hasFromFuture("absolute_import")
     }
 
     /** The language specifies level as -1 if relative imports are to be tried first, 0 for absolute imports,
@@ -274,7 +264,8 @@ class ImportStar extends ImportStar_ {
 
 }
 
-
+/** A statement that imports a module. This can be any statement that includes the `import` keyword,
+ * such as `import sys`, `from sys import version` or `from sys import *`. */
 class ImportingStmt extends Stmt {
  
     ImportingStmt() {

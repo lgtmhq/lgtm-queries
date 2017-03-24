@@ -15,10 +15,12 @@
  * @name Empty except
  * @description Except doesn't do anything and has no comment
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       maintainability
  *       external/cwe/cwe-391
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

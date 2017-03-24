@@ -20,6 +20,7 @@
  * @problem.severity error
  * @tags reliability
  *       correctness
+ * @precision high
  */
 
 import javascript
@@ -30,4 +31,4 @@ where f.getVariable() = g.getVariable() and
       not f.getVariable().isGlobal() and
       // only report each pair once
       f.getLocation().startsBefore(g.getLocation())
-select f.getId(), "This function declaration conflicts with $@ in the same scope.", g.getId(), "another declaration"
+select f.getId(), "Declaration of " + f.describe() + " conflicts with $@ in the same scope.", g.getId(), "another declaration"

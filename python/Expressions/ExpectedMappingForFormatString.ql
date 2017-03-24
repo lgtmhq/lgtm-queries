@@ -15,9 +15,11 @@
  * @name Formatted object is not a mapping
  * @description The formatted object must be a mapping when the format includes a named specifier; otherwise a TypeError will be raised."
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

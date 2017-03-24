@@ -16,9 +16,11 @@
  * @description A string formatting operation, such as '"%s: %s, %s" % (a,b)', where the number of conversion specifiers in the
  *              format string differs from the number of values to be formatted will raise a TypeError.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

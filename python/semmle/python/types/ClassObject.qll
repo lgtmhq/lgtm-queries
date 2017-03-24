@@ -18,7 +18,7 @@ private import semmle.python.pointsto.Base
 predicate is_c_metaclass(Object o) {
     py_special_objects(o, "type")
     or
-    exists(Object sup | py_cmembers(o, ".super.", sup) and is_c_metaclass(sup))
+    exists(Object sup | py_cmembers_versioned(o, ".super.", sup, major_version().toString()) and is_c_metaclass(sup))
 }
 
 
@@ -26,9 +26,9 @@ library class ObjectOrCfg extends @py_object {
 
     string toString() {
         /* Not to be displayed */
-        none() 
+        none()
     }
-    
+
     ControlFlowNode getOrigin() {
         result = this
     }
@@ -39,7 +39,7 @@ library class ObjectOrCfg extends @py_object {
     Instances of this class represent either builtin classes 
     such as `list` or `str`, or program-defined Python classes 
     present in the source code.
-     
+
     Generally there is a one-to-one mapping between classes in 
     the Python program and instances of this class in the database. 
     However, that is not always the case. For example, dynamically 
@@ -57,12 +57,17 @@ class ClassObject extends Object {
         py_special_objects(this, "_semmle_unknown_type")
     }
 
+    private predicate isStr() {
+        py_special_objects(this, "bytes") and major_version() = 2
+        or
+        py_special_objects(this, "unicode") and major_version() = 3
+    }
+
     /** Gets the short (unqualified) name of this class */
     string getName() {
-        /* Remove 'exceptions.' prefix from class names as Python programmers are more familiar 
-         * with 'Exception' than 'exceptions.Exception'.
-         */
-        exists(string name | py_cobjectnames(this, name) and result = name.regexpReplaceAll("^exceptions\\.", ""))
+        this.isStr() and result = "str"
+        or
+        not this.isStr() and py_cobjectnames(this, result)
         or
         result = this.getPyClass().getName()
     }
@@ -91,7 +96,7 @@ class ClassObject extends Object {
         exists(ClassExpr cls | this.getOrigin() = cls | exists(cls.getABase()))
         or
         /* The extractor uses the special name ".super." to indicate the super class of a builtin class */
-        py_cmembers(this, ".super.", _)
+        py_cmembers_versioned(this, ".super.", _, major_version().toString())
     }
 
     /** Gets a super class of this class (includes transitive super classes) */
@@ -542,11 +547,6 @@ ClassObject theKeyErrorType() {
     py_special_objects(result, "KeyError")
 }
 
-/** The builtin class 'IOError' */
-ClassObject theIOErrorType() {
-    py_special_objects(result, "IOError")
-}
-
 /** The builtin class of bound methods */
 ClassObject theBoundMethodType() {
      py_special_objects(result, "MethodType")
@@ -567,6 +567,11 @@ ClassObject theBuiltinPropertyType() {
     /* This is CPython specific */ 
     result.isC() and
     result.getName() = "getset_descriptor"
+}
+
+/** The builtin class 'IOError' */
+ClassObject theIOErrorType() {
+    result = builtin_object("IOError")
 }
 
 /** The builtin class 'super' */

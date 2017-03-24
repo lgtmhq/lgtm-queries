@@ -12,13 +12,13 @@
 // permissions and limitations under the License.
 
 /**
- * Classes for working with GWT-generated code.
+ * Provides classes for working with GWT-generated code.
  */
 
 import javascript
 
 /**
- * The `$gwt_version` variable.
+ * A `$gwt_version` variable.
  */
 class GWTVersionVariable extends GlobalVariable {
   GWTVersionVariable() {
@@ -33,6 +33,16 @@ class GWTHeader extends InlineScript {
   GWTHeader() {
     exists (GWTVersionVariable gwtVersion |
       gwtVersion.getADeclaration().getTopLevel() = this
+    )
+  }
+
+  /**
+   * Gets the GWT version this script was generated with, if it can be determined.
+   */
+  string getGWTVersion() {
+    exists (Expr e | e.getTopLevel() = this |
+      e = any(GWTVersionVariable v).getAnAssignedValue() and
+      result = e.getStringValue()
     )
   }
 }

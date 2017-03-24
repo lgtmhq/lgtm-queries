@@ -64,8 +64,8 @@ class Expr extends Expr_, AstNode {
         none()
     }
 
-    /** Gets the string value of this constant (for bytes and unicode constants) */
-    string strValue() {
+    /** Use StrConst.getText() instead */
+    deprecated string strValue() {
         none()
     }
 
@@ -216,6 +216,19 @@ class Call extends Call_ {
         result = this.getArg(_)
     }
 
+    AstNode getAChildNode() {
+        result = this.getAPositionalArg() or
+        result = this.getANamedArg() or
+        result = this.getFunc()
+    }
+
+    /** Gets the name of a named argument, including those passed in dict literals. */
+    string getANamedArgumentName() {
+        result = this.getAKeyword().getArg()
+        or
+        result = this.getKwargs().(Dict).getAKey().(StrConst).getText()
+    }
+
 }
 
 /** A conditional expression such as, `body if test else orelse` */
@@ -281,53 +294,29 @@ class Repr extends Repr_ {
 
 /** A bytes constant, such as `b'ascii'`. Note that unadorned string constants such as
    `"hello"` are treated as Bytes for Python2, but Unicode for Python3. */
-class Bytes extends Bytes_, ImmutableLiteral {
-
-    Expr getASubExpression() {
-        none()
-    }
-
-    AstNode getAChildNode() {
-        result = this.getAnImplicitlyConcatenatedPart()
-    }
-
-    string strValue() {
-        major_version() = 2 and result = this.getS()
+class Bytes extends StrConst {
+  
+    Bytes() {
+        not this.isUnicode()
     }
 
     Object getLiteralObject() {
         py_cobjecttypes(result, theBytesType()) and
-        py_cobjectnames(result, quoted_string(this))
+        py_cobjectnames(result, this.quotedString())
     }
-
-    string toString() {
-        result = Bytes_.super.toString()
-    }
-
-    boolean booleanValue() {
-        this.strValue() = "" and result = false
-        or
-        this.strValue() != "" and result = true
+    
+    /** The extractor puts quotes into the name of each string (to prevent "0" clashing with 0).
+     * The following predicate help us match up a string/byte literals in the source
+     * which the equivalent object.
+     */
+    private string quotedString() {
+        exists(string b_unquoted |
+            b_unquoted = this.getS() |
+            result = "b'" + b_unquoted + "'"
+        ) 
     }
 
 }
-
-/** The extractor puts quotes into the name of each string (to prevent "0" clashing with 0).
- * The following predicate help us match up a string/byte literals in the source
- * which the equivalent object.
- */
-private string quoted_string(Expr s) {
-    exists(string u_unquoted |
-        u_unquoted = s.(Unicode).getS() |
-        result = "u'" + u_unquoted + "'"
-    )
-    or
-    exists(string b_unquoted |
-        b_unquoted = s.(Bytes).getS() |
-        result = "b'" + b_unquoted + "'"
-    )
-}
-
 
 /** An ellipsis expression, such as `...` */
 class Ellipsis extends Ellipsis_ {
@@ -460,35 +449,28 @@ class ImaginaryLiteral extends Num {
 
 /** A unicode string expression, such as `u"\u20ac"`. Note that unadorned string constants such as
    "hello" are treated as Bytes for Python2, but Unicode for Python3. */
-class Unicode extends Str_, ImmutableLiteral {
-
-    Expr getASubExpression() {
-        none()
-    }
-
-    AstNode getAChildNode() {
-        result = this.getAnImplicitlyConcatenatedPart()
-    }
-
-    string strValue() {
-        result = this.getS()
-    }
-
-    string toString() {
-        result = "Unicode"
-    }
+class Unicode extends StrConst {
   
+    Unicode() {
+        this.isUnicode()
+    }
+
     Object getLiteralObject() {
         py_cobjecttypes(result, theUnicodeType()) and
-        py_cobjectnames(result, quoted_string(this))
+        py_cobjectnames(result, this.quotedString())
     }
-
-    boolean booleanValue() {
-        this.strValue() = "" and result = false
-        or
-        this.strValue() != "" and result = true
+    
+    /** The extractor puts quotes into the name of each string (to prevent "0" clashing with 0).
+     * The following predicate help us match up a string/byte literals in the source
+     * which the equivalent object.
+     */
+    string quotedString() {
+        exists(string u_unquoted |
+            u_unquoted = this.getS() |
+            result = "u'" + u_unquoted + "'"
+        ) 
     }
-
+    
 }
 
 
@@ -598,13 +580,20 @@ class Name extends Name_ {
         v = this.getVariable()
     }
 
+    /** Whether this expression is a use */
+    predicate isUse() {
+        py_expr_contexts(_, 3, this)
+    }
+
     /** Whether this expression is a use of variable `v`
      * If doing dataflow, then consider using SsaVariable.getAUse() for more precision. */
     predicate uses(Variable v) {
-        py_expr_contexts(_, 3, this)
+        this.isUse()
         and
         v = this.getVariable()
     }
+    
+    
 
     predicate isConstant() {
         none()
@@ -649,47 +638,50 @@ class Slice extends Slice_ {
 
 }
 
-/** A string constant. In Python3 this a unicode string, in Python2 a bytes or unicode string */
-class StrConst extends Expr {
+/** A string constant. */
+class StrConst extends Str_, ImmutableLiteral {
 
-    StrConst() {
-        this instanceof Unicode or
-        major_version() = 2 and this instanceof Bytes
+    predicate isUnicode() {
+        this.getPrefix().charAt(_) = "u"
+        or
+        this.getPrefix().charAt(_) = "U"
+        or
+        not this.getPrefix().charAt(_) = "b" and major_version() = 3
+        or
+        not this.getPrefix().charAt(_) = "b" and this.getEnclosingModule().hasFromFuture("unicode_literals")
+    }
+
+    override
+    string strValue() {
+        result = this.getS()
+    }
+
+    Expr getASubExpression() {
+        none()
+    }
+
+    AstNode getAChildNode() {
+        result = this.getAnImplicitlyConcatenatedPart()
     }
 
     /** Gets the text of this str constant */
     string getText() {
-        result = ((Unicode)this).getS()
-        or
-        result = ((Bytes)this).getS()
+        result = this.getS()
     }
-    
-    /** Gets the prefix of this str constant */
-    string getPrefix() {
-        result = ((Unicode)this).getPrefix()
-        or
-        result = ((Bytes)this).getPrefix()
-    }
-    
+
     /** Whether this is a docstring */
     predicate isDocString() {
         exists(Scope s | s.getDocString() = this)
     }
-        
-    /** Gets an implicitly concatenated part of this str constant. */
-    StringPart getAnImplicitlyConcatenatedPart() {
-        result = ((Unicode)this).getAnImplicitlyConcatenatedPart()
+
+    boolean booleanValue() {
+        this.getText() = "" and result = false
         or
-        result = ((Bytes)this).getAnImplicitlyConcatenatedPart()
+        this.getText() != "" and result = true
     }
-    
-    /** Gets the nth implicitly concatenated part of this str constant. */
-    StringPart getImplicitlyConcatenatedPart(int n) {
-        result = ((Unicode)this).getImplicitlyConcatenatedPart(n)
-        or
-        result = ((Bytes)this).getImplicitlyConcatenatedPart(n)
-    }
-    
+
+    Object getLiteralObject() { none() }
+
 }
 
 private predicate name_consts(Name_ n, string id) {
@@ -716,10 +708,6 @@ abstract class NameConstant extends Name, ImmutableLiteral {
 
     predicate isConstant() {
         any()
-    }
-
-    ExprParent getParent() {
-        result = Name.super.getParent() 
     }
 
     deprecated predicate isDefinition() {
@@ -794,6 +782,37 @@ class None extends NameConstant {
 
 }
 
+/** An await expression such as `await coro`. */
+class Await extends Await_ {
+
+    Expr getASubExpression() {
+        result = this.getValue()
+    }
+
+}
+
+/** A formatted string literal expression, such as `f'hello {world!s}'` */
+class Fstring extends Fstring_ {
+
+    Expr getASubExpression() {
+        result = this.getAValue()
+    }
+
+}
+
+/** A formatted value (within a formatted string literal).
+ * For example, in the string `f'hello {world!s}'` the formatted value is `world!s`.
+ */
+class FormattedValue extends FormattedValue_ {
+
+    Expr getASubExpression() {
+        result = this.getValue() or
+        result = this.getFormatSpec()
+    }
+
+
+}
+
 /* Expression Contexts */
 
 /** A context in which an expression used */
@@ -828,11 +847,6 @@ class AugStore extends AugStore_ {
 
 /** Parameter context, the context of var in def f(var): pass */
 class Param extends Param_ {
-
-}
-
-/** An await expression such as `await coro` */
-class Await extends Await_ {
 
 }
 

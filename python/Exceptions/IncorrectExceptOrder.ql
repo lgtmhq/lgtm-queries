@@ -16,9 +16,11 @@
  * @description Handling general exceptions before specific exceptions means that the specific
  *              handlers are never executed.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       maintainability
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

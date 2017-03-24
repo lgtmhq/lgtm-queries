@@ -15,9 +15,11 @@
  * @name Special method has incorrect signature
  * @description Special method has incorrect signature
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

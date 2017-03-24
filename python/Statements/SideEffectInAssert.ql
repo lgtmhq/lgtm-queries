@@ -16,9 +16,11 @@
  * @description Side-effects in assert statements result in differences between normal
  *              and optimized behavior.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       maintainability
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

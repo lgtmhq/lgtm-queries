@@ -15,9 +15,11 @@
  * @name Syntax error
  * @description Syntax errors cause failures at runtime and prevent analysis of the code.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity high
+ * @precision high
  */
 
 import python

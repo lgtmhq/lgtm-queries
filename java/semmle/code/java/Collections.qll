@@ -91,7 +91,7 @@ class CollectionMethod extends Method {
   
   /** The type of elements of the collection to which this method belongs. */
   RefType getReceiverElementType() {
-    result = ((CollectionType)this.getDeclaringType()).getElementType()
+    result = this.getDeclaringType().(CollectionType).getElementType()
   }
 }
 

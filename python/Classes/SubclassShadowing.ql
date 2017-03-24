@@ -19,6 +19,8 @@
  * @problem.severity error
  * @tags maintainability
  *       correctness
+ * @sub-severity low
+ * @precision high
  */
 
 /* Determine if a class defines a method that is shadowed by an attribute

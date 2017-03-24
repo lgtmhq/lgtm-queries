@@ -15,9 +15,11 @@
  * @name Unnecessary pass
  * @description Unnecessary 'pass' statement
  * @kind problem
- * @problem.severity recommendation
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python
@@ -32,9 +34,12 @@ predicate has_doc_string(StmtList stmts) {
     is_doc_string(stmts.getItem(0))
 }
 
-from Pass p
-where strictcount(p.getParent().getAnItem()) = 2 and not has_doc_string(p.getParent())
-      or
-      strictcount(p.getParent().getAnItem()) > 2
+from Pass p, StmtList list
+where list.getAnItem() = p and
+(
+    strictcount(list.getAnItem()) = 2 and not has_doc_string(list)
+    or
+    strictcount(list.getAnItem()) > 2
+)
 select p, "Unnecessary 'pass' statement."
 

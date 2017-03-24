@@ -15,9 +15,11 @@
  * @name Variable defined multiple times
  * @description Assignment to a variable occurs multiple times without any intermediate use of that variable
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

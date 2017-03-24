@@ -15,10 +15,12 @@
  * @name Use of a print statement at module level
  * @description Using a print statement at module scope (except when guarded by if __name__ == '__main__') will cause surprising output when the module is imported.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       maintainability
  *       convention
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision high
  */
 
 import python

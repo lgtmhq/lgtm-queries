@@ -21,11 +21,12 @@ import python
 class ImportTimeScope extends Scope {
  
     ImportTimeScope() {
-        not this.getScope*() instanceof Function
+        not this.getEnclosingScope*() instanceof Function
     }
 
     /** Whether this scope explicitly defines 'name'. 
      * Does not cover implicit definitions be import * */
+    pragma[nomagic]
     predicate definesName(string name) {
         exists(SsaVariable var | name = var.getId() and var.getAUse() = this.getANormalExit())
     }

@@ -15,9 +15,11 @@
  * @name Missing call to __init__ during object initialization
  * @description An omitted call to a super-class __init__ method may lead to objects of this class not being fully initialized.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

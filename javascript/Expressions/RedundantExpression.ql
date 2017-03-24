@@ -20,34 +20,36 @@
  * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @precision high
  */
 
 import Clones
 
 /**
- * Abstract super class for clone detectors that find redundant expressions.
+ * A clone detector that finds redundant expressions.
  */
 abstract class RedundantOperand extends StructurallyCompared {
   RedundantOperand() {
     exists (BinaryExpr parent | this = parent.getLeftOperand())
   }
 
-  Expr candidate() {
+  override Expr candidate() {
     result = getParent().(BinaryExpr).getRightOperand()
   }
 
+  /** Gets the expression to report when a pair of clones is found. */
   Expr toReport() {
     result = getParent()
   }
 }
 
 /**
- * Clone detector for idemnecant operators.
+ * A binary expression whose operator is idemnecant.
  *
  * An idemnecant operator is an operator that yields a trivial result when applied to
  * identical operands (disregarding overflow and special floating point values).
- * 
- * For instance, subtraction is idemnecant (since e-e=0), and so is division (since e/e=1).
+ *
+ * For instance, subtraction is idemnecant (since `e-e=0`), and so is division (since `e/e=1`).
  */
 class IdemnecantExpr extends BinaryExpr {
   IdemnecantExpr() {
@@ -58,6 +60,9 @@ class IdemnecantExpr extends BinaryExpr {
   }
 }
 
+/**
+ * A clone detector for idemnecant operators.
+ */
 class RedundantIdemnecantOperand extends RedundantOperand {
   RedundantIdemnecantOperand() {
     exists (IdemnecantExpr parent |
@@ -69,9 +74,9 @@ class RedundantIdemnecantOperand extends RedundantOperand {
 }
 
 /**
- * Clone detector for idempotent expressions.
- * 
- * Note that `&` and `|` are not really idempotent in JavaScript, since they coerce their
+ * A clone detector for idempotent expressions.
+ *
+ * Note that `&` and `|` are not idempotent in JavaScript, since they coerce their
  * arguments to integers. For example, `x&x` is a common idiom for converting `x` to an integer.
  */
 class RedundantIdempotentOperand extends RedundantOperand {
@@ -81,7 +86,7 @@ class RedundantIdempotentOperand extends RedundantOperand {
 }
 
 /**
- * An expression of the form (e + f)/2.
+ * An expression of the form `(e + f)/2`.
  */
 class AverageExpr extends DivExpr {
   AverageExpr() {
@@ -91,7 +96,7 @@ class AverageExpr extends DivExpr {
 }
 
 /**
- * Clone detector for redundant expressions of the form (e + e)/2.
+ * A clone detector for redundant expressions of the form `(e + e)/2`.
  */
 class RedundantAverageOperand extends RedundantOperand {
   RedundantAverageOperand() {
@@ -100,7 +105,7 @@ class RedundantAverageOperand extends RedundantOperand {
     )
   }
 
-  AverageExpr toReport() {
+  override AverageExpr toReport() {
     getParent() = result.getLeftOperand().stripParens()
   }
 }

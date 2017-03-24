@@ -15,9 +15,11 @@
  * @name 'super' in old style class
  * @description Using super() to access inherited methods is not supported by old-style classes.
  * @kind problem
- * @problem.severity error
  * @tags portability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

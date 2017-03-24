@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Classes for working with JSON data.
+ * Provides classes for working with JSON data.
  */
 
 import AST
@@ -21,22 +21,22 @@ import AST
  * A JSON-encoded value, which may be a primitive value, an array or an object.
  */
 class JSONValue extends @json_value, Locatable {
-  /** Get the parent value to which this value belongs, if any. */
+  /** Gets the parent value to which this value belongs, if any. */
   JSONValue getParent() {
     json(this, _, result, _, _)
   }
 
-  /** Get the i-th child value of this value, if any. */
+  /** Gets the `i`th child value of this value. */
   JSONValue getChild(int i) {
     json(result, _, this, i, _)
   }
 
-  /** Is this JSON value the top level element in its enclosing file? */
+  /** Holds if this JSON value is the top level element in its enclosing file. */
   predicate isTopLevel() {
     not exists(getParent())
   }
 
-  string toString() {
+  override string toString() {
     json(this, _, _, _, result)
   }
 }
@@ -45,12 +45,12 @@ class JSONValue extends @json_value, Locatable {
  * A JSON-encoded primitive value.
  */
 abstract class JSONPrimitiveValue extends JSONValue {
-  /** Get a string representation of the encoded value. */
+  /** Gets a string representation of the encoded value. */
   string getValue() {
     json_literals(result, _, this)
   }
 
-  /** Get the source text of the encoded value; for strings, this includes quotes. */
+  /** Gets the source text of the encoded value; for strings, this includes quotes. */
   string getRawValue() {
     json_literals(_, result, this)
   }
@@ -84,14 +84,14 @@ class JSONString extends @json_string, JSONPrimitiveValue {
  * A JSON-encoded array.
  */
 class JSONArray extends @json_array, JSONValue {
-  /** Get the value of the i-th element of this array. */
+  /** Gets the value of the `i`th element of this array. */
   JSONValue getElementValue(int i) {
     result = getChild(i)
   }
 
-  /** Get the string value of the i-th element of this array. */
+  /** Gets the string value of the `i`th element of this array. */
   string getElementStringValue(int i) {
-    result = ((JSONString)getElementValue(i)).getValue()
+    result = getElementValue(i).(JSONString).getValue()
   }
 }
 
@@ -99,14 +99,14 @@ class JSONArray extends @json_array, JSONValue {
  * A JSON-encoded object.
  */
 class JSONObject extends @json_object, JSONValue {
-  /** Get the value of property `name`. */
+  /** Gets the value of property `name` of this object. */
   JSONValue getPropValue(string name) {
     json_properties(this, name, result)
   }
 
-  /** Get the string value of the property `name`. */
+  /** Gets the string value of property `name` of this object. */
   string getPropStringValue(string name) {
-    result = ((JSONString)getPropValue(name)).getValue()
+    result = getPropValue(name).(JSONString).getValue()
   }
 }
 
@@ -114,7 +114,7 @@ class JSONObject extends @json_object, JSONValue {
  * An error reported by the JSON parser.
  */
 class JSONParseError extends @json_parse_error, Error {
-  string getMessage() {
+  override string getMessage() {
     json_errors(this, result)
   }
 }

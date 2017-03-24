@@ -15,9 +15,11 @@
  * @name Module imports itself
  * @description A module imports itself
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

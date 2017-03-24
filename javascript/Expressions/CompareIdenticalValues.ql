@@ -16,23 +16,26 @@
  * @description If the same expression occurs on both sides of a comparison
  *              operator, the operator is redundant, and probably indicates a mistake.
  * @kind problem
- * @problem.severity error
+ * @problem.severity warning
  * @tags reliability
  *       correctness
  *       readability
  *       convention
+ * @precision high
  */
 
 import Clones
 
 /**
- * Is `e` a reference to variable `v`, possibly with parentheses or
- * numeric conversions (i.e., the unary operators `+` or `-` or a call to `Number`)
- * applied?
+ * Holds if `e` is a reference to variable `v`, possibly with parentheses or
+ * numeric conversions (that is, the unary operators `+` or `-` or a call to `Number`)
+ * applied.
  */
 predicate accessWithConversions(Expr e, Variable v) {
-  e = v.getAnAccess() or
-  accessWithConversions(e.(ParExpr).getExpression(), v) or
+  e = v.getAnAccess()
+  or
+  accessWithConversions(e.(ParExpr).getExpression(), v)
+  or
   exists (UnaryExpr ue | ue instanceof NegExpr or ue instanceof PlusExpr |
     ue = e and accessWithConversions(ue.getOperand(), v)
   ) or
@@ -44,7 +47,7 @@ predicate accessWithConversions(Expr e, Variable v) {
 }
 
 /**
- * Does the equality test `eq` look like a NaN check?
+ * Holds if the equality test `eq` looks like a NaN check.
  *
  * In order to qualify as a NaN check, both sides of the equality have
  * to be references to the same variable `x`, possibly with added parentheses

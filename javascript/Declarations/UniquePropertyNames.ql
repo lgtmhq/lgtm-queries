@@ -20,10 +20,18 @@
  * @problem.severity error
  * @tags reliability
  *       correctness
+ * @precision very-high
  */
 
 import Expressions.Clones
 
+/**
+ * Holds if `p` is the `i`th property of object expression `o`, and its
+ * kind is `kind`.
+ *
+ * The kind is an integer value indicating whether `p` is a value property (0),
+ * a getter (1) or a setter (2).
+ */
 predicate hasProperty(ObjectExpr o, Property p, string name, int kind, int i) {
   p = o.getProperty(i) and
   name = p.getName() and
@@ -31,7 +39,7 @@ predicate hasProperty(ObjectExpr o, Property p, string name, int kind, int i) {
 }
 
 /**
- * Property `p` appears before property `q` in the same object literal;
+ * Holds if property `p` appears before property `q` in the same object literal and
  * both have the same name and kind, but are not structurally identical.
  */
 predicate overwrittenBy(Property p, Property q) {

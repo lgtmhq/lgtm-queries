@@ -34,9 +34,20 @@ abstract class Comp extends Expr {
         result = this.getIterationVariable(_)
     }
 
-    /** Gets the scope in which the body of this list comprehension executes. */
-    Scope getExecutingScope() {
+    /** Gets the scope in which the body of this list comprehension evaluates. */
+    Scope getEvaluatingScope() {
         result = this.getFunction()
+    }
+
+    /** Gets the expression for elements of this comprehension. */
+    Expr getElt() {
+        exists(Yield yield, Stmt body |
+            result = yield.getValue() and
+            body = this.getNthInnerLoop(_).getAStmt() |
+            yield = body.(ExprStmt).getValue()
+            or
+            yield = body.(If).getStmt(0).(ExprStmt).getValue()
+        )
     }
 
 }
@@ -52,7 +63,6 @@ class ListComp extends ListComp_, Comp {
 
     AstNode getAChildNode() {
         result = this.getAGenerator() or
-        result = this.getElt() or
         result = this.getIterable() or
         result = this.getFunction()
     }
@@ -61,8 +71,8 @@ class ListComp extends ListComp_, Comp {
         any()
     }
 
-    /** Gets the scope in which the body of this list comprehension executes. */
-    Scope getExecutingScope() {
+    /** Gets the scope in which the body of this list comprehension evaluates. */
+    Scope getEvaluatingScope() {
         major_version() = 2 and result = this.getScope()
         or
         major_version() = 3 and result = this.getFunction()
@@ -70,9 +80,7 @@ class ListComp extends ListComp_, Comp {
 
     /** Gets the iteration variable for the nth innermost generator of this list comprehension */
     Variable getIterationVariable(int n) {
-        major_version() = 2 and result.getAnAccess() = this.getGenerator(n).getTarget()
-        or
-        major_version() = 3 and result = Comp.super.getIterationVariable(n)
+        result = Comp.super.getIterationVariable(n)
     }
 
     Function getFunction() {
@@ -81,6 +89,10 @@ class ListComp extends ListComp_, Comp {
 
     string toString() {
         result = ListComp_.super.toString()
+    }
+
+    Expr getElt() {
+        result = Comp.super.getElt()
     }
 
 }
@@ -105,11 +117,7 @@ class SetComp extends SetComp_, Comp {
     Function getFunction() {
         result = SetComp_.super.getFunction()
     }
-
-    string toString() {
-        result = SetComp_.super.toString()
-    }
-
+    
 }
 
 /** A dictionary comprehension, such as `{ k:v for k, v in enumerate("0123456789") }` */
@@ -130,10 +138,6 @@ class DictComp extends DictComp_, Comp {
 
     Function getFunction() {
         result = DictComp_.super.getFunction()
-    }
-
-    string toString() {
-        result = DictComp_.super.toString()
     }
 
 }
@@ -158,10 +162,6 @@ class GeneratorExp extends GeneratorExp_, Comp {
     Function getFunction() {
         result = GeneratorExp_.super.getFunction()
     }
-
-    string toString() {
-        result = GeneratorExp_.super.toString()
-    }
-
+    
 }
 

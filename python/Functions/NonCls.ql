@@ -16,10 +16,12 @@
  * @description Using an alternative name for the first argument of a class method makes code more
  *              difficult to read; PEP8 states that the first argument to class methods should be 'cls'.
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       readability
  *       convention
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision high
  */
 
 import python

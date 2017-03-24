@@ -25,8 +25,14 @@ class Module extends Module_, Scope, AstNode {
         result = "Script " + this.getFile().getShortName()
     }
 
-    /** The enclosing scope of this module (always none) */
+    /** This method will be deprecated in the next release. Please use `getEnclosingScope()` instead.
+     * The enclosing scope of this module (always none) */
     Scope getScope() {
+        none()
+    }
+
+    /** The enclosing scope of this module (always none) */
+    Scope getEnclosingScope() {
         none()
     }
 
@@ -124,13 +130,13 @@ class Module extends Module_, Scope, AstNode {
         result.getPackage() = this and
         name = result.getName().regexpReplaceAll(".*\\.", "")
     }
-  
+
     /** Whether name is declared in the __all__ list of this module */
     predicate declaredInAll(string name)
     {
         exists(AssignStmt a, GlobalVariable all | 
             a.defines(all) and a.getScope() = this and
-            all.getId() = "__all__" and ((List)a.getValue()).getAnElt().strValue() = name
+            all.getId() = "__all__" and ((List)a.getValue()).getAnElt().(StrConst).getText() = name
         )
     }
 
@@ -138,7 +144,14 @@ class Module extends Module_, Scope, AstNode {
         result = this.getAStmt()
     }
 
+    predicate hasFromFuture(string attr) {
+        exists(Import i, ImportMember im, ImportExpr ie, Alias a, Name name |
+            im.getModule() = ie and ie.getName() = "__future__" and
+            a.getAsname() = name and name.getId() = attr and
+            i.getASubExpression() = im and
+            i.getAName() = a and
+            i.getEnclosingModule() = this
+        )
+    }
 
 }
-
-

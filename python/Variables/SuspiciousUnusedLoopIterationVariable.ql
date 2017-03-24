@@ -15,9 +15,11 @@
  * @name Suspicious unused loop iteration variable
  * @description A loop iteration variable is unused, which suggests an error.
  * @kind problem
- * @problem.severity error
  * @tags maintainability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python
@@ -97,11 +99,24 @@ predicate implicit_repeat(For f) {
     not exists(Name n | f.getBody().contains(n) and use_of_non_constant(n))
 }
 
+/** Get the CFG node for the iterable relating to the for-statement `f` in a comprehension.
+ * The for-statement `f` is the artificial for-statement in a comprehension
+ * and the result is the iterable in that comprehension.
+ * E.g. gets `x` from `{ y for y in x }`.
+ */
+ControlFlowNode get_comp_iterable(For f) {
+    exists(Comp c | 
+        c.getFunction().getStmt(0) = f |
+        c.getAFlowNode().getAPredecessor() = result
+    )
+}
+
 from For f, Variable v
 
 where f.getTarget() = v.getAnAccess() and
       not f.getAStmt().contains(v.getAnAccess()) and
       not points_to_call_to_range(f.getIter().getAFlowNode()) and
+      not points_to_call_to_range(get_comp_iterable(f)) and
       not name_acceptable_for_unused_variable(v) and
       not f.getScope().getName() = "genexpr" and
       not empty_loop(f) and
@@ -110,4 +125,3 @@ where f.getTarget() = v.getAnAccess() and
       not implicit_repeat(f)
 
 select f, "For loop variable " + v.getId() + " is not used in the loop body"
- 

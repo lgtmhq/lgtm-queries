@@ -19,6 +19,7 @@
  * @problem.severity warning
  * @tags reliability
  *       readability
+ * @precision very-high
  */
 
 import javascript

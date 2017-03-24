@@ -19,23 +19,14 @@
  * @tags maintainability
  *       correctness
  *       language-features
+ * @precision high
  */
 
 import javascript
 import semmle.javascript.flow.CallGraph
 
 /**
- * The function's name, or "(anonymous)" if it doesn't have one.
- */
-string functionName(Function f) {
-  if exists(f.getName()) then
-    result = f.getName()
-  else
-    result = "(anonymous)"
-}
-
-/**
- * Check whether `fn` expects a fixed number of arguments, that is,
+ * Holds if `fn` expects a fixed number of arguments, that is,
  * it neither uses `arguments` nor has a rest parameter.
  */
 predicate isFixedArity(Function fn) {
@@ -45,9 +36,10 @@ predicate isFixedArity(Function fn) {
 }
 
 /**
- * The maximum arity of any function that may be invoked at
- * call site `invk`. This is only defined if all potential
- * callees have a fixed arity.
+ * Gets the maximum arity of any function that may be invoked at
+ * call site `invk`.
+ *
+ * This is only defined if all potential callees have a fixed arity.
  */
 int maxArity(CallSite invk) {
   forall (Function callee | callee = invk.getACallee() | isFixedArity(callee)) and
@@ -55,14 +47,17 @@ int maxArity(CallSite invk) {
 }
 
 /**
- * Call site `invk` has more arguments than the maximum arity
+ * Holds if call site `invk` has more arguments than the maximum arity
  * of any function that it may invoke, and the first of those
- * arguments is `arg`. This predicate only holds for call sites
- * where callee information is complete.
+ * arguments is `arg`.
+ *
+ * This predicate is only defined for call sites where callee information is complete.
  */
 predicate firstSpuriousArgument(CallSite invk, Expr arg) {
   arg = invk.getArgument(maxArity(invk)) and
-  not invk.isIncomplete()
+  not invk.isIncomplete() and
+  // exclude calls with an unknown number of arguments
+  not invk.getAnArgument() instanceof SpreadElement
 }
 
 /**
@@ -70,7 +65,7 @@ predicate firstSpuriousArgument(CallSite invk, Expr arg) {
  *
  * The list is represented by its first element (that is,
  * the first spurious argument), but `hasLocationInfo` is
- * overridden to cover all subsequent arguments as well.
+ * defined to cover all subsequent arguments as well.
  */
 class SpuriousArguments extends Expr {
   SpuriousArguments() {
@@ -78,14 +73,14 @@ class SpuriousArguments extends Expr {
   }
 
   /**
-   * The call site at which the spurious arguments are passed.
+   * Gets the call site at which the spurious arguments are passed.
    */
   CallSite getCall() {
     firstSpuriousArgument(result, this)
   }
 
   /**
-   * The number of spurious arguments, that is, the number of
+   * Gets the number of spurious arguments, that is, the number of
    * actual arguments minus the maximum number of arguments
    * expected by any potential callee.
    */
@@ -93,10 +88,17 @@ class SpuriousArguments extends Expr {
     result = getCall().getNumArgument() - maxArity(getCall())
   }
 
-  predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
-    this.getLocation().hasLocationInfo(filepath, bl, bc, _, _) and
+  /**
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   */
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
+    this.getLocation().hasLocationInfo(filepath, startline, startcolumn, _, _) and
     exists (Expr lastArg | lastArg = getCall().getArgument(getCall().getNumArgument()-1) |
-      lastArg.getLocation().hasLocationInfo(_, _, _, el, ec)
+      lastArg.getLocation().hasLocationInfo(_, _, _, endline, endcolumn)
     )
   }
 }
@@ -104,4 +106,4 @@ class SpuriousArguments extends Expr {
 from SpuriousArguments args, Function f, string arguments
 where f = args.getCall().getACallee() and
       if args.getCount() = 1 then arguments = "argument" else arguments = "arguments"
-select args, "Superfluous " + arguments + " passed to function $@.", f, functionName(f)
+select args, "Superfluous " + arguments + " passed to $@.", f, f.describe()

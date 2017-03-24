@@ -15,9 +15,11 @@
  * @name __init__ method is a generator
  * @description __init__ method is a generator.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

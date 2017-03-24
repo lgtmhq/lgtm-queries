@@ -15,9 +15,11 @@
  * @name Unused local variable
  * @description Local variable is defined but not used
  * @kind problem
- * @problem.severity recommendation
  * @tags maintainability
  *       useless-code
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

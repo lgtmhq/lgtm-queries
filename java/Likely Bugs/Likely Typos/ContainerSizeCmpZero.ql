@@ -79,7 +79,7 @@ class MapSizeCall extends MethodAccess, SizeOfContainer {
 class IntegralZeroLiteral extends Literal {
   IntegralZeroLiteral() {
     (this instanceof IntegerLiteral or this instanceof LongLiteral) and
-    this.getLiteral().toInt() = 0
+    this.getValue().toInt() = 0
   }
 }
 

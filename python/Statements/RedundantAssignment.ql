@@ -15,9 +15,11 @@
  * @name Redundant assignment
  * @description Assigning a variable to itself is useless and very likely indicates an error in the code.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       useless-code
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

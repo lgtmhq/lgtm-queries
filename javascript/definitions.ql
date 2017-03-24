@@ -19,10 +19,16 @@
  */
 
 import javascript
+private import Declarations.Declarations
 
 /**
- * References in callee position have kind "M" (for "method"), all
- * others have kind "V" (for "variable").
+ * Gets the kind of reference that `va` represents.
+ *
+ * References in callee position have kind `"M"` (for "method"), all
+ * others have kind `"V"` (for "variable").
+ *
+ * For example, in the expression `f(x)`, `f` has kind `"M"` while
+ * `x` has kind `"V"`.
  */
 string refKind(VarAccess va) {
   if exists(InvokeExpr invk | va = invk.getCallee().stripParens()) then
@@ -32,32 +38,31 @@ string refKind(VarAccess va) {
 }
 
 /**
- * Variable lookup: connect variable accesses to their declarations.
+ * Holds if variable access `va` is of kind `kind` and refers to the
+ * variable declaration.
+ *
+ * For example, in the statement `var x = 42, y = x;`, the initializing
+ * expression of `y` is a variable access `x` of kind `"V"` that refers to
+ * the declaration `x = 42`.
  */
 predicate variableLookup(VarAccess va, VarDecl decl, string kind) {
-  decl = va.getVariable().getADeclaration() and
-  // restrict to same file to avoid accidentally picking up unrelated global definitions
-  va.getFile() = decl.getFile() and
+  // restrict to declarations in same file to avoid accidentally picking up
+  // unrelated global definitions
+  decl = firstRefInTopLevel(va.getVariable(), Decl(), va.getTopLevel()) and
   kind = refKind(va)
 }
 
 /**
- * Import resolution: connect path expressions in Node.js require statements
- * and ES2015 imports to the module they refer to.
+ * Holds if path expression `path`, which appears in a CommonJS `require`
+ * call or an ES 2015 import statement, imports module `target`; `kind`
+ * is always "I" (for "import").
  *
- * Kind is always "I" (for "import").
+ * For example, in the statement `var a = require("./a")`, the path expression
+ * `"./a"` imports a module `a` in the same folder.
  */
 predicate importLookup(PathExpr path, Module target, string kind) {
   kind = "I" and
-  (
-    exists (Require req | path = req.getImportedPath() |
-      target = req.getImportedModule()
-    )
-    or
-    exists (ImportDeclaration imp | path = imp.getImportedPath() |
-      target = imp.getImportedModule()
-    )
-  )
+  target = any(Import i | path = i.getImportedPath()).getImportedModule()
 }
 
 from ASTNode ref, ASTNode decl, string kind

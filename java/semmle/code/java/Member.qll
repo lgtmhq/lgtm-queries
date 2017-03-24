@@ -49,14 +49,21 @@ class Member extends Element, Annotatable, Modifiable, @member {
 
 /** A callable is a method or constructor. */
 class Callable extends StmtParent, Member, @callable {
-  /** A printable representation of this callable. */
-  string toString() { result = Member.super.toString() }
-  
+  /**
+   * The declared return type of this callable (`void` for
+   * constructors).
+   *
+   * DEPRECATED: use `getReturnType` instead.
+   */
+  deprecated Type getType() {
+    result = this.getReturnType()
+  }
+
   /**
    * The declared return type of this callable (`void` for
    * constructors).
    */
-  Type getType() {
+  Type getReturnType() {
     constrs(this, _, _, result, _, _) or
     methods(this, _, _, result, _, _)
   }
@@ -84,7 +91,7 @@ class Callable extends StmtParent, Member, @callable {
    * but not the name of the callable.
    */
   string getMethodDescriptor() {
-    exists(string return | return = this.getType().getTypeDescriptor() |
+    exists(string return | return = this.getReturnType().getTypeDescriptor() |
       result = "(" + descriptorUpTo(this.getNumberOfParameters()) + ")" + return
     )
   }
@@ -256,9 +263,6 @@ class Callable extends StmtParent, Member, @callable {
     result.getCallee() = this 
   }
 
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/method.png" }
-
   /** The body of this callable, if any. */
   Block getBody() { result.getParent() = this }
 
@@ -372,18 +376,37 @@ predicate overrides(Method m1, Method m2) {
 pragma[noopt]
 predicate overridesIgnoringAccess(Method m1, RefType t1, Method m2, RefType t2) {
   exists(string sig |
-    inheritableMethodWithSignature(sig, t1, m1) and
-    hasSubtype+(t2,t1) and
-    inheritableMethodWithSignature(sig, t2, m2)
+    virtualMethodWithSignature(sig, t1, m1) and
+    t1.extendsOrImplements+(t2) and
+    virtualMethodWithSignature(sig, t2, m2)
   )
 }
 
-private predicate inheritableMethodWithSignature(string sig, RefType t, Method m) {
+private predicate virtualMethodWithSignature(string sig, RefType t, Method m) {
   methods(m,_,_,_,t,_) and
   sig = m.getSignature() and
-  m.isInheritable()
+  m.isVirtual()
 }
 
+private predicate potentialInterfaceImplementationWithSignature(string sig, RefType t, Method impl) {
+  t.hasMethod(impl, _) and
+  sig = impl.getSignature() and
+  impl.isVirtual() and
+  impl.isPublic() and
+  not t instanceof Interface and
+  not t.isAbstract()
+}
+
+private predicate implementsInterfaceMethod(Method impl, Method m) {
+  exists(RefType t, Interface i, Method minst, Method implinst |
+    m = minst.getSourceDeclaration() and
+    i = minst.getDeclaringType() and
+    t.extendsOrImplements+(i) and
+    t.isSourceDeclaration() and
+    potentialInterfaceImplementationWithSignature(minst.getSignature(), t, implinst) and
+    impl = implinst.getSourceDeclaration()
+  )
+}
 
 /** A method is a particular kind of callable. */
 class Method extends Callable, @method {
@@ -421,34 +444,28 @@ class Method extends Callable, @method {
    not exists(int n | this.getParameterType(n) != m.getParameterType(n))
   }
 
-  /**
-   * The path to the icon used when displaying query results.
-   *
-   * A different icon is used depending on the access modifier of this method.
-   */
-  string getIconPath() {
-    this.isPrivate() and result = "icons/privatemethod.png" or
-    this.isProtected() and result = "icons/protectedmethod.png" or
-    this.isPublic() and result = "icons/publicmethod.png" or
-    this.isPackageProtected() and result = "icons/method.png"
-  }
-
   Method getSourceDeclaration() { methods(this,_,_,_,_,result) }
 
   /**
    * All the methods that could possibly be called when this method
-   * is called: the method itself and all its overriding methods (if any).
+   * is called. For class methods this includes the method itself and all its
+   * overriding methods (if any), and for interface methods this includes
+   * matching methods defined on or inherited by implementing classes.
    *
-   * Only includes method implementations, not abstract or interface methods.
+   * Only includes method implementations, not abstract or non-default interface methods.
    * Native methods are included, since they have an implementation (just not in Java).
    */
   Method getAPossibleImplementation() {
-    exists(Method overriding | overriding.overrides*(this) |
-      result = overriding.getSourceDeclaration() and
-      (exists(result.getBody()) or result.hasModifier("native"))
-    )
+    (
+      if getDeclaringType() instanceof Interface and isVirtual() then
+        implementsInterfaceMethod(result, this.getSourceDeclaration())
+      else
+        result.overridesOrInstantiates*(this.getSourceDeclaration())
+    ) and
+    result.isSourceDeclaration() and
+    (exists(result.getBody()) or result.hasModifier("native"))
   }
-  
+
   MethodAccess getAReference() {
     result = Callable.super.getAReference()
   }
@@ -456,7 +473,8 @@ class Method extends Callable, @method {
   predicate isPublic() {
     Callable.super.isPublic() or
     // JLS 9.4: Every method declaration in the body of an interface is implicitly public.
-    getDeclaringType() instanceof Interface
+    getDeclaringType() instanceof Interface or
+    exists(FunctionalExpr func | func.asMethod() = this)
   }
 
   predicate isAbstract() {
@@ -474,16 +492,26 @@ class Method extends Callable, @method {
   }
 
   /**
-   * Whether this method is neither private nor static, and hence
-   * could be inherited.
+   * Whether this method is neither private nor a static interface method
+   * nor an initializer method, and hence could be inherited.
    */
   predicate isInheritable() {
+    not isPrivate() and
+    not (isStatic() and getDeclaringType() instanceof Interface) and
+    not this instanceof InitializerMethod
+  }
+
+  /**
+   * Whether this method is neither private nor static, and hence
+   * uses dynamic dispatch.
+   */
+  predicate isVirtual() {
     not isPrivate() and not isStatic()
   }
 
   /** Whether this method can be overridden. */
   predicate isOverridable() {
-    isInheritable() and
+    isVirtual() and
     not isFinal() and
     not getDeclaringType().isFinal()
   }
@@ -548,7 +576,7 @@ class GetterMethod extends Method {
 class FinalizeMethod extends Method {
   FinalizeMethod() {
     this.hasName("finalize") and 
-    this.getType().hasName("void") and 
+    this.getReturnType().hasName("void") and 
     this.isProtected()
   }
 }
@@ -557,9 +585,6 @@ class FinalizeMethod extends Method {
 class Constructor extends Callable, @constructor {
   /** Whether this is a default constructor, not explicitly declared in source code. */
   predicate isDefaultConstructor() { isDefConstr(this) }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/constructor.png" }
 
   Constructor getSourceDeclaration() { constrs(this,_,_,_,_,result) }
 
@@ -627,8 +652,6 @@ class FieldDeclaration extends ExprParent, @fielddecl, Annotatable {
 
 /** A class or instance field. */
 class Field extends Member, ExprParent, @field, Variable {
-  string toString() { result = Member.super.toString() }
-
   /** The declared type of this field. */
   Type getType() { fields(this, _, result, _, _) }
 
@@ -641,9 +664,6 @@ class Field extends Member, ExprParent, @field, Variable {
    * Note that this declaration is only available if the field occurs in source code.
    */
   FieldDeclaration getDeclaration() { result.getAField() = this }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/field.png" }
 
   /** The initializer expression of this field, if any. */
   Expr getInitializer() {

@@ -18,14 +18,16 @@
  * @problem.severity warning
  * @tags maintainability
  *       correctness
+ * @precision very-high
  */
 
 import javascript
 import semmle.javascript.RestrictedLocations
 
 from Stmt s
-where not exists (s.getFirstCFGNode().getAPredecessor()) and
-      // we do not model all possible exceptional control flow, so be conservative about catch clauses
+where // `s` is unreachable in the CFG
+      s.getFirstControlFlowNode().isUnreachable() and
+      // the CFG does not model all possible exceptional control flow, so be conservative about catch clauses
       not s instanceof CatchClause and
       // function declarations are special and always reachable
       not s instanceof FunctionDeclStmt and

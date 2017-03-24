@@ -18,15 +18,16 @@
  * @problem.severity warning
  * @tags changeability
  *       readability
+ * @precision high
  */
 
 import javascript
 
 /**
- * A helper function for computing the "semantic indentation" of a token.
+ * Gets the semantic indentation of token `tk`.
  *
  * The semantic indentation of a token `tk` is defined as follows:
- * 
+ *
  *   1. If `tk` is the first token on its line, its semantic indentation is its start column.
  *   2. Otherwise, if `tk` is an `if` token preceded by an `else` token, or an `else` token
  *      preceded by an `}` token, its semantic indentation is the semantic indentation of that
@@ -51,10 +52,17 @@ int semanticIndent(Token tk) {
   )
 }
 
+/**
+ * Gets the semantic indentation of the `if` token of statement `i`.
+ */
 int ifIndent(IfStmt i) {
   result = semanticIndent(i.getIfToken())
 }
 
+/**
+ * Gets the semantic indentation of the `else` token of statement `i`,
+ * if any.
+ */
 int elseIndent(IfStmt i) {
   result = semanticIndent(i.getElseToken())
 }

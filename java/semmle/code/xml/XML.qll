@@ -46,7 +46,7 @@ class XMLParent extends @xmlparent {
    * A printable representation of this XML parent.
    * (Intended to be overridden in subclasses.)
    */
-  /*abstract*/ string getName() { result = "parent" }
+  abstract string getName();
 
   /** The file to which this XML parent belongs. */
   XMLFile getFile() { result = this or xmlElements(this,_,_,_,result) }
@@ -56,6 +56,9 @@ class XMLParent extends @xmlparent {
 
   /** A child element of this XML parent. */
   XMLElement getAChild() { xmlElements(result,_,this,_,_) }
+
+  /** A child element of this XML parent with the given `name`. */
+  XMLElement getAChild(string name) { xmlElements(result,_,this,_,_) and result.hasName(name) }
 
   /** A comment that is a child of this XML parent. */
   XMLComment getAComment() { xmlComments(result,_,this,_) }
@@ -94,11 +97,13 @@ class XMLParent extends @xmlparent {
     )
   }
 
+  /** The text value contained in this XML parent. */
+  string getTextValue() {
+    result = allCharactersString()
+  }
+
   /** A printable representation of this XML parent. */
   string toString() { result = this.getName() }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/tag.png" }
 }
 
 /** An XML file. */
@@ -108,9 +113,11 @@ class XMLFile extends XMLParent, File {
   }
 
   /** A printable representation of this XML file. */
+  override
   string toString() { result = XMLParent.super.toString() }
 
   /** The name of this XML file. */
+  override
   string getName() { files(this,result,_,_,_) }
 
   /** The path of this XML file. */
@@ -125,6 +132,7 @@ class XMLFile extends XMLParent, File {
   string getEncoding() { xmlEncoding(this,result) }
 
   /** The XML file itself. */
+  override
   XMLFile getFile() { result = this }
 
   /** A top-most element in an XML file. */
@@ -132,9 +140,6 @@ class XMLFile extends XMLParent, File {
 
   /** A DTD associated with this XML file. */
   XMLDTD getADTD() { xmlDTDs(result,_,_,_,this) }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/file.png" }
 }
 
 /** A "Document Type Definition" of an XML file. */
@@ -167,10 +172,15 @@ class XMLDTD extends @xmldtd {
 
 /** An XML tag in an XML file. */
 class XMLElement extends @xmlelement, XMLParent, XMLLocatable {
+  /** Whether this XML element has the given `name`. */
+  predicate hasName(string name) { name = getName() }
+
   /** The name of this XML element. */
+  override
   string getName() { xmlElements(this,result,_,_,_) }
 
   /** The XML file in which this XML element occurs. */
+  override
   XMLFile getFile() { xmlElements(this,_,_,_,result) }
 
   /** The parent of this XML element. */
@@ -189,6 +199,7 @@ class XMLElement extends @xmlelement, XMLParent, XMLLocatable {
   int getElementPositionIndex() { xmlElements(this,_,_,result,_) }
 
   /** The depth of this element within the XML file tree structure. */
+  override
   int getDepth() { result = this.getParent().getDepth() + 1 }
 
   /** An XML attribute of this XML element. */
@@ -210,6 +221,7 @@ class XMLElement extends @xmlelement, XMLParent, XMLLocatable {
   }
 
   /** A printable representation of this XML element. */
+  override
   string toString() { result = XMLParent.super.toString() }
 }
 
@@ -232,9 +244,6 @@ class XMLAttribute extends @xmlattribute, XMLLocatable {
 
   /** A printable representation of this XML attribute. */
   string toString() { result = this.getName() + "=" + this.getValue() }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/publicfield.png" }
 }
 
 /** A namespace used in an XML file */
@@ -253,9 +262,6 @@ class XMLNamespace extends @xmlnamespace {
     (this.isDefault() and result = this.getURI()) or
     (not this.isDefault() and result = this.getPrefix() + ":" + this.getURI())
   }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/publicfield.png" }
 }
 
 /** A comment of the form `<!-- ... -->` is an XML comment. */
@@ -268,9 +274,6 @@ class XMLComment extends @xmlcomment, XMLLocatable {
 
   /** A printable representation of this XML comment. */
   string toString() { result = this.getText() }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/publicfield.png" }
 }
 
 /**
@@ -289,7 +292,4 @@ class XMLCharacters extends @xmlcharacters, XMLLocatable {
 
   /** A printable representation of this XML character sequence. */
   string toString() { result = this.getCharacters() }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/publicfield.png" }
 }

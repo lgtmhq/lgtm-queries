@@ -15,9 +15,11 @@
  * @name Constant in conditional expression or statement
  * @description The conditional is always true or always false
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       useless-code
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

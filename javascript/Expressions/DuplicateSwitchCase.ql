@@ -16,19 +16,23 @@
  * @description If two cases in a switch statement have the same label, the second case
  *              will never be executed.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
  * @tags maintainability
  *       correctness
+ * @precision very-high
  */
 
 import Clones
 
+/**
+ * A clone detector for finding structurally identical case labels.
+ */
 class DuplicateSwitchCase extends StructurallyCompared {
   DuplicateSwitchCase() {
     exists (Case c | this = c.getExpr())
   }
 
-  Expr candidate() {
+  override Expr candidate() {
     exists (SwitchStmt s, int i, int j |
       this = s.getCase(i).getExpr() and
       result = s.getCase(j).getExpr() and

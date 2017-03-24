@@ -15,29 +15,24 @@
  * @name Wrong name for an argument in a call
  * @description A call to function may name an argument for a parameter that does not exist. This will cause a TypeError to be raised.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python
-
-string name_in_explicit_dict(Call call) {
-    result = call.getKwargs().(Dict).getAKey().(StrConst).getText()
-}
-
-predicate illegal_name_parameter(Call call, FunctionObject func, string name) {
-    not func.isC() and
-    not func.getFunction().hasKwArg() and
-    (call.getAKeyword().getArg() = name or name = name_in_explicit_dict(call)) and 
-    call.getAFlowNode() = func.getACall() and
-    not func.getFunction().getAnArg().asName().getId() = name and
-    not func.getFunction().getAKeywordOnlyArg().getId() = name
-}
+import Expressions.CallArgs
 
 
 from Call call, FunctionObject func, string name
 where
-illegal_name_parameter(call, func, name)
+illegally_named_parameter(call, func, name) and
+// Only report this as a fault of the call-site if the method is correctly overridden.
+forall(FunctionObject over |
+    overridden_call(func, over, call) or overridden_call(over, func, call) |
+    illegally_named_parameter(call, over, name)
+)
 select
 call, "Keyword argument '" + name + "' is not a supported parameter name of $@.", func, func.descriptiveString()

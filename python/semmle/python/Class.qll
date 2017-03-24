@@ -37,7 +37,7 @@ class ClassExpr extends ClassExpr_ {
     DictUnpackingOrKeyword getAKeyword() {
         result = this.getKeywords().getAnItem()
     }
-    
+
     Expr getASubExpression() {
        result = this.getABase() or
        result = this.getAKeyword().getValue() or
@@ -120,6 +120,11 @@ class Class extends Class_, Scope, AstNode {
     }
 
     /** Gets the scope (module, class or function) in which this class is defined */
+    Scope getEnclosingScope() {
+        result = this.getParent().getScope()
+    }
+
+    /** Use getEnclosingScope() instead */
     Scope getScope() {
         result = this.getParent().getScope()
     }

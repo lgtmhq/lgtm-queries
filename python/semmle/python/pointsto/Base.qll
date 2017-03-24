@@ -90,16 +90,16 @@ predicate module_exports_complete(Module m) {
 
 /** INTERNAL -- May be modified or deleted without warning. */
 predicate is_locally_defined_from_dot_import_in_init(ImportMemberNode f, string name) {
-    exists(ImportMember im, ImportExpr module |
+    exists(ImportMember im, ImportExpr mod |
         im.getAFlowNode() = f and
         name = im.getName() and
         im.getEnclosingModule().getName().matches("%.\\_\\_init\\_\\_") and
-        module = im.getModule()
+        mod = im.getModule()
         |
-        module.getLevel() = 1 and
-        not exists(module.getName())
+        mod.getLevel() = 1 and
+        not exists(mod.getName())
         or
-        module.getImportedModuleName() = im.getEnclosingModule().getPackage().getName()
+        mod.getImportedModuleName() = im.getEnclosingModule().getPackage().getName()
     )
 }
 
@@ -219,7 +219,7 @@ private int tuple_index_value(TupleObject t, int i) {
     result = t.getBuiltinElement(i).(NumericObject).intValue()
 }
 
-pragma [inline]
+bindingset[hex]
 int scale_hex_version(int hex) {
     hex >= 50331648 and result = 48 + (hex-50331648)/65536
     or
@@ -309,20 +309,20 @@ predicate baseless_is_new_style(ClassObject cls) {
 cached
 ClassObject builtin_base_type(ClassObject cls) {
     /* The extractor uses the special name ".super." to indicate the super class of a builtin class */
-    py_cmembers(cls, ".super.", result)
+    py_cmembers_versioned(cls, ".super.", result, major_version().toString())
 }
 
 /** Gets the `name`d attribute of built-in class `cls` */
 cached
 Object builtin_class_attribute(ClassObject cls, string name) {
     not name = ".super." and
-    py_cmembers(cls, name, result)
+    py_cmembers_versioned(cls, name, result, major_version().toString())
 }
 
 /** Gets the `name`d attribute of built-in module `m` */
 cached 
 Object builtin_module_attribute(ModuleObject m, string name) {
-     py_cmembers(m, name, result)
+     py_cmembers_versioned(m, name, result, major_version().toString())
 }
 
 /** Gets the (built-in) class of the built-in object `obj` */
@@ -336,7 +336,7 @@ cached
 predicate extensional_name(string n) {
     py_cobjectnames(_, n)
     or
-    py_cmembers(_, n, _)
+    py_cmembers_versioned(_, n, _, _)
     or
     variable(_, _, n)
     or
@@ -370,14 +370,17 @@ private predicate class_defines_name(Class cls, string name) {
  *  having executed at least once, ignoring the inferred call graph.
  */
 predicate base_scope_precedes(Scope pre, Scope post, int ranking) {
-    not post instanceof ImportTimeScope and pre = post.getEnclosingModule() and ranking = 1
+    not post instanceof Module and
+    post.getEnclosingModule() = pre and ranking = 2
     or
-    ranking = 2 and
+    post.getScope() = pre and not pre instanceof ImportTimeScope and ranking = 2
+    or
+    ranking = 1 and
     exists(Class c |
         pre != post and
         pre.getScope() = c and post.getScope() = c and
         not exists(post.(Function).getADecorator()) |
-        pre.getName() = "__init__" or pre.getName() = "new" 
+        pre.getName() = "__init__" or pre.getName() = "new"
     )
 }
 
@@ -441,3 +444,13 @@ predicate last_simple_attribute_store_in_scope(SsaVariable var, string name, Con
         )
     )
 }
+
+predicate non_module_scope_defines_or_uses_global(Scope s, GlobalVariable v) {
+    exists(NameNode n |
+        n.getScope().getScope*() = s |
+        n.uses(v) or n.defines(v)
+    ) and
+    not s instanceof Module
+}
+
+

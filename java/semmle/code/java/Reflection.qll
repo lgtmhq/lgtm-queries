@@ -68,15 +68,15 @@ library class ReflectiveClassIdentifier extends MethodAccess {
   }
 
   /**
-   * If the argument to this call is a `StringLiteral`, then return that literal.
+   * If the argument to this call is a `StringLiteral`, then return that string.
    */
   string getTypeName() {
-    result = getArgument(0).(StringLiteral).getLiteral()
+    result = getArgument(0).(StringLiteral).getRepresentedString()
   }
 
   RefType getReflectivelyIdentifiedClass() {
     // We only handle cases where the class is specified as a string literal to this call.
-    result.getQualifiedName() = getTypeName().substring(1, getTypeName().length() - 1)
+    result.getQualifiedName() = getTypeName()
   }
 }
 

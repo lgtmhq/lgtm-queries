@@ -11,23 +11,30 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/**
+ * Provides classes for working with YAML data.
+ *
+ * YAML documents are represented as abstract syntax trees whose nodes
+ * are either YAML values or alias nodes referring to another YAML value.
+ */
+
 import Locations
 
 /**
- * A node in the AST representation of a YAML file; this may either be
+ * A node in the AST representation of a YAML file, which may either be
  * a YAML value (such as a scalar or a collection) or an alias node
  * referring to some other YAML value.
  */
 class YAMLNode extends @yaml_node, Locatable {
   /**
-   * Get the parent node of this node, which is always a collection.
+   * Gets the parent node of this node, which is always a collection.
    */
   YAMLCollection getParentNode() {
     yaml(this, _, result, _, _, _)
   }
 
   /**
-   * Get the `i`-th child node of this node.
+   * Gets the `i`th child node of this node.
    *
    * _Note_: The index of a child node relative to its parent is considered
    * an implementation detail and may change between versions of the extractor.
@@ -37,68 +44,68 @@ class YAMLNode extends @yaml_node, Locatable {
   }
 
   /**
-   * Get some child node of this node.
+   * Gets a child node of this node.
    */
   YAMLNode getAChildNode() {
     result = getChildNode(_)
   }
 
   /**
-   * Determine how many child nodes this node has.
+   * Gets the number of child nodes of this node.
    */
   int getNumChild() {
     result = count(getAChildNode())
   }
 
   /**
-   * Get the i-th child of this node, as a YAML value.
+   * Gets the `i`th child of this node, as a YAML value.
    */
   YAMLValue getChild(int i) {
     result = getChildNode(i).eval()
   }
 
   /**
-   * Get some child of this node, as a YAML value.
+   * Gets a child of this node, as a YAML value.
    */
   YAMLValue getAChild() {
     result = getChild(_)
   }
 
   /**
-   * Get the tag of this node.
+   * Gets the tag of this node.
    */
   string getTag() {
     yaml(this, _, _, _, result, _)
   }
 
   /**
-   * Is this node tagged with a standard type tag of the form
-   * `tag:yaml.org,2002:<t>`?
+   * Holds if this node is tagged with a standard type tag of the form
+   * `tag:yaml.org,2002:<t>`.
    */
   predicate hasStandardTypeTag(string t) {
     t = getTag().regexpCapture("tag:yaml.org,2002:(.*)", 1)
   }
 
-  string toString() {
+  override string toString() {
     yaml(this, _, _, _, _, result)
   }
 
   /**
-   * Get the anchor associated with this node, if any.
+   * Gets the anchor associated with this node, if any.
    */
   string getAnchor() {
     yaml_anchors(this, result)
   }
 
   /**
-   * Get the toplevel document to which this node belongs.
+   * Gets the toplevel document to which this node belongs.
    */
   YAMLDocument getDocument() {
     result = getParentNode*()
   }
 
   /**
-   * Convert this node to a YAML value by resolving aliases and includes.
+   * Gets the YAML value this node corresponds to after resolving aliases and includes.
    */
   YAMLValue eval() {
     result = this
@@ -116,7 +123,7 @@ abstract class YAMLValue extends YAMLNode {
  */
 class YAMLScalar extends YAMLValue, @yaml_scalar_node {
   /**
-   * Get the style of this scalar, which is one of the following:
+   * Gets the style of this scalar, which is one of the following:
    *
    * - `""` (empty string): plain style
    * - `"\""` (double quote): double quoted style
@@ -135,7 +142,7 @@ class YAMLScalar extends YAMLValue, @yaml_scalar_node {
   }
 
   /**
-   * Get the value of this scalar, as a string.
+   * Gets the value of this scalar, as a string.
    */
   string getValue() {
     yaml_scalars(this, _, result)
@@ -151,7 +158,7 @@ class YAMLInteger extends YAMLScalar {
   }
 
   /**
-   * Get the value of this scalar, as an integer.
+   * Gets the value of this scalar, as an integer.
    */
   int getIntValue() {
     result = getValue().toInt()
@@ -167,7 +174,7 @@ class YAMLFloat extends YAMLScalar {
   }
 
   /**
-   * Get the value of this scalar, as a floating point number.
+   * Gets the value of this scalar, as a floating point number.
    */
   float getFloatValue() {
     result = getValue().toFloat()
@@ -183,7 +190,7 @@ class YAMLTimestamp extends YAMLScalar {
   }
 
   /**
-   * Get the value of this scalar, as a date.
+   * Gets the value of this scalar, as a date.
    */
   date getDateValue() {
     result = getValue().toDate()
@@ -199,7 +206,7 @@ class YAMLBool extends YAMLScalar {
   }
 
   /**
-   * Get the value of this scalar, as a Boolean.
+   * Gets the value of this scalar, as a Boolean.
    */
   boolean getBoolValue() {
     if getValue() = "true" then
@@ -244,7 +251,7 @@ class YAMLInclude extends YAMLScalar {
     getTag() = "!include"
   }
 
-  YAMLValue eval() {
+  override YAMLValue eval() {
     exists (YAMLDocument targetDoc |
       targetDoc.getFile().getPath() = getTargetPath() and
       result = targetDoc.eval()
@@ -252,11 +259,11 @@ class YAMLInclude extends YAMLScalar {
   }
 
   /**
-   * Get the absolute path of the file included by this directive.
+   * Gets the absolute path of the file included by this directive.
    */
   private string getTargetPath() {
     exists (string path | path = getValue() |
-      if path.charAt(0) = "/" then
+      if path.matches("/%") then
         result = path
       else
         result = getDocument().getFile().getParent().getPath() + "/" + path
@@ -275,15 +282,15 @@ class YAMLCollection extends YAMLValue, @yaml_collection_node {
  */
 class YAMLMapping extends YAMLCollection, @yaml_mapping_node {
   /**
-   * Get the i-th key of this mapping.
+   * Gets the `i`th key of this mapping.
    */
   YAMLNode getKeyNode(int i) {
     i >= 0 and
-    exists (int j | i=j-1 and result = getChildNode(j)) 
+    exists (int j | i=j-1 and result = getChildNode(j))
   }
 
   /**
-   * Get the i-th value of this mapping.
+   * Gets the `i`th value of this mapping.
    */
   YAMLNode getValueNode(int i) {
     i >= 0 and
@@ -291,21 +298,21 @@ class YAMLMapping extends YAMLCollection, @yaml_mapping_node {
   }
 
   /**
-   * Get the i-th key of this mapping, as a YAML value.
+   * Gets the `i`th key of this mapping, as a YAML value.
    */
   YAMLValue getKey(int i) {
     result = getKeyNode(i).eval()
   }
 
   /**
-   * Get the i-th value of this mapping, as a YAML value.
+   * Gets the `i`th value of this mapping, as a YAML value.
    */
   YAMLValue getValue(int i) {
     result = getValueNode(i).eval()
   }
 
   /**
-   * Bind key and value to a key-value pair in this mapping.
+   * Holds if this mapping maps `key` to `value`.
    */
   predicate maps(YAMLValue key, YAMLValue value) {
     exists (int i | key = getKey(i) and value = getValue(i)) or
@@ -315,7 +322,7 @@ class YAMLMapping extends YAMLCollection, @yaml_mapping_node {
   }
 
   /**
-   * Look up the value for a string-valued key.
+   * Gets the value that this mapping maps `key` to.
    */
   YAMLValue lookup(string key) {
     exists (YAMLScalar s | s.getValue() = key |
@@ -329,14 +336,14 @@ class YAMLMapping extends YAMLCollection, @yaml_mapping_node {
  */
 class YAMLSequence extends YAMLCollection, @yaml_sequence_node {
   /**
-   * Get the i-th element in this sequence.
+   * Gets the `i`th element in this sequence.
    */
   YAMLNode getElementNode(int i) {
     result = getChildNode(i)
   }
 
   /**
-   * Get the i-th element in this sequence, as a YAML value.
+   * Gets the `i`th element in this sequence, as a YAML value.
    */
   YAMLValue getElement(int i) {
     result = getElementNode(i).eval()
@@ -347,13 +354,13 @@ class YAMLSequence extends YAMLCollection, @yaml_sequence_node {
  * A YAML alias node referring to a target anchor.
  */
 class YAMLAliasNode extends YAMLNode, @yaml_alias_node {
-  YAMLValue eval() {
+  override YAMLValue eval() {
     result.getAnchor() = getTarget() and
     result.getDocument() = this.getDocument()
   }
 
   /**
-   * Get the target anchor this alias refers to.
+   * Gets the target anchor this alias refers to.
    */
   string getTarget() {
     yaml_aliases(this, result)
@@ -373,11 +380,11 @@ class YAMLDocument extends YAMLNode {
  * An error message produced by the YAML parser while processing a YAML file.
  */
 class YAMLParseError extends @yaml_error, Error {
-  string getMessage() {
+  override string getMessage() {
     yaml_errors(this, result)
   }
 
-  string toString() {
+  override string toString() {
     result = getMessage()
   }
 }

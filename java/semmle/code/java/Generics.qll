@@ -90,17 +90,10 @@ class GenericType extends RefType {
 
 /** A generic type that is a class. */
 class GenericClass extends GenericType, Class { 
-  /** The source declaration of this generic class. */
-  RefType getSourceDeclaration() { result = Class.super.getSourceDeclaration() }
-
-  /** An annotation attached to this generic class. */
-  Annotation getAnAnnotation() { result = Class.super.getAnAnnotation() }
 }
 
 /** A generic type that is an interface. */
 class GenericInterface extends GenericType, Interface { 
-  RefType getSourceDeclaration() { result = Interface.super.getSourceDeclaration() }
-  predicate isAbstract() { Interface.super.isAbstract() }
 }
 
 /**
@@ -134,13 +127,11 @@ class TypeVariable extends BoundedType, @typevariable {
   /** The generic callable that is parameterized by this type parameter, if any. */
   GenericCallable getGenericCallable() { typeVars(this,_,_,_,result) }
 
-  /** DEPRECATED: Use `getGenericCallable()` instead. */
-  deprecated Method getGenericMethod() { typeVars(this,_,_,_,result) }
-
   /**
    * The upper bound of this type parameter, or `Object`
    * if no explicit type bound is present.
    */
+  pragma[nomagic]
   RefType getUpperBoundType() {
     if this.hasTypeBound() then
       result = this.getATypeBound().getType()
@@ -152,6 +143,28 @@ class TypeVariable extends BoundedType, @typevariable {
   Package getPackage() {
     result = getGenericType().getPackage() or
     result = getGenericCallable().getDeclaringType().getPackage()
+  }
+
+  /** Finds a type that was supplied for this parameter. */
+  RefType getASuppliedType() {
+    exists(RefType typearg |
+      exists(GenericType gen, int pos |
+        this = gen.getTypeParameter(pos) and
+        typearg = gen.getAParameterizedType().getTypeArgument(pos)
+      ) or
+      typearg = any(GenericCall call).getATypeArgument(this)
+      |
+      if typearg.(Wildcard).isUnconstrained() and this.hasTypeBound() then
+        result.(Wildcard).getUpperBound().getType() = this.getUpperBoundType()
+      else
+        result = typearg
+    )
+  }
+
+  /** Finds a non-typevariable type that was transitively supplied for this parameter. */
+  RefType getAnUltimatelySuppliedType() {
+    result = getASuppliedType() and not result instanceof TypeVariable or
+    result = getASuppliedType().(TypeVariable).getAnUltimatelySuppliedType()
   }
 }
 
@@ -210,8 +223,8 @@ class Wildcard extends BoundedType, @wildcard {
    * Whether this is the unconstrained wildcard `?`.
    */
   predicate isUnconstrained() {
-    not hasUpperBound() and
-    not hasLowerBound()
+    not hasLowerBound() and
+    wildcards(this, "?", _)
   }
 }
 
@@ -280,7 +293,7 @@ class ParameterizedType extends RefType {
    *
    * For example, the erasure of both `X<Number>` and `X<Integer>` is `X<T>`.
    */
-  RefType getErasure() { erasure(this,result) }
+  RefType getErasure() { erasure(this,result) or this.(GenericType) = result }
 
   /**
    * The generic type corresponding to this parameterized type.
@@ -319,21 +332,10 @@ class ParameterizedType extends RefType {
 
 /** A parameterized type that is a class. */
 class ParameterizedClass extends Class, ParameterizedType { 
-  /** Whether this type originates from source code. */
-  predicate fromSource() { ParameterizedType.super.fromSource() }
-
-  /** The source declaration of this parameterized class. */
-  RefType getSourceDeclaration() { result = Class.super.getSourceDeclaration() }
-
-  /** An annotation attached to this parameterized class. */
-  Annotation getAnAnnotation() { result = Class.super.getAnAnnotation() }
 }
 
 /** A parameterized type that is an interface. */
 class ParameterizedInterface extends Interface, ParameterizedType {
-  predicate fromSource() { ParameterizedType.super.fromSource() }
-  RefType getSourceDeclaration() { result = Interface.super.getSourceDeclaration() }
-  predicate isAbstract() { Interface.super.isAbstract() }
 }
 
 /**
@@ -346,7 +348,7 @@ class ParameterizedInterface extends Interface, ParameterizedType {
  * Raw types typically occur in legacy code that was written
  * prior to the introduction of generic types in Java 5.
  */
- class RawType extends RefType {
+class RawType extends RefType {
   RawType() { isRaw(this) }
 
   /**
@@ -362,21 +364,10 @@ class ParameterizedInterface extends Interface, ParameterizedType {
 
 /** A raw type that is a class. */
 class RawClass extends Class, RawType { 
-  /** Whether this type originates from source code. */
-  predicate fromSource() { RawType.super.fromSource() }
-
-  /** The source declaration of this raw class. */
-  RefType getSourceDeclaration() { result = Class.super.getSourceDeclaration() }
-
-  /** An annotation attached to this raw class. */
-  Annotation getAnAnnotation() { result = Class.super.getAnAnnotation() }
 }
 
 /** A raw type that is an interface. */
 class RawInterface extends Interface, RawType { 
-  predicate fromSource() { RawType.super.fromSource() }
-  RefType getSourceDeclaration() { result = Interface.super.getSourceDeclaration() }
-  predicate isAbstract() { Interface.super.isAbstract() }
 }
 
 // -------- Generic callables  --------
@@ -385,12 +376,17 @@ class RawInterface extends Interface, RawType {
  * A generic callable is a callable with a type parameter.
  */
 class GenericCallable extends Callable {
-  GenericCallable() { typeVars(_,_,_,_,this) }
+  GenericCallable() {
+    exists(Callable srcDecl |
+      methods(this,_,_,_,_,srcDecl) or constrs(this,_,_,_,_,srcDecl) |
+      typeVars(_,_,_,_,srcDecl)
+    )
+  }
 
   /**
    * The `i`-th type parameter of this generic callable.
    */
-  TypeVariable getTypeParameter(int i) { typeVars(result, _, i, _, this) }
+  TypeVariable getTypeParameter(int i) { typeVars(result, _, i, _, this.getSourceDeclaration()) }
 
   /**
    * A type parameter of this generic callable.
@@ -404,6 +400,120 @@ class GenericCallable extends Callable {
 }
 
 /**
+ * A call where the callee is a generic callable.
+ */
+class GenericCall extends Call {
+  GenericCall() {
+    this.getCallee() instanceof GenericCallable
+  }
+
+  private RefType getAnInferredTypeArgument(TypeVariable v) {
+    typevarArg(this, v, result)
+    or
+    not typevarArg(this, v, _) and
+    v = this.getCallee().(GenericCallable).getATypeParameter() and
+    result.(Wildcard).getUpperBound().getType() = v.getUpperBoundType()
+  }
+
+  private RefType getAnExplicitTypeArgument(TypeVariable v) {
+    exists(GenericCallable gen, MethodAccess call, int i |
+      this = call and
+      gen = call.getCallee() and
+      v = gen.getTypeParameter(i) and
+      result = call.getTypeArgument(i).getType()
+    )
+  }
+
+  /** Gets a type argument of the call for the given `TypeVariable`. */
+  RefType getATypeArgument(TypeVariable v) {
+    result = getAnExplicitTypeArgument(v) or
+    not exists(getAnExplicitTypeArgument(v)) and
+    result = getAnInferredTypeArgument(v)
+  }
+}
+
+/** Infers a type argument of `call` for `v` using a simple unification. */
+private predicate typevarArg(Call call, TypeVariable v, RefType typearg) {
+  exists(GenericCallable gen |
+    gen = call.getCallee() and
+    v = gen.getATypeParameter()
+    |
+    hasSubstitution(gen.getReturnType(), call.(Expr).getType(), v, typearg)
+    or
+    exists(int n | hasSubtypedSubstitution(gen.getParameterType(n), call.getArgument(n).getType(), v, typearg))
+  )
+}
+
+/**
+ * The reflexive transitive closure of `RefType.extendsOrImplements` including reflexivity on `Type`s.
+ */
+private Type getShallowSupertype(Type t) {
+  result = t or t.(RefType).extendsOrImplements+(result)
+}
+
+/**
+ * Manual magic sets optimization for the "inputs" of `hasSubstitution` and
+ * `hasParameterSubstitution`.
+ */
+private predicate unificationTargets(RefType t1, Type t2) {
+  exists(GenericCallable gen, Call call |
+    gen = call.getCallee()
+    |
+    t1 = gen.getReturnType() and t2 = call.(Expr).getType() or
+    exists(int n | t1 = gen.getParameterType(n) and t2 = getShallowSupertype(call.getArgument(n).getType()))
+  ) or
+  exists(Array a1, Array a2 |
+    unificationTargets(a1, a2) and
+    t1 = a1.getComponentType() and
+    t2 = a2.getComponentType()
+  ) or
+  exists(ParameterizedType pt1, ParameterizedType pt2, int pos |
+    unificationTargets(pt1, pt2) and
+    t1 = pt1.getTypeArgument(pos) and
+    t2 = pt2.getTypeArgument(pos)
+  )
+}
+
+/**
+ * Unifies `t1` and `t2` with respect to `v` allowing subtyping.
+ *
+ * `t1` contains `v` and equals a supertype of `t2` if `subst` is substituted for `v`.
+ * Only shallow supertypes of `t2` are considered in order to get the most precise result for `subst`.
+ * For example:
+ * If `t1` is `List<V>` and `t2` is `ArrayList<T>` we only want `subst` to be `T` and not, say, `?`.
+ */
+pragma[nomagic]
+private predicate hasSubtypedSubstitution(RefType t1, Type t2, TypeVariable v, RefType subst) {
+  hasSubstitution(t1, t2, v, subst) or
+  exists(GenericType g | hasParameterSubstitution(g, t1, g, getShallowSupertype(t2), v, subst))
+}
+
+/**
+ * Unifies `t1` and `t2` with respect to `v`.
+ *
+ * `t1` contains `v` and equals `t2` if `subst` is substituted for `v`.
+ * As a special case `t2` can be a primitive type and the equality hold when
+ * `t2` is auto-boxed.
+ */
+private predicate hasSubstitution(RefType t1, Type t2, TypeVariable v, RefType subst) {
+  unificationTargets(t1, t2) and
+  (
+    t1 = v and (t2 = subst or t2.(PrimitiveType).getBoxedType() = subst) or
+    hasSubstitution(t1.(Array).getComponentType(), t2.(Array).getComponentType(), v, subst) or
+    exists(GenericType g | hasParameterSubstitution(g, t1, g, t2, v, subst))
+  )
+}
+
+private predicate hasParameterSubstitution(GenericType g1, ParameterizedType pt1, GenericType g2, ParameterizedType pt2, TypeVariable v, RefType subst) {
+  unificationTargets(pt1, pt2) and
+  exists(int pos |
+    hasSubstitution(pt1.getTypeArgument(pos), pt2.getTypeArgument(pos), v, subst)
+  ) and
+  g1 = pt1.getGenericType() and
+  g2 = pt2.getGenericType()
+}
+
+/**
  * A generic constructor is a constructor with a type parameter.
  *
  * For example, `<T> C(T t) { }` is a generic constructor for type `C`.
@@ -411,11 +521,6 @@ class GenericCallable extends Callable {
 class GenericConstructor extends Constructor, GenericCallable {
   GenericConstructor getSourceDeclaration() { result = Constructor.super.getSourceDeclaration() }
   ConstructorCall getAReference() { result = Constructor.super.getAReference() }
-  string getSignature() { result = Constructor.super.getSignature() }
-  predicate isAbstract() { Constructor.super.isAbstract() }
-  predicate isPublic() { Constructor.super.isPublic() }
-  predicate isStrictfp() { Constructor.super.isStrictfp() }
-  string getIconPath() { result = Constructor.super.getIconPath() }
 }
 
 /**
@@ -425,67 +530,4 @@ class GenericConstructor extends Constructor, GenericCallable {
  */
 class GenericMethod extends Method, GenericCallable {
   GenericMethod getSourceDeclaration() { result = Method.super.getSourceDeclaration() }
-  MethodAccess getAReference() { result = Method.super.getAReference() }
-  string getSignature() { result = Method.super.getSignature() }
-  predicate isAbstract() { Method.super.isAbstract() }
-  predicate isPublic() { Method.super.isPublic() }
-  predicate isStrictfp() { Method.super.isStrictfp() }
-  string getIconPath() { result = Method.super.getIconPath() }
-
-  /**
-   * A parameterization of this generic method.
-   *
-   * A parameterized method is an instantiation of a generic method, where
-   * each formal type variable has been replaced with a type argument.
-   *
-   * DEPRECATED: to reason about type arguments of generic method invocations,
-   * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
-   */
-  deprecated
-  ParameterizedMethod getAParameterizedMethod() { result.getErasure() = this }
-
-  /**
-   * A raw method corresponding to this generic method.
-   *
-   * DEPRECATED: to reason about type arguments of generic method invocations,
-   * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
-   */
-  deprecated
-  RawMethod getARawMethod() { result.getErasure() = this }
-}
-
-// -------- Parameterizations of generic methods  --------
-
-/**
- * A parameterized method is an instantiation of a generic method, where
- * each formal type variable has been replaced with a type argument.
- *
- * DEPRECATED: to reason about type arguments of generic method invocations,
- * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
- */
-deprecated
-class ParameterizedMethod extends Method {
-  ParameterizedMethod() { isParameterized(this) }
-
-  /**
-   * The erasure of a parameterized method is its generic counterpart.
-   *
-   * For example, the erasure of `<Number> m(Number t) { }`
-   * is `<T> m(T t) { }`.
-   */
-  Method getErasure() { erasure(this,result) }
-}
-
-/**
- * A raw method is a generic method that is used as if it was not generic.
- *
- * DEPRECATED: to reason about type arguments of generic method invocations,
- * use `MethodAccess.getATypeArgument()` or `MethodAccess.getTypeArgument(int)`.
- */
-deprecated
-class RawMethod extends Method {
-  RawMethod() { isRaw(this) }
-
-  /** The erasure of a raw method is its generic counterpart. */
-  Method getErasure() { erasure(this,result) }
 }

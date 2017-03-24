@@ -20,9 +20,10 @@
  * @metricAggregate avg sum max
  * @tags documentation
  */
-import javascript 
+
+import javascript
 
 
 from File f
-select f, f.getNumberOfLinesOfComments() as n 
+select f, f.getNumberOfLinesOfComments() as n
 order by n desc

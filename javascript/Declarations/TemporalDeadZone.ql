@@ -16,13 +16,18 @@
  * @description Accessing a let-bound variable before its declaration will lead to a runtime
  *              error on ECMAScript 2015-compatible platforms.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
  * @tags portability
  *       correctness
+ * @precision very-high
  */
 
 import javascript
 
+/**
+ * Gets the (0-based) index among all statements in block `blk` at which
+ * variable `v` is declared by statement `let`.
+ */
 int letDeclAt(BlockStmt blk, Variable v, LetStmt let) {
   let.getADecl().getBindingPattern().getAVariable() = v and
   let.getParentStmt*() = blk.getStmt(result)

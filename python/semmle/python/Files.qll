@@ -47,27 +47,6 @@ class File extends Container {
         any()
     }
 
-    /**
-     * Gets the relative path of this file from the root of the analyzed source
-     * location, or has no result if this file is not under the source location (i.e.
-     * if `getFullName` does not have the source location as a prefix).
-     */
-    string getRelativePath() {
-        exists(string prefix |
-            sourceLocationPrefix(prefix) |
-            (
-                getName().matches(prefix + "/%") and
-                // remove source location and the following slash
-                result = getName().suffix(prefix.length() + 1)
-            ) or (
-                // special case for prefix = "/" and "/" at the beginning of path
-                prefix = "/" and
-                getName().charAt(0) = "/" and
-                result = getName().suffix(1)
-            )
-        )
-    }
-
     /** Gets a short name for this file (just the file name) */
     string getShortName() {
         exists(string simple, string ext | files(this, _, simple, ext, _) |
@@ -161,6 +140,51 @@ abstract class Container extends @container {
     /** Gets the name of this container */
     abstract string getName();
 
+    /**
+     * Gets the relative path of this file from the root of the analyzed source
+     * location, or has no result if this file is not under the source location (i.e.
+     * if `getFullName` does not have the source location as a prefix).
+     */
+    string getRelativePath() {
+        exists(string prefix |
+            sourceLocationPrefix(prefix) |
+            (
+                getName().matches(prefix + "/%") and
+                // remove source location and the following slash
+                result = getName().suffix(prefix.length() + 1)
+            ) or (
+                // special case for prefix = "/" and "/" at the beginning of path
+                prefix = "/" and
+                getName().charAt(0) = "/" and
+                result = getName().suffix(1)
+            )
+        )
+    }
+
+    /** Whether this file or folder is part of the standard library */
+    predicate inStdlib() {
+        this.inStdlib(_, _)
+    }
+
+    /** Whether this file or folder is part of the standard library 
+     * for version `major.minor`
+     */
+    predicate inStdlib(int major, int minor) {
+        // https://docs.python.org/library/sys.html#sys.prefix
+        exists(string sys_prefix, string version |
+            version = major + "." + minor and
+            allowable_version(major, minor) and
+            py_flags_versioned("sys.prefix", sys_prefix, _) and
+            this.getName().regexpMatch(sys_prefix + "/lib/python" + version + ".*")
+        )
+    }
+
+}
+
+private predicate allowable_version(int major, int minor) {
+    major = 2 and minor in [6..7]
+    or
+    major = 3 and minor in [3..6] 
 }
 
 class Location extends @location {
@@ -180,7 +204,7 @@ class Location extends @location {
         or locations_ast(this,_,result,_,_,_)
     }
 
-    /** Gets the end column of this location */
+    /** Gets the start column of this location */
     int getStartColumn() {
         locations_default(this, _, _, result, _, _)
         or locations_ast(this, _, _, result, _, _)
@@ -221,18 +245,18 @@ class Line extends @py_line {
             el = bl and bc = 1 and
             py_line_lengths(this, m, bl, ec))
     }
-    
+
     string toString() {
         exists(Module m | py_line_lengths(this, m, _, _) |
             result = m.getFile().getShortName() + ":" + this.getLineNumber().toString()
         )
     }
-    
+
     /** Gets the line number of this line */
     int getLineNumber() {
         py_line_lengths(this, _, result, _)
     }
-    
+
     /** Gets the length of this line */
     int getLength() {
         py_line_lengths(this, _, _, result)
@@ -250,7 +274,7 @@ class Line extends @py_line {
 class SyntaxError extends Location {
 
     SyntaxError() {
-        py_syntax_error(this, _)
+        py_syntax_error_versioned(this, _, major_version().toString())
     }
 
     string toString() {
@@ -259,7 +283,7 @@ class SyntaxError extends Location {
 
     /** Gets the message corresponding to this syntax error */
     string getMessage() {
-        py_syntax_error(this, result)
+        py_syntax_error_versioned(this, result, major_version().toString())
     }
 
 }

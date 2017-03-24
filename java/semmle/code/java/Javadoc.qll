@@ -70,9 +70,6 @@ class Javadoc extends JavadocParent, @javadoc {
 
   /** Helper method for `toString`: return "" if there is exactly one child, "... " otherwise. */
   private string toStringPostfix() { if strictcount(getAChild()) = 1 then result = "" else result = "... " }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/javadoc.png" }
   
   /** The Java code element that is commented by this piece of Javadoc. */
   Documentable getCommentedElement() { result.getJavadoc() = this }
@@ -103,9 +100,6 @@ abstract class JavadocElement extends @javadocElement, Top {
 
   /** A printable representation of this Javadoc element. */
   /*abstract*/ string toString() { result = "Javadoc element" }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/javadoc.png" }
   
   /** The line of text associated with this Javadoc element. */
   abstract string getText();

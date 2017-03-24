@@ -15,9 +15,11 @@
  * @name 'input' function used
  * @description The built-in function 'input' is used which can allow arbitrary code to be run.
  * @kind problem
- * @problem.severity error
  * @tags security
  *       correctness
+ * @problem.severity error
+ * @sub-severity high
+ * @precision high
  */
 
 import python

@@ -17,10 +17,12 @@
  *              code more difficult to read; PEP8 states that the first argument to instance
  *              methods should be 'self'.
  * @kind problem
- * @problem.severity warning
  * @tags maintainability
  *       readability
  *       convention
+ * @problem.severity recommendation
+ * @sub-severity high
+ * @precision very-high
  */
 
 import python

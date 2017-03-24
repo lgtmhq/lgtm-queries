@@ -32,7 +32,7 @@ Method protectedObjectMethod(string signature) {
 from Method method, Method objMethod, Interface impossible
 where method.getDeclaringType() = impossible
   and objMethod = protectedObjectMethod(method.getSignature())
-  and not hasSubtype*(objMethod.getType(), method.getType())
+  and not hasSubtype*(objMethod.getReturnType(), method.getReturnType())
 select method,
   "This method's return type conflicts with Object." + method.getName() + " so $@ can never be implemented.",
   impossible,

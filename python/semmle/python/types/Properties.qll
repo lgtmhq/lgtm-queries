@@ -93,30 +93,30 @@ class BuiltinPropertyObject extends PropertyObject {
     BuiltinPropertyObject() {
         py_cobjecttypes(this, theBuiltinPropertyType())
     }
-    
+
     string getName() {
         py_cobjectnames(this, result)
-    }    
-    
+    }
+
     /** Gets the getter method wrapper of this property */
     Object getGetter() {
-         py_cmembers(this, "__get__", result)
+         py_cmembers_versioned(this, "__get__", result, major_version().toString())
     }
-    
+
     ClassObject getInferredPropertyType() {
         none()
     }
-        
+
     /** Gets the setter method wrapper of this property */
     Object getSetter() {
-         py_cmembers(this, "__set__", result)
+         py_cmembers_versioned(this, "__set__", result, major_version().toString())
     }
-    
+
     /** Gets the deleter method wrapper of this property */
     Object getDeleter() {
-         py_cmembers(this, "__delete__", result)
+         py_cmembers_versioned(this, "__delete__", result, major_version().toString())
     }
-    
+
 }
 
 private predicate property_getter(CallNode decorated, FunctionObject getter) {

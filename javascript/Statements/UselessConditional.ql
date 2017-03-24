@@ -19,13 +19,14 @@
  * @kind problem
  * @problem.severity warning
  * @tags correctness
+ * @precision high
  */
 
 import semmle.javascript.flow.Analysis
 import semmle.javascript.RestrictedLocations
 
 /**
- * Check whether `va` is a defensive check that may be worth keeping, even if it
+ * Holds if `va` is a defensive truthiness check that may be worth keeping, even if it
  * is strictly speaking useless.
  *
  * We currently recognise three patterns:
@@ -48,8 +49,10 @@ predicate isDefensiveInit(VarAccess va) {
 }
 
 /**
- * Check whether `v` looks like a symbolic constant; we do not consider conditionals
- * to be useless if they check a symbolic constant.
+ * Holds if variable `v` looks like a symbolic constant, that is, it is assigned
+ * exactly once, either in a `const` declaration or with a constant initializer.
+ *
+ * We do not consider conditionals to be useless if they check a symbolic constant.
  */
 predicate isSymbolicConstant(Variable v) {
   // defined exactly once
@@ -62,7 +65,7 @@ predicate isSymbolicConstant(Variable v) {
 }
 
 /**
- * Check whether `e` is a literal constant or a reference to a symbolic constant.
+ * Holds if `e` is a literal constant or a reference to a symbolic constant.
  */
 predicate isConstant(Expr e) {
   e instanceof Literal or
@@ -70,12 +73,13 @@ predicate isConstant(Expr e) {
 }
 
 /**
- * Check whether `e` is an expression that should be whitelisted.
+ * Holds if `e` is an expression that should not be flagged as a useless condition.
  *
  * We currently whitelist three kinds of expressions:
  *
- *   - constants (including references to literal constants) and their negations
- *   - defensive checks
+ *   - constants (including references to literal constants);
+ *   - negations of constants;
+ *   - defensive checks.
  */
 predicate whitelist(Expr e) {
   isConstant(e) or
@@ -84,7 +88,7 @@ predicate whitelist(Expr e) {
 }
 
 /**
- * Check whether `e` is part of a conditional node `cond` that evaluates
+ * Holds if `e` is part of a conditional node `cond` that evaluates
  * `e` and checks its value for truthiness.
  */
 predicate isConditional(ASTNode cond, Expr e) {

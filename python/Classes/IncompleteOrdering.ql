@@ -15,9 +15,11 @@
  * @name Incomplete ordering
  * @description Class defines one or more ordering method but does not define all 4 ordering comparison methods
  * @kind problem
- * @problem.severity recommendation
  * @tags reliability
  *       correctness
+ * @problem.severity warning
+ * @sub-severity low
+ * @precision very-high
  */
 
 import python

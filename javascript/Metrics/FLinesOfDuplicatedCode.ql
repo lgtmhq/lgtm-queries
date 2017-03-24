@@ -21,10 +21,11 @@
  * @metricAggregate avg sum max
  * @tags testability
  */
+
 import external.CodeDuplication
 
 /**
- * Should line `l` of file `f` be excluded from duplicated code detection?
+ * Holds if line `l` of file `f` should be excluded from duplicated code detection.
  *
  * Currently, only lines on which an import declaration occurs are excluded.
  */
@@ -33,7 +34,7 @@ predicate whitelistedLineForDuplication(File f, int l) {
 }
 
 /**
- * Does line `l` of file `f` belong to a block of lines that is duplicated somewhere else?
+ * Holds if line `l` of file `f` belongs to a block of lines that is duplicated somewhere else.
  */
 predicate dupLine(int l, File f) {
   exists (DuplicateBlock d | d.sourceFile() = f |

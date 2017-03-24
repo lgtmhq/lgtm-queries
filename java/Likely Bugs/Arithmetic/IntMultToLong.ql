@@ -27,6 +27,7 @@
  *       external/cwe/cwe-681
  */
 import java
+import semmle.code.java.dataflow.RangeAnalysis
 
 /** Either the boxed type `java.lang.Long` or the primitive type `long`. */
 class Long extends Type {
@@ -34,16 +35,6 @@ class Long extends Type {
     this.(Class).hasQualifiedName("java.lang","Long") or
     this.hasName("long")
   }
-}
-
-predicate constantAddMulExpr(Expr e) {
-  e instanceof Literal 
-  or
-  exists(BinaryExpr bin | bin = e | 
-    (bin instanceof AddExpr or bin instanceof MulExpr) and
-    constantAddMulExpr(bin.getLeftOperand()) and
-    constantAddMulExpr(bin.getRightOperand()) 
-  )
 }
 
 /** A declaration of a local variable whose initializer is a `MulExpr`. */
@@ -62,7 +53,7 @@ class ReturnMulExpr extends ReturnStmt {
     result = this.getResult()
   }
   Type getType() {
-    result = this.getEnclosingCallable().getType()
+    result = this.getEnclosingCallable().getReturnType()
   }
 }
 
@@ -74,6 +65,16 @@ class AssignMulExprStmt extends ExprStmt {
   Type getType() {
     result = this.getExpr().(AssignExpr).getType()
   }
+}
+
+/** An integer multiplication that does not overflow. */
+predicate small(MulExpr e) {
+  exists(float lhs, float rhs, float res |
+    lhs = e.getLeftOperand().getProperExpr().(ConstantIntegerExpr).getIntValue() and
+    rhs = e.getRightOperand().getProperExpr().(ConstantIntegerExpr).getIntValue() and
+    lhs * rhs = res and
+    -2147483648.0 <= res and res <= 2147483647.0
+  )
 }
 
 from Stmt s, MulExpr e
@@ -93,5 +94,5 @@ where s.getEnclosingCallable().fromSource() and
           p.getInit() = e
         )
       ) and
-      not constantAddMulExpr(e)
+      not small(e)
 select s, "Result of integer multiplication cast to long."

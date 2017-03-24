@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @tags maintainability
+ * @precision very-high
  */
 
 import Clones

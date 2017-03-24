@@ -28,7 +28,7 @@ import python
 
 /** Subset of ControlFlowNodes which might raise an exception */
 class RaisingNode extends ControlFlowNode {
-    
+
     RaisingNode() {
         exists(this.getAnExceptionalSuccessor())
         or
@@ -37,13 +37,9 @@ class RaisingNode extends ControlFlowNode {
 
     /** Gets the CFG node for the exception, if and only if this RaisingNode is an explicit raise */
     ControlFlowNode getExceptionNode() {
-        exists(Raise r, Expr e | 
-            r.getAFlowNode() = this and e = r.getException() and
-            result.getBasicBlock().dominates(this.getBasicBlock()) |
-            (not major_version() = 2 or not exists(e.(Tuple).getAnElt())) and result = e.getAFlowNode()
-            or
-            /* In Python 2 raising a tuple will result in the first element of the tuple being raised. */
-            major_version() = 2 and result = e.(Tuple).getElt(0).getAFlowNode()
+        exists(Raise r | 
+            r = this.getNode() and result.getNode() = r.getRaised() and
+            result.getBasicBlock().dominates(this.getBasicBlock())
         )
     }
 

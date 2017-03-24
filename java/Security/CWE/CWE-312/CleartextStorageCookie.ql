@@ -27,7 +27,7 @@ from SensitiveSource data, Cookie s, Expr input, Expr store
 where
   input = s.getAnInput()
   and store = s.getAStore()
-  and data.flowsTo(input)
+  and data.flowsToCached(input)
   // Exclude results in test code.
   and not testMethod(store.getEnclosingCallable())
   and not testMethod(data.getEnclosingCallable())

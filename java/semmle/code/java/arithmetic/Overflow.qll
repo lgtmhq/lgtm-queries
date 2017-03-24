@@ -55,7 +55,7 @@ class NumType extends Type {
   OrdPrimitiveType getOrdPrimitiveType() {
     (this instanceof PrimitiveType and result = this)
     or
-    (this instanceof BoxedType and result = ((BoxedType)this).getPrimitiveType())
+    (this instanceof BoxedType and result = this.(BoxedType).getPrimitiveType())
   }
   
   predicate widerThan(NumType that) {
@@ -80,8 +80,8 @@ class ArithExpr extends BinaryExpr {
   
   OrdPrimitiveType getOrdPrimitiveType() {
     exists(OrdPrimitiveType t1, OrdPrimitiveType t2 |
-      t1 = ((NumType)this.getLeftOperand().getType()).getOrdPrimitiveType() and
-      t2 = ((NumType)this.getRightOperand().getType()).getOrdPrimitiveType() and
+      t1 = this.getLeftOperand().getType().(NumType).getOrdPrimitiveType() and
+      t2 = this.getRightOperand().getType().(NumType).getOrdPrimitiveType() and
       result = t1.maxType(t2)
     )
   }

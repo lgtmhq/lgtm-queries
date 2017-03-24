@@ -163,9 +163,6 @@ class AnnotationType extends Interface {
       ann.getType().hasQualifiedName("java.lang.annotation", "Inherited")
     )
   }
-
-  /** The path to the icon used when displaying query results. */
-  string getIconPath() { result = "icons/annotation.png" }
 }
 
 /** An annotation element is a member declared in an annotation type. */

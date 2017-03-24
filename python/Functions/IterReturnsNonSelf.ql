@@ -15,9 +15,11 @@
  * @name Iterator does not return self from __iter__ method
  * @description Iterator does not return self from __iter__ method, violating the iterator protocol.
  * @kind problem
- * @problem.severity warning
  * @tags reliability
  *       correctness
+ * @problem.severity error
+ * @sub-severity low
+ * @precision high
  */
 
 import python

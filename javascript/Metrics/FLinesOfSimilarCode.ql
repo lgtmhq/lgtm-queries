@@ -22,11 +22,12 @@
  * @metricAggregate avg sum max
  * @tags testability
  */
+
 import external.CodeDuplication
 
 /**
- * Does line l of file f belong to a block of lines that is similar to a block
- * of lines seen somewhere else?
+ * Holds if line `l` of file `f` belong to a block of lines that is similar to a block
+ * of lines appearing somewhere else.
  */
 predicate simLine(int l, File f) {
   exists (SimilarBlock d | d.sourceFile() = f |

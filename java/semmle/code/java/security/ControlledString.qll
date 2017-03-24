@@ -34,7 +34,7 @@ private predicate boxedToString(Method method) {
  * it is better to use a prepared query than to just put single quotes around the string.
  */
 predicate endsInQuote(Expr expr) {
-  exists (string str | str = ((StringLiteral) expr).getLiteral().replaceAll("\"", "") |
+  exists (string str | str = expr.(StringLiteral).getRepresentedString() |
     str.matches("%'"))
   or exists (Variable var | expr = var.getAnAccess() | endsInQuote(var.getAnAssignedValue()))
   or endsInQuote(expr.(AddExpr).getRightOperand())

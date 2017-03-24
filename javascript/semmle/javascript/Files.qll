@@ -11,90 +11,97 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/** Provides classes for working with files and folders. */
+
 import AST
 
-/** A file or folder */
+/** A file or folder. */
 abstract class Container extends @container {
-  /** Get the full path of this file or folder. */
+  /** Gets the full path of this file or folder. */
   abstract string getPath();
 
-  /** Get the base name of this file or folder. */
+  /**
+   * Gets the base name of this file or folder, including any extension.
+   *
+   * For example, the base name of `/tmp/tst.js` is `tst.js`.
+   */
   abstract string getName();
 
+  /** Gets a textual representation of this element. */
   string toString() {
     result = getName()
   }
 
-  /** Get the parent folder of this file or folder. */
+  /** Gets the parent folder of this file or folder. */
   Folder getParent() {
     containerparent(result, this)
   }
 }
 
-/** A filesystem folder. */
+/** A folder. */
 class Folder extends Container, @folder {
-  /** Get the full path of the folder. */
-  string getPath() {
+  override string getPath() {
     folders(this, result, _)
   }
-  
-  /** Get the name of the folder. */
-  string getName() {
+
+  /**
+   * Gets the base name of this folder.
+   *
+   * For example, the base name of `/usr/home` is `home`.
+   */
+  override string getName() {
     folders(this, _, result)
   }
 
-  /** Get a file or subfolder contained in this folder. */
+  /** Gets a file or subfolder contained in this folder. */
   Container getAChild() {
     result.getParent() = this
   }
 
-  /** Look up a file or subfolder in this folder by name. */
+  /** Gets the file or subfolder in this folder that has the given `name`, if any. */
   Container getChild(string name) {
     result = getAChild() and
     result.getName() = name
   }
 
-  /** Get a file from this folder. */
+  /** Gets a file in this folder. */
   File getAFile() {
     result = getAChild()
   }
 
-  /** Look up a file in this folder by name. */
+  /** Gets the file in this folder that has the given `name`, if any. */
   File getFile(string name) {
     result = getChild(name)
   }
 
-  /** Get a subfolder contained in this folder. */
+  /** Gets a subfolder contained in this folder. */
   Folder getASubFolder() {
     result = getAChild()
   }
-  
-  string toString() {
+
+  override string toString() {
     result = this.getName()
   }
 
-  /** Get the URL of this folder. */
+  /** Gets the URL of this folder. */
   string getURL() {
     result = "folder://" + getPath()
-  }
-
-  /** Get the icon to be used when displaying folders as query results. */
-  string getIconPath() {
-    result = "icons/folder.png"
   }
 }
 
 /** A file. */
 class File extends Container, @file, Locatable {
-  /** Get the full path of this file. */
-  string getPath() {
+  /** Gets the full path of this file. */
+  override string getPath() {
     files(this, result, _, _, _)
   }
 
   /**
-   * Get the relative path of this file from the root of the analyzed source
-   * location, or has no result if this file is not under the source location (i.e.
-   * if `getFullName` does not have the source location as a prefix).
+   * Gets the relative path of this file from the root of the analyzed source
+   * location.
+   *
+   * This has no result if the file is not under the source location (that is,
+   * if `getPath` does not have the source location as a prefix).
    */
   string getRelativePath() {
     exists (string fullPath, string prefix |
@@ -113,52 +120,55 @@ class File extends Container, @file, Locatable {
     )
   }
 
-  /** Get the base name of this file including extension. */
-  string getName() {
+  /**
+   * Gets the base name of this file, including any extension.
+   *
+   * For example, the base name of `/tmp/tst.js` is `tst.js`.
+   */
+  override string getName() {
     result = getShortName() + "." + getExtension()
   }
 
-  /** Get the short name of this file without extension. */
+  /**
+   * Gets the short name of this file without extension.
+   *
+   * For example, the short name of `/tmp/tst.js` is `tst`.
+   */
   string getShortName() {
     files(this, _, result, _, _)
   }
 
-  /** Get the extension of this file. */
+  /** Gets the extension of this file. */
   string getExtension() {
     files(this, _,_ , result, _)
   }
-  
-  /** Get the number of lines in this file. */
+
+  /** Gets the number of lines in this file. */
   int getNumberOfLines() {
-    result = sum(TopLevel tl | tl = getATopLevel() | tl.getNumberOfLines())
+    numlines(this, result, _, _)
   }
-  
-  /** Get the number of lines containing code in this file. */
+
+  /** Gets the number of lines containing code in this file. */
   int getNumberOfLinesOfCode() {
-    result = sum(TopLevel tl | tl = getATopLevel() | tl.getNumberOfLinesOfCode())
+    numlines(this, _, result, _)
   }
-  
-  /** Get the number of lines containing comments in this file. */
+
+  /** Gets the number of lines containing comments in this file. */
   int getNumberOfLinesOfComments() {
-    result = sum(TopLevel tl | tl = getATopLevel() | tl.getNumberOfLinesOfComments())
+    numlines(this, _, _, result)
   }
-  
-  /** Get a toplevel piece of JavaScript code embedded in this file. */
+
+  /** Gets a toplevel piece of JavaScript code in this file. */
   TopLevel getATopLevel() {
     result.getFile() = this
   }
-  
-  string toString() {
+
+  override string toString() {
     result = Container.super.toString()
   }
 
-  /** Get the URL of this file. */
+  /** Gets the URL of this file. */
   string getURL() {
     result = "file://" + this.getPath() + ":0:0:0:0"
-  }
-
-  /** Get the icon to be used when displaying files as query results. */
-  string getIconPath() {
-    result = "icons/file.png"
   }
 }

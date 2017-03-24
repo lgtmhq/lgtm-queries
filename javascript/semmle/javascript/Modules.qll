@@ -11,34 +11,41 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/**
+ * Provides classes for working with JavaScript modules, both
+ * ECMAScript 2015-style modules, and the older CommonJS and AMD-style
+ * modules.
+ */
+
 import Variables
 import Paths
 
 /**
- * A module.
+ * A module, which may either be an ECMAScript 2015-style module,
+ * a CommonJS module, or an AMD module.
  */
 abstract class Module extends TopLevel {
-  /** Get the full path of the file containing this module. */
+  /** Gets the full path of the file containing this module. */
   string getPath() {
     result = getFile().getPath()
   }
 
-  /** Get the short name of this module without file extension. */
+  /** Gets the short name of this module without file extension. */
   string getName() {
     result = getFile().getShortName()
   }
 
-  /** Get a module from which this module imports. */
+  /** Gets a module from which this module imports. */
   abstract Module getAnImportedModule();
 
-  /** Get a symbol exported by this module. */
+  /** Gets a symbol exported by this module. */
   string getAnExportedSymbol() {
     exports(result, _)
   }
 
   /**
-   * This module explicitly exports symbol `name` at the AST
-   * node `export`.
+   * Holds if this module explicitly exports symbol `name` at the
+   * program element `export`.
    *
    * Note that in some module systems (notably CommonJS and AMD)
    * modules are arbitrary objects that export all their
@@ -51,7 +58,7 @@ abstract class Module extends TopLevel {
   abstract predicate exports(string name, ASTNode export);
 
   /**
-   * Determine the root folder relative to which the given import path (which must
+   * Gets the root folder relative to which the given import path (which must
    * appear in this module) is resolved.
    *
    * Each root has an associated priority, and roots with numerically smaller
@@ -63,20 +70,23 @@ abstract class Module extends TopLevel {
   predicate searchRoot(PathExpr path, Folder searchRoot, int priority) {
     path.getTopLevel() = this and
     priority = 0 and
-    // paths starting with a dot are resolved relative to the module's directory
-    if path.getValue().matches(".%") then
-      searchRoot = getFile().getParent()
-    // all other paths are resolved relative to the file system root
-    else
-      searchRoot.getName() = ""
+    exists (string v | v = path.getValue() |
+      // paths starting with a dot are resolved relative to the module's directory
+      if v.matches(".%") then
+        searchRoot = getFile().getParent()
+      // all other paths are resolved relative to the file system root
+      else
+        searchRoot.getName() = ""
+    )
   }
 
   /**
-   * Resolve an import path appearing somewhere in the module.
+   * Gets the file to which the import path `path`, which must appear in this
+   * module, resolves.
    *
    * If the path resolves to a file directly, this is the result. If the path
    * resolves to a folder containing a main module (such as `index.js`), then
-   * that file is the result. 
+   * that file is the result.
    */
   File resolve(PathExpr path) {
     path.getTopLevel() = this and
@@ -96,23 +106,24 @@ abstract class Module extends TopLevel {
     )
   }
 
-  string toString() {
+  override string toString() {
     result = getName()
   }
 }
 
 /**
- * An import in a module.
+ * An import in a module, which may either be an ECMAScript 2015-style
+ * `import` statement or a CommonJS-style `require` import.
  */
 abstract class Import extends ASTNode {
-  /** Get the module in which this import appears. */
+  /** Gets the module in which this import appears. */
   abstract Module getEnclosingModule();
 
-  /** Get the (unresolved) path that this import refers to. */
+  /** Gets the (unresolved) path that this import refers to. */
   abstract PathExpr getImportedPath();
 
   /**
-   * Resolve this import to an externs module, if possible.
+   * Gets an externs module the path of this import resolves to.
    *
    * Any externs module whose name exactly matches the imported
    * path is assumed to be a possible target of the import.
@@ -122,14 +133,14 @@ abstract class Import extends ASTNode {
   }
 
   /**
-   * Resolve the path that this import refers to.
+   * Gets the module the path of this import resolves to.
    */
   Module resolveImportedPath() {
     result.getFile() = getEnclosingModule().resolve(getImportedPath())
   }
 
   /**
-   * Get a module with a `@providesModule` JSDoc tag that matches
+   * Gets a module with a `@providesModule` JSDoc tag that matches
    * the imported path.
    */
   private Module resolveAsProvidedModule() {
@@ -141,7 +152,7 @@ abstract class Import extends ASTNode {
   }
 
   /**
-   * Get the module this import refers to.
+   * Gets the module this import refers to.
    *
    * The result is either an externs module, or an actual source module;
    * in cases of ambiguity, the former are preferred. This models the runtime
@@ -154,5 +165,18 @@ abstract class Import extends ASTNode {
     else
       (result = resolveAsProvidedModule() or
        result = resolveImportedPath())
+  }
+}
+
+/**
+ * A path expression that appears in a module and is resolved relative to it.
+ */
+abstract class PathExprInModule extends PathExpr {
+  PathExprInModule() {
+    getTopLevel() instanceof Module
+  }
+
+  override Folder getSearchRoot(int priority) {
+    getTopLevel().(Module).searchRoot(this, result, priority)
   }
 }

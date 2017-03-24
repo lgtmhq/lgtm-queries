@@ -167,7 +167,7 @@ private predicate validReturnInCustomNullGuard(ReturnStmt ret, Parameter p, bool
   exists(Method m |
     ret.getEnclosingCallable() = m and
     p.getCallable() = m and
-    m.getType().(PrimitiveType).hasName("boolean")
+    m.getReturnType().(PrimitiveType).hasName("boolean")
   ) and
   exists(SsaDefinition ssa | ssa.isParameterDefinition(p) |
     exists(ConditionBlock cond, boolean branch |
@@ -188,7 +188,7 @@ private predicate validReturnInCustomNullGuard(ReturnStmt ret, Parameter p, bool
  */
 private Method customNullGuard(int index, boolean retval, boolean isnull) {
   exists(SsaDefinition ssa, Parameter p |
-    result.getType().(PrimitiveType).hasName("boolean") and
+    result.getReturnType().(PrimitiveType).hasName("boolean") and
     not result.isOverridable() and
     p.getCallable() = result and
     ssa.isParameterDefinition(p) and

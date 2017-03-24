@@ -15,10 +15,12 @@
  * @name Importing value of mutable attribute
  * @description Importing the value of a mutable attribute directly means that changes in global state will not be observed locally.
  * @kind problem
- * @problem.severity error
  * @tags reliability
  *       maintainability
  *       modularity
+ * @problem.severity warning
+ * @sub-severity high
+ * @precision medium
  */
 import python
 
