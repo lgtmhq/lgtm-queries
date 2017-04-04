@@ -29,7 +29,7 @@ import semmle.javascript.RestrictedLocations
  * Holds if `va` is a defensive truthiness check that may be worth keeping, even if it
  * is strictly speaking useless.
  *
- * We currently recognise three patterns:
+ * We currently recognize three patterns:
  *
  *   - the first `x` in `x || (x = e)`
  *   - the second `x` in `x = (x || e)`
@@ -98,7 +98,7 @@ predicate isConditional(ASTNode cond, Expr e) {
   e = cond.(LogOrExpr).getLeftOperand()
 }
 
-from ASTNode cond, AnalysedFlowNode op, boolean cv, ASTNode sel, string msg
+from ASTNode cond, AnalyzedFlowNode op, boolean cv, ASTNode sel, string msg
 where isConditional(cond, op) and
       cv = op.getTheBooleanValue()and
       not whitelist(op) and

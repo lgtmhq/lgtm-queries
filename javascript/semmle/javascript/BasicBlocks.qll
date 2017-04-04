@@ -306,7 +306,10 @@ class ReachableBasicBlock extends BasicBlock {
    */
   private
   predicate dominatesPredecessor(ReachableJoinBlock df) {
-    dominates(df.getAPredecessor())
+    exists (BasicBlock pred | pred = df.getAPredecessor() |
+      this = pred or
+      strictlyDominates(pred)
+    )
   }
 }
 

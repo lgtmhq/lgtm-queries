@@ -124,16 +124,6 @@ predicate is_quad_op(string name) {
     name = "__setslice__" or name = "__exit__"
 }
 
-int non_default_pcount(Function f) {
-    exists(CallableExpr ce | ce = f.getDefinition() |
-        result = count(f.getAnArg()) - count(ce.getArgs().getADefault())
-    )
-}
-
-int pcount(Function f) {
-    result = count(f.getAnArg())
-}
-
 int argument_count(PyFunctionObject f, string name, ClassObject cls) {
     cls.declaredAttribute(name) = f and
     (
@@ -148,19 +138,15 @@ int argument_count(PyFunctionObject f, string name, ClassObject cls) {
 }
 
 predicate incorrect_special_method_defn(PyFunctionObject func, string message, boolean show_counts, string name, ClassObject owner) {
-   exists(Function f, int required, int actual, int actual_non_default |
-          f = func.getFunction() and
-          not exists(f.getVararg()) and
-          required = argument_count(func, name, owner) and
-          actual = pcount(f) and
-          actual_non_default = non_default_pcount(f) |
+   exists(int required |
+          required = argument_count(func, name, owner) |
           /* actual_non_default <= actual */
-          if required > actual then
+          if required > func.maxParameters() then
               (message = "Too few parameters" and show_counts = true)
-          else if required < actual_non_default then
+          else if required < func.minParameters() then
               (message = "Too many parameters" and show_counts = true)
-          else if actual_non_default < required then
-              (message = (required -actual_non_default) +  " default values(s) will never be used" and show_counts = false)
+          else if func.minParameters() < required then
+              (message = (required -func.minParameters()) +  " default values(s) will never be used" and show_counts = false)
           else
               none()
    )
@@ -168,25 +154,25 @@ predicate incorrect_special_method_defn(PyFunctionObject func, string message, b
 
 predicate incorrect_pow(FunctionObject func, string message, boolean show_counts, ClassObject owner) {
     owner.declaredAttribute("__pow__") = func and
-    exists(Function f | f = func.getFunction() |
-       pcount(f) < 2 and message = "Too few parameters" and show_counts = true
+    (
+       func.maxParameters() < 2 and message = "Too few parameters" and show_counts = true
        or
-       non_default_pcount(f) > 3 and message = "Too many parameters" and show_counts = true
+       func.minParameters() > 3 and message = "Too many parameters" and show_counts = true
        or
-       non_default_pcount(f) < 2 and message = (2 - non_default_pcount(f)) + " default value(s) will never be used" and show_counts = false
+       func.minParameters() < 2 and message = (2 - func.minParameters()) + " default value(s) will never be used" and show_counts = false
        or
-       non_default_pcount(f) = 3 and message = "Third parameter to __pow__ should have a default value" and show_counts = false
+       func.minParameters() = 3 and message = "Third parameter to __pow__ should have a default value" and show_counts = false
      )
 }
 
 predicate incorrect_get(FunctionObject func, string message, boolean show_counts, ClassObject owner) {
     owner.declaredAttribute("__get__") = func and
-    exists(Function f | f = func.getFunction() |
-       pcount(f) < 3 and message = "Too few parameters" and show_counts = true
+    (
+       func.maxParameters() < 3 and message = "Too few parameters" and show_counts = true
        or
-       non_default_pcount(f) > 3 and message = "Too many parameters" and show_counts = true
+       func.minParameters() > 3 and message = "Too many parameters" and show_counts = true
        or
-       non_default_pcount(f) < 2 and message = (2 - non_default_pcount(f)) + " default value(s) will never be used" and show_counts = false
+       func.minParameters() < 2 and message = (2 - func.minParameters()) + " default value(s) will never be used" and show_counts = false
      )
 }
 
@@ -199,7 +185,7 @@ string should_have_parameters(PyFunctionObject f, string name, ClassObject owner
 }
 
 string has_parameters(PyFunctionObject f) {
-    exists(int i | i = pcount(f.getFunction()) |
+    exists(int i | i = f.minParameters() |
         i = 0 and result = "no parameters"
         or
         i = 1 and result = "1 parameter"

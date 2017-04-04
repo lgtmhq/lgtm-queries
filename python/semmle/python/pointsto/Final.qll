@@ -129,7 +129,7 @@ private predicate final_points_to_candidate(ControlFlowNode f, Object value, Cla
     or
     final_sys_version_info_index(f) and value = f and origin = f and cls = theIntType()
     or
-    final_six_metaclass_points_to(f, value, cls, origin) 
+    final_six_metaclass_points_to(f, value, cls, origin)
     or
         f.(FinalCustomPointsToFact).pointsTo(value, cls, origin)
 }
@@ -279,7 +279,8 @@ private predicate final_call_to_function_which_returns_argument_points_to(CallNo
 private predicate final_call_points_to_7(CallNode f, Object value, ClassObject cls, ControlFlowNode origin) {
     exists(ControlFlowNode rval |
         exists(PyFunctionObject func |
-            f = final_get_a_call(func) |
+            f = final_get_a_call(func) and
+            not func = penultimate_six_add_metaclass_function() |
             rval = safe_return_node(func)
         ) and
         final_points_to(rval, value, cls, origin)
@@ -929,9 +930,8 @@ private predicate final_self_method_call(FunctionObject method, CallNode call, S
 /** INTERNAL -- Use  ClassObject.getBaseType(n) instead.
  * Gets the nth base class of the class */
  cached 
-ClassObject final_class_base_type(ClassObject cls, int n) {
+Object final_class_base_type(ClassObject cls, int n) {
     exists(ClassExpr cls_expr | cls.getOrigin() = cls_expr |
-        /* To avoid negative recursion, we have to use intermediate_points_to rather than full points. */
         final_points_to(cls_expr.getBase(n).getAFlowNode(), result, _, _)
         or
         final_is_new_style(cls) and not exists(cls_expr.getBase(0)) and result = theObjectType() and n = 0
@@ -1135,18 +1135,21 @@ private ClassObject final_inherited_metaclass(ClassObject cls) {
     )
 }
 
+/* INTERNAL -- Do not use */
+FunctionObject final_six_add_metaclass_function() {
+    exists(ModuleObject six |
+        six.getName() = "six" and
+        final_module_attribute_points_to(six, "add_metaclass", result, _, _)
+    )
+}
 
 /* INTERNAL -- Do not use */
 predicate final_six_add_metaclass(CallNode decorator_call, ClassObject decorated, ControlFlowNode metaclass) {
-    exists(CallNode decorator, FunctionObject six_meta |
+    exists(CallNode decorator |
         decorator_call.getArg(0) = decorated and
         decorator = decorator_call.getFunction() |
-        final_points_to(decorator.getFunction(), six_meta, _, _) and
-        decorator.getArg(0) = metaclass and
-        exists(ModuleObject six |
-            six.getName() = "six" and
-            final_module_attribute_points_to(six, "add_metaclass", six_meta, _, _)
-        )
+        final_points_to(decorator.getFunction(), final_six_add_metaclass_function(), _, _) and
+        decorator.getArg(0) = metaclass
     )
 }
 
@@ -1159,7 +1162,13 @@ predicate final_failed_inference(ClassObject cls, string reason) {
     or
     exists(cls.getPyClass().getADecorator()) and not final_six_add_metaclass(_, cls, _) and reason = "Decorator not understood"
     or
-    exists(int i | exists(((ClassExpr)cls.getOrigin()).getBase(i)) and not exists(penultimate_class_base_type(cls, i)) and reason = "Missing base " + i)
+    exists(int i | exists(cls.getOrigin().(ClassExpr).getBase(i)) and not exists(penultimate_class_base_type(cls, i)) and reason = "Missing base " + i)
+    or
+    /* Base class is not something we can understand as a class */
+    exists(int i |
+        exists(cls.getOrigin().(ClassExpr).getBase(i)) |
+        exists(Object b | b = final_class_base_type(cls, i) and not b instanceof ClassObject) and reason = "Base " + i + " is not a simple class"
+    )
     or
     exists(cls.getPyClass().getMetaClass()) and not penultimate_has_explicit_metaclass(cls) and reason = "Failed to infer metaclass"
     or

@@ -22,7 +22,6 @@
  */
 
 import javascript
-private import semmle.javascript.SSA
 
 /**
  * Holds if `vd` is a definition of variable `v` that is dead, that is,
@@ -34,7 +33,7 @@ predicate deadStoreOfLocal(VarDef vd, PurelyLocalVariable v) {
   // the definition is not in dead code
   exists (ReachableBasicBlock rbb | vd = rbb.getANode()) and
   // but it has no associated SSA definition, that is, it is dead
-  not exists (SSAExplicitDefinition ssa | ssa.defines(vd, v))
+  not exists (SsaExplicitDefinition ssa | ssa.defines(vd, v))
 }
 
 /**

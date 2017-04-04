@@ -42,22 +42,37 @@ predicate guardsAgainstMissingNew(Function f) {
 }
 
 /**
- * Gets a function that may be invoked at `cs` and that is in the same
- * file as `cs`.
+ * Holds if `callee` is a function that may be invoked at callsite `cs`,
+ * where `imprecision` is a heuristic measure of how likely it is that `callee`
+ * is only suggested as a potential callee due to imprecise analysis of global
+ * variables and is not, in fact, a viable callee at all.
  */
-Function getACalleeInSameFile(CallSite cs) {
-  result = cs.getACallee() and
-  result.getFile() = cs.getFile()
+predicate calls(CallSite cs, Function callee, int imprecision) {
+  callee = cs.getACallee() and
+  (
+    // if global flow was used to derive the callee, we may be imprecise
+    if cs.isIndefinite("global") then
+      // callees within the same file are probably genuine
+      callee.getFile() = cs.getFile() and imprecision = 0
+      or
+      // calls to global functions declared in an externs file are fairly
+      // safe as well
+      callee.inExternsFile() and imprecision = 1
+      or
+      // otherwise we make worst-case assumptions
+      imprecision = 2
+    else
+      // no global flow, so no imprecision
+      imprecision = 0
+  )
 }
 
 /**
- * Gets a function that may be invoked at `cs`, preferring functions in
- * the same file over those in other files.
+ * Gets a function that may be invoked at `cs`, preferring callees that
+ * are less likely to be derived due to analysis imprecision.
  */
 Function getALikelyCallee(CallSite cs) {
-  result = getACalleeInSameFile(cs)
-  or
-  not exists(getACalleeInSameFile(cs)) and result = cs.getACallee()
+  calls(cs, result, min(int p | calls(cs, _, p)))
 }
 
 from Function f, NewExpr new, CallExpr call

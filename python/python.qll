@@ -34,7 +34,7 @@ import semmle.python.Comment
 import semmle.python.GuardedControlFlow
 import semmle.python.types.ImportTime
 import semmle.python.types.Object
-import semmle.python.pointsto.PointsTo
+import semmle.python.pointsto.Final
 import semmle.python.types.Object
 import semmle.python.types.ClassObject
 import semmle.python.types.FunctionObject

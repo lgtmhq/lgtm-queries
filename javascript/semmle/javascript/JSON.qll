@@ -21,6 +21,10 @@ import AST
  * A JSON-encoded value, which may be a primitive value, an array or an object.
  */
 class JSONValue extends @json_value, Locatable {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
   /** Gets the parent value to which this value belongs, if any. */
   JSONValue getParent() {
     json(this, _, result, _, _)

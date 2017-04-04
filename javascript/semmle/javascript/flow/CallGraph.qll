@@ -32,12 +32,20 @@ private predicate isCallable(AbstractValue v, Function f) {
 class CallSite extends InvokeExpr {
   /** Gets an abstract value representing possible callees of this call site. */
   private AbstractValue getACalleeValue() {
-    result = getCallee().(AnalysedFlowNode).getAValue()
+    result = getCallee().(AnalyzedFlowNode).getAValue()
   }
 
   /** Gets a potential callee of this call site. */
   Function getACallee() {
     isCallable(getACalleeValue(), result)
+  }
+
+  /**
+   * Holds if the approximation of possible callees for this call site is
+   * affected by the given analysis incompleteness `cause`.
+   */
+  predicate isIndefinite(DataFlowIncompleteness cause) {
+    getACalleeValue().isIndefinite(cause)
   }
 
   /**
@@ -52,8 +60,7 @@ class CallSite extends InvokeExpr {
    * imprecision.
    */
   predicate isImprecise() {
-    getACalleeValue().isIndefinite("global")
-    and
+    isIndefinite("global") and
     exists (DefiniteAbstractValue v | v = getACalleeValue() |
       not isCallable(v, _)
     )
@@ -66,7 +73,7 @@ class CallSite extends InvokeExpr {
   predicate isIncomplete() {
     // the flow analysis identifies a source of incompleteness other than
     // global flow (which usually leads to imprecision rather than incompleteness)
-    any (DataFlowIncompleteness cause | getACalleeValue().isIndefinite(cause)) != "global"
+    any (DataFlowIncompleteness cause | isIndefinite(cause)) != "global"
   }
 
   /**

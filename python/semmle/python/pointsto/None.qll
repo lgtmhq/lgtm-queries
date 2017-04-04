@@ -144,3 +144,5 @@ predicate none_attribute_store_load_pair(ControlFlowNode stored_value, ControlFl
 predicate none_abstract_class(ClassObject cls) { none() }
 
 predicate none_global_ssa_defn(GlobalVariable v, ControlFlowNode node, string kind) { none() }
+
+FunctionObject none_six_add_metaclass_function() { none() }

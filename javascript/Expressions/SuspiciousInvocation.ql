@@ -25,7 +25,7 @@ import javascript
 import semmle.javascript.flow.Analysis
 private import semmle.javascript.flow.InferredTypes
 
-from InvokeExpr invk, AnalysedFlowNode callee
+from InvokeExpr invk, AnalyzedFlowNode callee
 where callee = invk.getCallee() and
       callee.hasFlow() and
       forall (InferredType tp | tp = callee.getAType() | tp != TTFunction() and tp != TTClass())

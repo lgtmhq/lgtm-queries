@@ -291,9 +291,11 @@ private File resolveMainModule(PackageJSON pkgjson, int priority) {
  */
 bindingset[basename]
 private File tryExtensions(Folder dir, string basename, int priority) {
-  result = dir.getFile(basename + ".js") and priority = 0 or
-  result = dir.getFile(basename + ".json") and priority = 1 or
-  result = dir.getFile(basename + ".node") and priority = 2
+  exists (string ext | result = dir.getFile(basename, ext) |
+    ext = "js" and priority = 0 or
+    ext = "json" and priority = 1 or
+    ext = "node" and priority = 2
+  )
 }
 
 /** A literal path expression appearing in a `require` import. */

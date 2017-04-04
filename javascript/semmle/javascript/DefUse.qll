@@ -13,9 +13,7 @@
 
 /** Provides classes and predicates for working with variable definitions and uses. */
 
-import Expr
-import Stmt
-private import semmle.javascript.SSA
+import javascript
 
 /**
  * Holds if `def` is a CFG node that assigns the value of `rhs` to `lhs`.
@@ -231,11 +229,11 @@ class VarUse extends ControlFlowNode, @varaccess {
   }
 
   /**
-   * Gets the unique SSA definition this use refers to.
+   * Gets the unique SSA variable this use refers to.
    *
-   * This predicate is only defined for uses of purely local variables.
+   * This predicate is only defined for variables that can be SSA-converted.
    */
-  SSADefinition getSSADef() {
+  SsaVariable getSsaVariable() {
     result.getAUse() = this
   }
 }
@@ -261,10 +259,15 @@ predicate definitionReaches(Variable v, VarDef def, VarUse use) {
  * without crossing another definition of `v`.
  */
 predicate localDefinitionReaches(LocalVariable v, VarDef def, VarUse use) {
-  exists (SSAExplicitDefinition ssa |
+  exists (SsaExplicitDefinition ssa |
     ssa.defines(def, v) and
-    ssa = use.getSSADef().getAnUltimateDefinition()
+    ssa = getAPseudoDefinitionInput*(use.getSsaVariable().getDefinition())
   )
+}
+
+/** Holds if `nd` is a pseudo-definition and the result is one of its inputs. */
+private SsaDefinition getAPseudoDefinitionInput(SsaDefinition nd) {
+  result = nd.(SsaPseudoDefinition).getAnInput()
 }
 
 /**

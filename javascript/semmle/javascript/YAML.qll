@@ -26,6 +26,10 @@ import Locations
  * referring to some other YAML value.
  */
 class YAMLNode extends @yaml_node, Locatable {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
   /**
    * Gets the parent node of this node, which is always a collection.
    */

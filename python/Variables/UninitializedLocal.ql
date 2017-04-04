@@ -48,6 +48,13 @@ predicate calls_exit_func(Function f) {
                                                                cls.getPyClass() = f.getScope() and never_returns(cls.lookupAttribute(name)))
 }
 
+predicate nonlocal(Name use) {
+    exists(Nonlocal l, Variable v | 
+        v.getALoad() = use and
+        l.getAVariable() = v
+    )
+}
+
 predicate undefined_ssa(SsaVariable l) {
     l.maybeUndefined() and
     forall(ControlFlowNode incoming |
@@ -63,7 +70,8 @@ predicate uninitialized_local(Name use) {
         not defined_and_used_in_condition(use) and
         not calls_exit_func(f) and
         not probably_defined_in_loop(use)
-    )
+    ) and
+    not nonlocal(use)
 }
 
 private predicate first_use_in_a_block(ControlFlowNode use) {

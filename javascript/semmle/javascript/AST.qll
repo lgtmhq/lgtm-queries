@@ -28,6 +28,48 @@ import CFG
  * such as obtaining the children of an AST node.
  */
 class ASTNode extends @ast_node, Locatable {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
+  /** Gets the first token belonging to this element. */
+  Token getFirstToken() {
+    exists (Location l1, Location l2 |
+      l1 = this.getLocation() and
+      l2 = result.getLocation() and
+      l1.getFile() = l2.getFile() and
+      l1.getStartLine() = l2.getStartLine() and
+      l1.getStartColumn() = l2.getStartColumn()
+    )
+  }
+
+  /** Gets the last token belonging to this element. */
+  Token getLastToken() {
+    exists (Location l1, Location l2 |
+      l1 = this.getLocation() and
+      l2 = result.getLocation() and
+      l1.getFile() = l2.getFile() and
+      l1.getEndLine() = l2.getEndLine() and
+      l1.getEndColumn() = l2.getEndColumn()
+    ) and
+    // exclude empty EOF token
+    not result instanceof EOFToken
+  }
+
+  /** Gets a token belonging to this element. */
+  Token getAToken() {
+    exists (string path, int sl, int sc, int el, int ec,
+                  int tksl, int tksc, int tkel, int tkec |
+      this.getLocation().hasLocationInfo(path, sl, sc, el, ec) and
+      result.getLocation().hasLocationInfo(path, tksl, tksc, tkel, tkec) |
+      (sl < tksl or (sl = tksl and sc <= tksc))
+      and
+      (tkel < el or (tkel = el and tkec <= ec))
+    ) and
+    // exclude empty EOF token
+    not result instanceof EOFToken
+  }
+
   /** Gets the toplevel syntactic unit to which this element belongs. */
   cached
   TopLevel getTopLevel() {

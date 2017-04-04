@@ -25,7 +25,7 @@ import javascript
 import semmle.javascript.flow.Analysis
 private import semmle.javascript.flow.InferredTypes
 
-from PropAccess pacc, AnalysedFlowNode base
+from PropAccess pacc, AnalyzedFlowNode base
 where base = pacc.getBase() and
       base.hasFlow() and
       forall (InferredType tp | tp = base.getAType() | tp = TTNull() or tp = TTUndefined())

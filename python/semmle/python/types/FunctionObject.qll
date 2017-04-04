@@ -14,6 +14,7 @@
 import python
 import semmle.python.types.Exceptions
 import semmle.python.pointsto.Final
+private import semmle.python.libraries.Zope
 
 /** A function object, whether written in Python or builtin */
 abstract class FunctionObject extends Object {
@@ -178,14 +179,14 @@ class PyFunctionObject extends FunctionObject {
 
     int minParameters() {
         exists(Function f |
-            f = this.getFunction() |
+            f = this.getFunction() and
             result = count(f.getAnArg()) - count(f.getDefinition().getArgs().getADefault())
         )
     }
 
     int maxParameters() {
         exists(Function f |
-            f = this.getFunction() |
+            f = this.getFunction() and
             if exists(f.getVararg()) then
                 result = 2147483647 // INT_MAX
             else

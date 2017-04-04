@@ -362,6 +362,9 @@ class ControlFlowNode extends @cfg_node, Locatable {
 
 /** A synthetic CFG node marking the entry or exit point of a function or script. */
 class SyntheticControlFlowNode extends @synthetic_cfg_node, ControlFlowNode {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
 }
 
 /** A synthetic CFG node marking the entry point of a function or toplevel script. */

@@ -37,8 +37,8 @@ class FirstLineOf extends Locatable {
       if xl = startline then
         endcolumn = xc
       else
-        exists (Line l | l.getLocation().hasLocationInfo(filepath, startline, 1,
-                                                                   startline, endcolumn))
+        endcolumn = max(int c | any(Location l).hasLocationInfo(filepath, startline, _,
+                                                                          startline, c))
     )
   }
 }

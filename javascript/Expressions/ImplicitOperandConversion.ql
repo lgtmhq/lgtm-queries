@@ -49,7 +49,7 @@ predicate convertToObject(Expr parent, int i) {
  * an object operand: the object will be converted to a number, which is very likely
  * to yield `NaN`.
  */
-predicate unlikelyConversion(AnalysedFlowNode e, AbstractValue v, string convType) {
+predicate unlikelyConversion(AnalyzedFlowNode e, AbstractValue v, string convType) {
   exists (Expr parent, int i | e = parent.getChildExpr(i) and v = e.getAValue() |
     // property names in `in` expressions should be strings or numbers
     parent instanceof InExpr and i = 0 and
@@ -93,7 +93,7 @@ predicate unlikelyConversion(AnalysedFlowNode e, AbstractValue v, string convTyp
   )
 }
 
-from AnalysedFlowNode e, string convType
+from AnalyzedFlowNode e, string convType
 where unlikelyConversion(e, _, convType) and
       forall (AbstractValue v | v = e.getAValue() | unlikelyConversion(e, v, _))
 select e, "This expression will be implicitly converted from " +

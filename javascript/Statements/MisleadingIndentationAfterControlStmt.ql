@@ -43,8 +43,12 @@ predicate shouldOutdent(ControlStmt ctrl, Stmt s1, Stmt s2) {
  */
 predicate missingOutdent(Stmt s1, Stmt s2) {
   shouldOutdent(_, s1, s2) and
-  s1.getLocation().getStartColumn() = s2.getLocation().getStartColumn() and
-  s1.getStartLine().getIndentChar() = s2.getStartLine().getIndentChar()
+  exists (File f, int line1, int line2, int col, string indent |
+    s1.getLocation().hasLocationInfo(f.getPath(), line1, col, _, _) and
+    s2.getLocation().hasLocationInfo(f.getPath(), line2, col, _, _) and
+    f.hasIndentation(line1, indent, _) and
+    f.hasIndentation(line2, indent, _)
+  )
 }
 
 from ControlStmt ctrl, Stmt s1, Stmt s2
