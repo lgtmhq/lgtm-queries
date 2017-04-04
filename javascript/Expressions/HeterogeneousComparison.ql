@@ -43,7 +43,7 @@ predicate comparisonOperands(ASTNode nd, Expr left, Expr right) {
  * Gets a type that `operand`, which is an operand of comparison `parent`,
  * could be converted to at runtime.
  */
-InferredType convertedOperandType(ASTNode parent, AnalysedFlowNode operand) {
+InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
   // strict equality tests do no conversion at all
   operand = parent.(StrictEqualityTest).getAChildExpr() and result = operand.getAType() or
 
@@ -78,14 +78,14 @@ InferredType convertedOperandType(ASTNode parent, AnalysedFlowNode operand) {
  * `leftTypes` and `rightTypes`, respectively, but there is no
  * common type they coerce to.
  */
-predicate isHeterogeneousComparison(ASTNode cmp, AnalysedFlowNode left, AnalysedFlowNode right,
+predicate isHeterogeneousComparison(ASTNode cmp, AnalyzedFlowNode left, AnalyzedFlowNode right,
                                     string leftTypes, string rightTypes) {
   comparisonOperands(cmp, left, right) and
   not convertedOperandType(cmp, left) = convertedOperandType(cmp, right) and
   leftTypes = left.ppTypes() and rightTypes = right.ppTypes()
 }
 
-from ASTNode cmp, AnalysedFlowNode left, AnalysedFlowNode right, string leftTypes, string rightTypes
+from ASTNode cmp, AnalyzedFlowNode left, AnalyzedFlowNode right, string leftTypes, string rightTypes
 where isHeterogeneousComparison(cmp, left, right, leftTypes, rightTypes) and
       // don't flag unreachable code
       exists (left.getAType()) and exists (right.getAType())

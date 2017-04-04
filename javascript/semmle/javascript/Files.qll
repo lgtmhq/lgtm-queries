@@ -74,6 +74,13 @@ class Folder extends Container, @folder {
     result = getChild(name)
   }
 
+  /** Gets the file in this folder that has the given `shortName` and `extension`, if any. */
+  File getFile(string shortName, string extension) {
+    result = getAChild() and
+    result.getShortName() = shortName and
+    result.getExtension() = extension
+  }
+
   /** Gets a subfolder contained in this folder. */
   Folder getASubFolder() {
     result = getAChild()
@@ -91,6 +98,10 @@ class Folder extends Container, @folder {
 
 /** A file. */
 class File extends Container, @file, Locatable {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
   /** Gets the full path of this file. */
   override string getPath() {
     files(this, result, _, _, _)
@@ -170,5 +181,21 @@ class File extends Container, @file, Locatable {
   /** Gets the URL of this file. */
   string getURL() {
     result = "file://" + this.getPath() + ":0:0:0:0"
+  }
+
+  /**
+   * Holds if line number `lineno` of this file is indented to depth `d`
+   * using character `c`.
+   *
+   * This predicate only holds for lines that belong to JavaScript code that
+   * start with one or more occurrences of the same whitespace character,
+   * followed by at least one non-whitespace character.
+   *
+   * It does not hold for lines that do not start with a whitespace character,
+   * or for lines starting with a string of different whitespace characters
+   * (for instance, a mix of tabs and spaces).
+   */
+  predicate hasIndentation(int lineno, string c, int d) {
+    indentation(this, lineno, c, d)
   }
 }

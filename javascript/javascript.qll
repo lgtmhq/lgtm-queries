@@ -43,3 +43,4 @@ import semmle.javascript.JSX
 import semmle.javascript.HTML
 import semmle.javascript.StandardLibrary
 import semmle.javascript.Util
+import semmle.javascript.SSA

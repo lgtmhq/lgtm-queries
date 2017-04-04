@@ -22,7 +22,6 @@
  */
 
 import javascript
-private import semmle.javascript.SSA
 
 /**
  * An expression that adds a value to a variable.
@@ -56,7 +55,7 @@ predicate countingLoop(EnhancedForLoop efl) {
 
 from EnhancedForLoop efl, PurelyLocalVariable iter
 where iter = efl.getAnIterationVariable() and
-      not exists (SSAExplicitDefinition ssa | ssa.defines(efl.getIteratorExpr(), iter)) and
+      not exists (SsaExplicitDefinition ssa | ssa.defines(efl.getIteratorExpr(), iter)) and
       exists (ReachableBasicBlock body | body.getANode() = efl.getBody() |
         body.getASuccessor+() = body
       ) and

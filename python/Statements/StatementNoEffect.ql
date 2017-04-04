@@ -94,6 +94,22 @@ predicate in_notebook(Expr e) {
     is_notebook(e.getScope().(Module).getFile())
 }
 
+FunctionObject assertRaises() {
+    exists(ModuleObject unittest, ClassObject testcase |
+        unittest.getName() = "unittest" and
+        testcase = unittest.getAttribute("TestCase") and
+        result = testcase.lookupAttribute("assertRaises")
+    )
+}
+
+/** Holds if expression `e` is in a `with` block that tests for exceptions being raised. */
+predicate in_raises_test(Expr e) {
+    exists(With w |
+        w.contains(e) and
+        w.getContextExpr() = assertRaises().getACall().getNode()
+    )
+}
+
 predicate no_effect(Expr e) {
     not e instanceof StrConst and
     not ((StrConst)e).isDocString() and
@@ -105,7 +121,8 @@ predicate no_effect(Expr e) {
         and
         not maybe_side_effecting_attribute(sub)
     ) and
-    not in_notebook(e)
+    not in_notebook(e) and
+    not in_raises_test(e)
 }
 
 from ExprStmt stmt

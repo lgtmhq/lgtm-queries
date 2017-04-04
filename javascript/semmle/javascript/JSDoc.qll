@@ -20,6 +20,10 @@ import Comments
  * A JSDoc comment.
  */
 class JSDoc extends @jsdoc, Locatable {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
   /** Gets the description text of this JSDoc comment. */
   string getDescription() {
     jsdoc(this, result, _)
@@ -53,6 +57,10 @@ class JSDocTypeExprParent extends @jsdoc_type_expr_parent {
  * A JSDoc tag such as `@param Object options An object literal with options.`
  */
 class JSDocTag extends @jsdoc_tag, JSDocTypeExprParent, Locatable {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
   /** Gets the tag title; for instance, the title of a `@param` tag is `"param"`. */
   string getTitle() {
     jsdoc_tags (this, result, _, _, _)

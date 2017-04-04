@@ -111,7 +111,7 @@ ControlFlowNode get_comp_iterable(For f) {
     )
 }
 
-from For f, Variable v
+from For f, Variable v, string msg
 
 where f.getTarget() = v.getAnAccess() and
       not f.getAStmt().contains(v.getAnAccess()) and
@@ -122,6 +122,10 @@ where f.getTarget() = v.getAnAccess() and
       not empty_loop(f) and
       not one_item_only(f) and
       not counting_loop(f) and
-      not implicit_repeat(f)
+      not implicit_repeat(f) and
+      if exists(Name del | del.deletes(v) and f.getAStmt().contains(del)) then
+          msg = "' is deleted, but not used, in the loop body."
+      else
+          msg = "' is not used in the loop body."
 
-select f, "For loop variable " + v.getId() + " is not used in the loop body"
+select f, "For loop variable '" + v.getId() + msg

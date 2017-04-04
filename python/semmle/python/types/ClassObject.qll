@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 import python
-private import semmle.python.pointsto.PointsTo
+private import semmle.python.pointsto.Final
 private import semmle.python.pointsto.Base
 
 predicate is_c_metaclass(Object o) {
@@ -82,12 +82,12 @@ class ClassObject extends Object {
     }
 
     /** Gets the nth base class of this class */
-    cached ClassObject getBaseType(int n) {
+    cached Object getBaseType(int n) {
         result = final_class_base_type(this, n)
     }
 
     /** Gets a base class of this class */
-    ClassObject getABaseType() {
+    Object getABaseType() {
         result = this.getBaseType(_)
     }
 
@@ -173,7 +173,12 @@ class ClassObject extends Object {
         or
         this.getMetaClass().failedInference()
         or
-        this.getABaseType().unknowableAttributes()
+        exists(Object base |
+            base = this.getABaseType() |
+            base.(ClassObject).unknowableAttributes()
+            or
+            not base instanceof ClassObject
+        )
     }
 
     /** Use getMetaClass() instead */
@@ -366,7 +371,7 @@ class ClassObject extends Object {
     predicate isOverridingDescriptorType() {
         this.hasAttribute("__get__") and this.hasAttribute("__set__") 
     }
-    
+
     FunctionObject getAMethodCalledFromInit() {
         final_method_called_from_init(result, this)
     }

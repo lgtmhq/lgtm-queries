@@ -38,6 +38,8 @@ forall(FunctionObject over |
     overridden_call(func, over, call) or overridden_call(over, func, call) |
     too_many_args(call, over, _) or too_few_args(call, over, _)
 )
+/* The semantics of `__new__` can be a bit subtle, so we simply exclude `__new__` methods */
+and not func.getName() = "__new__"
 
 select call, too + " arguments in call to $@; should be " + should + limit.toString() + ".", func, func.descriptiveString()
 

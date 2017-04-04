@@ -294,6 +294,11 @@ class Nonlocal extends Nonlocal_ {
         none()
     }
 
+    Variable getAVariable() {
+        result.getScope() = this.getScope() and
+        result.getId() = this.getAName()
+    }
+
 }
 
 /** A pass statement */

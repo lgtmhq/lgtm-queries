@@ -83,7 +83,7 @@ private predicate isBrowserifyBundledModule(Property p) {
  * Holds if `factory` looks like a Browserify-generated module factory function.
  *
  * We check that each parameter is named one of `require`, `module` or `exports`,
- * and that there is at least one of them. We also recognise `_dereq_` instead
+ * and that there is at least one of them. We also recognize `_dereq_` instead
  * of `require` to account for additional mangling by
  * [derequire](https://www.npmjs.com/package/derequire).
  *

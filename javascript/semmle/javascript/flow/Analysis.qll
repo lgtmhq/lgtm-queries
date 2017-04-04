@@ -20,7 +20,6 @@ import javascript
 import AbstractValues
 private import InferredTypes
 private import AbstractValuesImpl
-private import semmle.javascript.SSA
 private import Refinements
 
 /**
@@ -33,8 +32,8 @@ private DefiniteAbstractValue abstractValueOfType(TypeTag type) {
 /**
  * A data flow node for which analysis results are available.
  */
-class AnalysedFlowNode extends @ast_node {
-  AnalysedFlowNode() {
+class AnalyzedFlowNode extends @ast_node {
+  AnalyzedFlowNode() {
     this instanceof DataFlowNode
   }
 
@@ -42,7 +41,7 @@ class AnalysedFlowNode extends @ast_node {
    * Gets another data flow node whose value flows into this node in one local step
    * (that is, not involving global variables).
    */
-  AnalysedFlowNode localFlowPred() {
+  AnalyzedFlowNode localFlowPred() {
     result = this.(DataFlowNode).localFlowPred()
   }
 
@@ -156,7 +155,7 @@ class AnalysedFlowNode extends @ast_node {
 /**
  * Flow analysis for Boolean literals.
  */
-private class BooleanLiteralSource extends AnalysedFlowNode, @booleanliteral {
+private class BooleanLiteralSource extends AnalyzedFlowNode, @booleanliteral {
   override AbstractValue getAValue() {
     exists (string v | v = this.(Literal).getValue() |
       v = "true" and result = TAbstractBoolean(true) or
@@ -168,7 +167,7 @@ private class BooleanLiteralSource extends AnalysedFlowNode, @booleanliteral {
 /**
  * Flow analysis for number literals.
  */
-private class NumberLiteralSource extends AnalysedFlowNode, @numberliteral {
+private class NumberLiteralSource extends AnalyzedFlowNode, @numberliteral {
   private predicate isZero() {
     exists (float v | v = this.(Literal).getValue().toFloat() | v = 0.0 or v = -0.0)
   }
@@ -184,7 +183,7 @@ private class NumberLiteralSource extends AnalysedFlowNode, @numberliteral {
 /**
  * Flow analysis for string literals.
  */
-private class StringLiteralSource extends AnalysedFlowNode, @stringliteral {
+private class StringLiteralSource extends AnalyzedFlowNode, @stringliteral {
   override AbstractValue getAValue() {
     exists (string v | v = this.(Literal).getValue() |
       if v = "" then
@@ -200,63 +199,56 @@ private class StringLiteralSource extends AnalysedFlowNode, @stringliteral {
 /**
  * Flow analysis for template literals.
  */
-private class TemplateLiteralSource extends AnalysedFlowNode, @templateliteral {
+private class TemplateLiteralSource extends AnalyzedFlowNode, @templateliteral {
   override AbstractValue getAValue() { result = abstractValueOfType(TTString()) }
 }
 
 /**
  * Flow analysis for regular expression literals.
  */
-private class RegExpLiteralSource extends AnalysedFlowNode, @regexpliteral {
+private class RegExpLiteralSource extends AnalyzedFlowNode, @regexpliteral {
   override AbstractValue getAValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for the null literal.
  */
-private class NullLiteralSource extends AnalysedFlowNode, @nullliteral {
+private class NullLiteralSource extends AnalyzedFlowNode, @nullliteral {
   override AbstractValue getAValue() { result = TAbstractNull() }
 }
 
 /**
  * Flow analysis for object expressions.
  */
-private class ObjectExprSource extends AnalysedFlowNode, @objexpr {
+private class ObjectExprSource extends AnalyzedFlowNode, @objexpr {
   override AbstractValue getAValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for array expressions.
  */
-private class ArrayExprSource extends AnalysedFlowNode, @arrayexpr {
+private class ArrayExprSource extends AnalyzedFlowNode, @arrayexpr {
   override AbstractValue getAValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for array comprehensions.
  */
-private class ArrayComprehensionExprSource extends AnalysedFlowNode, @arraycomprehensionexpr {
+private class ArrayComprehensionExprSource extends AnalyzedFlowNode, @arraycomprehensionexpr {
   override AbstractValue getAValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for function expressions.
  */
-private class FunctionSource extends AnalysedFlowNode, @function {
+private class FunctionSource extends AnalyzedFlowNode, @function {
   override AbstractValue getAValue() { result = TAbstractFunction(this) }
-}
-
-/**
- * Flow analysis for function bind expressions.
- */
-private class FunctionBindSource extends AnalysedFlowNode, @bindexpr {
-  override AbstractValue getAValue() { result = TIndefiniteFunctionOrClass("call") }
 }
 
 /**
  * Flow analysis for class declarations.
  */
-private class ClassExprSource extends AnalysedFlowNode, @classdecl {
+private class ClassExprSource extends AnalyzedFlowNode, @classdecl {
   override AbstractValue getAValue() {
     result = TAbstractClass(this.(ClassDefinition).getDefinedClass())
   }
@@ -265,11 +257,11 @@ private class ClassExprSource extends AnalysedFlowNode, @classdecl {
 /**
  * Flow analysis for `super` in super constructor calls.
  */
-private class SuperCallSource extends AnalysedFlowNode, @superexpr {
+private class SuperCallSource extends AnalyzedFlowNode, @superexpr {
   SuperCallSource() { this = any(SuperCall sc).getCallee().stripParens() }
 
   override AbstractValue getAValue() {
-    exists (MethodDefinition md, AnalysedFlowNode sup, AbstractValue supVal |
+    exists (MethodDefinition md, AnalyzedFlowNode sup, AbstractValue supVal |
       md.getBody() = this.(Expr).getEnclosingFunction() and
       sup = md.getDeclaringClass().getSuperClass() and
       supVal = sup.getAValue() |
@@ -285,7 +277,7 @@ private class SuperCallSource extends AnalysedFlowNode, @superexpr {
 /**
  * Flow analysis for `new`.
  */
-private class NewSource extends AnalysedFlowNode, @newexpr {
+private class NewSource extends AnalyzedFlowNode, @newexpr {
   override AbstractValue getAValue() {
     result = TIndefiniteFunctionOrClass("call") or
     result = TIndefiniteObject("call")
@@ -296,7 +288,7 @@ private class NewSource extends AnalysedFlowNode, @newexpr {
 /**
  * Flow analysis for (non-short circuiting) binary expressions.
  */
-private class BinaryExprSource extends AnalysedFlowNode, @binaryexpr {
+private class BinaryExprSource extends AnalyzedFlowNode, @binaryexpr {
   BinaryExprSource() { not this instanceof LogicalBinaryExpr }
 
   override AbstractValue getAValue() {
@@ -312,7 +304,7 @@ private class BinaryExprSource extends AnalysedFlowNode, @binaryexpr {
  */
 private predicate isStringAppend(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  e.getAChild().(AnalysedFlowNode).getAPrimitiveType() = TTString()
+  e.getAChild().(AnalyzedFlowNode).getAPrimitiveType() = TTString()
 }
 
 /**
@@ -321,8 +313,8 @@ private predicate isStringAppend(Expr e) {
  */
 private predicate isAddition(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  e.getChild(0).(AnalysedFlowNode).getAPrimitiveType() != TTString() and
-  e.getChild(1).(AnalysedFlowNode).getAPrimitiveType() != TTString()
+  e.getChild(0).(AnalyzedFlowNode).getAPrimitiveType() != TTString() and
+  e.getChild(1).(AnalyzedFlowNode).getAPrimitiveType() != TTString()
 }
 
 /**
@@ -361,7 +353,7 @@ private class InstanceofSource extends BinaryExprSource, @instanceofexpr {
  * Flow analysis for unary expressions (except for spread, which is not
  * semantically a unary expression).
  */
-private class UnaryExprSource extends AnalysedFlowNode, @unaryexpr {
+private class UnaryExprSource extends AnalyzedFlowNode, @unaryexpr {
   UnaryExprSource() { not this instanceof SpreadElement }
 
   override AbstractValue getAValue() {
@@ -390,7 +382,7 @@ private class TypeofSource extends UnaryExprSource, @typeofexpr {
  */
 private class LogNotSource extends UnaryExprSource, @lognotexpr {
   override AbstractValue getAValue() {
-    exists (AbstractValue op | op = this.(UnaryExpr).getOperand().(AnalysedFlowNode).getAValue() |
+    exists (AbstractValue op | op = this.(UnaryExpr).getOperand().(AnalyzedFlowNode).getAValue() |
       exists (boolean bv | bv = op.getBooleanValue() |
         bv = true and result = TAbstractBoolean(false) or
         bv = false and result = TAbstractBoolean(true)
@@ -410,7 +402,7 @@ private class DeleteSource extends UnaryExprSource, @deleteexpr {
 /**
  * Flow analysis for increment and decrement expressions.
  */
-private class UpdateSource extends AnalysedFlowNode, @updateexpr {
+private class UpdateSource extends AnalyzedFlowNode, @updateexpr {
   override AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
 
@@ -418,7 +410,7 @@ private class UpdateSource extends AnalysedFlowNode, @updateexpr {
 /**
  * Flow analysis for compound assignments.
  */
-private class CompoundAssignSource extends AnalysedFlowNode, @assignment {
+private class CompoundAssignSource extends AnalyzedFlowNode, @assignment {
   CompoundAssignSource() { this instanceof CompoundAssignExpr }
 
   override AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
@@ -438,9 +430,9 @@ private class AddAssignSource extends CompoundAssignSource, @assignaddexpr {
 /**
  * Flow analysis for variable accesses.
  */
-private class VarAccessAnalysis extends AnalysedFlowNode, @varaccess {
+private class VarAccessAnalysis extends AnalyzedFlowNode, @varaccess {
   override AbstractValue getAValue() {
-    result = getVariable().(AnalysedVariable).getAValue()
+    result = getVariable().(AnalyzedVariable).getAValue()
   }
 
   /** Gets the variable to which this is an access. */
@@ -452,15 +444,15 @@ private class VarAccessAnalysis extends AnalysedFlowNode, @varaccess {
 /**
  * Flow analysis for accesses to non-SSA variables.
  */
-private class AnalysedVariable extends @variable {
-  AnalysedVariable() {
-    not this instanceof TrackableVariable
+private class AnalyzedVariable extends @variable {
+  AnalyzedVariable() {
+    not this instanceof SsaSourceVariable
   }
 
   /**
    * Gets an abstract value that may be assigned to this variable.
    */
-  cached
+  pragma[nomagic]
   AbstractValue getAValue() {
     result = getADef().getAnAssignedValue()
   }
@@ -468,7 +460,7 @@ private class AnalysedVariable extends @variable {
   /**
    * Gets a definition of this variable.
    */
-  AnalysedVarDef getADef() {
+  AnalyzedVarDef getADef() {
     this = result.getAVariable()
   }
 
@@ -481,14 +473,14 @@ private class AnalysedVariable extends @variable {
 /**
  * Flow analysis for accesses to SSA variables.
  */
-private class TrackableVarAccessAnalysis extends VarAccessAnalysis {
-  TrackableVarAccessAnalysis() {
-    getVariable() instanceof TrackableVariable
+private class SsaVarAccessAnalysis extends VarAccessAnalysis {
+  SsaVarAccessAnalysis() {
+    getVariable() instanceof SsaSourceVariable
   }
 
   override AbstractValue getAValue() {
-    exists (SSADefinition ssa | this = ssa.getAUse() |
-      result = ssa.(AnalysedSSADefinition).getAnRhsValue()
+    exists (SsaVariable ssa | this = ssa.getAUse() |
+      result = ssa.(AnalyzedSsaDefinition).getAnRhsValue()
     )
   }
 }
@@ -496,11 +488,11 @@ private class TrackableVarAccessAnalysis extends VarAccessAnalysis {
 /**
  * Flow analysis for `VarDef`s.
  */
-private class AnalysedVarDef extends VarDef {
+private class AnalyzedVarDef extends VarDef {
   /**
    * Gets an abstract value that this variable definition may assign
    * to its target, including indefinite values if this definition
-   * cannot be analysed completely.
+   * cannot be analyzed completely.
    */
   AbstractValue getAnAssignedValue() {
     result = getAnRhsValue() or
@@ -521,7 +513,7 @@ private class AnalysedVarDef extends VarDef {
    * Gets a node representing the value of the right hand side of
    * this `VarDef`.
    */
-  AnalysedFlowNode getRhs() {
+  AnalyzedFlowNode getRhs() {
     result = getSource() and getTarget() instanceof VarRef or
     result = (CompoundAssignExpr)this or
     result = (UpdateExpr)this
@@ -543,8 +535,8 @@ private class AnalysedVarDef extends VarDef {
 /**
  * Flow analysis for simple IIFE parameters.
  */
-private class AnalysedIIFEParameter extends AnalysedVarDef, @vardecl {
-  AnalysedIIFEParameter() {
+private class AnalyzedIIFEParameter extends AnalyzedVarDef, @vardecl {
+  AnalyzedIIFEParameter() {
     exists (ImmediatelyInvokedFunctionExpr iife |
       this = iife.getAParameter() |
       // we cannot track flow into rest parameters
@@ -559,13 +551,13 @@ private class AnalysedIIFEParameter extends AnalysedVarDef, @vardecl {
     this = result.getAParameter()
   }
 
-  override AnalysedFlowNode getRhs() {
+  override AnalyzedFlowNode getRhs() {
     getIIFE().argumentPassing(this, result) or
     result = this.(Parameter).getDefault()
   }
 
   override AbstractValue getAnRhsValue() {
-    result = AnalysedVarDef.super.getAnRhsValue() or
+    result = AnalyzedVarDef.super.getAnRhsValue() or
     not getIIFE().argumentPassing(this, _) and result = TAbstractUndefined()
   }
 
@@ -585,8 +577,8 @@ private class AnalysedIIFEParameter extends AnalysedVarDef, @vardecl {
 /**
  * Flow analysis for simple rest parameters.
  */
-private class AnalysedRestParameter extends AnalysedVarDef, @vardecl {
-  AnalysedRestParameter() {
+private class AnalyzedRestParameter extends AnalyzedVarDef, @vardecl {
+  AnalyzedRestParameter() {
     this.(Parameter).isRestParameter()
   }
 
@@ -602,8 +594,8 @@ private class AnalysedRestParameter extends AnalysedVarDef, @vardecl {
 /**
  * Flow analysis for ECMAScript 2015 imports.
  */
-private class AnalysedImport extends AnalysedVarDef, @importspecifier {
-  AnalysedImport() {
+private class AnalyzedImport extends AnalyzedVarDef, @importspecifier {
+  AnalyzedImport() {
     resolveImport(_, this, _, _)
   }
 
@@ -635,11 +627,11 @@ private predicate resolveImport(ImportDeclaration i, ImportSpecifier s,
  * In this case, we are importing a value (namely, the value of the exported
  * expression).
  */
-private class AnalysedDefaultImport extends AnalysedImport {
+private class AnalyzedDefaultImport extends AnalyzedImport {
   override AbstractValue getAnRhsValue() {
     exists (ES2015Module m | resolveImport(_, this, "default", m) |
       // if we are importing a value, we only see that value
-      exists (AnalysedFlowNode remoteSrc |
+      exists (AnalyzedFlowNode remoteSrc |
         remoteSrc = m.getAnExport().(ExportDefaultDeclaration).getOperand() and
         result = remoteSrc.getAValue()
       )
@@ -653,11 +645,11 @@ private class AnalysedDefaultImport extends AnalysedImport {
  * In this case, we are importing a binding (namely, the variable being exported),
  * so we need to consider all assignments to that variable.
  */
-private class AnalysedVariableImport extends AnalysedImport {
+private class AnalyzedVariableImport extends AnalyzedImport {
   override AbstractValue getAnRhsValue() {
     exists (ES2015Module m, string name | resolveImport(_, this, name, m) |
       // if we are importing a variable, we see every assignment to it
-      exists (AnalysedVarDef remoteDef | m.exportsAs(remoteDef.getAVariable(), name) |
+      exists (AnalyzedVarDef remoteDef | m.exportsAs(remoteDef.getAVariable(), name) |
         result = remoteDef.getAnAssignedValue()
       )
     )
@@ -667,7 +659,7 @@ private class AnalysedVariableImport extends AnalysedImport {
 /**
  * Flow analysis for SSA definitions.
  */
-abstract class AnalysedSSADefinition extends SSADefinition {
+abstract class AnalyzedSsaDefinition extends SsaDefinition {
   /**
    * Gets an abstract value that the right hand side of this definition
    * may evaluate to at runtime.
@@ -678,32 +670,32 @@ abstract class AnalysedSSADefinition extends SSADefinition {
 /**
  * Flow analysis for SSA definitions corresponding to `VarDef`s.
  */
-private class AnalysedExplicitDefinition extends AnalysedSSADefinition, SSAExplicitDefinition {
+private class AnalyzedExplicitDefinition extends AnalyzedSsaDefinition, SsaExplicitDefinition {
   override AbstractValue getAnRhsValue() {
-    result = getDef().(AnalysedVarDef).getAnAssignedValue()
+    result = getDef().(AnalyzedVarDef).getAnAssignedValue()
   }
 }
 
 /**
- * Flow analysis for SSA definitions corresponding to implicit variable initialisation.
+ * Flow analysis for SSA definitions corresponding to implicit variable initialization.
  */
-private class AnalysedImplicitInit extends AnalysedSSADefinition, SSAImplicitInit {
+private class AnalyzedImplicitInit extends AnalyzedSsaDefinition, SsaImplicitInit {
   override AbstractValue getAnRhsValue() {
-    result = getImplicitInitValue(getVariable())
+    result = getImplicitInitValue(getSourceVariable())
   }
 }
 
 /**
  * Flow analysis for SSA definitions corresponding to implicit variable capture.
  */
-private class AnalysedVariableCapture extends AnalysedSSADefinition, SSACapture {
+private class AnalyzedVariableCapture extends AnalyzedSsaDefinition, SsaVariableCapture {
   override AbstractValue getAnRhsValue() {
-    exists (LocalVariable v | v = getVariable() |
-      exists (AnalysedVarDef def | v = def.getAVariable() |
+    exists (LocalVariable v | v = getSourceVariable() |
+      exists (AnalyzedVarDef def | v = def.getAVariable() |
         result = def.getAnAssignedValue()
       )
       or
-      not guaranteedToBeInitialised(v) and result = getImplicitInitValue(v)
+      not guaranteedToBeInitialized(v) and result = getImplicitInitValue(v)
     )
   }
 }
@@ -711,16 +703,16 @@ private class AnalysedVariableCapture extends AnalysedSSADefinition, SSACapture 
 /**
  * Flow analysis for SSA phi nodes.
  */
-private class AnalysedPhiNode extends AnalysedSSADefinition, SSAPhiNode {
+private class AnalyzedPhiNode extends AnalyzedSsaDefinition, SsaPhiNode {
   override AbstractValue getAnRhsValue() {
-    result = getAnInput().(AnalysedSSADefinition).getAnRhsValue()
+    result = getAnInput().(AnalyzedSsaDefinition).getAnRhsValue()
   }
 }
 
 /**
  * Flow analysis for refinement nodes.
  */
-class AnalysedRefinement extends AnalysedSSADefinition, SSARefinement {
+class AnalyzedRefinement extends AnalyzedSsaDefinition, SsaRefinementNode {
   override AbstractValue getAnRhsValue() {
     // default implementation: don't refine
     result = getAnInputRhsValue()
@@ -730,7 +722,7 @@ class AnalysedRefinement extends AnalysedSSADefinition, SSARefinement {
    * Gets an abstract value that one of the inputs of this refinement may evaluate to.
    */
   AbstractValue getAnInputRhsValue() {
-    result = getAnInput().(AnalysedSSADefinition).getAnRhsValue()
+    result = getAnInput().(AnalyzedSsaDefinition).getAnRhsValue()
   }
 }
 
@@ -740,15 +732,15 @@ class AnalysedRefinement extends AnalysedSSADefinition, SSARefinement {
  * For example, in `if(x) s; else t;`, this will restrict the possible values of `x` at
  * the beginning of `s` to those that are truthy.
  */
-class AnalysedPositiveConditionGuard extends AnalysedRefinement {
-  AnalysedPositiveConditionGuard() {
+class AnalyzedPositiveConditionGuard extends AnalyzedRefinement {
+  AnalyzedPositiveConditionGuard() {
     getGuard().(ConditionGuardNode).getOutcome() = true
   }
 
   override AbstractValue getAnRhsValue() {
     result = getAnInputRhsValue() and
     exists (RefinementContext ctxt |
-      ctxt = TVarRefinementContext(this, getVariable(), result) and
+      ctxt = TVarRefinementContext(this, getSourceVariable(), result) and
       getRefinement().eval(ctxt).getABooleanValue() = true
     )
   }
@@ -760,15 +752,15 @@ class AnalysedPositiveConditionGuard extends AnalysedRefinement {
  * For example, in `if(x) s; else t;`, this will restrict the possible values of `x` at
  * the beginning of `t` to those that are falsy.
  */
-class AnalysedNegativeConditionGuard extends AnalysedRefinement {
-  AnalysedNegativeConditionGuard() {
+class AnalyzedNegativeConditionGuard extends AnalyzedRefinement {
+  AnalyzedNegativeConditionGuard() {
     getGuard().(ConditionGuardNode).getOutcome() = false
   }
 
   override AbstractValue getAnRhsValue() {
     result = getAnInputRhsValue() and
     exists (RefinementContext ctxt |
-      ctxt = TVarRefinementContext(this, getVariable(), result) and
+      ctxt = TVarRefinementContext(this, getSourceVariable(), result) and
       getRefinement().eval(ctxt).getABooleanValue() = false
     )
   }
@@ -777,8 +769,8 @@ class AnalysedNegativeConditionGuard extends AnalysedRefinement {
 /**
  * Gets the abstract value representing the initial value of variable `v`.
  *
- * Most variables are implicitly initialised to `undefined`, except
- * for `arguments` (which is initialised to the arguments object),
+ * Most variables are implicitly initialized to `undefined`, except
+ * for `arguments` (which is initialized to the arguments object),
  * and special Node.js variables such as `module` and `exports`.
  */
 private AbstractValue getImplicitInitValue(LocalVariable v) {
@@ -793,14 +785,14 @@ private AbstractValue getImplicitInitValue(LocalVariable v) {
 }
 
 /**
- * Flow analysis for local variables that are used before being initialised.
+ * Flow analysis for local variables that are used before being initialized.
  */
-private class UninitialisedVarAccessSource extends AnalysedFlowNode, @varaccess {
-  UninitialisedVarAccessSource() {
+private class UninitializedVarAccessSource extends AnalyzedFlowNode, @varaccess {
+  UninitializedVarAccessSource() {
     exists (LocalVariable lv |
       lv = this.(VarUse).getVariable() and
-      not lv instanceof TrackableVariable and
-      not guaranteedToBeInitialised(lv)
+      not lv instanceof SsaSourceVariable and
+      not guaranteedToBeInitialized(lv)
     )
   }
 
@@ -810,12 +802,12 @@ private class UninitialisedVarAccessSource extends AnalysedFlowNode, @varaccess 
 }
 
 /**
- * Holds if `v` is a local variable that can never be observed in its uninitialised state.
+ * Holds if `v` is a local variable that can never be observed in its uninitialized state.
  */
-private predicate guaranteedToBeInitialised(LocalVariable v) {
-  // function declarations can never be uninitialised due to hoisting
+private predicate guaranteedToBeInitialized(LocalVariable v) {
+  // function declarations can never be uninitialized due to hoisting
   exists (FunctionDeclStmt fd | v = fd.getVariable()) or
-  // parameters also can never be uninitialised
+  // parameters also can never be uninitialized
   exists (Parameter p | v = p.getAVariable())
 }
 
@@ -836,29 +828,44 @@ private predicate nodeBuiltins(Variable var, AbstractValue av) {
 /**
  * Flow analysis for global variables.
  */
-private class GlobalVarAccessSource extends AnalysedFlowNode, @varaccess {
+private class GlobalVarAccessSource extends AnalyzedFlowNode, @varaccess {
   GlobalVarAccessSource() { this instanceof GlobalVarAccess }
 
   /** Gets the name of this global variable. */
   string getVariableName() { result = this.(VarAccess).getName() }
 
+  /**
+   * Gets a property write that may assign to this global variable as a property
+   * of the global object.
+   */
+  private PropWriteNode getAnAssigningPropWrite() {
+    result.getPropertyName() = getVariableName() and
+    result.getBase().(AnalyzedFlowNode).getAValue() instanceof AbstractGlobalObject
+  }
+
   override AbstractValue getAValue() {
     result = TIndefiniteAbstractValue("global")
     or
-    // look for property writes that might affect this global variable
-    exists (PropWriteNode pwn, AbstractValue baseVal |
-      pwn.getPropertyName() = getVariableName() and
-      baseVal = pwn.getBase().(AnalysedFlowNode).getAValue() |
-      // if we know that the base of the property write is the global object,
-      // propagate values from the RHS
-      baseVal instanceof AbstractGlobalObject and
-      result = pwn.getRhs().(AnalysedFlowNode).getAValue()
-      or
-      // if the base of the property write is indefinite, make the global indefinite as well
-      baseVal.isIndefinite(_) and baseVal.getType() = TTObject() and
-      result = TIndefiniteAbstractValue("heap")
+    result = getAnAssigningPropWrite().getRhs().(AnalyzedFlowNode).getAValue()
+    or
+    exists (DataFlowIncompleteness reason |
+      clobberedProp(getVariableName(), reason) and
+      result = TIndefiniteAbstractValue(reason)
     )
   }
+}
+
+/**
+ * Holds if there is a write to property `name` on an object for which the
+ * analysis is incomplete due to the given `reason`.
+ */
+private predicate clobberedProp(string name, DataFlowIncompleteness reason) {
+  exists (PropWriteNode pwn, AbstractValue baseVal |
+    pwn.getPropertyName() = name and
+    baseVal = pwn.getBase().(AnalyzedFlowNode).getAValue() and
+    baseVal.isIndefinite(reason) and
+    baseVal.getType() = TTObject()
+  )
 }
 
 /**
@@ -929,7 +936,7 @@ private predicate maybeModifiedThroughArguments(LocalVariable v) {
  * does not replace the implementations in other classes, but complements
  * them by injecting additional values into the analysis.
  */
-private class ReflectiveVarFlow extends AnalysedFlowNode, @varaccess {
+private class ReflectiveVarFlow extends AnalyzedFlowNode, @varaccess {
   ReflectiveVarFlow() {
     exists (Variable v | v = this.(VarAccess).getVariable() |
       any(DirectEval de).mayAffect(v)
@@ -946,21 +953,21 @@ private class ReflectiveVarFlow extends AnalysedFlowNode, @varaccess {
 /**
  * Flow analysis for JSX elements.
  */
-private class JSXElementSource extends AnalysedFlowNode, @jsxelement {
+private class JSXElementSource extends AnalyzedFlowNode, @jsxelement {
   override AbstractValue getAValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for qualified JSX names.
  */
-private class JSXQualifiedNameSource extends AnalysedFlowNode, @jsxqualifiedname {
+private class JSXQualifiedNameSource extends AnalyzedFlowNode, @jsxqualifiedname {
   override AbstractValue getAValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for empty JSX expressions.
  */
-private class JSXEmptyExpressionSource extends AnalysedFlowNode, @jsxemptyexpr {
+private class JSXEmptyExpressionSource extends AnalyzedFlowNode, @jsxemptyexpr {
   override AbstractValue getAValue() { result = TAbstractUndefined() }
 }
 
@@ -968,20 +975,39 @@ private class JSXEmptyExpressionSource extends AnalysedFlowNode, @jsxemptyexpr {
 /**
  * Flow analysis for `arguments.callee`.
  */
-private class ArgumentsCalleeSource extends AnalysedFlowNode, @propaccess {
+private class ArgumentsCalleeSource extends AnalyzedFlowNode, @propaccess {
   ArgumentsCalleeSource() {
     this.(PropAccess).getPropertyName() = "callee"
   }
 
   /** Gets the node representing the base of this property access. */
-  AnalysedFlowNode getBase() {
+  AnalyzedFlowNode getBase() {
     result = this.(PropAccess).getBase()
   }
 
   override AbstractValue getAValue() {
-    exists (AbstractValue base | base = getBase().getAValue() |
-      result = TAbstractFunction(base.(AbstractArguments).getFunction()) or
-      base != TAbstractArguments(_) and result = AnalysedFlowNode.super.getAValue()
+    exists (AbstractArguments baseVal | baseVal = getBase().getAValue() |
+      result = TAbstractFunction(baseVal.getFunction())
     )
+    or
+    hasNonArgumentsBase(this) and result = TIndefiniteAbstractValue("heap")
   }
+}
+
+/**
+ * Holds if `pacc` is of the form `e.callee` where `e` could evaluate to some
+ * value that is not an arguments object.
+ */
+private predicate hasNonArgumentsBase(PropAccess pacc) {
+  pacc.getPropertyName() = "callee" and
+  exists (AbstractValue baseVal |
+    baseVal = pacc.getBase().(AnalyzedFlowNode).getAValue() and
+    not baseVal instanceof AbstractArguments
+  )
+}
+
+/**
+ * DEPRECATED: Use `AnalyzedFlowNode` instead.
+ */
+deprecated class AnalysedFlowNode extends AnalyzedFlowNode {
 }

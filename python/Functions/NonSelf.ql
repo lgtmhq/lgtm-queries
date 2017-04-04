@@ -26,6 +26,7 @@
  */
 
 import python
+import semmle.python.libraries.Zope
 
 predicate first_arg_self(Function f) {
     f.getArgName(0) = "self"
@@ -42,7 +43,7 @@ predicate used_in_defining_scope(FunctionObject f) {
     )
 }
 
-from Function f, FunctionObject func, string message
+from Function f, PyFunctionObject func, string message
 where
 exists(ClassObject cls, string name | 
     cls.declaredAttribute(name) = func and cls.isNewStyle() and
@@ -58,6 +59,7 @@ not used_in_defining_scope(func) and
       message = "Normal methods should have 'self', rather than '" + f.getArgName(0) + "', as their first parameter."
   else
       message = "Normal methods should have at least one parameter (the first of which should be 'self')."
-)
+) and
+not func instanceof ZopeInterfaceMethod
 
 select f, message

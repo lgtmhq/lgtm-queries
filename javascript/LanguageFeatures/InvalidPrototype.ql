@@ -29,7 +29,7 @@ private import semmle.javascript.flow.InferredTypes
 /**
  * Holds if the value of `e` is used as a prototype object.
  */
-predicate isProto(AnalysedFlowNode e) {
+predicate isProto(AnalyzedFlowNode e) {
   // `o.__proto__ = e`, `{ __proto__: e }`, ...
   e = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
   or
@@ -46,7 +46,7 @@ predicate isProto(AnalysedFlowNode e) {
   )
 }
 
-from AnalysedFlowNode proto
+from AnalyzedFlowNode proto
 where isProto(proto) and
       proto.hasFlow() and
       forall (InferredType tp | tp = proto.getAType() |

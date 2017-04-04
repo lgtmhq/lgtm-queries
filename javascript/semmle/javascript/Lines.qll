@@ -11,12 +11,26 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/** Provides classes for working with lines of text in source files. */
+/**
+ * Provides classes for working with lines of text in source files.
+ *
+ * This information is only available for snapshots that have been extracted with
+ * the `--extract-program-text` flag.
+ */
 
 import javascript
 
-/** A line of text (code, comment, or whitespace) in a source file. */
+/**
+ * A line of text (code, comment, or whitespace) in a source file.
+ *
+ * Note that textual information is only available for snapshots that have been
+ * extracted with the `--extract-program-text` flag.
+ */
 class Line extends @line, Locatable {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
   /** Gets the toplevel element this line belongs to. */
   TopLevel getTopLevel() {
     lines(this, result, _, _)

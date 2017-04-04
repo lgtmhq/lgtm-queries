@@ -119,10 +119,16 @@ class Locatable extends @locatable {
 
   /** Gets this element's location. */
   Location getLocation() {
-    hasLocation(this, result)
+    // overridden by subclasses
+    none()
   }
 
-  /** Gets the line on which this element starts. */
+  /**
+   * Gets the line on which this element starts.
+   *
+   * This predicate is only defined for program elements from snapshots that
+   * have been extracted with the `--extract-program-text` flag.
+   */
   Line getStartLine() {
     exists (Location l1, Location l2 |
       l1 = this.getLocation() and
@@ -132,7 +138,12 @@ class Locatable extends @locatable {
     )
   }
 
-  /** Gets the line on which this element ends. */
+  /**
+   * Gets the line on which this element ends.
+   *
+   * This predicate is only defined for program elements from snapshots that
+   * have been extracted with the `--extract-program-text` flag.
+   */
   Line getEndLine() {
     exists (Location l1, Location l2 |
       l1 = this.getLocation() and
@@ -140,44 +151,6 @@ class Locatable extends @locatable {
       l1.getFile() = l2.getFile() and
       l1.getEndLine() = l2.getStartLine()
     )
-  }
-
-  /** Gets the first token belonging to this element. */
-  Token getFirstToken() {
-    exists (Location l1, Location l2 |
-      l1 = this.getLocation() and
-      l2 = result.getLocation() and
-      l1.getFile() = l2.getFile() and
-      l1.getStartLine() = l2.getStartLine() and
-      l1.getStartColumn() = l2.getStartColumn()
-    )
-  }
-
-  /** Gets the last token belonging to this element. */
-  Token getLastToken() {
-    exists (Location l1, Location l2 |
-      l1 = this.getLocation() and
-      l2 = result.getLocation() and
-      l1.getFile() = l2.getFile() and
-      l1.getEndLine() = l2.getEndLine() and
-      l1.getEndColumn() = l2.getEndColumn()
-    ) and
-    // exclude empty EOF token
-    not result instanceof EOFToken
-  }
-
-  /** Gets a token belonging to this element. */
-  Token getAToken() {
-    exists (string path, int sl, int sc, int el, int ec,
-                  int tksl, int tksc, int tkel, int tkec |
-      this.getLocation().hasLocationInfo(path, sl, sc, el, ec) and
-      result.getLocation().hasLocationInfo(path, tksl, tksc, tkel, tkec) |
-      (sl < tksl or (sl = tksl and sc <= tksc))
-      and
-      (tkel < el or (tkel = el and tkec <= ec))
-    ) and
-    // exclude empty EOF token
-    not result instanceof EOFToken
   }
 
   /** Gets the number of lines covered by this element. */

@@ -33,6 +33,10 @@ class RegExpParent extends Locatable, @regexpparent {
  * expression literal.
  */
 abstract class RegExpTerm extends Locatable, @regexpterm {
+  override Location getLocation() {
+    hasLocation(this, result)
+  }
+
   /** Gets the `i`th child term of this term. */
   RegExpTerm getChild(int i) {
     regexpterm(result, _, this, i, _)

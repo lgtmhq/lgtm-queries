@@ -56,7 +56,7 @@ library class CodeGeneratorMarkerComment extends GeneratedCodeMarkerComment {
 private predicate codeGeneratorMarkerComment(SlashSlashComment c, string tool) {
   exists (string toolPattern |
     toolPattern = "js_of_ocaml|CoffeeScript|LiveScript|dart2js|ANTLR|PEG\\.js" and
-    tool = c.getText().regexpCapture("\\s*Generated (from .*)?by (" + toolPattern + ")\\b.*", 1)
+    tool = c.getText().regexpCapture("\\s*Generated (?:from .*)?by (" + toolPattern + ")\\b.*", 1)
   )
 }
 

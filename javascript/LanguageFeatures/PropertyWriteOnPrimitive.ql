@@ -33,7 +33,7 @@ string describeProp(PropWriteNode pwn) {
   not exists(pwn.getPropertyName()) and result = "a property"
 }
 
-from PropWriteNode pwn, AnalysedFlowNode base
+from PropWriteNode pwn, AnalyzedFlowNode base
 where base = pwn.getBase() and
       base.hasFlow() and
       forall (InferredType tp | tp = base.getAType() |

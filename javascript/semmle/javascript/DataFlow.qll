@@ -217,16 +217,11 @@ private class VarDefFlow extends VarDef {
     // follow one step of the def-use chain, but only for definitions where
     // the lhs is a simple variable reference (as opposed to a destructuring
     // pattern)
-    result = getSource() and getTarget() instanceof VarRef or
-
-    // for compound assignments and updates there isn't an explicit source,
-    // so we stop there
-    result = (CompoundAssignExpr)this or
-    result = (UpdateExpr)this
+    result = getSource() and getTarget() instanceof VarRef
   }
 
   /**
-   * Holds if this definition is analysed imprecisely due to `cause`.
+   * Holds if this definition is analyzed imprecisely due to `cause`.
    */
   predicate isIncomplete(DataFlowIncompleteness cause) {
     this instanceof Parameter and cause = "call" or
@@ -283,7 +278,8 @@ private class InterProcFlow extends DataFlowNode, @expr {
     this instanceof InvokeExpr or
     this instanceof ThisExpr or
     this instanceof SuperExpr or
-    this instanceof NewTargetExpr
+    this instanceof NewTargetExpr or
+    this instanceof FunctionBindExpr
   }
 
   override predicate isIncomplete(DataFlowIncompleteness cause) { cause = "call" }

@@ -12,6 +12,8 @@
 // permissions and limitations under the License.
 
 /**
+ * INTERNAL: This is an internal library; its interface may change without notice.
+ *
  * Provides classes for working with variable refinements.
  *
  * Variable refinements are expressions that appear in a guard node
@@ -40,7 +42,6 @@
  */
 
 import javascript
-private import semmle.javascript.SSA
 private import AbstractValues
 private import InferredTypes
 private import Analysis
@@ -53,12 +54,12 @@ abstract class RefinementCandidate extends Expr {
   /**
    * Gets a variable that is referenced somewhere in this expression.
    */
-  abstract TrackableVariable getARefinedVar();
+  abstract SsaSourceVariable getARefinedVar();
 
   /**
    * Gets a refinement value inferred for this expression in context `ctxt`.
    */
-  abstract cached RefinementValue eval(RefinementContext ctxt);
+  abstract pragma[nomagic] RefinementValue eval(RefinementContext ctxt);
 }
 
 /**
@@ -74,7 +75,7 @@ class Refinement extends Expr {
   /**
    * Gets the variable refined by this expression, if any.
    */
-  TrackableVariable getRefinedVar() {
+  SsaSourceVariable getRefinedVar() {
     result = this.(RefinementCandidate).getARefinedVar()
   }
 
@@ -88,7 +89,7 @@ class Refinement extends Expr {
 
 /** A literal, viewed as a refinement expression. */
 private class LiteralRefinement extends RefinementCandidate, Literal {
-  override TrackableVariable getARefinedVar() {
+  override SsaSourceVariable getARefinedVar() {
     none()
   }
 
@@ -146,10 +147,10 @@ private class IntRefinement extends NumberRefinement {
 /** A variable use, viewed as a refinement expression. */
 private class VariableRefinement extends RefinementCandidate, VarUse {
   VariableRefinement() {
-    getVariable() instanceof TrackableVariable
+    getVariable() instanceof SsaSourceVariable
   }
 
-  override TrackableVariable getARefinedVar() {
+  override SsaSourceVariable getARefinedVar() {
     result = getVariable()
   }
 
@@ -165,7 +166,7 @@ private class ParRefinement extends RefinementCandidate, ParExpr {
     getExpression() instanceof RefinementCandidate
   }
 
-  override TrackableVariable getARefinedVar() {
+  override SsaSourceVariable getARefinedVar() {
     result = getExpression().(RefinementCandidate).getARefinedVar()
   }
 
@@ -180,7 +181,7 @@ private class TypeofRefinement extends RefinementCandidate, TypeofExpr {
     getOperand() instanceof RefinementCandidate
   }
 
-  override TrackableVariable getARefinedVar() {
+  override SsaSourceVariable getARefinedVar() {
     result = getOperand().(RefinementCandidate).getARefinedVar()
   }
 
@@ -199,7 +200,7 @@ private class EqRefinement extends RefinementCandidate, EqualityTest {
     getRightOperand() instanceof RefinementCandidate
   }
 
-  override TrackableVariable getARefinedVar() {
+  override SsaSourceVariable getARefinedVar() {
     result = getLeftOperand().(RefinementCandidate).getARefinedVar() or
     result = getRightOperand().(RefinementCandidate).getARefinedVar()
   }
@@ -229,7 +230,7 @@ private class IndexRefinement extends RefinementCandidate, IndexExpr {
     getIndex() instanceof RefinementCandidate
   }
 
-  override TrackableVariable getARefinedVar() {
+  override SsaSourceVariable getARefinedVar() {
     result = getBase().(RefinementCandidate).getARefinedVar() or
     result = getIndex().(RefinementCandidate).getARefinedVar()
   }
@@ -264,12 +265,12 @@ newtype TRefinementContext =
    * A refinement context associated with refinement `ref`, specifying that variable `var`
    * is assumed to have abstract value `val`.
    *
-   * Each context keeps track of its associated `AnalysedRefinement` node so that we can
+   * Each context keeps track of its associated `AnalyzedRefinement` node so that we can
    * restrict the `RefinementCandidate` expressions that it applies to: it should only
-   * apply to those expressions that are syntactically nested inside the `AnalysedRefinement`.
+   * apply to those expressions that are syntactically nested inside the `AnalyzedRefinement`.
    */
-  TVarRefinementContext(AnalysedRefinement ref, TrackableVariable var, AbstractValue val) {
-    var = ref.getVariable() and
+  TVarRefinementContext(AnalyzedRefinement ref, SsaSourceVariable var, AbstractValue val) {
+    var = ref.getSourceVariable() and
     val = ref.getAnInputRhsValue()
   }
 
@@ -292,7 +293,7 @@ class RefinementContext extends TRefinementContext {
  */
 class VarRefinementContext extends RefinementContext, TVarRefinementContext {
   override predicate appliesTo(RefinementCandidate cand) {
-    exists (AnalysedRefinement ref, TrackableVariable var |
+    exists (AnalyzedRefinement ref, SsaSourceVariable var |
       this = TVarRefinementContext(ref, var, _) |
       cand = ref.getRefinement().getAChildExpr*() and
       not cand.getARefinedVar() != var
