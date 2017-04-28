@@ -180,3 +180,41 @@ abstract class PathExprInModule extends PathExpr {
     getTopLevel().(Module).searchRoot(this, result, priority)
   }
 }
+
+/**
+ * An import of a module with the given `path`, either using `require` or using `import`.
+ */
+private predicate isImport(DataFlowNode nd, string moduleName) {
+  exists (Import i | i.getImportedPath().getValue() = moduleName |
+    // `require("http")`
+    nd = (Require)i or
+    // `import * as http from 'http'`
+    nd = i.(ImportDeclaration).getASpecifier().(ImportNamespaceSpecifier).getLocal()
+  )
+}
+
+/**
+ * A data flow node that holds a module instance, that is, the result of
+ * an import of the module.
+ */
+class ModuleInstance extends DataFlowNode {
+  ModuleInstance() {
+    isImport(this, _)
+  }
+
+  /** Gets the path from which the module is imported. */
+  string getPath() {
+    isImport(this, result)
+  }
+
+  /**
+   * Gets a function call that invokes method `methodName` on this module instance.
+   */
+  CallExpr getAMethodCall(string methodName) {
+    exists (PropReadNode prn |
+      prn.getBase().getALocalSource() = this and
+      prn.getPropertyName() = methodName and
+      result.getCallee().(DataFlowNode).getALocalSource() = prn
+    )
+  }
+}

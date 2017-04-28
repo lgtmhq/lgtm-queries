@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for computing metrics on Java classes and interfaces.
+ * Provides classes and predicates for computing metrics on Java classes and interfaces.
  */
 
 import semmle.code.java.Type
@@ -101,7 +101,7 @@ class MetricRefType extends RefType, MetricElement {
   }
 
   /**
-   * Whether method `m` accesses field `f`
+   * Holds if method `m` accesses field `f`
    * and both are declared in this type.
    */
   predicate accessesLocalField(Method m,Field f) {
@@ -166,7 +166,7 @@ class MetricRefType extends RefType, MetricElement {
     )
   }
 
-  /** Whether the specified callable should be included in the CK cohesion computation. */
+  /** Holds if the specified callable should be included in the CK cohesion computation. */
   predicate includeInLackOfCohesionCK(Callable c) {
     not (c instanceof TestMethod) and
     exists(Field f | c.getDeclaringType() = this and c.accesses(f) and relevantFieldForCohesion(f))
@@ -181,7 +181,7 @@ class MetricRefType extends RefType, MetricElement {
     )
   }
 
-  /** Whether a (non-ignored) callable reads a field relevant for cohesion. */
+  /** Holds if a (non-ignored) callable reads a field relevant for cohesion. */
   private
   predicate relevantCallableAndFieldCK(Callable m, Field f) {
     includeInLackOfCohesionCK(m) and

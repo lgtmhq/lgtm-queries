@@ -43,7 +43,7 @@ predicate hashingMethod(Method m) {
   )
 }
 
-/** Whether `e` is an expression in which `t` is used in a hashing data structure. */
+/** Holds if `e` is an expression in which `t` is used in a hashing data structure. */
 predicate usedInHash(RefType t, Expr e) {
   exists(RefType s | s.getName().matches("%Hash%") |
     exists(MethodAccess ma | 

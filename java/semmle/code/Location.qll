@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with locations.
+ * Provides classes and predicates for working with locations.
  *
  * Locations represent parts of files and are used to map elements to their source location.
  */
@@ -20,7 +20,7 @@
 import FileSystem
 import semmle.code.java.Element
 
-/** Whether element `e` has name `name`. */
+/** Holds if element `e` has name `name`. */
 predicate hasName(Element e, string name) {
   classes(e,name,_,_) or
   interfaces(e,name,_,_) or
@@ -50,8 +50,11 @@ class Top extends @top {
   Location getLocation() { fixedHasLocation(this, result, _) }
 
   /**
-   * Whether this element has the specified location information,
-   * including file path, start line, start column, end line and end column.
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f, Location l | fixedHasLocation(this, l, f) |
@@ -83,7 +86,7 @@ class Top extends @top {
     numlines(this, _, _, result)
   }
 
-  /** A printable representation of this element. */
+  /** Gets a textual representation of this element. */
   string toString() { hasName(this, result) }
 }
 
@@ -142,8 +145,11 @@ class Location extends @location {
   }
 
   /**
-   * Whether this location has the specified location information,
-   * including file path, start line, start column, end line and end column.
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f | locations_default(this,f,startline,startcolumn,endline,endcolumn) |

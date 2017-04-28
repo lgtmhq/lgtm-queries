@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for computing metrics on Java statements.
+ * Provides classes and predicates for computing metrics on Java statements.
  */
 
 import semmle.code.java.Statement

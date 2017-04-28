@@ -35,7 +35,7 @@ import semmle.code.java.dispatch.VirtualDispatch
 
 /** Class representing a source of data flow. */
 class FlowSource extends Expr {
-  /** Whether this source flows to the `sink`. */
+  /** Holds if this source flows to the `sink`. */
   predicate flowsTo(Expr sink) {
     flowsToAndLocal((FlowExpr) sink)
   }
@@ -173,7 +173,7 @@ private Callable responder(Call call) {
   )
 }
 
-/** Whether a method can return its argument. This is public for testing. */
+/** Holds if a method can return its argument. This is public for testing. */
 predicate methodReturnsArg(Method method, int arg) {
   exists (ReturnStmt ret |
     ret.getEnclosingCallable() = method and
@@ -276,9 +276,9 @@ private predicate methodStep(Expr tracked, MethodAccess sink) {
 /** Access to a method that passes taint from an argument. */
 private predicate argToMethodStep(Expr tracked, MethodAccess sink) {
   exists(Method m, int i |
-    m = ((MethodAccess) sink).getMethod()
+    m = sink.(MethodAccess).getMethod()
     and dataPreservingArgument(m, i)
-    and tracked = ((MethodAccess) sink).getArgument(i)
+    and tracked = sink.(MethodAccess).getArgument(i)
   )
 }
 

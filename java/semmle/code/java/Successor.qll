@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Library for computing statement-level intra-procedural control flow graphs.
+ * Provides classes and predicates for computing statement-level intra-procedural control flow graphs.
  *
  * DEPRECATED: Use `ControlFlowGraph.qll` instead.
  */

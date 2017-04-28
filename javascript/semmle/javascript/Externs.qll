@@ -102,6 +102,13 @@ abstract class ExternalVarDecl extends ExternalDecl, ASTNode {
    * Gets the documentation comment associated with this declaration, if any.
    */
   abstract JSDoc getDocumentation();
+
+  /**
+   * Gets the `@type` tag associated with this declaration, if any.
+   */
+  ExternalTypeTag getTypeTag() {
+    result = getDocumentation().getATag()
+  }
 }
 
 /** A global declaration of a function or variable in an externs file. */
@@ -285,6 +292,33 @@ abstract private class NamedTypeReferent extends JSDocTag {
     result = getType().(JSDocNamedTypeExpr).getName() or
     result = getType().(JSDocAppliedTypeExpr).getHead().(JSDocNamedTypeExpr).getName()
   }
+
+  /**
+   * Gets the source declaration of the type to which this tag refers, if any.
+   *
+   * The source declaration of a constructor or interface type is the declaration of the
+   * type itself; the source declaration of an applied type is the source declaration of
+   * its head; the source declaration of a qualified type such as a nullable or non-nullable
+   * type is that of the underlying type.
+   *
+   * For example, the source declaration of `!Array<string>` is (the declaration of)
+   * type `Array`, which is also the source declaration of `!Array=`. Primitive types,
+   * union types, and other complex kinds of types do not have a source declaration.
+   */
+  ExternalType getTypeDeclaration() {
+    result = sourceDecl(getType())
+  }
+}
+
+/**
+ * Gets the source declaration of the type to which `tp` refers, if any.
+ */
+private ExternalType sourceDecl(JSDocTypeExpr tp) {
+  result.getQualifiedName() = tp.(JSDocNamedTypeExpr).getName() or
+  result = sourceDecl(tp.(JSDocAppliedTypeExpr).getHead()) or
+  result = sourceDecl(tp.(JSDocNullableTypeExpr).getTypeExpr()) or
+  result = sourceDecl(tp.(JSDocNonNullableTypeExpr).getTypeExpr()) or
+  result = sourceDecl(tp.(JSDocOptionalParameterTypeExpr).getUnderlyingType())
 }
 
 /**
@@ -299,6 +333,13 @@ class ImplementsTag extends NamedTypeReferent {
  */
 class ExtendsTag extends NamedTypeReferent {
   ExtendsTag() { getTitle() = "extends" }
+}
+
+/**
+ * A `@type` tag.
+ */
+class ExternalTypeTag extends NamedTypeReferent {
+  ExternalTypeTag() { getTitle() = "type" }
 }
 
 /**

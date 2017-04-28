@@ -23,8 +23,9 @@
  */
 
 import java
+private import semmle.code.java.dataflow.SSA
 private import semmle.code.java.dataflow.Nullness
 
-from VarAccess access, LocalScopeVariable var
+from VarAccess access, SsaSourceVariable var
 where alwaysNullDeref(var, access)
-select access, "Variable $@ is always null here.", var, var.getName()
+select access, "Variable $@ is always null here.", var.getVariable(), var.getVariable().getName()

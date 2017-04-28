@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @tags correctness
+ *       external/cwe/cwe-476
  * @precision high
  */
 

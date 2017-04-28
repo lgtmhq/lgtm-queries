@@ -22,12 +22,13 @@
  *       correctness
  *       concurrency
  *       language-features
+ *       external/cwe/cwe-413
  *       external/cwe/cwe-662
  */
 import java
 
 /**
- * Whether this method is synchronized by a `synchronized(Foo.class){...}` block
+ * Holds if this method is synchronized by a `synchronized(Foo.class){...}` block
  * (for static methods) or a `synchronized(this){...}` block (for instance methods).
  */
 predicate isSynchronizedByBlock(Method m) {
@@ -41,7 +42,7 @@ predicate isSynchronizedByBlock(Method m) {
 }
 
 /**
- * Whether `get` is a getter method for a volatile field that `set` writes to.
+ * Holds if `get` is a getter method for a volatile field that `set` writes to.
  *
  * In this case, even if `set` is synchronized and `get` is not, `get` will never see stale
  * values for the field, so synchronization is optional.

@@ -175,7 +175,7 @@ library class GetterOrSetterMethod extends Method {
   }
 
   /**
-   * Whether this method has a "pair"ed method, e.g. whether there is an equivalent getter if this
+   * Holds if this method has a "pair"ed method, e.g. whether there is an equivalent getter if this
    * is a setter, and vice versa.
    */
   predicate isProperty() {

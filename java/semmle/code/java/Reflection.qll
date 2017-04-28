@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java Reflection.
+ * Provides classes and predicates for working with Java Reflection.
  */
 
 import java
@@ -33,7 +33,7 @@ predicate reflectivelyWritten(Field f){
 }
 
 /**
- * Whether a field's name and declaring type are referenced in an XML file.
+ * Holds if a field's name and declaring type are referenced in an XML file.
  * Usually, this implies that the field may be accessed reflectively.
  */
 predicate referencedInXmlFile(Field f) {
@@ -210,7 +210,7 @@ private Type inferConstructorParameterType(Expr expr) {
 }
 
 /**
- * Whether a `Constructor.newInstance(...)` call for this type would expect an enclosing instance
+ * Holds if a `Constructor.newInstance(...)` call for this type would expect an enclosing instance
  * argument in the first position.
  */
 private predicate expectsEnclosingInstance(RefType r) {

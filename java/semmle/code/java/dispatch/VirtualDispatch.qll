@@ -116,7 +116,7 @@ private predicate failsUnification(Type t1, Type t2) {
 
 private predicate hasQualifierType(VirtualMethodAccess ma, RefType t, boolean exact) {
   exists(Expr src | src = variableTrack(ma.getQualifier()) |
-    // If we have a qualifier, then we track it through one variable assignment
+    // If we have a qualifier, then we track it through variable assignments
     // and take the type of the assigned value.
     exists(RefType srctype | srctype = src.getType() |
       exists(TypeVariable v | v = srctype |
@@ -169,11 +169,17 @@ private Expr variableTrackStep(Expr use) {
   exists(Variable v |
     use = v.getAnAccess() and
     not v instanceof Parameter and
-    result = v.getAnAssignedValue()
+    result = v.getAnAssignedValue() and
+    not result instanceof NullLiteral
   )
 }
 
+private Expr variableTrackPath(Expr use) {
+  result = variableTrackStep*(use) and
+  not exists(variableTrackStep(result))
+}
+
 private Expr variableTrack(Expr use) {
-  result = variableTrackStep(use)
-  or not exists(variableTrackStep(use)) and result = use
+  result = variableTrackPath(use)
+  or not exists(variableTrackPath(use)) and result = use
 }

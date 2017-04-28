@@ -38,7 +38,7 @@ class EqualsCall extends MethodAccess {
     this.getEnclosingStmt() instanceof AssertStmt
   }
 
-  /** Whether the callee of this method access is `Object.equals`. */
+  /** Holds if the callee of this method access is `Object.equals`. */
   predicate invokesObjectEquals() {
     this.getMethod().getDeclaringType() instanceof TypeObject
   }

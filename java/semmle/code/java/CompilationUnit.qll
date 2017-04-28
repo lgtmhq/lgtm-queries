@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java compilation units.
+ * Provides classes and predicates for working with Java compilation units.
  */
 
 import Element
@@ -33,14 +33,13 @@ class CompilationUnit extends Element, File {
   }
 
   /**
-   * Whether this compilation unit has the specified `name`,
+   * Holds if this compilation unit has the specified `name`,
    * which must not include the file extension.
    */
   predicate hasName(string name) {
     Element.super.hasName(name)
   }
 
-  /** A printable representation of this compilation unit. */
   string toString() {
     result = Element.super.toString()
   }

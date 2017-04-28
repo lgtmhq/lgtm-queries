@@ -12,18 +12,22 @@
 // permissions and limitations under the License.
 
 /**
- * A library providing utility predicates on elements
- * in the Abstract Syntax Tree of a Java program.
+ * @name Useless null check
+ * @description Checking whether a variable is null when that variable cannot
+ *              possibly be null is useless.
+ * @kind problem
+ * @problem.severity warning
+ * @tags maintainability
+ *       useless-code
+ *       external/cwe/cwe-561
  */
 
 import java
+import semmle.code.java.dataflow.SSA
+private import semmle.code.java.dataflow.Nullness
 
-/**
- * Whether element `parent` is immediately above element `e` in the syntax tree.
- *
- * DEPRECATED: use `Element.hasChildElement` instead.
- */
-deprecated
-predicate hasChild(Element parent, Element e) {
-  parent.hasChildElement(e)
-}
+from Expr guard, SsaVariable ssa, Variable v
+where
+  guard = superfluousNullGuard(ssa) and
+  v = ssa.getSourceVariable().getVariable()
+select guard, "This check is useless, since $@ cannot be null here", v, v.getName()

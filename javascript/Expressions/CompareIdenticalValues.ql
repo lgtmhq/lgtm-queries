@@ -21,6 +21,8 @@
  *       correctness
  *       readability
  *       convention
+ *       external/cwe/cwe-570
+ *       external/cwe/cwe-571
  * @precision high
  */
 

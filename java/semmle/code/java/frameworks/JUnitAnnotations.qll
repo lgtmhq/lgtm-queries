@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with annotations from the `JUnit` framework.
+ * Provides classes and predicates for working with annotations from the `JUnit` framework.
  */
 
 import java

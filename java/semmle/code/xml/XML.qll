@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with XML files and their content.
+ * Provides classes and predicates for working with XML files and their content.
  */
 
 import semmle.code.Location
@@ -23,8 +23,11 @@ abstract class XMLLocatable extends @xmllocatable {
   Location getLocation() { xmllocations(this,result) }
 
   /**
-   * Whether this element has the specified location information,
-   * including file path, start line, start column, end line and end column.
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f, Location l | l = this.getLocation() |
@@ -33,7 +36,7 @@ abstract class XMLLocatable extends @xmllocatable {
     )
   }
 
-  /** A printable representation of this element. */
+  /** Gets a textual representation of this element. */
   abstract string toString();
 }
 
@@ -153,7 +156,7 @@ class XMLDTD extends @xmldtd {
   /** The system ID of this DTD. */
   string getSystemId() { xmlDTDs(this,_,_,result,_) }
 
-  /** Whether this DTD is public. */
+  /** Holds if this DTD is public. */
   predicate isPublic() { not xmlDTDs(this,_,"",_,_) }
 
   /** The parent of this DTD. */
@@ -172,7 +175,7 @@ class XMLDTD extends @xmldtd {
 
 /** An XML tag in an XML file. */
 class XMLElement extends @xmlelement, XMLParent, XMLLocatable {
-  /** Whether this XML element has the given `name`. */
+  /** Holds if this XML element has the given `name`. */
   predicate hasName(string name) { name = getName() }
 
   /** The name of this XML element. */
@@ -189,7 +192,7 @@ class XMLElement extends @xmlelement, XMLParent, XMLLocatable {
   /** The index of this XML element among its parent's children. */
   int getIndex() { xmlElements(this, _, _, result, _) }
 
-  /** Whether this XML element has a namespace. */
+  /** Holds if this XML element has a namespace. */
   predicate hasNamespace() { xmlHasNs(this,_,_) }
 
   /** The namespace of this XML element, if any. */
@@ -210,7 +213,7 @@ class XMLElement extends @xmlelement, XMLParent, XMLLocatable {
     result.getElement() = this and result.getName() = name
   }
 
-  /** Whether this XML element has an attribute with the specified `name`. */
+  /** Holds if this XML element has an attribute with the specified `name`. */
   predicate hasAttribute(string name) {
     exists(XMLAttribute a| a = this.getAttribute(name))
   }
@@ -233,7 +236,7 @@ class XMLAttribute extends @xmlattribute, XMLLocatable {
   /** The XML element to which this attribute belongs. */
   XMLElement getElement() { xmlAttrs(this,result,_,_,_,_) }
 
-  /** Whether this attribute has a namespace. */
+  /** Holds if this attribute has a namespace. */
   predicate hasNamespace() { xmlHasNs(this,_,_) }
 
   /** The namespace of this attribute, if any. */
@@ -254,7 +257,7 @@ class XMLNamespace extends @xmlnamespace {
   /** The URI of this namespace. */
   string getURI() { xmlNs(this,_,result,_) }
 
-  /** Whether this namespace has no prefix. */
+  /** Holds if this namespace has no prefix. */
   predicate isDefault() { this.getPrefix() = "" }
 
   /** A printable representation of this XML namespace. */
@@ -287,7 +290,7 @@ class XMLCharacters extends @xmlcharacters, XMLLocatable {
   /** The parent of this character sequence. */
   XMLParent getParent() { xmlChars(this,_,result,_,_,_) }
 
-  /** Whether this character sequence is CDATA. */
+  /** Holds if this character sequence is CDATA. */
   predicate isCDATA() { xmlChars(this,_,_,_,1,_) }
 
   /** A printable representation of this XML character sequence. */

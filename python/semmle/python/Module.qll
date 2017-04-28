@@ -134,7 +134,7 @@ class Module extends Module_, Scope, AstNode {
     /** Whether name is declared in the __all__ list of this module */
     predicate declaredInAll(string name)
     {
-        exists(AssignStmt a, GlobalVariable all | 
+        exists(AssignStmt a, GlobalVariable all |
             a.defines(all) and a.getScope() = this and
             all.getId() = "__all__" and ((List)a.getValue()).getAnElt().(StrConst).getText() = name
         )

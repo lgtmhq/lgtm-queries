@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Library for control-flow graph dominance.
+ * Provides classes and predicates for control-flow graph dominance.
  */
 import java
 private import semmle.code.java.Successor
@@ -54,21 +54,34 @@ private predicate bbPred(BasicBlock post, BasicBlock pre) {
 /** The immediate post-dominance relation on basic blocks. */
 predicate bbIPostDominates(BasicBlock dominator, BasicBlock node) = idominance(bbSink/1,bbPred/2)(_, dominator, node)
 
-/** Whether `dom` strictly dominates `node`. */
+/** Holds if `dom` strictly dominates `node`. */
 predicate bbStrictlyDominates(BasicBlock dom, BasicBlock node) { bbIDominates+(dom, node) }
 
-/** Whether `dom` dominates `node`. (This is reflexive.) */
+/** Holds if `dom` dominates `node`. (This is reflexive.) */
 predicate bbDominates(BasicBlock dom, BasicBlock node) { bbStrictlyDominates(dom, node) or dom = node }
 
-/** Whether `dom` strictly post-dominates `node`. */
+/** Holds if `dom` strictly post-dominates `node`. */
 predicate bbStrictlyPostDominates(BasicBlock dom, BasicBlock node) { bbIPostDominates+(dom, node) }
 
-/** Whether `dom` post-dominates `node`. (This is reflexive.) */
+/** Holds if `dom` post-dominates `node`. (This is reflexive.) */
 predicate bbPostDominates(BasicBlock dom, BasicBlock node) { bbStrictlyPostDominates(dom, node) or dom = node }
 
-/** The dominance frontier relation for basic blocks. */
+/**
+ * The dominance frontier relation for basic blocks.
+ *
+ * This is equivalent to:
+ *
+ * ```
+ *   bbDominates(x, w.getABBPredecessor()) and not bbStrictlyDominates(x, w)
+ * ```
+ */
 predicate dominanceFrontier(BasicBlock x, BasicBlock w) {
-  bbDominates(x, w.getABBPredecessor()) and not bbStrictlyDominates(x, w)
+  x = w.getABBPredecessor() and not bbIDominates(x, w)
+  or
+  exists (BasicBlock prev | dominanceFrontier(prev, w) |
+    bbIDominates(x, prev) and
+    not bbIDominates(x, w)
+  )
 }
 
 /*
@@ -85,7 +98,7 @@ predicate iDominates(ControlFlowNode dominator, ControlFlowNode node) {
   )
 }
 
-/** Whether `dom` strictly dominates `node`. */
+/** Holds if `dom` strictly dominates `node`. */
 pragma[inline]
 predicate strictlyDominates(ControlFlowNode dom, ControlFlowNode node) {
   // This predicate is gigantic, so it must be inlined.
@@ -96,7 +109,7 @@ predicate strictlyDominates(ControlFlowNode dom, ControlFlowNode node) {
   )
 }
 
-/** Whether `dom` dominates `node`. (This is reflexive.) */
+/** Holds if `dom` dominates `node`. (This is reflexive.) */
 pragma[inline]
 predicate dominates(ControlFlowNode dom, ControlFlowNode node) {
   // This predicate is gigantic, so it must be inlined.
@@ -107,7 +120,7 @@ predicate dominates(ControlFlowNode dom, ControlFlowNode node) {
   )
 }
 
-/** Whether `dom` strictly post-dominates `node`. */
+/** Holds if `dom` strictly post-dominates `node`. */
 pragma[inline]
 predicate strictlyPostDominates(ControlFlowNode dom, ControlFlowNode node) {
   // This predicate is gigantic, so it must be inlined.
@@ -118,7 +131,7 @@ predicate strictlyPostDominates(ControlFlowNode dom, ControlFlowNode node) {
   )
 }
 
-/** Whether `dom` post-dominates `node`. (This is reflexive.) */
+/** Holds if `dom` post-dominates `node`. (This is reflexive.) */
 pragma[inline]
 predicate postDominates(ControlFlowNode dom, ControlFlowNode node) {
   // This predicate is gigantic, so it must be inlined.

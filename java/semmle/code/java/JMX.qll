@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with JMX bean types.
+ * Provides classes and predicates for working with JMX bean types.
  */
 
 import Type

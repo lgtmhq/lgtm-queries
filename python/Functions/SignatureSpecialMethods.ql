@@ -145,7 +145,7 @@ predicate incorrect_special_method_defn(PyFunctionObject func, string message, b
               (message = "Too few parameters" and show_counts = true)
           else if required < func.minParameters() then
               (message = "Too many parameters" and show_counts = true)
-          else if func.minParameters() < required then
+          else if (func.minParameters() < required and not func.getFunction().hasVarArg()) then
               (message = (required -func.minParameters()) +  " default values(s) will never be used" and show_counts = false)
           else
               none()
@@ -172,7 +172,8 @@ predicate incorrect_get(FunctionObject func, string message, boolean show_counts
        or
        func.minParameters() > 3 and message = "Too many parameters" and show_counts = true
        or
-       func.minParameters() < 2 and message = (2 - func.minParameters()) + " default value(s) will never be used" and show_counts = false
+       func.minParameters() < 2 and not func.getFunction().hasVarArg() and
+       message = (2 - func.minParameters()) + " default value(s) will never be used" and show_counts = false
      )
 }
 

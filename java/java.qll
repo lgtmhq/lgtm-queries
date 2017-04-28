@@ -11,13 +11,12 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/** This library imports all default Semmle libraries. */
+/** Provides all default Java QL imports. */
 
 import semmle.code.FileSystem
 import semmle.code.Location
 
 import semmle.code.java.Annotation
-import semmle.code.java.AST
 import semmle.code.java.CompilationUnit
 import semmle.code.java.ControlFlowGraph
 import semmle.code.java.Dependency

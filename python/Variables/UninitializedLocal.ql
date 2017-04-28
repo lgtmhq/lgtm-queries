@@ -55,11 +55,27 @@ predicate nonlocal(Name use) {
     )
 }
 
+FunctionObject non_returning_method() {
+    result.neverReturns() and
+    result.isNormalMethod()
+}
+
+predicate maybe_not_a_successor(RaisingNode r, ControlFlowNode s) {
+    r.unlikelySuccessor(s)
+    or
+    /* A call to a method that we cannot identify, and there 
+     * exists a method of the same name that doesn't return.
+     */
+    not exists(FunctionObject f | f.getACall() = r) and
+    s = r.getANormalSuccessor() and
+    r.(CallNode).getFunction().(AttrNode).getName() = non_returning_method().getName()
+}
+
 predicate undefined_ssa(SsaVariable l) {
     l.maybeUndefined() and
     forall(ControlFlowNode incoming |
         incoming = l.getDefinition().getAPredecessor() |
-        not ((RaisingNode)incoming).unlikelySuccessor(l.getDefinition())
+        not maybe_not_a_successor(incoming, l.getDefinition())
     )
 }
 

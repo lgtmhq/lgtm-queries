@@ -22,9 +22,9 @@ import semmle.code.java.security.DataFlow
  */
 predicate builtFromUncontrolledConcat(Expr expr, Expr uncontrolled) {
   // Base case
-  exists (AddExpr concat | concat = expr |
-    endsInQuote(concat.getLeftOperand())
-    and uncontrolled = concat.getRightOperand()
+  exists (AddExpr concatExpr | concatExpr = expr |
+    endsInQuote(concatExpr.getLeftOperand())
+    and uncontrolled = concatExpr.getRightOperand()
     and not controlledString(uncontrolled)
   )
   // Recursive cases
@@ -48,7 +48,7 @@ predicate uncontrolledStringBuilderQuery(StringBuilderVar sbv, Expr uncontrolled
   or exists (MethodAccess quoteAppend, MethodAccess uncontrolledAppend |
     sbv.getAnAppend() = quoteAppend
     and endsInQuote(quoteAppend.getArgument(0))
-    and uncontrolledAppend = ((ExprStmt) quoteAppend.getEnclosingStmt().getASuccessor()).getExpr() 
+    and uncontrolledAppend = quoteAppend.getEnclosingStmt().getASuccessor().(ExprStmt).getExpr()
     and sbv.getAnAppend() = uncontrolledAppend
     and uncontrolled = uncontrolledAppend.getArgument(0)
     and not controlledString(uncontrolled)

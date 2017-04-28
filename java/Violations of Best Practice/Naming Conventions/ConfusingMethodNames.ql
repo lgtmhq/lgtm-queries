@@ -26,5 +26,7 @@ import java
 from Method m, Method n
 where m.getDeclaringType() = n.getDeclaringType() and
       m.getName().toLowerCase() = n.getName().toLowerCase() and
+      not m.getAnAnnotation() instanceof DeprecatedAnnotation and
+      not n.getAnAnnotation() instanceof DeprecatedAnnotation and
       m.getName() < n.getName()
 select m, "The method '" + m.getName() + "' may be confused with $@.", n, n.getName()

@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Library for identifying GWT UiBinder framework XML templates.
+ * Provides classes and predicates for identifying GWT UiBinder framework XML templates.
  */
 
 import java

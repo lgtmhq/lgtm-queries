@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @tags maintainability
+ *       external/cwe/cwe-200
  * @precision high
  */
 

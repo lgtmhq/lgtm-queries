@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java variables and their declarations.
+ * Provides classes and predicates for working with Java variables and their declarations.
  */
 
 import Element
@@ -43,8 +43,10 @@ class Variable extends @variable, Annotatable, Element, Modifiable {
   }
 }
 
-/** A locally scoped variable, i.e. either a local variable or a parameter. */
-abstract class LocalScopeVariable extends Variable {
+/** A locally scoped variable, that is, either a local variable or a parameter. */
+class LocalScopeVariable extends Variable, @localscopevariable {
+  /** Gets the callable in which this variable is declared. */
+  abstract Callable getCallable();
 }
 
 /** A local variable declaration */
@@ -59,12 +61,11 @@ class LocalVariableDecl extends @localvar, LocalScopeVariable {
   Expr getParent() { localvars(this,_,_,result) }
 
   /** The callable in which this declaration occurs. */
-  Callable getCallable() { result = this.getParent().getEnclosingCallable() }
+  override Callable getCallable() { result = this.getParent().getEnclosingCallable() }
 
   /** The callable in which this declaration occurs. */
   Callable getEnclosingCallable() { result = getCallable() }
 
-  /** A printable representation of this local variable declaration. */
   string toString() { result = this.getType().getName() + " " + this.getName() }
 
   /** The initializer expression of this local variable declaration. */
@@ -78,22 +79,22 @@ class Parameter extends Element, @param, LocalScopeVariable {
   /** The type of this formal parameter. */
   Type getType() { params(this,_,result,_,_,_) }
 
-  /** Whether the parameter is never assigned a value in the body of the callable. */
+  /** Holds if the parameter is never assigned a value in the body of the callable. */
   predicate isEffectivelyFinal() { not exists(getAnAssignedValue()) }
 
   /** The (zero-based) index of this formal parameter. */
   int getPosition() { params(this,_,_,result,_,_) }
 
   /** The callable that declares this formal parameter. */
-  Callable getCallable() { params(this,_,_,_,result,_) }
+  override Callable getCallable() { params(this,_,_,_,result,_) }
 
   /** The source declaration of this formal parameter. */
   Parameter getSourceDeclaration() { params(this,_,_,_,_,result) }
 
-  /** Whether this formal parameter is the same as its source declaration. */
+  /** Holds if this formal parameter is the same as its source declaration. */
   predicate isSourceDeclaration() { this.getSourceDeclaration() = this }
   
-  /** Whether this formal parameter is a variable arity parameter. */
+  /** Holds if this formal parameter is a variable arity parameter. */
   predicate isVarargs() {
     isVarargsParam(this)
   }

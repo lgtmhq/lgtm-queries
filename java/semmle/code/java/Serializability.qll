@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java Serialization.
+ * Provides classes and predicates for working with Java Serialization.
  */
 
 import java

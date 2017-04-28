@@ -14,7 +14,7 @@
 import java
 
 /**
- * Whether `fileAccess` is used in the `fileReadingExpr` to read the represented file.
+ * Holds if `fileAccess` is used in the `fileReadingExpr` to read the represented file.
  */
 private predicate fileRead(VarAccess fileAccess, Expr fileReadingExpr) {
   /*

@@ -25,8 +25,15 @@
 
 import javascript
 
+/**
+ * Holds if `va` references function `inner`, which is nested inside function `outer`.
+ */
+predicate accessToNestedFunction(VarAccess va, FunctionDeclStmt inner, Function outer) {
+  va.getVariable() = inner.getVariable() and
+  inner.getEnclosingContainer() = outer
+}
+
 from Function f, VarAccess va, FunctionDeclStmt g
-where g.getEnclosingContainer() = f and
-      va.getParentExpr*() = f.getAParameter().getDefault() and
-      va.getVariable() = g.getVariable()
+where accessToNestedFunction(va, g, f) and
+      va.getParentExpr*() = f.getAParameter().getDefault()
 select va, "This expression refers to $@ before it is defined.", g, g.getName()

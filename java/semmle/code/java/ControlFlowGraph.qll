@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Library for computing expression-level intra-procedural control flow graphs.
+ * Provides classes and predicates for computing expression-level intra-procedural control flow graphs.
  *
  * The only API exported by this library are the toplevel classes `ControlFlowNode`
  * and its subclass `ConditionNode`, which wrap the successor relation and the
@@ -418,12 +418,12 @@ class PostOrderNode extends ControlFlowNode {
     result = getChildNode(0) and not exists(getChildNode(-1))
   }
 
-  /** Whether this CFG node has any child nodes. */
+  /** Holds if this CFG node has any child nodes. */
   predicate isLeafNode() {
     not exists(getChildNode(_))
   }
 
-  /** Whether this node can finish with a `normalCompletion`. */
+  /** Holds if this node can finish with a `normalCompletion`. */
   predicate mayCompleteNormally() {
     not this instanceof BooleanLiteral and
     not this instanceof ReturnStmt and

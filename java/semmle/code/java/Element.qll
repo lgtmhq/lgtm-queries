@@ -12,29 +12,28 @@
 // permissions and limitations under the License.
 
 /**
- * This library provides a class that represents named elements in Java programs.
+ * Provides a class that represents named elements in Java programs.
  */
 
-import AST
 import CompilationUnit
 import semmle.code.Location
 import Javadoc
 
 /** A program element that has a name. */
 class Element extends @element, Top {
-  /** Whether this element has the specified `name`. */
+  /** Holds if this element has the specified `name`. */
   predicate hasName(string name) { hasName(this,name) }
 
   /** The name of this element. */
   string getName() { this.hasName(result) }
 
   /**
-   * Whether this element transitively contains the specified element `e`.
+   * Holds if this element transitively contains the specified element `e`.
    */
   predicate contains(Element e) { this.hasChildElement+(e) }
 
   /**
-   * Whether this element is the immediate parent of the specified element `e`.
+   * Holds if this element is the immediate parent of the specified element `e`.
    *
    * It is usually preferable to use more specific predicates such as
    * `getEnclosingCallable()`, `getDeclaringType()` and/or `getEnclosingType()`
@@ -43,7 +42,7 @@ class Element extends @element, Top {
   predicate hasChildElement(Element e) { hasChildElement(this, e) }
 
   /**
-   * Whether this element pertains to a source file.
+   * Holds if this element pertains to a source file.
    *
    * Elements pertaining to source files may include generated elements
    * not visible in source code, such as implicit default constructors.
@@ -60,7 +59,7 @@ class Element extends @element, Top {
 }
 
 /**
- * Whether element `parent` is immediately above element `e` in the syntax tree.
+ * Holds if element `parent` is immediately above element `e` in the syntax tree.
  */
 private predicate hasChildElement(Element parent, Element e) {
   cupackage(e,parent) or

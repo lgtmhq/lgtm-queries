@@ -53,9 +53,9 @@ library class CodeGeneratorMarkerComment extends GeneratedCodeMarkerComment {
 /**
  * Holds if `c` is a comment left by code generator `tool`.
  */
-private predicate codeGeneratorMarkerComment(SlashSlashComment c, string tool) {
+private predicate codeGeneratorMarkerComment(Comment c, string tool) {
   exists (string toolPattern |
-    toolPattern = "js_of_ocaml|CoffeeScript|LiveScript|dart2js|ANTLR|PEG\\.js" and
+    toolPattern = "js_of_ocaml|CoffeeScript|LiveScript|dart2js|ANTLR|PEG\\.js|Opal" and
     tool = c.getText().regexpCapture("\\s*Generated (?:from .*)?by (" + toolPattern + ")\\b.*", 1)
   )
 }
@@ -100,6 +100,19 @@ private class DartGeneratedTopLevel extends TopLevel {
 }
 
 /**
+ * Holds if `tl` has unusually many or unusually complicated function invocations, which is
+ * often a sign of generated code.
+ */
+private predicate hasManyInvocations(TopLevel tl) {
+  // heuristic: more than 100 arguments per line means it's probably generated
+  exists (int nl, int na |
+    nl = tl.getNumberOfLines() and nl > 0 and
+    na = sum(InvokeExpr invk | tl = invk.getTopLevel() | invk.getNumArgument()) and
+    (float)na / nl > 100
+  )
+}
+
+/**
  * Holds if `tl` looks like it contains generated code.
  */
 predicate isGenerated(TopLevel tl) {
@@ -107,7 +120,8 @@ predicate isGenerated(TopLevel tl) {
   isBundle(tl) or
   tl instanceof GWTGeneratedTopLevel or
   tl instanceof DartGeneratedTopLevel or
-  exists (GeneratedCodeMarkerComment gcmc | tl = gcmc.getTopLevel())
+  exists (GeneratedCodeMarkerComment gcmc | tl = gcmc.getTopLevel()) or
+  hasManyInvocations(tl)
 }
 
 /**

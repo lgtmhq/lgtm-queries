@@ -21,6 +21,8 @@
  * @tags maintainability
  *       correctness
  *       language-features
+ *       external/cwe/cwe-570
+ *       external/cwe/cwe-571
  * @precision very-high
  */
 

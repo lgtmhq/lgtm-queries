@@ -21,6 +21,7 @@
  * @kind problem
  * @problem.severity error
  * @tags correctness
+ *       external/cwe/cwe-835
  * @precision very-high
  */
 

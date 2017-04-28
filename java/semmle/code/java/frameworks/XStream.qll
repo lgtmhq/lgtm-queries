@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with the XStream XML serialization framework.
+ * Provides classes and predicates for working with the XStream XML serialization framework.
  */
 
 import java

@@ -19,6 +19,7 @@
  * @problem.severity error
  * @tags correctness
  *       language-features
+ *       external/cwe/cwe-704
  * @precision high
  */
 

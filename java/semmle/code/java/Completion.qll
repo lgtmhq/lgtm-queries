@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for representing completions.
+ * Provides classes and predicates for representing completions.
  */
 
 /*

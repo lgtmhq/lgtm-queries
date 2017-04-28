@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with standard classes and methods from the JDK.
+ * Provides classes and predicates for working with standard classes and methods from the JDK.
  */
 
 import Member
@@ -150,8 +150,8 @@ class TypeMath extends Class {
 class NumericType extends Type {
   NumericType() {
     exists (string name | 
-      name = ((PrimitiveType) this).getName() or
-      name = ((BoxedType) this).getPrimitiveType().getName() |
+      name = this.(PrimitiveType).getName() or
+      name = this.(BoxedType).getPrimitiveType().getName() |
       name.regexpMatch("byte|short|int|long|double|float")
     )
   }

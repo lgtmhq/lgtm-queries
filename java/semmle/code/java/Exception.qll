@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java exceptions.
+ * Provides classes and predicates for working with Java exceptions.
  */
 
 import Element
@@ -36,9 +36,8 @@ class Exception extends Element, @exception {
   /** The name of this exception is the name of its type. */
   string getName() { result = this.getType().getName() }
 
-  /** Whether this exception has the specified `name`. */
+  /** Holds if this exception has the specified `name`. */
   predicate hasName(string name) { this.getType().hasName(name) }
 
-  /** A printable representation of this exception. */
   string toString() { result = this.getType().toString() }
 }

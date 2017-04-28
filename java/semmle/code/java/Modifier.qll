@@ -12,84 +12,10 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java modifiers.
+ * Provides classes and predicates for working with Java modifiers.
  */
 
 import Element
-
-/**
- * Whether element `e` has a modifier named `m`.
- *
- * DEPRECATED: use `Modifiable.hasModifier` instead.
- */
-deprecated
-predicate hasStrModifier(Element e, string m) {
-  e.(Modifiable).hasModifier(m)
-}
-
-/**
- * Whether element `e` has the modifier `static`.
- *
- * DEPRECATED: use `Modifiable.isStatic` instead.
- */
-deprecated
-predicate isStatic(Element e) {
-  e.(Modifiable).hasModifier("static")
-}
-
-/**
- * Whether element `e` has the modifier `public`.
- *
- * DEPRECATED: use `Modifiable.isPublic` instead.
- */
-deprecated
-predicate isPublic(Element e) {
-  e.(Modifiable).hasModifier("public")
-}
-
-/**
- * Whether element `e` has the modifier `protected`.
- *
- * DEPRECATED: use `Modifiable.isProtected` instead.
- */
-deprecated
-predicate isProtected(Element e) {
-  e.(Modifiable).hasModifier("protected")
-}
-
-/**
- * Whether element `e` has the modifier `private`.
- *
- * DEPRECATED: use `Modifiable.isPrivate` instead.
- */
-deprecated
-predicate isPrivate(Element e) {
-  e.(Modifiable).hasModifier("private")
-}
-
-/**
- * Whether callable `e` is package protected, i.e. it is neither public nor private nor protected.
- *
- * DEPRECATED: use `Member.isPackageProtected` instead.
- */
-deprecated
-predicate isCallablePackageProtected(Callable e) {
-  not e.(Modifiable).hasModifier("private") and
-  not e.(Modifiable).hasModifier("protected") and
-  not e.(Modifiable).hasModifier("public")
-}
-
-/**
- * Whether element `e` is package protected, i.e. it is neither public nor private nor protected.
- *
- * DEPRECATED: use `Member.isPackageProtected` instead.
- */
-deprecated
-predicate isPackageProtected(Element e) {
-  not e.(Modifiable).hasModifier("private") and
-  not e.(Modifiable).hasModifier("protected") and
-  not e.(Modifiable).hasModifier("public")
-}
 
 /** A modifier such as `private`, `static` or `abstract`. */
 class Modifier extends Element, @modifier {
@@ -100,7 +26,7 @@ class Modifier extends Element, @modifier {
 /** An element of the Java syntax tree that may have a modifier. */
 abstract class Modifiable extends Element {
   /**
-   * Whether this element has modifier `m`.
+   * Holds if this element has modifier `m`.
    *
    * For most purposes, the more specialized predicates `isAbstract`, `isPublic`, etc.
    * should be used, which also take implicit modifiers into account.
@@ -112,45 +38,45 @@ abstract class Modifiable extends Element {
     modifiers(getAModifier(), m)
   }
 
-  /** Whether this element has no modifier. */
+  /** Holds if this element has no modifier. */
   predicate hasNoModifier() { not hasModifier(this,_) }
 
   /** A modifier of this element. */
   Modifier getAModifier() { this = result.getElement() }
 
-  /** Whether this element has an `abstract` modifier or is implicitly abstract. */
+  /** Holds if this element has an `abstract` modifier or is implicitly abstract. */
   predicate isAbstract() { hasModifier("abstract") }
 
-  /** Whether this element has a `static` modifier or is implicitly static. */
+  /** Holds if this element has a `static` modifier or is implicitly static. */
   predicate isStatic() { hasModifier("static") }
 
-  /** Whether this element has a `final` modifier or is implicitly final. */
+  /** Holds if this element has a `final` modifier or is implicitly final. */
   predicate isFinal() { hasModifier("final") }
 
-  /** Whether this element has a `public` modifier or is implicitly public. */
+  /** Holds if this element has a `public` modifier or is implicitly public. */
   predicate isPublic() { hasModifier("public") }
 
-  /** Whether this element has a `protected` modifier. */
+  /** Holds if this element has a `protected` modifier. */
   predicate isProtected() { hasModifier("protected") }
 
-  /** Whether this element has a `private` modifier or is implicitly private. */
+  /** Holds if this element has a `private` modifier or is implicitly private. */
   predicate isPrivate() { hasModifier("private") }
 
-  /** Whether this element has a `volatile` modifier. */
+  /** Holds if this element has a `volatile` modifier. */
   predicate isVolatile() { hasModifier("volatile") }
 
-  /** Whether this element has a `synchronized` modifier. */
+  /** Holds if this element has a `synchronized` modifier. */
   predicate isSynchronized() { hasModifier("synchronized") }
 
-  /** Whether this element has a `native` modifier. */
+  /** Holds if this element has a `native` modifier. */
   predicate isNative() { hasModifier("native") }
 
-  /** Whether this element has a `default` modifier. */
+  /** Holds if this element has a `default` modifier. */
   predicate isDefault() { this.hasModifier("default") }
 
-  /** Whether this element has a `transient` modifier. */
+  /** Holds if this element has a `transient` modifier. */
   predicate isTransient() { this.hasModifier("transient") }
 
-  /** Whether this element has a `strictfp` modifier. */
+  /** Holds if this element has a `strictfp` modifier. */
   predicate isStrictfp() { this.hasModifier("strictfp") }
 }

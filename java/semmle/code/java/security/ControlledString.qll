@@ -52,7 +52,7 @@ predicate controlledStringProp(Expr src, Expr dest) {
     and dest = param.getAnAccess()
   )
   // Concatenation of safe strings.
-  or exists (AddExpr concat | concat = dest | src = concat.getAnOperand())
+  or exists (AddExpr concatOp | concatOp = dest | src = concatOp.getAnOperand())
   // `toString()` on a safe string is safe.
   or exists (MethodAccess toStringCall, Method toString |
     src = toStringCall.getQualifier()
@@ -87,10 +87,10 @@ cached
 predicate controlledString(Expr expr) {
   (expr instanceof StringLiteral
   or expr instanceof NullLiteral
-  or ((VarAccess) expr).getVariable() instanceof EnumConstant
+  or expr.(VarAccess).getVariable() instanceof EnumConstant
   or expr.getType() instanceof PrimitiveType
   or expr.getType() instanceof BoxedType
-  or exists (Method method | method = ((MethodAccess) expr).getMethod() |
+  or exists (Method method | method = expr.(MethodAccess).getMethod() |
     method instanceof ClassNameMethod
     or method instanceof ClassSimpleNameMethod
     or boxedToString(method)

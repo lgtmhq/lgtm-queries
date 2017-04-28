@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Library for identifying uses of the GWT UiBinder framework.
+ * Provides classes and predicates for identifying uses of the GWT UiBinder framework.
  *
  * The UiBinder framework allows the specification of user interfaces in XML template files. These
  * can then be interacted with programmatically by writing an associated owner class.
