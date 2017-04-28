@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for computing metrics on Java packages.
+ * Provides classes and predicates for computing metrics on Java packages.
  */
 
 import semmle.code.java.Package

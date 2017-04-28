@@ -41,6 +41,18 @@ predicate global_name_used(Module m, Variable name) {
     )
 }
 
+/** Holds if a module has `__all__` but we don't understand it */
+predicate all_not_understood(Module m) {
+    exists(GlobalVariable a | 
+        a.getId() = "__all__" and a.getScope() = m |
+        /* __all__ is not defined as a simple list */
+        not m.declaredInAll(_)
+        or
+        /* __all__ is modified */
+        exists(Call c | c.getFunc().(Attribute).getObject() = a.getALoad())
+    )
+}
+
 predicate unused_import(Import imp, Variable name) {
     ((Name)imp.getAName().getAsname()).getVariable() = name
     and
@@ -56,12 +68,15 @@ predicate unused_import(Import imp, Variable name) {
     not imp.getEnclosingModule().isPackageInit()
     and
     /* Name may be imported for use in epytext documentation */
-    not exists(Comment cmt | 
+    not exists(Comment cmt |
         cmt.getText().matches("%L{" + name.getId() + "}%") |
         cmt.getLocation().getFile() = imp.getLocation().getFile()
     )
     and
     not name_acceptable_for_unused_variable(name)
+    and
+    /* Assume that opaque `__all__` includes imported module */
+    not all_not_understood(imp.getEnclosingModule())
 }
 
 

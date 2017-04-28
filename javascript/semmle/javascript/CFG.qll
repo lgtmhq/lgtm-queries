@@ -358,6 +358,11 @@ class ControlFlowNode extends @cfg_node, Locatable {
     result = this.(Class).getDefinition().getContainer() or
     result = this.(MemberDefinition).getContainer()
   }
+
+  /** Gets the basic block this node belongs to. */
+  BasicBlock getBasicBlock() {
+    this = result.getANode()
+  }
 }
 
 /** A synthetic CFG node marking the entry or exit point of a function or script. */

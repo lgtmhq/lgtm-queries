@@ -21,6 +21,7 @@
  * @tags reliability
  *       correctness
  *       regular-expressions
+ *       external/cwe/cwe-561
  * @precision very-high
  */
 

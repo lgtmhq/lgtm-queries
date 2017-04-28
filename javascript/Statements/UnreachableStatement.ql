@@ -18,6 +18,7 @@
  * @problem.severity warning
  * @tags maintainability
  *       correctness
+ *       external/cwe/cwe-561
  * @precision very-high
  */
 

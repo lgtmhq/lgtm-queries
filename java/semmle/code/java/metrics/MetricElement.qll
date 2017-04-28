@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for computing metrics on Java elements.
+ * Provides classes and predicates for computing metrics on Java elements.
  */
 
 import semmle.code.java.Element

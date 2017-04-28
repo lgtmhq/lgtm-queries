@@ -40,11 +40,11 @@ predicate saneString(Expr expr) {
 }
 
 predicate builtFromUncontrolledConcat(Expr expr) {
-  exists(AddExpr concat | concat = expr |
-    builtFromUncontrolledConcat(concat.getAnOperand())
+  exists(AddExpr concatExpr | concatExpr = expr |
+    builtFromUncontrolledConcat(concatExpr.getAnOperand())
   )
-  or exists(AddExpr concat | concat = expr |
-    exists(Expr arg | arg = concat.getAnOperand() | not saneString(arg))
+  or exists(AddExpr concatExpr | concatExpr = expr |
+    exists(Expr arg | arg = concatExpr.getAnOperand() | not saneString(arg))
   ) 
   or exists(Expr other | builtFromUncontrolledConcat(other) |
     exists(Variable var | var.getAnAssignedValue() = other and var.getAnAccess() = expr)

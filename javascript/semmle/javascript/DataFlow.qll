@@ -35,13 +35,7 @@ import Expr
 /**
  * An expression or function/class declaration, viewed as a node in a data flow graph.
  */
-class DataFlowNode extends @exprorstmt {
-  DataFlowNode() {
-    this instanceof Expr or
-    this instanceof FunctionDeclStmt or
-    this instanceof ClassDefinition
-  }
-
+class DataFlowNode extends @dataflownode {
   /**
    * Gets another flow node from which data may flow to this node in one local step.
    */

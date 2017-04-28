@@ -19,6 +19,7 @@
  * @problem.severity error
  * @tags maintainability
  *       frameworks/node.js
+ *       external/cwe/cwe-563
  * @precision high
  */
 

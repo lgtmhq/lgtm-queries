@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Javadoc documentation.
+ * Provides classes and predicates for working with Javadoc documentation.
  */
 
 import semmle.code.Location
@@ -38,8 +38,7 @@ class JavadocParent extends @javadocParent, Top {
     result = this.getAChild() and result.getTagName() = name
   }
 
-  /** A printable representation of this element. */
- /*abstract*/ string toString() { result = "Javadoc" }
+  /*abstract*/ string toString() { result = "Javadoc" }
 }
 
 /** A Javadoc comment. */
@@ -60,7 +59,6 @@ class Javadoc extends JavadocParent, @javadoc {
     result = this.getATag("@author").getChild(0).toString()
   }
 
-  /** A printable representation of this Javadoc comment. */
   string toString() {
     result = "/*" + toStringPrefix() + " " + getChild(0) + " " + toStringPostfix() + "*/"
   }

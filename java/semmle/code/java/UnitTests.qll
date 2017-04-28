@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with test classes and methods.
+ * Provides classes and predicates for working with test classes and methods.
  */
 
 import Type

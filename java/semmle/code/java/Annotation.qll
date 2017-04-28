@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java annotations.
+ * Provides classes and predicates for working with Java annotations.
  *
  * Annotations are used to add meta-information to language elements in a
  * uniform fashion. They can be seen as typed modifiers that can take
@@ -30,10 +30,10 @@ import JDKAnnotations
 
 /** Any annotation used to annotate language elements with meta-information. */
 class Annotation extends @annotation, Expr {
-  /** Whether this annotation applies to a declaration. */
+  /** Holds if this annotation applies to a declaration. */
   predicate isDeclAnnotation() { this instanceof DeclAnnotation }
 
-  /** Whether this annotation applies to a type. */
+  /** Holds if this annotation applies to a type. */
   predicate isTypeAnnotation() { this instanceof TypeAnnotation }
 
   /** The element being annotated. */
@@ -60,7 +60,6 @@ class Annotation extends @annotation, Expr {
     exprs(this, _, _, result, _)
   } 
 
-  /** A printable representation of this annotation. */
   string toString() { result = this.getType().getName() }
 
   /** This expression's Halstead ID (used to compute Halstead metrics). */
@@ -114,10 +113,10 @@ predicate sourceAnnotValue(Annotation a, Method m, Expr val)
 
 /** An abstract representation of language elements that can be annotated. */
 class Annotatable extends Element {
-  /** Whether this element has an annotation. */
+  /** Holds if this element has an annotation. */
   predicate hasAnnotation() { exists(Annotation a | a.getAnnotatedElement() = this) }
 
-  /** Whether this element has the specified annotation. */
+  /** Holds if this element has the specified annotation. */
   predicate hasAnnotation(string package, string name) {
     exists(AnnotationType at | at = getAnAnnotation().getType() | at.nestedName() = name and at.getPackage().getName() = package)
   }
@@ -126,7 +125,7 @@ class Annotatable extends Element {
   Annotation getAnAnnotation() { result.getAnnotatedElement() = this }
   
   /**
-   * Whether this or any enclosing `Annotatable` has a `@SuppressWarnings("<category>")`
+   * Holds if this or any enclosing `Annotatable` has a `@SuppressWarnings("<category>")`
    * annotation attached to it for the specified `category`.
    */
   predicate suppressesWarningsAbout(string category) {
@@ -156,7 +155,7 @@ class AnnotationType extends Interface {
     methods(result,_,_,_,this,_)
   }
   
-  /** Whether this annotation type is annotated with the meta-annotation `@Inherited`. */
+  /** Holds if this annotation type is annotated with the meta-annotation `@Inherited`. */
   predicate isInherited() {
     exists(Annotation ann |
       ann.getAnnotatedElement() = this and

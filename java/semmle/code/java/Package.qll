@@ -12,24 +12,12 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java packages.
+ * Provides classes and predicates for working with Java packages.
  */
 
-import AST
 import Element
 import Type
 import metrics.MetricPackage
-
-/**
- * Whether element `e` is a descendant
- * of package `p` in the syntax tree.
- *
- * DEPRECATED: use `Element.contains` instead.
- */
-deprecated
-predicate isInPackage(Element e, Package p) {
-  hasChild+(p,e)
-}
 
 /**
  * A package may be used to abstract over all of its members,
@@ -39,7 +27,7 @@ class Package extends Element, Annotatable, @package {
   /** A top level type in this package. */
   TopLevelType getATopLevelType() { result.getPackage() = this }
 
-  /** Whether at least one reference type in this package originates from source code. */
+  /** Holds if at least one reference type in this package originates from source code. */
   predicate fromSource() { 
     exists(RefType t | t.fromSource() and t.getPackage() = this) 
   }

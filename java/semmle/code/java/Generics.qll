@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with generic types.
+ * Provides classes and predicates for working with generic types.
  *
  * A generic type as declared in the program, for example
  *
@@ -101,7 +101,7 @@ class GenericInterface extends GenericType, Interface {
  * This includes type parameters and wildcards.
  */
 abstract class BoundedType extends RefType, @boundedtype {
-  /** Whether this type is bounded. */
+  /** Holds if this type is bounded. */
   predicate hasTypeBound() { exists(TypeBound tb | tb = this.getATypeBound()) }
 
   /** A type bound for this type, if any. */
@@ -180,12 +180,12 @@ class TypeVariable extends BoundedType, @typevariable {
  * and the second wildcard has a lower bound of `Float`.
  */
 class Wildcard extends BoundedType, @wildcard {
-  /** Whether this wildcard has an upper bound. */
+  /** Holds if this wildcard has an upper bound. */
   predicate hasUpperBound() {
     wildcards(this, _, 1)
   }
 
-  /** Whether this wildcard has a lower bound. */
+  /** Holds if this wildcard has a lower bound. */
   predicate hasLowerBound() {
     wildcards(this, _, 2)
   }
@@ -220,7 +220,7 @@ class Wildcard extends BoundedType, @wildcard {
   }
 
   /**
-   * Whether this is the unconstrained wildcard `?`.
+   * Holds if this is the unconstrained wildcard `?`.
    */
   predicate isUnconstrained() {
     not hasLowerBound() and
@@ -269,7 +269,7 @@ class TypeBound extends @typebound {
    */
   int getPosition() { typeBounds(this,_,result,_) }
 
-  /** A printable representation of this type bound. */
+  /** Gets a textual representation of this type bound. */
   string toString() { result = this.getType().getName() }
 }
 
@@ -326,7 +326,7 @@ class ParameterizedType extends RefType {
     )
   }
 
-  /** Whether this type originates from source code. */
+  /** Holds if this type originates from source code. */
   predicate fromSource() { typeVars(_,_,_,_,this) and RefType.super.fromSource() }
 }
 
@@ -358,7 +358,7 @@ class RawType extends RefType {
    */
    RefType getErasure() { erasure(this,result) }
 
-  /** Whether this type originates from source code. */
+  /** Holds if this type originates from source code. */
   predicate fromSource() { not any() }
 }
 

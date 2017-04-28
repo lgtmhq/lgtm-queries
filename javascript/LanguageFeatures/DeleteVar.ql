@@ -19,6 +19,7 @@
  * @tags reliability
  *       maintainability
  *       language-features
+ *       external/cwe/cwe-480
  * @precision very-high
  */
 

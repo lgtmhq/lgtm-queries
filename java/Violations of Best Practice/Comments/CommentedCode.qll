@@ -41,7 +41,7 @@ private predicate looksLikeCode(JavadocText line) {
 }
 
 /**
- * Whether this comment contains opening and closing `<code>` or `<pre>` tags.
+ * Holds if this comment contains opening and closing `<code>` or `<pre>` tags.
  */
 private predicate hasCodeTags(Javadoc j) {
   exists(string tag | tag = "pre" or tag = "code" |

@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java statements.
+ * Provides classes and predicates for working with Java statements.
  */
 
 import Expr
@@ -21,7 +21,6 @@ private import Successor
 
 /** A common super-class of all statements. */
 class Stmt extends StmtParent, ExprParent, @stmt {
-  /** A printable representation of this statement. */
   /*abstract*/ string toString() { result = "stmt" }
 
   /** A printable representation of this statement. May include more detail than `toString()`. */
@@ -39,7 +38,7 @@ class Stmt extends StmtParent, ExprParent, @stmt {
   /** The parent of this statement. */
   StmtParent getParent() { stmts(this,_,result,_,_) }
 
-  /** Whether this statement is the child of the specified parent at the specified (zero-based) position. */
+  /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
   predicate isNthChildOf(StmtParent parent, int index) {
     this.getParent() = parent and this.getIndex() = index
   }
@@ -397,7 +396,7 @@ class CatchClause extends Stmt,@catchclause {
   /** The parameter of this `catch` clause. */
   LocalVariableDeclExpr getVariable() { result.getParent() = this }
   
-  /** Whether this `catch` clause is a _multi_-`catch` clause. */
+  /** Holds if this `catch` clause is a _multi_-`catch` clause. */
   predicate isMultiCatch() {
     this.getVariable().getTypeAccess() instanceof UnionTypeAccess
   }
@@ -610,7 +609,7 @@ class BreakStmt extends Stmt,@breakstmt {
   /** The label targeted by this `break` statement, if any. */
   string getLabel() { namestrings(result,_,this) }
 
-  /** Whether this `break` statement has an explicit label. */
+  /** Holds if this `break` statement has an explicit label. */
   predicate hasLabel() { exists(string s | s = this.getLabel()) }
 
   /** A printable representation of this statement. May include more detail than `toString()`. */
@@ -630,7 +629,7 @@ class ContinueStmt extends Stmt,@continuestmt {
   /** The label targeted by this `continue` statement, if any. */
   string getLabel() { namestrings(result,_,this) }
 
-  /** Whether this `continue` statement has an explicit label. */
+  /** Holds if this `continue` statement has an explicit label. */
   predicate hasLabel() { exists(string s | s = this.getLabel()) }
 
   /** A printable representation of this statement. May include more detail than `toString()`. */
@@ -673,7 +672,7 @@ class ExprStmt extends Stmt,@exprstmt {
   /** This statement's Halstead ID (used to compute Halstead metrics). */
   string getHalsteadID() { result = "ExprStmt" }
 
-  /** Whether this statement represents a field declaration with an initializer. */
+  /** Holds if this statement represents a field declaration with an initializer. */
   predicate isFieldDecl() {
     getEnclosingCallable() instanceof InitializerMethod and
     exists (FieldDeclaration fd, Location fdl, Location sl |

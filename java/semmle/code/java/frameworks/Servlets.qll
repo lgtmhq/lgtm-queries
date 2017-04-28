@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with the Java Servlet API.
+ * Provides classes and predicates for working with the Java Servlet API.
  */
 
 import semmle.code.java.Type

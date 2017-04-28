@@ -19,6 +19,7 @@
  * @tags maintainability
  *       correctness
  *       language-features
+ *       external/cwe/cwe-685
  * @precision high
  */
 
@@ -97,7 +98,7 @@ class SpuriousArguments extends Expr {
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     this.getLocation().hasLocationInfo(filepath, startline, startcolumn, _, _) and
-    exists (Expr lastArg | lastArg = getCall().getArgument(getCall().getNumArgument()-1) |
+    exists (Expr lastArg | lastArg = getCall().getLastArgument() |
       lastArg.getLocation().hasLocationInfo(_, _, _, endline, endcolumn)
     )
   }

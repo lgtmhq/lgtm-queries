@@ -616,6 +616,11 @@ class InvokeExpr extends @invokeexpr, Expr {
     result = getArgument(_)
   }
 
+  /** Gets the last argument of this invocation, if any. */
+  Expr getLastArgument() {
+    result = getArgument(getNumArgument()-1)
+  }
+
   /** Gets the number of arguments of this invocation. */
   int getNumArgument() {
     result = count(getAnArgument())

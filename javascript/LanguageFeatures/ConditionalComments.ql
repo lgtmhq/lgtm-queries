@@ -19,6 +19,7 @@
  * @tags portability
  *       maintainability
  *       language-features
+ *       external/cwe/cwe-758
  * @precision very-high
  */
 

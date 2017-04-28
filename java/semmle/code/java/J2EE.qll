@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with J2EE bean types.
+ * Provides classes and predicates for working with J2EE bean types.
  */
 
 import Type

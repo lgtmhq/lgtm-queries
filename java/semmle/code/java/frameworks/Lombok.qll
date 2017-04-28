@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for identifying use of the Lombok framework.
+ * Provides classes and predicates for identifying use of the Lombok framework.
  */
 
 import java

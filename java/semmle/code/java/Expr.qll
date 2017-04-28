@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library of classes for working with Java expressions.
+ * Provides classes for working with Java expressions.
  */
 
 import Member
@@ -22,7 +22,6 @@ import Statement
 
 /** A common super-class that represents all kinds of expressions. */
 class Expr extends ExprParent, @expr {
-  /** A printable representation of this expression. */
   /*abstract*/ string toString() { result = "expr" }
 
   /**
@@ -41,7 +40,7 @@ class Expr extends ExprParent, @expr {
   /** The parent of this expression. */
   ExprParent getParent() { exprs(this,_,_,result,_) }
 
-  /** Whether this expression is the child of the specified parent at the specified (zero-based) position. */
+  /** Holds if this expression is the child of the specified parent at the specified (zero-based) position. */
   predicate isNthChildOf(ExprParent parent, int index) {
     exprs(this,_,_,parent,index)
   }
@@ -88,7 +87,7 @@ class Expr extends ExprParent, @expr {
   string getHalsteadID() { result = this.toString() }
 
   /**
-   * Whether this expression is a compile-time constant.
+   * Holds if this expression is a compile-time constant.
    *
    * See JLS v8, section 15.28 (Constant Expressions).
    */
@@ -96,7 +95,7 @@ class Expr extends ExprParent, @expr {
 }
 
 /**
- * Whether the specified type is either a primitive type or type `String`.
+ * Holds if the specified type is either a primitive type or type `String`.
  *
  * Auxiliary predicate used by `CompileTimeConstantExpr`.
  */
@@ -330,7 +329,6 @@ class ArrayAccess extends Expr,@arrayaccess {
   /** The index expression of this array access. */
   Expr getIndexExpr() { result.isNthChildOf(this, 1) }
 
-  /** A printable representation of this expression. */
   string toString() { result = "...[...]" }
 }
 
@@ -470,7 +468,7 @@ class Literal extends Expr,@literal {
   /** A printable representation of this expression. */
   string toString() { result = this.getLiteral() }
 
-  /** Whether this literal is a compile-time constant expression (as per JLS v8, section 15.28). */
+  /** Holds if this literal is a compile-time constant expression (as per JLS v8, section 15.28). */
   predicate isCompileTimeConstant() {
     this.getType() instanceof PrimitiveType or
     this.getType() instanceof TypeString
@@ -484,14 +482,6 @@ class BooleanLiteral extends Literal,@booleanliteral {
   boolean getBooleanValue() {
     result = true and getLiteral() = "true" or
     result = false and getLiteral() = "false"
-  }
-  
-  /** 
-   * Deprecated: use getBooleanValue() instead.
-   * Get the boolean representation of this literal. 
-   */
-  deprecated boolean getBooleanLiteral() {
-    result = getBooleanValue()
   }
 }
 
@@ -664,7 +654,7 @@ abstract class ComparisonExpr extends BinaryExpr {
    */
   abstract Expr getGreater();
   
-  /** Whether this comparison is strict, i.e. `<` or `>`. */
+  /** Holds if this comparison is strict, i.e. `<` or `>`. */
   predicate isStrict() {
     this instanceof LTExpr or this instanceof GTExpr
   }
@@ -809,7 +799,7 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   AnonymousClass getAnonymousClass() { isAnonymClass(result, this) }
   
   /**
-   * Whether this class instance creation expression has an
+   * Holds if this class instance creation expression has an
    * empty type argument list of the form `<>`.
    */
   predicate isDiamond() {
@@ -850,9 +840,9 @@ class LambdaExpr extends FunctionalExpr, @lambdaexpr {
    */
   Method asMethod() { result = getAnonymousClass().getAMethod() }
 
-  /** Whether the body of this lambda is an expression. */
+  /** Holds if the body of this lambda is an expression. */
   predicate hasExprBody() { lambdaKind(this,0) }
-  /** Whether the body of this lambda is a statement. */
+  /** Holds if the body of this lambda is a statement. */
   predicate hasStmtBody() { lambdaKind(this,1) }
 
   /** The body of this lambda expression, if it is an expression. */
@@ -1030,14 +1020,14 @@ class VarAccess extends Expr,@varaccess {
   /** The qualifier of this variable access, if any. */
   Expr getQualifier() { result.getParent() = this }
 
-  /** Whether this variable access has a qualifier. */
+  /** Holds if this variable access has a qualifier. */
   predicate hasQualifier() { exists(getQualifier()) }
 
   /** The variable accessed by this variable access. */
   Variable getVariable() { variableBinding(this,result) }
 
   /**
-   * Whether this variable access is an l-value.
+   * Holds if this variable access is an l-value.
    *
    * An l-value is a write access to a variable, which occurs as the destination of an assignment.
    */
@@ -1050,7 +1040,7 @@ class VarAccess extends Expr,@varaccess {
   }
 
   /**
-   * Whether this variable access is an r-value.
+   * Holds if this variable access is an r-value.
    *
    * An r-value is a read access to a variable.
    * In other words, it is a variable access that does _not_ occur as the destination of
@@ -1068,7 +1058,7 @@ class VarAccess extends Expr,@varaccess {
   }
 
   /**
-   * Whether this access refers to a local variable or a field of
+   * Holds if this access refers to a local variable or a field of
    * the receiver of the enclosing method or constructor.
    */
   predicate isLocal() {
@@ -1126,7 +1116,7 @@ class MethodAccess extends Expr, Call, @methodaccess {
   /** The qualifying expression of this method access, if any. */
   override Expr getQualifier() { result.isNthChildOf(this, -1) }
 
-  /** Whether this method access has a qualifier. */
+  /** Holds if this method access has a qualifier. */
   predicate hasQualifier() { exists(getQualifier()) }
 
   /** An argument supplied to the method that is invoked using this method access. */
@@ -1176,7 +1166,7 @@ class TypeAccess extends Expr, Annotatable, @typeaccess {
   /** The qualifier of this type access, if any. */
   Expr getQualifier() { result.isNthChildOf(this, -1) }
 
-  /** Whether this type access has a qualifier. */
+  /** Holds if this type access has a qualifier. */
   predicate hasQualifier() { exists(Expr e | e = this.getQualifier()) }
 
   /** A type argument supplied to this type access. */
@@ -1188,7 +1178,7 @@ class TypeAccess extends Expr, Annotatable, @typeaccess {
     result.getIndex() = index
   }
 
-  /** Whether this type access has a type argument. */
+  /** Holds if this type access has a type argument. */
   predicate hasTypeArgument() { exists(Expr e | e = this.getATypeArgument()) }
 
   /** The compilation unit in which this type access occurs. */
@@ -1278,7 +1268,7 @@ class WildcardTypeAccess extends Expr,@wildcardtypeaccess {
   /** The lower bound of this wildcard type access, if any. */
   Expr getLowerBound() { result.isNthChildOf(this, 1) }
 
-  /** Whether this wildcard is not bounded by any type bounds. */
+  /** Holds if this wildcard is not bounded by any type bounds. */
   predicate hasNoBound() { not exists(TypeAccess t | t.getParent() = this) }
 
   /** A printable representation of this expression. */
@@ -1348,12 +1338,12 @@ abstract class ConstructorCall extends Call {
   /** The target constructor of the class being instantiated. */
   abstract Constructor getConstructor();
 
-  /** Whether this constructor call is an explicit call to `this(...)`. */
+  /** Holds if this constructor call is an explicit call to `this(...)`. */
   predicate callsThis() {
     this instanceof ThisConstructorInvocationStmt
   }
 
-  /** Whether this constructor call is an explicit call to `super(...)`. */
+  /** Holds if this constructor call is an explicit call to `super(...)`. */
   predicate callsSuper() {
     this instanceof SuperConstructorInvocationStmt
   }

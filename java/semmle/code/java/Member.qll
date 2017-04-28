@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with members of Java classes and interfaces,
+ * Provides classes and predicates for working with members of Java classes and interfaces,
  * that is, methods, constructors, fields and nested types.
  */
 
@@ -39,7 +39,7 @@ class Member extends Element, Annotatable, Modifiable, @member {
     result = getDeclaringType().getName() + "." + getName()
   }
 
-  /** Whether this member is package protected, that is, neither public nor private nor protected. */
+  /** Holds if this member is package protected, that is, neither public nor private nor protected. */
   predicate isPackageProtected() {
     not isPrivate() and
     not isProtected() and
@@ -52,28 +52,11 @@ class Callable extends StmtParent, Member, @callable {
   /**
    * The declared return type of this callable (`void` for
    * constructors).
-   *
-   * DEPRECATED: use `getReturnType` instead.
-   */
-  deprecated Type getType() {
-    result = this.getReturnType()
-  }
-
-  /**
-   * The declared return type of this callable (`void` for
-   * constructors).
    */
   Type getReturnType() {
     constrs(this, _, _, result, _, _) or
     methods(this, _, _, result, _, _)
   }
-
-  /**
-   * A callee that may be called from this callable.
-   *
-   * DEPRECATED: use `getACallee` instead.
-   */
-  deprecated Callable getACall() { result = getACallee() }
 
   /**
    * A callee that may be called from this callable.
@@ -103,23 +86,13 @@ class Callable extends StmtParent, Member, @callable {
     )
   }
 
-  /**
-   * A constructor that may be called from this callable.
-   *
-   * DEPRECATED: use `getACallee` instead.
-   */
-  deprecated
-  Constructor getAConstructorCall() {
-    result = getACallee()
-  }
-
-  /** Whether this callable calls `target`. */
+  /** Holds if this callable calls `target`. */
   predicate calls(Callable target) {
     exists (getACallSite(target))
   }
 
   /**
-   * Whether this callable calls `target`
+   * Holds if this callable calls `target`
    * using a `super(...)` constructor call.
    */
   predicate callsSuperConstructor(Constructor target) {
@@ -127,7 +100,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * Whether this callable calls `target`
+   * Holds if this callable calls `target`
    * using a `this(...)` constructor call.
    */
   predicate callsThis(Constructor target) { 
@@ -135,7 +108,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * Whether this callable calls `target`
+   * Holds if this callable calls `target`
    * using a `super` method call.
    */
   predicate callsSuper(Method target) {
@@ -143,7 +116,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * Whether this callable calls `c` using
+   * Holds if this callable calls `c` using
    * either a `super(...)` constructor call
    * or a `this(...)` constructor call.
    */
@@ -152,7 +125,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * Whether this callable may call the specified callable,
+   * Holds if this callable may call the specified callable,
    * taking overriding into account.
    */
   predicate polyCalls(Callable m) {
@@ -164,7 +137,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * Whether field `f` may be assigned a value
+   * Holds if field `f` may be assigned a value
    * within the body of this callable.
    */
   predicate writes(Field f) {
@@ -172,7 +145,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * Whether field `f` may be read
+   * Holds if field `f` may be read
    * within the body of this callable.
    */
   predicate reads(Field f) {
@@ -180,18 +153,10 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * Whether field `f` may be either read or written
+   * Holds if field `f` may be either read or written
    * within the body of this callable.
    */
   predicate accesses(Field f) { this.writes(f) or this.reads(f) }
-
-  /**
-   * A field accessed in this callable.
-   *
-   * DEPRECATED: use `getAnAccessedField()` instead.
-   */
-  deprecated
-  Field getAnAccess() { result = getAnAccessedField() }
 
   /**
    * A field accessed in this callable.
@@ -201,7 +166,7 @@ class Callable extends StmtParent, Member, @callable {
   /** The type of a formal parameter of this callable. */
   Type getAParamType() { result = getParameterType(_) }
 
-  /** Whether this callable does not have any formal parameters. */
+  /** Holds if this callable does not have any formal parameters. */
   predicate hasNoParameters() { not exists(getAParameter()) }
 
   /** The number of formal parameters of this callable. */
@@ -247,7 +212,7 @@ class Callable extends StmtParent, Member, @callable {
     n > 0 and result = paramUpTo(n-1) + ", " + getParameterType(n)
   }
 
-  /** Whether this callable has the specified string signature. */
+  /** Holds if this callable has the specified string signature. */
   predicate hasStringSignature(string sig) {
     sig = this.getStringSignature()
   }
@@ -280,13 +245,13 @@ class Callable extends StmtParent, Member, @callable {
    */
   Callable getSourceDeclaration() { result = this }
 
-  /** Whether this callable is the same as its source declaration. */
+  /** Holds if this callable is the same as its source declaration. */
   predicate isSourceDeclaration() { this.getSourceDeclaration() = this }
 
   /** Cast this callable to a class that provides access to metrics information. */
   MetricCallable getMetrics() { result = this }
 
-  /** Whether the last parameter of this callable is a varargs (variable arity) parameter. */
+  /** Holds if the last parameter of this callable is a varargs (variable arity) parameter. */
   predicate isVarargs() { this.getAParameter().isVarargs() }
 
   /**
@@ -300,65 +265,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 }
 
-/**
- * Whether callable `c` has a parameter of type `t`
- * at (zero-based) position `pos`.
- *
- * For example, `p(A x, B y)` has a parameter of type `B` at position 1.
- *
- * DEPRECATED: use `Callable.getParameterType` instead.
- */
-deprecated
-predicate hasParam(Callable c, Type t, int pos) {
-  t = c.getParameterType(pos)
-}
-
-/**
- * Whether callable `c` has signature `sig`,
- * where all types in the signature have a fully-qualified name.
- *
- * For example, method `void m(String s)` has the signature
- * `m(java.lang.String)`.
- *
- * DEPRECATED: use `Callable.getSignature` instead.
- */
-deprecated
-predicate hasSignature(Callable c, string sig) {
-  sig = c.getSignature()
-}
-
-/**
- * Whether callable `c` has return type `t`.
- *
- * DEPRECATED: use `Callable.getType` instead.
- */
-deprecated
-predicate returnsType(Callable c, Type t) {
-  t = c.getType()
-}
-
-/**
- * Whether method `m` is neither private nor static, and hence
- * could be inherited.
- *
- * DEPRECATED: use `Method.isInheritable` instead.
- */
-deprecated
-predicate inheritableMethod(Method m) {
-  m.isInheritable()
-}
-
-/**
- * Whether methods `m1` and `m2` have the same signature.
- *
- * DEPRECATED: use `Method.getSignature` instead.
- */
-deprecated
-predicate hasSameSignature(Method m1, Method m2) {
-  m1.getSignature() = m2.getSignature()
-}
-
-/** Whether method `m1` overrides method `m2`. */
+/** Holds if method `m1` overrides method `m2`. */
 private
 predicate overrides(Method m1, Method m2) {
   exists (RefType t1, RefType t2 | overridesIgnoringAccess(m1, t1, m2, t2) |
@@ -410,11 +317,11 @@ private predicate implementsInterfaceMethod(Method impl, Method m) {
 
 /** A method is a particular kind of callable. */
 class Method extends Callable, @method {
-  /** Whether this method (directly) overrides the specified callable. */
+  /** Holds if this method (directly) overrides the specified callable. */
   predicate overrides(Method m) { overrides(this, m) }
 
   /**
-   * Whether this method either overrides `m`, or `m` is the
+   * Holds if this method either overrides `m`, or `m` is the
    * source declaration of this method (and not equal to it).
    */
   predicate overridesOrInstantiates(Method m) {
@@ -430,7 +337,7 @@ class Method extends Callable, @method {
   string getSignature() { methods(this,_,result,_,_,_) }
 
   /**
-   * Whether this method and method `m` are declared in the same type
+   * Holds if this method and method `m` are declared in the same type
    * and have the same parameter types.
    */
   predicate sameParamTypes(Method m) {
@@ -492,7 +399,7 @@ class Method extends Callable, @method {
   }
 
   /**
-   * Whether this method is neither private nor a static interface method
+   * Holds if this method is neither private nor a static interface method
    * nor an initializer method, and hence could be inherited.
    */
   predicate isInheritable() {
@@ -502,14 +409,14 @@ class Method extends Callable, @method {
   }
 
   /**
-   * Whether this method is neither private nor static, and hence
+   * Holds if this method is neither private nor static, and hence
    * uses dynamic dispatch.
    */
   predicate isVirtual() {
     not isPrivate() and not isStatic()
   }
 
-  /** Whether this method can be overridden. */
+  /** Holds if this method can be overridden. */
   predicate isOverridable() {
     isVirtual() and
     not isFinal() and
@@ -583,7 +490,7 @@ class FinalizeMethod extends Method {
 
 /** A constructor is a particular kind of callable. */
 class Constructor extends Callable, @constructor {
-  /** Whether this is a default constructor, not explicitly declared in source code. */
+  /** Holds if this is a default constructor, not explicitly declared in source code. */
   predicate isDefaultConstructor() { isDefConstr(this) }
 
   Constructor getSourceDeclaration() { constrs(this,_,_,_,_,result) }
@@ -616,16 +523,6 @@ class InstanceInitializer extends InitializerMethod {
   InstanceInitializer() {
     this.hasName("<obinit>")
   }
-}
-
-/**
- * Whether field `f` has type `t`.
- *
- * DEPRECATED: use `Field.getType` instead.
- */
-deprecated
-predicate hasType(Field f, Type t) {
-  t = f.getType()
 }
 
 /** A field declaration that declares one or more class or instance fields. */
@@ -683,7 +580,7 @@ class Field extends Member, ExprParent, @field, Variable {
    */
   Field getSourceDeclaration() { fields(this,_,_,_,result) }
 
-  /** Whether this field is the same as its source declaration. */
+  /** Holds if this field is the same as its source declaration. */
   predicate isSourceDeclaration() { this.getSourceDeclaration() = this }
 
   predicate isPublic() {

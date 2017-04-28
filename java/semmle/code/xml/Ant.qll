@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with targets in Apache Ant build files.
+ * Provides classes and predicates for working with targets in Apache Ant build files.
  */
 
 import XML
@@ -36,7 +36,7 @@ class AntTarget extends XMLElement {
           .replaceAll("\r","").replaceAll("\n","").replaceAll("\t","") + ","
   }
 
-  /** Whether this Ant target depends on the specified target. */
+  /** Holds if this Ant target depends on the specified target. */
   predicate dependsOn(AntTarget that) {
     this.getFile() = that.getFile() and
     this.getDependsString().matches("%,"+that.getName()+",%")

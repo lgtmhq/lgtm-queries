@@ -18,6 +18,8 @@
  * @problem.severity error
  * @tags reliability
  *       correctness
+ *       external/cwe/cwe-480
+ *       external/cwe/cwe-561
  * @precision high
  */
 

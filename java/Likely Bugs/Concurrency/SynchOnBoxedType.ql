@@ -30,4 +30,4 @@ import java
 from SynchronizedStmt synch, Type type
 where synch.getExpr().getType() = type
   and (type instanceof BoxedType or type instanceof TypeString)
-select synch, "Do not synchronize on objects of type " + type + "."
+select synch.getExpr(), "Do not synchronize on objects of type " + type + "."

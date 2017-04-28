@@ -32,11 +32,7 @@ private DefiniteAbstractValue abstractValueOfType(TypeTag type) {
 /**
  * A data flow node for which analysis results are available.
  */
-class AnalyzedFlowNode extends @ast_node {
-  AnalyzedFlowNode() {
-    this instanceof DataFlowNode
-  }
-
+class AnalyzedFlowNode extends @dataflownode {
   /**
    * Gets another data flow node whose value flows into this node in one local step
    * (that is, not involving global variables).
@@ -622,17 +618,14 @@ private predicate resolveImport(ImportDeclaration i, ImportSpecifier s,
 }
 
 /**
- * Flow analysis for ECMAScript 2015 imports that import a default export.
- *
- * In this case, we are importing a value (namely, the value of the exported
- * expression).
+ * Flow analysis for ECMAScript 2015 imports that import a value.
  */
 private class AnalyzedDefaultImport extends AnalyzedImport {
   override AbstractValue getAnRhsValue() {
-    exists (ES2015Module m | resolveImport(_, this, "default", m) |
+    exists (ES2015Module m, string name | resolveImport(_, this, name, m) |
       // if we are importing a value, we only see that value
       exists (AnalyzedFlowNode remoteSrc |
-        remoteSrc = m.getAnExport().(ExportDefaultDeclaration).getOperand() and
+        remoteSrc = m.getAnExport().getSourceNode(name) and
         result = remoteSrc.getAValue()
       )
     )
@@ -640,7 +633,7 @@ private class AnalyzedDefaultImport extends AnalyzedImport {
 }
 
 /**
- * Flow analysis for ECMAScript 2015 imports that import a named export.
+ * Flow analysis for ECMAScript 2015 imports that import a variable.
  *
  * In this case, we are importing a binding (namely, the variable being exported),
  * so we need to consider all assignments to that variable.

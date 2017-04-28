@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java Serialization in the context of
+ * Provides classes and predicates for working with Java Serialization in the context of
  * the `com.fasterxml.jackson` JSON processing framework.
  */
 

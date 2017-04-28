@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * This library provides utility predicates for representing dependencies between types.
+ * Provides utility predicates for representing dependencies between types.
  */
 
 import Type
@@ -20,7 +20,7 @@ import Generics
 import Expr
 
 /**
- * Whether type `t` depends on type `dep`.
+ * Holds if type `t` depends on type `dep`.
  *
  * Dependencies are restricted to generic and non-generic reference types.
  *

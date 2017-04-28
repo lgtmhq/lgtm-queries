@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with basic blocks in Java.
+ * Provides classes and predicates for working with basic blocks in Java.
  */
 
 import java
@@ -68,15 +68,15 @@ class BasicBlock extends ControlFlowNode {
   cached
   int length() { result = strictcount(getANode()) }
   
-  /** Whether this basic block strictly dominates `node`. */
+  /** Holds if this basic block strictly dominates `node`. */
   predicate bbStrictlyDominates(BasicBlock node) { bbStrictlyDominates(this, node) }
 
-  /** Whether this basic block dominates `node`. (This is reflexive.) */
+  /** Holds if this basic block dominates `node`. (This is reflexive.) */
   predicate bbDominates(BasicBlock node) { bbDominates(this, node) }
 
-  /** Whether this basic block strictly post-dominates `node`. */
+  /** Holds if this basic block strictly post-dominates `node`. */
   predicate bbStrictlyPostDominates(BasicBlock node) { bbStrictlyPostDominates(this, node) }
 
-  /** Whether this basic block post-dominates `node`. (This is reflexive.) */
+  /** Holds if this basic block post-dominates `node`. (This is reflexive.) */
   predicate bbPostDominates(BasicBlock node) { bbPostDominates(this, node) }
 }

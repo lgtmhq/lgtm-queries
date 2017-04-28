@@ -83,12 +83,12 @@ class ConditionBlock extends BasicBlock {
   }
 }
 
-/** Whether `n` updates the locally scoped variable `v`. */
+/** Holds if `n` updates the locally scoped variable `v`. */
 predicate variableUpdate(ControlFlowNode n, LocalScopeVariable v) {
   exists(VariableUpdate a | a = n | a.getDestVar() = v)
 }
 
-/** Whether `bb` updates the locally scoped variable `v`. */
+/** Holds if `bb` updates the locally scoped variable `v`. */
 private predicate variableUpdateBB(BasicBlock bb, LocalScopeVariable v) {
   variableUpdate(bb.getANode(), v)
 }

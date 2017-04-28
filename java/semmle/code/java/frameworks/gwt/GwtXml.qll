@@ -14,7 +14,7 @@
 import semmle.code.xml.XML
 
 /**
- * Whether any `*.gwt.xml` files are included in this snapshot.
+ * Holds if any `*.gwt.xml` files are included in this snapshot.
  */
 predicate isGwtXmlIncluded() {
   exists(GwtXmlFile webXML)

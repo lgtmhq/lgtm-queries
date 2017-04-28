@@ -69,7 +69,7 @@ class AMDModuleDefinition extends CallExpr {
    * which may be a function or a literal.
    */
   Expr getFactoryExpr() {
-    result = getArgument(getNumArgument()-1).(DataFlowNode).getALocalSource() and
+    result = getLastArgument().(DataFlowNode).getALocalSource() and
     (result instanceof Function or
      result instanceof Literal or
      result instanceof ArrayExpr or

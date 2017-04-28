@@ -44,7 +44,7 @@ class GwtEntryPointClass extends Class {
   }
 
   /**
-   * Whether this entry point is live - that is, whether it is referred to within an XML element.
+   * Holds if this entry point is live - that is, whether it is referred to within an XML element.
    */
   predicate isLive() {
     /*

@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for computing metrics on Java methods and constructors.
+ * Provides classes and predicates for computing metrics on Java methods and constructors.
  */
 
 import semmle.code.java.Member

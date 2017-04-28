@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java imports.
+ * Provides classes and predicates for working with Java imports.
  */
 
 import semmle.code.Location
@@ -23,10 +23,9 @@ class Import extends Element, @import {
   /** The compilation unit in which this import declaration occurs. */
   CompilationUnit getCompilationUnit() { result = this.getFile() }
 
-  /** Whether this import declaration occurs in source code. */
+  /** Holds if this import declaration occurs in source code. */
   predicate fromSource() { any() }
 
-  /** A printable representation of this import declaration. */
   /*abstract*/ string toString() { result = "import" }
 }
 
@@ -41,7 +40,6 @@ class ImportType extends Import {
   /** The imported type. */
   RefType getImportedType() { imports(this,result,_,_) }
 
-  /** A printable representation of this import declaration. */
   string toString() { result = "import " + this.getImportedType().toString() }
 }
 
@@ -62,7 +60,6 @@ class ImportOnDemandFromType extends Import {
   /** An imported type. */
   NestedType getAnImport() { result.getEnclosingType() = this.getTypeHoldingImport() }
 
-  /** A printable representation of this import declaration. */
   string toString() { 
     result = "import " + this.getTypeHoldingImport().toString() + ".*" 
   }

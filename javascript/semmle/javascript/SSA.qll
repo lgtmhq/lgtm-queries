@@ -121,7 +121,7 @@ private module Internal {
          bb.localIsLiveAtEntry(v) and
          exists (ReachableBasicBlock defbb, SsaDefinition def |
           def.definesAt(defbb, _, v) and
-          defbb.inDominanceFrontier(bb)
+          bb.inDominanceFrontierOf(defbb)
          )
        }
     or TRefinement(ReachableBasicBlock bb, GuardControlFlowNode guard, SsaSourceVariable v) {

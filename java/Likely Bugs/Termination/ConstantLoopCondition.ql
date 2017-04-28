@@ -82,9 +82,9 @@ from LoopStmt loop, Expr cond
 where
   (mainLoopCondition(loop, cond) or loopWhileTrue(loop) and loopExitGuard(loop, cond)) and
   // None of the ssa variables in `cond` are updated inside the loop.
-  forex(SsaDefinition ssa, LocalScopeVariable v, RValue use | ssa.getAUse(v) = use and use.getParent*() = cond |
-    not ssa.getEnclosingStmt().getParent*() = loop or
-    ssa.(Expr).getParent*() = loop.(ForStmt).getAnInit()
+  forex(SsaVariable ssa, RValue use | ssa.getAUse() = use and use.getParent*() = cond |
+    not ssa.getCFGNode().getEnclosingStmt().getParent*() = loop or
+    ssa.getCFGNode().(Expr).getParent*() = loop.(ForStmt).getAnInit()
   ) and
   // And `cond` does not use method calls, field reads, or array reads.
   not exists(MethodAccess ma | ma.getParent*() = cond) and

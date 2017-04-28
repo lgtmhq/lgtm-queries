@@ -293,9 +293,12 @@ class ReachableBasicBlock extends BasicBlock {
   }
 
   /**
+   * DEPRECATED: Use `df.inDominanceFrontierOf(b)` instead of `b.inDominanceFrontier(df)`.
+   *
    * Holds if `df` is in the dominance frontier of this basic block, that is,
    * this basic block dominates a predecessor of `df`, but not `df` itself.
    */
+  deprecated
   predicate inDominanceFrontier(ReachableJoinBlock df) {
     dominatesPredecessor(df) and
     not strictlyDominates(df)
@@ -318,4 +321,21 @@ class ReachableBasicBlock extends BasicBlock {
  */
 class ReachableJoinBlock extends ReachableBasicBlock {
   ReachableJoinBlock() { getFirstNode().isJoin() }
+
+  /**
+   * Holds if this basic block belongs to the dominance frontier of `b`, that is
+   * `b` dominates a predecessor of this block, but not this block itself.
+   *
+   * Algorithm from Cooper et al., "A Simple, Fast Dominance Algorithm" (Figure 5),
+   * who in turn attribute it to Ferrante et al., "The program dependence graph and
+   * its use in optimization".
+   */
+  predicate inDominanceFrontierOf(ReachableBasicBlock b) {
+    b = getAPredecessor() and not b = getImmediateDominator()
+    or
+    exists (ReachableBasicBlock prev | inDominanceFrontierOf(prev) |
+      b = prev.getImmediateDominator() and
+      not b = getImmediateDominator()
+    )
+  }
 }

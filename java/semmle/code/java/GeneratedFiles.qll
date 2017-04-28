@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with the most common types of generated files.
+ * Provides classes and predicates for working with the most common types of generated files.
  */
 
 import Type

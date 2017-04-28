@@ -20,6 +20,8 @@
  * @problem.severity warning
  * @tags correctness
  *       logic
+ *       external/cwe/cwe-570
+ *       external/cwe/cwe-571
  */
 import UselessComparisonTest
 

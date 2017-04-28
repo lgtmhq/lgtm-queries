@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * This library provides classes that represent objects in the file system,
+ * Provides classes that represent objects in the file system,
  * such as individual files or folders.
  */
 
@@ -63,7 +63,6 @@ class Container extends @container, Top {
     )
   }
 
-  /** A printable representation of this container. */
   string toString() { result = this.getName() }
 
   /** A child of this container. */
@@ -91,7 +90,7 @@ class File extends Container, @file {
   /** The name of this file. */
   string getName() { files(this,result,_,_,_) }
 
-  /** Whether this file has a specific name. */
+  /** Holds if this file has a specific name. */
   predicate hasName(string name) { name = this.getName() }
 
   string toString() { result = this.getName() }  

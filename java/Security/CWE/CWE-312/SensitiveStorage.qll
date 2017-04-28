@@ -36,7 +36,7 @@ class SensitiveSource extends FlowSource {
     this instanceof SensitiveExpr
   }
 
-  /** Whether this source flows to the `sink`. */
+  /** Holds if this source flows to the `sink`. */
   cached
   predicate flowsToCached(Expr sink) {
     this.flowsTo(sink)

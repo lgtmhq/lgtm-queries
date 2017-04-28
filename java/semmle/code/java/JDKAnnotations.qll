@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library of classes that represent standard annotations from the JDK.
+ * Provides classes that represent standard annotations from the JDK.
  */
 
 import java

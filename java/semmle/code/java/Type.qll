@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library for working with Java types.
+ * Provides classes and predicates for working with Java types.
  *
  * Types can be primitive types (`PrimitiveType`), array types (`Array`), or reference
  * types (`RefType`), where the latter are either classes (`Class`) or interfaces
@@ -23,78 +23,12 @@
  * Enumerated types (`EnumType`) are a special kind of class.
  */
 
-import AST
 import Member
 import Modifier
 import JDK
 
 /**
- * Whether element `e` is a descendant of the
- * reference type `t` in the Java syntax tree.
- *
- * DEPRECATED: use `Element.hasChildElement*(Element)` instead.
- */
-deprecated
-predicate isInType(Element e, RefType t) {
-  t.hasChildElement*(e)
-}
-
-/**
- * Whether elements `e` and `f` occur
- * in the same top-level type.
- *
- * DEPRECATED: use `Element.hasChildElement*(Element)` instead.
- */
-deprecated
-predicate inSameTopLevelType(Element e, Element f) {
-  exists(TopLevelType t | t.hasChildElement*(e) and t.hasChildElement*(f))
-}
-
-/**
- * Whether reference type `t` is a
- * top-level type in package `p`.
- *
- * DEPRECATED: use `t.(TopLevelType).getPackage() = p` instead.
- */
-deprecated
-predicate isTopLevelType(RefType t, Package p) {
-  t.(TopLevelType).getPackage() = p
-}
-
-/**
- * Whether reference type `t` is nested
- * inside reference type `outer`.
- *
- * DEPRECATED: use `RefType.getEnclosingType()` instead.
- */
-deprecated
-predicate isNestedType(RefType t, RefType outer) {
-  t.getEnclosingType() = outer
-}
-
-/**
- * Whether class or interface `t` belongs to package `p`.
- * This includes nested types.
- *
- * DEPRECATED: use `RefType.getPackage()` instead.
- */
-deprecated
-predicate typeIsInPackage(Type t, Package p) {
-  t.(RefType).getPackage() = p
-}
-
-/**
- * Whether type `t` is a top-level type.
- *
- * DEPRECATED: use `t instanceof TopLevelType` instead.
- */
-deprecated
-predicate outerType(Type t) {
-  t instanceof TopLevelType
-}
-
-/**
- * Whether reference type `t` is an immediate super-type of `sub`.
+ * Holds if reference type `t` is an immediate super-type of `sub`.
  */
 cached
 predicate hasSubtype(RefType t, Type sub) {
@@ -150,7 +84,7 @@ private predicate varianceCandidate(ParameterizedType pt) {
 }
 
 /**
- * Whether every type argument of `s` (up to `n`) contains the corresponding type argument of `t`.
+ * Holds if every type argument of `s` (up to `n`) contains the corresponding type argument of `t`.
  * Both `s` and `t` are constrained to being parameterizations of `g`.
  */
 private
@@ -181,7 +115,7 @@ private predicate containsAux(GenericType g, ParameterizedType tParm, int n, Ref
 }
 
 /**
- * Whether the type argument `s` contains the type argument `t`.
+ * Holds if the type argument `s` contains the type argument `t`.
  * 
  * See JLS 4.5.1, Type Arguments of Parameterized Types.
  */
@@ -217,7 +151,7 @@ predicate hasSubtypeStar(RefType t, RefType sub) {
   exists (RefType mid | hasSubtypeStar(t, mid) and hasSubtype(mid, sub))
 }
 
-/** Whether type `t` declares member `m`. */
+/** Holds if type `t` declares member `m`. */
 predicate declaresMember(Type t, @member m) {
   methods(m,_,_,_,t,_) or
   constrs(m,_,_,_,t,_) or
@@ -227,36 +161,6 @@ predicate declaresMember(Type t, @member m) {
    // anonymous and local classes need to be excluded here.
    not m instanceof AnonymousClass and
    not m instanceof LocalClass)
-}
-
-/**
- * Whether class `t` declares constructor `m`.
- *
- * DEPRECATED: use `m.getDeclaringType() = t` instead.
- */
-deprecated
-predicate declaresConstructor(Class t, Constructor m) {
-  m.getDeclaringType() = t
-}
-
-/**
- * Whether type `t` declares method `m`.
- *
- * DEPRECATED: use `m.getDeclaringType() = t` instead.
- */
-deprecated
-predicate declaresMethod(RefType t, Method m) {
-  m.getDeclaringType() = t
-}
-
-/**
- * Whether type `t` declares field `f`.
- *
- * DEPRECATED: use `f.getDeclaringType() = t` instead.
- */
-deprecated
-predicate declaresField(RefType t, Field f) {
-  f.getDeclaringType() = t
 }
 
 /**
@@ -325,10 +229,10 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /** The compilation unit in which this type is declared. */
   CompilationUnit getCompilationUnit() { result = this.getFile() }
 
-  /** Whether `t` is an immediate supertype of this type. */
+  /** Holds if `t` is an immediate supertype of this type. */
   predicate hasSupertype(RefType t) { hasSubtype(t,this) }
 
-  /** Whether `t` is an immediate subtype of this type. */
+  /** Holds if `t` is an immediate subtype of this type. */
   predicate hasSubtype(RefType t) { hasSubtype(this,t) }
 
   /** A direct subtype of this type. */
@@ -363,7 +267,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
     typeVarSubtypeBound(t, this)
   }
 
-  /** Whether this type declares any members. */
+  /** Holds if this type declares any members. */
   predicate hasMember() { exists(getAMember()) }
 
   /** A member declared in this type. */
@@ -381,10 +285,10 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /** A field declared in this type. */
   Field getAField() { this = result.getDeclaringType() }
 
-  /** Whether this type declares a method with the specified name. */
+  /** Holds if this type declares a method with the specified name. */
   predicate declaresMethod(string name) { this.getAMethod().getName() = name }
 
-  /** Whether this type declares a method with the specified name and number of parameters. */
+  /** Holds if this type declares a method with the specified name and number of parameters. */
   predicate declaresMethod(string name, int n) {
     exists(Method m | m = this.getAMethod() |
       m.getName() = name and
@@ -392,14 +296,14 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
     )
   }
 
-  /** Whether this type declares a field with the specified name. */
+  /** Holds if this type declares a field with the specified name. */
   predicate declaresField(string name) { this.getAField().getName() = name }
 
   /** The number of methods declared in this type. */
   int getNumberOfMethods() { result = count(Method m | m.getDeclaringType() = this) }
 
   /**
-   * Whether this type declares or inherits method `m`, which is declared
+   * Holds if this type declares or inherits method `m`, which is declared
    * in `declaringType`.
    */
   cached
@@ -475,20 +379,21 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
     not overriddenInterfaceMethodCandidate(m)
   }
 
-  /** Whether this type declares or inherits the specified member. */
+  /** Holds if this type declares or inherits the specified member. */
   predicate inherits(Member m) {
     exists(Field f | f = m |
       f = getAField() or
-      not f.isPrivate() and not declaresField(f.getName()) and getASupertype().inherits(f)
+      not f.isPrivate() and not declaresField(f.getName()) and getASupertype().inherits(f) or
+      getSourceDeclaration().inherits(f)
     )
     or
     hasMethod((Method)m, _)
   }
 
-  /** Whether this is a top-level type, which is not nested inside any other types. */
+  /** Holds if this is a top-level type, which is not nested inside any other types. */
   predicate isTopLevel() { this instanceof TopLevelType }
 
-  /** Whether this type is declared in a specified package with the specified name. */
+  /** Holds if this type is declared in a specified package with the specified name. */
   predicate hasQualifiedName(string package, string type) {
     this.getPackage().hasName(package) and type = this.nestedName()
   }
@@ -534,7 +439,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
    */
   RefType getSourceDeclaration() { result = this }
 
-  /** Whether this type is the same as its source declaration. */
+  /** Holds if this type is the same as its source declaration. */
   predicate isSourceDeclaration() { this.getSourceDeclaration() = this }
 
   /** Cast this reference type to a class that provides access to metrics information. */
@@ -561,10 +466,10 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
 
 /** A class declaration. */
 class Class extends RefType, @class {
-  /** Whether this class is an anonymous class. */
+  /** Holds if this class is an anonymous class. */
   predicate isAnonymous() { isAnonymClass(this,_) }
 
-  /** Whether this class is a local class. */
+  /** Holds if this class is a local class. */
   predicate isLocal() { isLocalClass(this,_) }
 
   RefType getSourceDeclaration() { classes(this,_,_,result) }
@@ -621,7 +526,6 @@ class AnonymousClass extends NestedClass {
   /** The class instance expression where this anonymous class occurs. */
   ClassInstanceExpr getClassInstanceExpr() { isAnonymClass(this, result) }
 
-  /** A printable representation of this anonymous class. */
   string toString() { result = "new " + this.getClassInstanceExpr().getTypeName() + "(...) { ... }" }
 
   /**
@@ -685,7 +589,7 @@ class NestedType extends RefType {
   }
 
   /**
-   * Whether this nested type is static.
+   * Holds if this nested type is static.
    *
    * A nested type is static either if it is explicitly declared as such
    * using the modifier `static`, or if it is implicitly static
@@ -778,16 +682,6 @@ class PrimitiveType extends Type, @primitive {
   }
 
   /**
-   * Dummy location information for primitive types.
-   *
-   * This declaration is required to allow selection of primitive types in QL queries,
-   * which would otherwise result in a compilation error.
-   */
-  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    filepath = "" and startline = 0 and startcolumn = 0 and endline = 0 and endcolumn = 0
-  }
-
-  /**
    * A default value for this primitive type, as assigned by the compiler
    * for variables that are declared but not initialized explicitly.
    * Typically zero for numeric and character types and `false` for `boolean`.
@@ -806,10 +700,6 @@ class PrimitiveType extends Type, @primitive {
 /** The type of the `null` literal. */
 class NullType extends Type, @primitive {
   NullType() { this.hasName("<nulltype>") }
-
-  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    filepath = "" and startline = 0 and startcolumn = 0 and endline = 0 and endcolumn = 0
-  }
 }
 
 /** The `void` type. */
@@ -821,10 +711,6 @@ class VoidType extends Type, @primitive {
    */
   string getTypeDescriptor() {
     result = "V"
-  }
-
-  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    filepath = "" and startline = 0 and startcolumn = 0 and endline = 0 and endcolumn = 0
   }
 }
 
@@ -905,13 +791,6 @@ class EnumConstant extends Field {
   predicate isPublic() { any() }
   predicate isStatic() { any() }
   predicate isFinal() { any() }
-}
-
-/**
- * Deprecated; use `t1.commonSubtype(t2)` instead.
- */
-deprecated RefType intersect(RefType t1, RefType t2) {
-  result = t1.commonSubtype(t2)
 }
 
 /**

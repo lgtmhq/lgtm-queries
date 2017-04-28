@@ -37,7 +37,7 @@ class JaxWsEndpoint extends Class {
 }
 
 /**
- * Whether the annotatable has the JaxRs `@Path` annotation.
+ * Holds if the annotatable has the JaxRs `@Path` annotation.
  */
 private predicate hasPathAnnotation(Annotatable annotatable) {
   exists(AnnotationType a |
@@ -108,7 +108,7 @@ class JaxRsResourceClass extends Class {
   }
 
   /**
-   * Whether this class is a "root resource" class
+   * Holds if this class is a "root resource" class
    */
   predicate isRootResource() {
     hasPathAnnotation(this)

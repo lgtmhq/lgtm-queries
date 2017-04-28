@@ -266,6 +266,12 @@ class ControlFlowNode extends @py_flow_node {
         py_exception_successors(this, result)
     }
 
+    /** Gets a successor for this node if no exception is raised. */
+    ControlFlowNode getANormalSuccessor() {
+        py_successors(this, result) and not
+        py_exception_successors(this, result)
+    }
+
     /** Whether the scope may be exited as a result of this node raising an exception */
     predicate isExceptionalExit(Scope s) {
         py_scope_flow(this, s, 1)

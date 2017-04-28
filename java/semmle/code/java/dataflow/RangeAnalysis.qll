@@ -12,23 +12,23 @@
 // permissions and limitations under the License.
 
 /**
- * A library for range analysis.
+ * Provides classes and predicates for range analysis.
  *
  * Currently only supports a very limited set of guards and no actual
  * range inference besides constants.
  */
 
 import java
-import SSA
+private import SSA
 private import DefUse
 
 /** An expression that always has the same integer value. */
 pragma[nomagic]
 private predicate constantIntegerExpr(Expr e, int val) {
   e.(CompileTimeConstantExpr).getIntValue() = val or
-  exists(SsaDefinition ssa, LocalScopeVariable v, Expr src |
-    e = ssa.getAUse(v) and
-    src = ssa.getDefiningExpr(v).(VariableAssign).getSource() and
+  exists(SsaExplicitUpdate v, Expr src |
+    e = v.getAUse() and
+    src = v.getDefiningExpr().(VariableAssign).getSource() and
     constantIntegerExpr(src, val)
   )
 }
@@ -53,15 +53,22 @@ private Expr exprWithIntValue(int i) {
   result.(ConditionalExpr).getFalseExpr() = exprWithIntValue(i)
 }
 
+private predicate ssaUpdateWithUse(SsaUpdate ssa) {
+  exists(SsaVariable ssa2 | ssa2.getAnUltimateDefinition() = ssa and exists(ssa2.getAUse()))
+}
+
 /** A variable with a lower bound. */
 private predicate incLoopVar(LocalScopeVariable v, int bound) {
-  exists(SsaDefinition init |
+  exists(SsaExplicitUpdate init |
     v instanceof LocalVariableDecl and
-    init.getDefiningExpr(v).(VariableAssign).getSource().(ConstantIntegerExpr).getIntValue() = bound and
-    forall(SsaDefinition ssa | ssa != init and ssa.isVariableUpdate(v) |
-      exists(VariableUpdate update | ssa.getDefiningExpr(v) = update |
+    init.getSourceVariable().getVariable() = v and
+    init.getDefiningExpr().(VariableAssign).getSource().(ConstantIntegerExpr).getIntValue() = bound and
+    forall(SsaUpdate ssa | ssa != init and ssa.getSourceVariable().getVariable() = v and ssaUpdateWithUse(ssa) |
+      exists(VariableUpdate update | ssa.(SsaExplicitUpdate).getDefiningExpr() = update |
         update instanceof PreIncExpr or
-        update instanceof PostIncExpr
+        update instanceof PostIncExpr or
+        update.(AssignAddExpr).getRhs().(ConstantIntegerExpr).getIntValue() >= 0 or
+        update.(AssignExpr).getRhs().(ConstantIntegerExpr).getIntValue() >= bound
       )
     )
   )
@@ -75,9 +82,10 @@ class IntComparableExpr extends Expr {
 
   /** An integer that is directly assigned to the expression in case of a variable; or zero. */
   int relevantInt() {
-    exists(SsaDefinition ssa, LocalScopeVariable v |
-      this.(RValue).getVariable() = v and
-      ssa.getDefiningExpr(v).(VariableAssign).getSource() = exprWithIntValue(result)
+    exists(SsaExplicitUpdate ssa, SsaSourceVariable v |
+      this.(RValue) = v.getAnAccess() and
+      ssa.getSourceVariable() = v and
+      ssa.getDefiningExpr().(VariableAssign).getSource() = exprWithIntValue(result)
     ) or
     result = 0
   }

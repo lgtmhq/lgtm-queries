@@ -18,6 +18,7 @@
  * @problem.severity error
  * @tags maintainability
  *       language-features
+ *       external/cwe/cwe-758
  * @precision very-high
  */
 
