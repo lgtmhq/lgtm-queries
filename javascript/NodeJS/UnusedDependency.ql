@@ -19,7 +19,7 @@
  * @problem.severity warning
  * @tags maintainability
  *       frameworks/node.js
- * @precision high
+ * @precision very-high
  */
 
 import javascript

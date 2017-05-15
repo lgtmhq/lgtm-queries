@@ -148,9 +148,11 @@ private predicate firstVarDereferenceInBlock(BasicBlock bb, SsaVariable v, VarAc
 }
 
 /** A variable suspected of being `null`. */
-private predicate varMaybeNull(SsaVariable v) {
+private predicate varMaybeNull(SsaVariable v, string msg, Expr reason) {
   // A variable compared to null might be null.
   exists(Expr e |
+    reason = e and
+    msg = "as suggested by $@ null guard" and
     guardSuggestsVarMaybeNull(e, v) and
     not v instanceof SsaPhiNode and
     not clearlyNotNull(v) and
@@ -163,17 +165,26 @@ private predicate varMaybeNull(SsaVariable v) {
       not exists(MethodAccess ma |
         ma.getAnArgument().getAChildExpr*() = e
       )
-    )
+    ) and
+    // Don't use a guard as reason if there is a null assignment.
+    not v.(SsaExplicitUpdate).getDefiningExpr().(VariableAssign).getSource() = nullExpr()
   ) or
   // A parameter might be null if there is a null argument somewhere.
   exists(Parameter p, Expr arg |
     v.(SsaImplicitInit).isParameterDefinition(p) and
     p.getAnArgument() = arg and
+    reason = arg and
+    msg = "because of $@ null argument" and
     arg = nullExpr() and
     not arg.getEnclosingCallable() instanceof TestMethod
   ) or
   // If the source of a variable is null then the variable may be null.
-  v.(SsaExplicitUpdate).getDefiningExpr().(VariableAssign).getSource() = nullExpr()
+  exists(VariableAssign def |
+    v.(SsaExplicitUpdate).getDefiningExpr() = def and
+    def.getSource() = nullExpr() and
+    reason = def and
+    msg = "because of $@ assignment"
+  )
 }
 
 /** An array or collection that contains at least one element. */
@@ -256,7 +267,7 @@ private predicate leavingFinally(BasicBlock bb1, BasicBlock bb2, boolean normale
 }
 
 private predicate ssaSourceVarMaybeNull(SsaSourceVariable v) {
-  varMaybeNull(v.getAnSsaVariable())
+  varMaybeNull(v.getAnSsaVariable(), _, _)
 }
 
 /**
@@ -303,9 +314,30 @@ private predicate nullVarStep(SsaVariable midssa, BasicBlock mid, boolean midsto
  * for which the SSA variable is suspected of being `null`.
  */
 private predicate varMaybeNullInBlock(SsaVariable ssa, SsaSourceVariable v, BasicBlock bb, boolean storedcompletion) {
-  varMaybeNull(ssa) and bb = ssa.getBasicBlock() and storedcompletion = false and v = ssa.getSourceVariable() or
+  varMaybeNull(ssa, _, _) and bb = ssa.getBasicBlock() and storedcompletion = false and v = ssa.getSourceVariable() or
   exists(BasicBlock mid, SsaVariable midssa, boolean midstoredcompletion |
     varMaybeNullInBlock(midssa, v, mid, midstoredcompletion) and
+    nullVarStep(midssa, mid, midstoredcompletion, ssa, bb, storedcompletion)
+  )
+}
+
+/**
+ * Holds if `v` is a source variable that might reach a potential `null`
+ * dereference.
+ */
+private predicate nullDerefCandidateVariable(SsaSourceVariable v) {
+  exists(SsaVariable ssa, BasicBlock bb |
+    firstVarDereferenceInBlock(bb, ssa, _) and
+    varMaybeNullInBlock(ssa, v, bb, _)
+  )
+}
+
+private predicate varMaybeNullInBlock_origin(SsaVariable origin, SsaVariable ssa, BasicBlock bb, boolean storedcompletion) {
+  nullDerefCandidateVariable(ssa.getSourceVariable()) and
+  varMaybeNull(ssa, _, _) and bb = ssa.getBasicBlock() and storedcompletion = false and origin = ssa
+  or
+  exists(BasicBlock mid, SsaVariable midssa, boolean midstoredcompletion |
+    varMaybeNullInBlock_origin(origin, midssa, mid, midstoredcompletion) and
     nullVarStep(midssa, mid, midstoredcompletion, ssa, bb, storedcompletion)
   )
 }
@@ -314,10 +346,10 @@ private predicate varMaybeNullInBlock(SsaVariable ssa, SsaSourceVariable v, Basi
  * A potential `null` dereference. That is, the first dereference of a variable in a block
  * where it is suspected of being `null`.
  */
-private predicate nullDerefCandidate(SsaSourceVariable v, VarAccess va) {
+private predicate nullDerefCandidate(SsaVariable origin, VarAccess va) {
   exists(SsaVariable ssa, BasicBlock bb |
     firstVarDereferenceInBlock(bb, ssa, va) and
-    varMaybeNullInBlock(ssa, v, bb, _)
+    varMaybeNullInBlock_origin(origin, ssa, bb, _)
   )
 }
 
@@ -367,7 +399,7 @@ private predicate varConditionallyNull(SsaExplicitUpdate v, ConditionBlock cond,
  * This is a condition along the path that found the NPE candidate.
  */
 private predicate interestingCond(SsaSourceVariable npecand, ConditionBlock cond) {
-  nullDerefCandidate(npecand, _) and
+  nullDerefCandidateVariable(npecand) and
   (varMaybeNullInBlock(_, npecand, cond, _) or varConditionallyNull(npecand.getAnSsaVariable(), cond, _)) and
   not cond.getCondition().getAChildExpr*() = npecand.getAnAccess()
 }
@@ -424,18 +456,19 @@ newtype ConditionState =
  * this time restricted based on a given pair of correlated conditions. The `state` argument tracks
  * whether a condition was passed through and what branch was taken.
  */
-private predicate varMaybeNullInBlock_corrCond(SsaVariable ssa, BasicBlock bb, boolean storedcompletion, ConditionBlock cond1, ConditionBlock cond2, boolean inverted, ConditionState state) {
+private predicate varMaybeNullInBlock_corrCond(SsaVariable origin, SsaVariable ssa, BasicBlock bb, boolean storedcompletion, ConditionBlock cond1, ConditionBlock cond2, boolean inverted, ConditionState state) {
   exists(SsaSourceVariable npecand | npecand = ssa.getSourceVariable() |
-    nullDerefCandidate(npecand, _) and correlatedConditions(npecand, cond1, cond2, inverted)
+    nullDerefCandidateVariable(npecand) and correlatedConditions(npecand, cond1, cond2, inverted)
   ) and
   (
     exists(boolean branch | varConditionallyNull(ssa, cond1, branch) and state = FstCondIs(branch)) or
     exists(boolean branch | varConditionallyNull(ssa, cond2, branch) and state = SndCondIs(branch)) or
     not varConditionallyNull(ssa, cond1, _) and not varConditionallyNull(ssa, cond2, _) and state = InitialCondState()
   ) and
-  varMaybeNull(ssa) and bb = ssa.getBasicBlock() and storedcompletion = false or
+  varMaybeNull(ssa, _, _) and bb = ssa.getBasicBlock() and storedcompletion = false and origin = ssa
+  or
   exists(BasicBlock mid, SsaVariable midssa, boolean midstoredcompletion, ConditionState midstate |
-    varMaybeNullInBlock_corrCond(midssa, mid, midstoredcompletion, cond1, cond2, inverted, midstate) and
+    varMaybeNullInBlock_corrCond(origin, midssa, mid, midstoredcompletion, cond1, cond2, inverted, midstate) and
     (
       cond1 = mid and exists(boolean branch | cond1.getTestSuccessor(branch) = bb and midstate = InitialCondState() and state = FstCondIs(branch)) or
       cond1 = mid and exists(boolean branch | cond1.getTestSuccessor(branch) = bb and midstate = state and state = SndCondIs(branch.booleanXor(inverted))) or
@@ -561,9 +594,9 @@ private predicate stepImplies(BasicBlock bb1, BasicBlock bb2, SsaVariable tracks
  * This is again the transitive closure of `nullVarStep` similarly to `varMaybeNullInBlock`, but
  * this time restricted based on a tracking variable.
  */
-private predicate varMaybeNullInBlock_trackVar(SsaVariable ssa, BasicBlock bb, boolean storedcompletion, SsaVariable trackssa, SsaSourceVariable trackvar, TrackVarKind kind, TrackedValue trackvalue) {
+private predicate varMaybeNullInBlock_trackVar(SsaVariable origin, SsaVariable ssa, BasicBlock bb, boolean storedcompletion, SsaVariable trackssa, SsaSourceVariable trackvar, TrackVarKind kind, TrackedValue trackvalue) {
   exists(SsaSourceVariable npecand | npecand = ssa.getSourceVariable() |
-    nullDerefCandidate(npecand, _) and trackingVar(npecand, trackssa, trackvar, kind, _)
+    nullDerefCandidateVariable(npecand) and trackingVar(npecand, trackssa, trackvar, kind, _)
   ) and
   (
     exists(SsaVariable init, boolean isA |
@@ -578,10 +611,10 @@ private predicate varMaybeNullInBlock_trackVar(SsaVariable ssa, BasicBlock bb, b
       isReset(trackssa, trackvar, kind, init, _)
     )
   ) and
-  varMaybeNull(ssa) and bb = ssa.getBasicBlock() and storedcompletion = false
+  varMaybeNull(ssa, _, _) and bb = ssa.getBasicBlock() and storedcompletion = false and origin = ssa
   or
   exists(BasicBlock mid, SsaVariable midssa, boolean midstoredcompletion, TrackedValue trackvalue0 |
-    varMaybeNullInBlock_trackVar(midssa, mid, midstoredcompletion, trackssa, trackvar, kind, trackvalue0) and
+    varMaybeNullInBlock_trackVar(origin, midssa, mid, midstoredcompletion, trackssa, trackvar, kind, trackvalue0) and
     nullVarStep(midssa, mid, midstoredcompletion, ssa, bb, storedcompletion) and
     (
       trackvalue0 = TrackedValueUnknown() or
@@ -615,18 +648,19 @@ private predicate varMaybeNullInBlock_trackVar(SsaVariable ssa, BasicBlock bb, b
 /**
  * A potential `null` dereference that has not been proven safe.
  */
-predicate nullDeref(SsaSourceVariable v, VarAccess va) {
-  nullDerefCandidate(v, va) and
-  exists(SsaVariable ssa, BasicBlock bb |
+predicate nullDeref(SsaSourceVariable v, VarAccess va, string msg, Expr reason) {
+  exists(SsaVariable origin, SsaVariable ssa, BasicBlock bb |
+    nullDerefCandidate(origin, va) and
+    varMaybeNull(origin, msg, reason) and
     ssa.getSourceVariable() = v and
     firstVarDereferenceInBlock(bb, ssa, va) and
     forall(ConditionBlock cond1, ConditionBlock cond2, boolean inverted |
       correlatedConditions(v, cond1, cond2, inverted) |
-      varMaybeNullInBlock_corrCond(ssa, bb, _, cond1, cond2, inverted, _)
+      varMaybeNullInBlock_corrCond(origin, ssa, bb, _, cond1, cond2, inverted, _)
     ) and
     forall(SsaVariable guardssa, SsaSourceVariable guardvar, TrackVarKind kind |
       trackingVar(v, guardssa, guardvar, kind, _) |
-      varMaybeNullInBlock_trackVar(ssa, bb, _, guardssa, guardvar, kind, _)
+      varMaybeNullInBlock_trackVar(origin, ssa, bb, _, guardssa, guardvar, kind, _)
     )
   )
 }

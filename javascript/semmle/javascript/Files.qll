@@ -86,10 +86,6 @@ class Folder extends Container, @folder {
     result = getAChild()
   }
 
-  override string toString() {
-    result = this.getName()
-  }
-
   /** Gets the URL of this folder. */
   string getURL() {
     result = "folder://" + getPath()

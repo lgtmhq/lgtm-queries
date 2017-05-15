@@ -21,7 +21,7 @@
  * @tags correctness
  *       external/cwe/cwe-570
  *       external/cwe/cwe-571
- * @precision high
+ * @precision very-high
  */
 
 import semmle.javascript.flow.Analysis

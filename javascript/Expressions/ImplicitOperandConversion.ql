@@ -20,7 +20,7 @@
  * @tags reliability
  *       readability
  *       external/cwe/cwe-704
- * @precision high
+ * @precision very-high
  */
 
 import javascript

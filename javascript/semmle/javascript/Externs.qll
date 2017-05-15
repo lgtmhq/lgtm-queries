@@ -59,10 +59,6 @@ abstract class ExternalDecl extends ASTNode {
 
   /** Gets the qualified name of this declaration. */
   abstract string getQualifiedName();
-
-  override string toString() {
-    result = getQualifiedName()
-  }
 }
 
 /** Holds if statement `s` has a JSDoc comment with a `@typedef` tag in it. */
@@ -85,8 +81,6 @@ class ExternalTypedef extends ExternalDecl, VariableDeclarator {
   override string getQualifiedName() {
     result = getName()
   }
-
-  override string toString() { result = VariableDeclarator.super.toString() }
 }
 
 /** A variable or function declaration in an externs file. */
@@ -133,8 +127,6 @@ class ExternalGlobalFunctionDecl extends ExternalGlobalDecl, FunctionDeclStmt {
     result = this
   }
 
-  override string toString() { result = FunctionDeclStmt.super.toString() }
-
   /** Gets the JSDoc comment associated with this declaration, if any. */
   override JSDoc getDocumentation() { result = FunctionDeclStmt.super.getDocumentation() }
 }
@@ -156,8 +148,6 @@ class ExternalGlobalVarDecl extends ExternalGlobalDecl, VariableDeclarator {
   override Expr getInit() {
     result = VariableDeclarator.super.getInit()
   }
-
-  override string toString() { result = VariableDeclarator.super.toString() }
 
   /** Gets the JSDoc comment associated with this declaration, if any. */
   override JSDoc getDocumentation() { result = VariableDeclarator.super.getDocumentation() }
@@ -204,8 +194,6 @@ class ExternalMemberDecl extends ExternalVarDecl, ExprStmt {
   ExternalType getDeclaringType() {
     result.getQualifiedName() = getBaseName()
   }
-
-  override string toString() { result = ExprStmt.super.toString() }
 
   /** Gets the documentation comment associated with this declaration, if any. */
   override JSDoc getDocumentation() { result = ExprStmt.super.getDocumentation() }

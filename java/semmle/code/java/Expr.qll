@@ -638,13 +638,30 @@ class LogicExpr extends Expr {
  */
 abstract class ComparisonExpr extends BinaryExpr {
   /**
+   * DEPRECATED: use `getLesserOperand()` instead.
+   */
+  deprecated
+  Expr getLesser() {
+    result = getLesserOperand()
+  }
+
+  /**
+   * DEPRECATED: use `getGreaterOperand()` instead.
+   */
+  deprecated
+  Expr getGreater() {
+    result = getGreaterOperand()
+  }
+
+  /**
    * The lesser operand of this comparison expression.
    *
    * For example, `x` is the lesser operand
    * in `x < 0`, and `0` is the
    * lesser operand in `x > 0`.
    */
-  abstract Expr getLesser();
+  abstract Expr getLesserOperand();
+
   /**
    * The greater operand of this comparison expression.
    *
@@ -652,8 +669,8 @@ abstract class ComparisonExpr extends BinaryExpr {
    * in `x > 0`, and `0` is the
    * greater operand in `x < 0`.
    */
-  abstract Expr getGreater();
-  
+  abstract Expr getGreaterOperand();
+
   /** Holds if this comparison is strict, i.e. `<` or `>`. */
   predicate isStrict() {
     this instanceof LTExpr or this instanceof GTExpr
@@ -667,12 +684,12 @@ class LessThanComparison extends ComparisonExpr {
   }
 
   /** The lesser operand of this comparison expression. */
-  Expr getLesser() {
+  Expr getLesserOperand() {
     result = this.getLeftOperand()
   }
 
   /** The greater operand of this comparison expression. */
-  Expr getGreater() {
+  Expr getGreaterOperand() {
     result = this.getRightOperand()
   }
 }
@@ -684,12 +701,12 @@ class GreaterThanComparison extends ComparisonExpr {
   }
 
   /** The lesser operand of this comparison expression. */
-  Expr getLesser() {
+  Expr getLesserOperand() {
     result = this.getRightOperand()
   }
 
   /** The greater operand of this comparison expression. */
-  Expr getGreater() {
+  Expr getGreaterOperand() {
     result = this.getLeftOperand()
   }
 }

@@ -151,19 +151,14 @@ class SsaSourceVariable extends TSsaSourceVariable {
     result = this.(SsaSourceField).ppQualifier() + "." + getVariable().toString()
   }
 
-  private VarAccess getAFirstLineAccess() {
-    result = this.getAnAccess() and
-    result.getLocation().getStartLine() = min(this.getAnAccess().getLocation().getStartLine())
-  }
-
   /**
    * Gets the first access to `this` in terms of source code location. This is
    * used as the representative location for named fields that otherwise would
    * not have a specific source code location.
    */
   private VarAccess getFirstAccess() {
-    result = this.getAFirstLineAccess() and
-    result.getLocation().getStartColumn() = min(this.getAFirstLineAccess().getLocation().getStartColumn())
+    result = min(this.getAnAccess() as a order by
+      a.getLocation().getStartLine(), a.getLocation().getStartColumn())
   }
 
   Location getLocation() {

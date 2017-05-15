@@ -19,8 +19,9 @@
  * @problem.severity warning
  * @tags maintainability
  *       correctness
+ *       statistical
  *       external/cwe/cwe-783
- * @precision high
+ * @precision very-high
  */
 
 import javascript

@@ -141,7 +141,9 @@ class GuardSanitizer extends UrlRedirectSanitizer {
       )
       or
       // or there is a non-refining guard that dominates this use
-      isDominatedBySanitizer(this.(VarUse).getBasicBlock(), v)
+      exists (ConditionGuardNode guard |
+        guardSanitizes(guard, v) and guard.dominates(this.(VarUse).getBasicBlock())
+      )
     )
   }
 }
@@ -171,13 +173,4 @@ private predicate sanitizes(Expr e, boolean outcome, SsaVariable v) {
  */
 private predicate guardSanitizes(ConditionGuardNode guard, SsaVariable v) {
   sanitizes(guard.getTest(), guard.getOutcome(), v)
-}
-
-/**
- * Holds if `bb` is directly or indirectly guarded by an expression that sanitizes
- * `v` for the purposes of URL redirection.
- */
-private predicate isDominatedBySanitizer(ReachableBasicBlock bb, SsaVariable v) {
-  guardSanitizes(bb.getANode(), v) or
-  isDominatedBySanitizer(bb.getImmediateDominator(), v)
 }

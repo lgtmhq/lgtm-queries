@@ -72,12 +72,12 @@ predicate uselessTest(ConditionNode s1, BinaryExpr test, boolean testIsTrue) {
       )
       or
       exists(ComparisonExpr comp | comp = cond |
-        comp.getLesser() = v.getAnAccess() and
+        comp.getLesserOperand() = v.getAnAccess() and
           (condIsTrue = true and boundKind.isUpper() and (if comp.isStrict() then bound = k1-1 else bound = k1)
           or
           condIsTrue = false and boundKind.isLower() and (if comp.isStrict() then bound = k1 else bound = k1+1))
         or
-        comp.getGreater() = v.getAnAccess() and
+        comp.getGreaterOperand() = v.getAnAccess() and
           (condIsTrue = true and boundKind.isLower() and (if comp.isStrict() then bound = k1+1 else bound = k1)
           or
           condIsTrue = false and boundKind.isUpper() and (if comp.isStrict() then bound = k1 else bound = k1-1))
@@ -94,12 +94,12 @@ predicate uselessTest(ConditionNode s1, BinaryExpr test, boolean testIsTrue) {
       )
       or
       exists(ComparisonExpr comp | comp = test |
-        comp.getLesser() = v.getAnAccess() and
+        comp.getLesserOperand() = v.getAnAccess() and
           (boundKind.providesLowerBound() and testIsTrue = false and (k2 < bound or k2 = bound and comp.isStrict())
           or
           boundKind.providesUpperBound() and testIsTrue = true and (bound < k2 or bound = k2 and not comp.isStrict()))
         or
-        comp.getGreater() = v.getAnAccess() and
+        comp.getGreaterOperand() = v.getAnAccess() and
           (boundKind.providesLowerBound() and testIsTrue = true and (k2 < bound or k2 = bound and not comp.isStrict())
           or
           boundKind.providesUpperBound() and testIsTrue = false and (bound < k2 or bound = k2 and comp.isStrict()))

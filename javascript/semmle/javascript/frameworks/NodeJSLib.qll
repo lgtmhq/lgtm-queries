@@ -117,15 +117,12 @@ module NodeJSLib {
   /**
    * A call to `url.parse` or `querystring.parse`.
    */
-  private class UrlParsingFlowTarget extends TaintFlowTarget, CallExpr {
+  private class UrlParsingFlowTarget extends TaintFlowTarget, @callexpr {
     override DataFlowNode getATaintSource() {
       exists (ModuleInstance m |
         m.getPath() = "url" or m.getPath() = "querystring" |
-        this = m.getAMethodCall("parse") and result = getArgument(0)
+        this = m.getAMethodCall("parse") and result = this.(CallExpr).getArgument(0)
       )
     }
-
-    override string toString() { result = CallExpr.super.toString() }
-    override Location getLocation() { result = CallExpr.super.getLocation() }
   }
 }

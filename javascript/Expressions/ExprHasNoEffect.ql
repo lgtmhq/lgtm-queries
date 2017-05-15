@@ -21,12 +21,13 @@
  *       correctness
  *       external/cwe/cwe-480
  *       external/cwe/cwe-561
- * @precision high
+ * @precision very-high
  */
 
 import javascript
 import DOMProperties
 import semmle.javascript.frameworks.xUnit
+import semmle.javascript.RestrictedLocations
 
 /**
  * Holds if `e` appears in a syntactic context where its value is discarded.
@@ -132,4 +133,4 @@ where e.isPure() and inVoidContext(e) and
       // exclude common patterns that are most likely intentional
       not isIndirectEval(_, e) and
       not isReceiverSuppressingCall(_, e, _)
-select e, "This expression has no effect."
+select (FirstLineOf)e, "This expression has no effect."

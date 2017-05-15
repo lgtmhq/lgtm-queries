@@ -412,6 +412,15 @@ class GuardControlFlowNode extends SyntheticControlFlowNode, @guard_node {
     guard_node(this, _, result)
   }
 
+  /**
+   * Holds if this guard dominates basic block `bb`, that is, the guard
+   * is known to hold at `bb`.
+   */
+  predicate dominates(ReachableBasicBlock bb) {
+    this = bb.getANode() or
+    dominates(bb.getImmediateDominator())
+  }
+
   override StmtContainer getContainer() {
     result = getTest().getContainer()
   }

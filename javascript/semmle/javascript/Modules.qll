@@ -105,10 +105,6 @@ abstract class Module extends TopLevel {
      )
     )
   }
-
-  override string toString() {
-    result = getName()
-  }
 }
 
 /**

@@ -533,12 +533,14 @@ private class AnalyzedVarDef extends VarDef {
  */
 private class AnalyzedIIFEParameter extends AnalyzedVarDef, @vardecl {
   AnalyzedIIFEParameter() {
-    exists (ImmediatelyInvokedFunctionExpr iife |
-      this = iife.getAParameter() |
-      // we cannot track flow into rest parameters
+    exists (ImmediatelyInvokedFunctionExpr iife, int parmIdx |
+      this = iife.getParameter(parmIdx) |
+      // we cannot track flow into rest parameters...
       not this.(Parameter).isRestParameter() and
-      // we cannot track flow through `Function.prototype.apply`
-      iife.getInvocationKind() != "apply"
+      // ...nor flow out of spread arguments
+      exists (int argIdx | argIdx = parmIdx + iife.getArgumentOffset() |
+        not iife.isSpreadArgument([0..argIdx])
+      )
     )
   }
 
@@ -812,7 +814,8 @@ private predicate nodeBuiltins(Variable var, AbstractValue av) {
   exists (string name | name = var.getName() |
     name = "require" and av = TIndefiniteAbstractValue("heap") or
 
-    (name = "module" or name = "exports") and av = TAbstractOtherObject() or
+    (name = "module" or name = "exports" or name = "arguments") and
+    av = TAbstractOtherObject() or
 
     (name = "__filename" or name = "__dirname") and
     (av = TAbstractNumString() or av = TAbstractOtherString())  )

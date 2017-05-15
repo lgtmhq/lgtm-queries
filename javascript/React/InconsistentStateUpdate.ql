@@ -20,7 +20,7 @@
  * @problem.severity warning
  * @tags reliability
  *       frameworks/react
- * @precision high
+ * @precision very-high
  */
 
 import semmle.javascript.frameworks.React

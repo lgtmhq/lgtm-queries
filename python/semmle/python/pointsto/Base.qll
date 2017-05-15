@@ -393,7 +393,10 @@ ControlFlowNode safe_return_node(PyFunctionObject func) {
         result = pvar.getAUse()
     ) and
     // No alternatives
-    result.strictlyDominates(func.getFunction().getReturnNode())
+    not exists(ControlFlowNode branch |
+        branch.getScope() = func.getFunction() and
+        branch.isBranch()
+    )
 }
 
 predicate is_parameter_default(ControlFlowNode def) {
