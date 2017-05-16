@@ -1468,15 +1468,47 @@ class ImmediatelyInvokedFunctionExpr extends Function {
   }
 
   /**
+   * Gets the `i`th argument of this IIFE.
+   */
+  Expr getArgument(int i) {
+    exists (InvokeExpr invk | iife(invk, this, _) |
+      result = invk.getArgument(i)
+    )
+  }
+
+  /**
+   * Holds if the `i`th argument of this IIFE is a spread element.
+   */
+  predicate isSpreadArgument(int i) {
+    getArgument(i).stripParens() instanceof SpreadElement
+  }
+
+  /**
+   * Gets the offset of argument positions relative to parameter
+   * positions: for direct IIFEs the offset is zero, for IIFEs
+   * using `Function.prototype.call` the offset is one, and for
+   * IIFEs using `Function.prototype.apply` the offset is not defined.
+   */
+  int getArgumentOffset() {
+    exists (string kind | iife(_, this, kind) |
+      kind = "direct" and result = 0 or
+      kind = "call" and result = 1
+    )
+  }
+
+  /**
    * Holds if `p` is a parameter of this IIFE and `arg` is
    * the corresponding argument.
+   *
+   * Note that rest parameters do not have corresponding arguments;
+   * conversely, arguments after a spread element do not have a corresponding
+   * parameter.
    */
   predicate argumentPassing(SimpleParameter p, Expr arg) {
-    exists (int i, InvokeExpr invk, string kind |
-      p = getParameter(i) and not p.isRestParameter() and
-      iife(invk, this, kind) |
-      kind = "direct" and arg = invk.getArgument(i) or
-      kind = "call" and arg = invk.getArgument(i+1)
+    exists (int parmIdx, int argIdx |
+      p = getParameter(parmIdx) and not p.isRestParameter() and
+      argIdx = parmIdx + getArgumentOffset() and arg = getArgument(argIdx) and
+      not isSpreadArgument([0..argIdx])
     )
   }
 }

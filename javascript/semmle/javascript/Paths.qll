@@ -22,8 +22,10 @@ import Expr
  * Internal representation of paths as lists of components.
  */
 private newtype TPath =
-  /** The path of the file system root. */
-  TRootPath()
+  /** A root path. */
+  TRootPath(string root) {
+    root = any(Folder f | not exists(f.getParent())).getPath()
+  }
   or
   /** A path of the form `<parent>/<component>`.*/
   TConsPath(Path parent, string component) {
@@ -46,7 +48,7 @@ private newtype TPath =
  * the empty path is represented as the empty string `""`.
  */
 private string pp(TPath p) {
-  p = TRootPath() and result = ""
+  p = TRootPath(result + "/")
   or
   exists (TPath parent, string component | p = TConsPath(parent, component) |
     result = pp(parent) + "/" + component
@@ -77,7 +79,7 @@ class Path extends TPath {
  */
 private class RootPath extends Path, TRootPath {
   override string toString() {
-    result = "/"
+    this = TRootPath(result)
   }
 }
 

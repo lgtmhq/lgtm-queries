@@ -273,7 +273,8 @@ private class InterProcFlow extends DataFlowNode, @expr {
     this instanceof ThisExpr or
     this instanceof SuperExpr or
     this instanceof NewTargetExpr or
-    this instanceof FunctionBindExpr
+    this instanceof FunctionBindExpr or
+    this instanceof TaggedTemplateExpr
   }
 
   override predicate isIncomplete(DataFlowIncompleteness cause) { cause = "call" }

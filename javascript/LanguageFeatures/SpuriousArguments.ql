@@ -20,7 +20,7 @@
  *       correctness
  *       language-features
  *       external/cwe/cwe-685
- * @precision high
+ * @precision very-high
  */
 
 import javascript

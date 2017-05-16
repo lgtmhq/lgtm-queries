@@ -22,7 +22,7 @@
  *       correctness
  *       external/cwe/cwe-480
  *       external/cwe/cwe-561
- * @precision high
+ * @precision very-high
  */
 
 import Clones

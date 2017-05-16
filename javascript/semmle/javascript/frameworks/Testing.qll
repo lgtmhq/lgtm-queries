@@ -28,13 +28,13 @@ abstract class Test extends Locatable {
 /**
  * A QUnit test, that is, an invocation of `QUnit.test`.
  */
-class QUnitTest extends Test, MethodCallExpr {
+class QUnitTest extends Test, @callexpr {
   QUnitTest() {
-    getReceiver().(VarAccess).getName() = "QUnit" and
-    getMethodName() = "test"
+    exists (MethodCallExpr mce | mce = this |
+      mce.getReceiver().(VarAccess).getName() = "QUnit" and
+      mce.getMethodName() = "test"
+    )
   }
-
-  override string toString() { result = MethodCallExpr.super.toString() }
 }
 
 /**
@@ -42,14 +42,14 @@ class QUnitTest extends Test, MethodCallExpr {
  * that is, an invocation of a function named `it` where the first argument
  * is a string and the second argument is a function.
  */
-class BDDTest extends Test, CallExpr {
+class BDDTest extends Test, @callexpr {
   BDDTest() {
-    getCallee().(VarAccess).getName() = "it" and
-    exists(getArgument(0).getStringValue()) and
-    getArgument(1).(DataFlowNode).getALocalSource() instanceof Function
+    exists (CallExpr call | call = this |
+      call.getCallee().(VarAccess).getName() = "it" and
+      exists(call.getArgument(0).getStringValue()) and
+      call.getArgument(1).(DataFlowNode).getALocalSource() instanceof Function
+    )
   }
-
-  override string toString() { result = CallExpr.super.toString() }
 }
 
 /**

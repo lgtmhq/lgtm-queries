@@ -12,20 +12,21 @@
 // permissions and limitations under the License.
 
 /**
- * @name Use of externally-controlled format string
- * @description Using external input in format strings can lead to exceptions or information leaks.
+ * @name Missing format argument
+ * @description A format call with an insufficient number of arguments causes
+ *              an 'IllegalFormatException'.
  * @kind problem
  * @problem.severity error
- * @tags security
- *       external/cwe/cwe-134
+ * @tags correctness
+ *       external/cwe/cwe-685
  */
-
 import java
-import semmle.code.java.security.DataFlow
 import semmle.code.java.StringFormat
 
-from RemoteUserInput source, StringFormat formatCall
-where source.flowsTo(formatCall.getFormatArgument())
-select formatCall.getFormatArgument(),
-  "$@ flows to here and is used in a format string.",
-  source, "User-provided value"
+from FormattingCall fmtcall, FormatString fmt, int refs, int args
+where
+  fmtcall.getAFormatString() = fmt and
+  refs = fmt.getMaxFmtSpecIndex() and
+  args = fmtcall.getVarargsCount() and
+  refs > args
+select fmtcall, "This format call refers to " + refs + " argument(s) but only supplies " + args + " argument(s)."

@@ -19,7 +19,7 @@
  * @problem.severity warning
  * @tags maintainability
  *       external/cwe/cwe-563
- * @precision high
+ * @precision very-high
  */
 
 import javascript
@@ -77,6 +77,12 @@ where deadStoreOfLocal(dead, v) and
       exists(v.getAnAccess()) and
       // don't flag function expressions
       not exists (FunctionExpr fe | dead = fe.getId()) and
+      // don't flag function declarations nested inside blocks or other compound statements;
+      // their meaning is only partially specified by the standard
+      not exists (FunctionDeclStmt fd, Function outer |
+        dead = fd.getId() and outer = fd.getEnclosingContainer() |
+        not fd = outer.getABodyStmt()
+      ) and
       // don't flag overwrites with `null` or `undefined`
       not isNullOrUndef(dead.getSource()) and
       // don't flag default inits that are later overwritten

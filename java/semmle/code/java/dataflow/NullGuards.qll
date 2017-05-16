@@ -208,10 +208,10 @@ private Method customNullGuard(int index, boolean retval, boolean isnull) {
 /**
  * `guard` is a guard expression that suggests that `v` might be null.
  *
- * This is equivalent to `guard = nullGuard(v, _, true)` but excludes custom
+ * This is equivalent to `guard = basicNullGuard(sameValue(v, _), _, true)` but excludes custom
  * null guards, as they might be invoked solely for their side effects.
  */
 predicate guardSuggestsVarMaybeNull(Expr guard, SsaVariable v) {
-  guard = nullGuard(v, _, true) and
+  guard = basicNullGuard(sameValue(v, _), _, true) and
   not guard.(MethodAccess).getMethod().getSourceDeclaration() = customNullGuard(_, _, true)
 }

@@ -17,6 +17,7 @@
  * @kind problem
  * @tags reliability
  *       maintainability
+ *       non-local
  * @problem.severity error
  * @sub-severity low
  * @precision high

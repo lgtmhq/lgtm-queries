@@ -525,7 +525,7 @@ class DataPreservingMethod extends Method {
       this.getName().matches("read%")
     ) or
     (
-      this.getDeclaringType().getQualifiedName().matches("StringWriter") and
+      this.getDeclaringType().getQualifiedName().matches("%StringWriter") and
       this.getName() = "toString"
     ) or
     (

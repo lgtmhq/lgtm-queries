@@ -21,6 +21,7 @@
  * @metricType file
  * @metricAggregate avg sum max
  * @tags testability
+ *       duplicate-code
  */
 
 import external.CodeDuplication

@@ -349,6 +349,10 @@ class ControlFlowNode extends @py_flow_node {
         )
     }
 
+    predicate isBranch() {
+        py_true_successors(this, _) or py_false_successors(this, _)
+    }
+
 }
 
 
