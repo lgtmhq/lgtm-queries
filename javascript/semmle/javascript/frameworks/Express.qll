@@ -187,4 +187,17 @@ module Express {
       headerValue = getArgument(1)
     }
   }
+
+  /**
+   * An argument passed to the `send` method of an HTTP response object.
+   */
+  private class ResponseBody extends HTTP::ResponseBody {
+    ResponseBody() {
+      exists (MethodCallExpr mce |
+        isResponse(mce.getReceiver()) and
+        mce.getMethodName() = "send" and
+        this = mce.getArgument(0)
+      )
+    }
+  }
 }

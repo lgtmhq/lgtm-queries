@@ -17,6 +17,7 @@
  *              are stored in a hashing data structure, can lead to unexpected results.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  */

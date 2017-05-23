@@ -48,8 +48,7 @@ predicate uncontrolledStringBuilderQuery(StringBuilderVar sbv, Expr uncontrolled
   or exists (MethodAccess quoteAppend, MethodAccess uncontrolledAppend |
     sbv.getAnAppend() = quoteAppend
     and endsInQuote(quoteAppend.getArgument(0))
-    and uncontrolledAppend = quoteAppend.getEnclosingStmt().getASuccessor().(ExprStmt).getExpr()
-    and sbv.getAnAppend() = uncontrolledAppend
+    and sbv.getNextAppend(quoteAppend) = uncontrolledAppend
     and uncontrolled = uncontrolledAppend.getArgument(0)
     and not controlledString(uncontrolled)
   )

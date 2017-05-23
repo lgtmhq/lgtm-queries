@@ -16,6 +16,7 @@
  * @description Accessing paths influenced by users can allow an attacker to access unexpected resources.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-022
  *       external/cwe/cwe-023

@@ -18,6 +18,7 @@
  *              looping.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags correctness
  *       external/cwe/cwe-835
  */

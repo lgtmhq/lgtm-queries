@@ -16,7 +16,8 @@
  * @description Reading from a file which is set as world writable is dangerous because
  *              the file may be modified or removed by external actors.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-732
  */

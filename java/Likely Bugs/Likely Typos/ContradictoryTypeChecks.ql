@@ -18,6 +18,7 @@
  *              indicate a logic error.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags correctness
  *       logic
  */

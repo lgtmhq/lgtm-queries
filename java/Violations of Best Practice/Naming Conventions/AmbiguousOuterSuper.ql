@@ -17,6 +17,7 @@
  *              superclass and an outer class is ambiguous.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags reliability
  *       readability
  */

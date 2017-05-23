@@ -16,7 +16,8 @@
  * @description Casting the result of an integer multiplication to type 'long' instead of casting
  *              before the multiplication may cause overflow.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
+ * @precision very-high
  * @tags reliability
  *       security
  *       correctness

@@ -63,4 +63,6 @@ class TemplateElement extends Expr, @templateelement {
   }
 
   override predicate isImpure() { none() }
+
+  override string getStringValue() { result = getValue() }
 }

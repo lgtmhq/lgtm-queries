@@ -16,6 +16,7 @@
  * @description Testing whether a derived type is an instance of its base type is unnecessary.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  *       language-features
  *       external/cwe/cwe-561

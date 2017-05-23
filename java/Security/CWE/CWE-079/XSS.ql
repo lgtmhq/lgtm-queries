@@ -17,6 +17,7 @@
  *              allows for a cross-site scripting vulnerability.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-079
  */

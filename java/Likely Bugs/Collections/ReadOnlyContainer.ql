@@ -16,6 +16,7 @@
  * @description Querying the contents of a collection or map that is never initialized is not normally useful.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       maintainability
  *       useless-code

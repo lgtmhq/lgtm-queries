@@ -16,7 +16,8 @@
  * @description Using user-controlled data in a permissions check may result in inappropriate
  *              permissions being granted.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-807
  *       external/cwe/cwe-290

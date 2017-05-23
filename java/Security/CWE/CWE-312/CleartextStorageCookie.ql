@@ -15,7 +15,8 @@
  * @name Cleartext storage of sensitive information in cookie
  * @description Storing sensitive information in cleartext can expose it to an attacker.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-315
  */

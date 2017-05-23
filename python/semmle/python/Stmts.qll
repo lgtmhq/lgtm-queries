@@ -143,11 +143,11 @@ class ExceptStmt extends ExceptStmt_ {
         result = this.getName()
         or
         result = this.getType()
-     }
+    }
 
     Stmt getASubStatement() {
         result = this.getAStmt()
-     }
+    }
 
 }
 
@@ -387,7 +387,12 @@ class Try extends Try_ {
         result = this.getAStmt() or
         result = this.getAFinalstmt() or
         result = this.getAnOrelse()
-     }
+    }
+
+    ExceptStmt getHandler(int i) {
+        result =Try_.super.getHandler(i)
+    }
+
 }
 
 /** A while statement, such as `while parrot_resting():` */

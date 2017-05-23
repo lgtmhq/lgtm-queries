@@ -18,6 +18,7 @@
  *              the corresponding container element type is unlikely to return 'true'.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       logic

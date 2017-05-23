@@ -1429,34 +1429,32 @@ class LegacyLetExpr extends Expr, @legacy_letexpr {
   }
 }
 
-/**
- * Holds if `invk` is an immediate invocation of function expression `f`,
- * where `kind` is a string describing how `invk` invokes `f`:
- *
- * - if `invk` is a direct function call, `kind` is `"direct"`;
- * - if `invk` is a reflective function call through `call` or `apply`,
- *   `kind` is `"call"` or `"apply"`, respectively.
- */
-private predicate iife(InvokeExpr invk, Function f, string kind) {
-  // direct call
-  f = invk.getCallee().stripParens() and kind = "direct" or
-  // reflective call
-  exists (MethodCallExpr mce | mce = invk |
-    f = mce.getReceiver().stripParens() and
-    kind = mce.getMethodName() and
-    (kind = "call" or kind = "apply")
-  )
-}
-
 /** An immediately invoked function expression (IIFE). */
 class ImmediatelyInvokedFunctionExpr extends Function {
+  /** The invocation expression of this IIFE. */
+  InvokeExpr invk;
+
+  /**
+   * The kind of invocation by which this IIFE is invoked: `"call"`
+   * for a direct function call, `"call"` or `"apply"` for a reflective
+   * invocation through `call` or `apply`, respectively.
+   */
+  string kind;
+
   ImmediatelyInvokedFunctionExpr() {
-    iife(_, this, _)
+    // direct call
+    this = invk.getCallee().stripParens() and kind = "direct" or
+    // reflective call
+    exists (MethodCallExpr mce | mce = invk |
+      this = mce.getReceiver().stripParens() and
+      kind = mce.getMethodName() and
+      (kind = "call" or kind = "apply")
+    )
   }
 
   /** Gets the invocation of this IIFE. */
   InvokeExpr getInvocation() {
-    iife(result, this, _)
+    result = invk
   }
 
   /**
@@ -1464,16 +1462,14 @@ class ImmediatelyInvokedFunctionExpr extends Function {
    * (one of `"direct"`, `"call"` or `"apply"`).
    */
   string getInvocationKind() {
-    iife(_, this, result)
+    result = kind
   }
 
   /**
    * Gets the `i`th argument of this IIFE.
    */
   Expr getArgument(int i) {
-    exists (InvokeExpr invk | iife(invk, this, _) |
-      result = invk.getArgument(i)
-    )
+    result = invk.getArgument(i)
   }
 
   /**
@@ -1490,10 +1486,8 @@ class ImmediatelyInvokedFunctionExpr extends Function {
    * IIFEs using `Function.prototype.apply` the offset is not defined.
    */
   int getArgumentOffset() {
-    exists (string kind | iife(_, this, kind) |
-      kind = "direct" and result = 0 or
-      kind = "call" and result = 1
-    )
+    kind = "direct" and result = 0 or
+    kind = "call" and result = 1
   }
 
   /**

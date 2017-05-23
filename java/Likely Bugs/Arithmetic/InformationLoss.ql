@@ -18,6 +18,7 @@
  *              numeric errors such as overflows.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags reliability
  *       security
  *       external/cwe/cwe-190

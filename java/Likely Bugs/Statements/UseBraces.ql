@@ -17,6 +17,7 @@
  *              difficult to see which statements are within its scope.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags changeability
  *       correctness
  *       logic

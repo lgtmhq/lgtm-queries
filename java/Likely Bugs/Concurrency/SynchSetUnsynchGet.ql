@@ -18,6 +18,7 @@
  *              for the object.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       concurrency

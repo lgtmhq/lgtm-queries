@@ -18,6 +18,7 @@
  *              cause an exception.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags reliability
  *       readability
  *       external/cwe/cwe-691

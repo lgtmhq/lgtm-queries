@@ -16,7 +16,8 @@
  * @description Using a boxed type for a variable that is never assigned 'null'
  *              hinders readability because it implies that 'null' is a potential value.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
+ * @precision very-high
  * @tags readability
  *       types
  */

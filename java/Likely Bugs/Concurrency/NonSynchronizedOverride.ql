@@ -17,6 +17,7 @@
  *              not synchronized, the thread-safety of the subclass may be broken.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       concurrency

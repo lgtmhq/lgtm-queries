@@ -45,6 +45,7 @@ predicate referencedInXmlFile(Field f) {
  * suggesting that it might reference `f`.
  */
 private XMLElement elementReferencingField(Field f) {
+  exists(elementReferencingType(f.getDeclaringType())) and
   result.getAnAttribute().getValue() = f.getName()
 }
 
@@ -88,12 +89,9 @@ private ReflectiveClassIdentifier pointsToReflectiveClassIdentifier(Expr expr) {
     result = expr or
     // Or if this is an access of a variable which was defined as an expression creating a `Class<T>`,
     // return the inferred `T` from the definition expression.
-    exists(VarAccess va, LocalVariableDecl v, DefStmt def, UseStmt use, VariableAssign assign |
-      va = expr.(VarAccess) and
-      v = va.getVariable() and
-      defUsePair(v, def, use) and
-      va = use.getAUse(v) and
-      assign = def.getADef(v) and
+    exists(RValue use, VariableAssign assign |
+      use = expr and
+      defUsePair(assign, use) and
       // The source of the assignment must be a `ReflectiveClassIdentifier`.
       result = assign.getSource()
     )

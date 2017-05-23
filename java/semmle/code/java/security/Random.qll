@@ -27,42 +27,49 @@ class GetRandomData extends MethodAccess {
   }
 }
 
-predicate isSeeded(Stmt s, Variable v) {
-  exists(Stmt pred | isSeeded(pred, v) | pred.getASuccessor() = s)
+predicate isSeeded(RValue use) {
+  isSeeding(_, use)
   or
-  exists(Expr e | e.getEnclosingStmt() = s | 
-    isSeeding(v, e, _)
-    or
-    e.(GetRandomData).getQualifier() = v.getAnAccess()
+  exists(GetRandomData da, RValue seeduse |
+    da.getQualifier() = seeduse and
+    useUsePair(seeduse, use)
   )
 }
 
-predicate safelySeeded(Stmt s, Variable v) {
-  exists(Stmt pred | safelySeeded(pred, v) | pred.getASuccessor() = s)
-  or
-  exists(Expr e, Expr arg | e.getEnclosingStmt() = s |
-    isSeeding(v, e, arg)
+predicate safelySeeded(RValue use) {
+  exists(Expr arg |
+    isSeeding(arg, use)
     and forall(FlowSource p | p.flowsToReverse(arg) | not p instanceof PredictableSeedExpr)
   )
   or
-  exists(GetRandomData da |
-    da.getQualifier() = v.getAnAccess() and da.getEnclosingStmt() = s |
-    not exists(Stmt pred | pred.getASuccessor() = s | isSeeded(pred, v))
+  exists(GetRandomData da, RValue seeduse |
+    da.getQualifier() = seeduse and useUsePair(seeduse, use) |
+    not exists(RValue prior | useUsePair(prior, seeduse) | isSeeded(prior))
   )
 }
 
-predicate unsafelySeeded(Stmt s, Variable v, PredictableSeedExpr source) {
-  exists(Expr e | isSeedingSource(v, e, _, source) and e.getEnclosingStmt().getASuccessor*() = s) and
-  not safelySeeded(s, v)
+predicate unsafelySeeded(RValue use, PredictableSeedExpr source) {
+  isSeedingSource(_, use, source) and
+  not safelySeeded(use)
 }
 
-predicate isSeeding(Variable v, Expr e, Expr arg) {
-  (e = v.getAnAssignedValue() and isSeedingConstruction(e, arg)) or
-  (e.(MethodAccess).getQualifier() = v.getAnAccess() and isRandomSeeding(e, arg))
+predicate isSeeding(Expr arg, RValue use) {
+  exists(Expr e, VariableAssign def |
+    def.getSource() = e and
+    isSeedingConstruction(e, arg)
+    |
+    defUsePair(def, use) or
+    def.getDestVar().(Field).getAnAccess() = use
+  ) or
+  exists(Expr e, RValue seeduse |
+    e.(MethodAccess).getQualifier() = seeduse and
+    isRandomSeeding(e, arg) and
+    useUsePair(seeduse, use)
+  )
 }
 
-predicate isSeedingSource(Variable v, Expr e, Expr arg, FlowSource source) {
-  isSeeding(v, e, arg) and
+predicate isSeedingSource(Expr arg, RValue use, FlowSource source) {
+  isSeeding(arg, use) and
   source.flowsToReverse(arg)
 }
 

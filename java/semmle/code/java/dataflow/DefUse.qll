@@ -12,10 +12,8 @@
 // permissions and limitations under the License.
 
 /**
- * Statement-level def-use pairs. This may be inaccurate for multiple definitions
- * of variables in the same statement or multiple uses.
- *
- * DEPRECATED: use SSA library instead.
+ * Library for def-use and use-use pairs. Built on top of the SSA library for
+ * maximal precision.
  */
 
 import java
@@ -52,170 +50,48 @@ class VariableUpdate extends Expr {
 }
 
 /**
- * Utility class for defs or uses.
+ * Holds if `use1` and `use2` form a use-use-pair of the same SSA variable,
+ * that is, the value read in `use1` can reach `use2` without passing through
+ * any SSA definition of the variable.
  *
- * DEPRECATED: use SSA library instead.
+ * This is the transitive closure of `adjacentUseUseSameVar`.
  */
-deprecated abstract class DefOrUseStmt extends Stmt {}
-
-/** A statement containing one or more definitions of variables.
- *
- * DEPRECATED: use SSA library instead.
- */
-deprecated
-class DefStmt extends DefOrUseStmt {
-  DefStmt() {
-    definition(_, this)
-  }
-  
-  /** A definition of `v` in this statement. */
-  VariableAssign getADef(Variable v) {
-    result.getDestVar() = v and result.getEnclosingStmt() = this
-  }
-  
-  /** A variable that is defined in this statement. */
-  Variable getADefinedVar() {
-    exists(VariableAssign e | e.getEnclosingStmt() = this | result = e.getDestVar())
-  }
+predicate useUsePairSameVar(RValue use1, RValue use2) {
+  adjacentUseUseSameVar+(use1, use2)
 }
 
 /**
- * A statement containing one or more uses of variables.
+ * Holds if `use1` and `use2` form a use-use-pair of the same
+ * `SsaSourceVariable`, that is, the value read in `use1` can reach `use2`
+ * without passing through any SSA definition of the variable except for phi
+ * nodes and uncertain implicit updates.
  *
- * DEPRECATED: use SSA library instead.
+ * This is the transitive closure of `adjacentUseUse`.
  */
-deprecated
-class UseStmt extends DefOrUseStmt {
-  UseStmt() {
-    useOfVar(_, this)
-  }
-  
-  /** A use of `v` in this statement. */
-  deprecated VarAccess getAUse(Variable v) {
-    result.getVariable() = v and result.getEnclosingStmt() = this
-  }
-  
-  /** A variable that is used in this statement. */
-  deprecated Variable getAUsedVar() {
-    exists(RValue e | e.getEnclosingStmt() = this | result = e.getVariable())
-  }
-}
-
-deprecated
-cached
-predicate useOfVar(Variable v, Stmt s) {
-  not v instanceof Field and
-  exists(RValue r | r.getEnclosingStmt() = s | r.getVariable() = v)
-}
-
-deprecated
-cached
-predicate definition(Variable v, Stmt s) {
-  not v instanceof Field and
-  exists(VariableAssign a | a.getEnclosingStmt() = s | a.getDestVar() = v)
+predicate useUsePair(RValue use1, RValue use2) {
+  adjacentUseUse+(use1, use2)
 }
 
 /**
- * Does the definition of `v` in `def` reach `use` along some control flow path
- * without crossing another definition of `v`?
+ * Holds if there exists a path from `def` to `use` without passing through another
+ * `VariableUpdate` of the `LocalScopeVariable` that they both refer to.
  *
- * DEPRECATED: use SSA library instead.
+ * Other paths may also exist, so the SSA variables in `def` and `use` can be different.
  */
-deprecated
-cached
-predicate definitionReaches(Variable v, DefStmt def, Stmt use) {
-  definition(v, def) and 
-  (
-    use = def.getASuccessor()
-    or
-    exists(Stmt mid | 
-      // def reaches here
-      definitionReaches(v, def, mid) and
-      // not a redefinition of v
-      not definition(v, mid) and
-      // use is the successor
-      use = mid.getASuccessor()
-    )
+predicate defUsePair(VariableUpdate def, RValue use) {
+  exists (SsaVariable v |
+    v.getAUse() = use and v.getAnUltimateDefinition().(SsaExplicitUpdate).getDefiningExpr() = def
   )
 }
 
 /**
- * Is this `use` statement a possible use of the value for `v` defined
- * in `def`?
+ * Holds if there exists a path from the entry-point of the callable to `use` without
+ * passing through a `VariableUpdate` of the parameter `p` that `use` refers to.
  *
- * DEPRECATED: use `defUsePair(VariableUpdate def, RValue use)` instead.
+ * Other paths may also exist, so the SSA variables can be different.
  */
-deprecated
-predicate defUsePair(Variable v, DefStmt def, UseStmt use) {
-  defUsePair(def.getADef(v), use.getAUse(v))
-}
-
-/**
- * Does the use of `v` in `use2` follow `use1` along some control flow path
- * without crossing a definition of `v`?
- *
- * DEPRECATED: use SSA library instead.
- */
-deprecated
-cached
-predicate useReaches(Variable v, UseStmt use1, Stmt use2) {
-  useOfVar(v, use1) and 
-  (
-    use2 = use1.getASuccessor()
-    or
-    exists(Stmt mid |
-      // use reaches here
-      useReaches(v, use1, mid) and
-      // not a redefinition of v
-      not definition(v, mid) and
-      // use2 is the successor
-      use2 = mid.getASuccessor()
-    )
+predicate parameterDefUsePair(Parameter p, RValue use) {
+  exists (SsaVariable v |
+    v.getAUse() = use and v.getAnUltimateDefinition().(SsaImplicitInit).isParameterDefinition(p)
   )
-}
-
-/**
- * Is `use2` a possible use of the variable `v` that could observe
- * the same value as `use1`?
- *
- * DEPRECATED: use SSA library instead.
- */
-deprecated
-cached
-predicate useUsePair(Variable v, UseStmt use1, UseStmt use2) {
-  useReaches(v, use1, use2) and
-  useOfVar(v, use2)
-}
-
-/**
- * Does a parameter value reach a use of the parameter variable along some control-flow path
- * without passing through a definition of that variable?
- *
- * DEPRECATED: use SSA library instead.
- */
-deprecated
-cached
-predicate parameterReaches(Parameter p, Stmt use) {
-  // base case - all parameters reach the body
-  use = p.getCallable().getBody()
-  or
-  exists(Stmt mid | 
-    // parameter reaches here
-    parameterReaches(p, mid) and
-    // not a redefinition of v
-    not definition(p, mid) and
-    // use is the successor
-    use = mid.getASuccessor()
-  )
-}
-
-/**
- * Is this `use` statement a use of the parameter `p` that could observe the
- * passed-in value?
- *
- * DEPRECATED: use `parameterDefUsePair(Parameter p, RValue use)` instead.
- */
-deprecated
-predicate parameterUse(Parameter p, UseStmt use) {
-  parameterDefUsePair(p, use.getAUse(p))
 }

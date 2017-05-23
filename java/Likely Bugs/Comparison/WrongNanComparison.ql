@@ -17,6 +17,7 @@
  *              and is unlikely to be intended.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags correctness
  */
 import java

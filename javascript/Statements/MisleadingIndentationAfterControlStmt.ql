@@ -28,34 +28,28 @@ import javascript
 import semmle.javascript.RestrictedLocations
 
 /**
- * Holds if statement `s1` is controlled by `ctrl`, and is immediately followed by `s2`,
- * which is not, suggesting that `s2` should be less indented than `s1`.
- *
- * We ignore the case where `s1` is not indented relative to `ctrl` in the first place.
+ * Holds if `ctrl` controls statement `s1`, which is followed by another statement `s2`
+ * that `ctrl` does not control.
  */
-predicate shouldOutdent(ControlStmt ctrl, Stmt s1, Stmt s2) {
-  s1.getLastToken().getNextToken() = s2.getFirstToken() and
+predicate misleadingIndentationCandidate(ControlStmt ctrl, Stmt s1, Stmt s2) {
+  not ctrl.getTopLevel().isMinified() and
   s1 = ctrl.getAControlledStmt() and
-  s1.getLocation().getStartColumn() > ctrl.getLocation().getStartColumn() and
+  s1.getLastToken().getNextToken() = s2.getFirstToken() and
   not s2 = ctrl.getAControlledStmt()
 }
 
-/**
- * Holds if statement `s2` should be indented less than `s1`, but has in fact the same indentation.
- */
-predicate missingOutdent(Stmt s1, Stmt s2) {
-  shouldOutdent(_, s1, s2) and
-  exists (File f, int line1, int line2, int col, string indent |
-    s1.getLocation().hasLocationInfo(f.getPath(), line1, col, _, _) and
-    s2.getLocation().hasLocationInfo(f.getPath(), line2, col, _, _) and
-    f.hasIndentation(line1, indent, _) and
-    f.hasIndentation(line2, indent, _)
-  )
-}
-
-from ControlStmt ctrl, Stmt s1, Stmt s2
-where shouldOutdent(ctrl, s1, s2) and
-      missingOutdent(s1, s2) and
-      not ctrl.getTopLevel().isMinified()
+from ControlStmt ctrl, Stmt s1, Stmt s2, string indent, int ctrlStartColumn, int startColumn,
+     File f, int ctrlStartLine, int startLine1, int startLine2
+where misleadingIndentationCandidate(ctrl, s1, s2) and
+      ctrl.getLocation().hasLocationInfo(f.getPath(), ctrlStartLine, ctrlStartColumn, _, _) and
+      // `s1` and `s2` are indented the same
+      s1.getLocation().hasLocationInfo(f.getPath(), startLine1, startColumn, _, _) and
+      s2.getLocation().hasLocationInfo(f.getPath(), startLine2, startColumn, _, _) and
+      // `s1` is indented relative to `ctrl`
+      startColumn > ctrlStartColumn and
+      // `ctrl`, `s1` and `s2` all have the same indentation character
+      f.hasIndentation(ctrlStartLine, indent, _) and
+      f.hasIndentation(startLine1, indent, _) and
+      f.hasIndentation(startLine2, indent, _)
 select (FirstLineOf)s2, "The indentation of this statement suggests that it is controlled by $@, while in fact it is not.",
             (FirstLineOf)ctrl, "this statement"

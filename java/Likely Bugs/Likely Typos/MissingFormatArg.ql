@@ -17,6 +17,7 @@
  *              an 'IllegalFormatException'.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags correctness
  *       external/cwe/cwe-685
  */

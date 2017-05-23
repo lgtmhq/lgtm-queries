@@ -15,7 +15,6 @@
  * Provides classes and predicates for control-flow graph dominance.
  */
 import java
-private import semmle.code.java.Successor
 private import semmle.code.java.ControlFlowGraph
 
 

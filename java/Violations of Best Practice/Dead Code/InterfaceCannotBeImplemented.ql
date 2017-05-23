@@ -17,6 +17,7 @@
  *              'java.lang.Object' means that the interface cannot be implemented.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  *       useless-code
  */

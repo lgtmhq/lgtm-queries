@@ -17,6 +17,7 @@
  *              may cause redirection to malicious web sites.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-601
  */

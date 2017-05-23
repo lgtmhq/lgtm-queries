@@ -16,23 +16,26 @@
  * @description Assigning to the special 'exports' variable only overwrites its value and does not export
  *              anything. Such an assignment is hence most likely unintentional.
  * @kind problem
- * @problem.severity error
+ * @problem.severity warning
  * @tags maintainability
  *       frameworks/node.js
  *       external/cwe/cwe-563
- * @precision high
+ * @precision very-high
  */
 
 import javascript
 
-from Assignment assgn, NodeModule m, Variable exports
-where exports = m.getScope().getVariable("exports") and
-      assgn.getLhs() = exports.getAnAccess() and
-      // exclude common pattern `exports = module.exports = ...;`
-      // or, equivalently, `module.exports = exports = ...;`
-      not exists (Assignment meAssgn | meAssgn.getTarget() = m.getAnExportsAccess() |
-        (meAssgn = assgn.getRhs().stripParens() or assgn = meAssgn.getRhs().stripParens()) and
+from Assignment assgn, NodeModule m, Variable exportsVar, DataFlowNode exportsVal
+where exportsVar = m.getScope().getVariable("exports") and
+      // `assgn` assigns `exportsVal` to `exports`
+      assgn.getLhs() = exportsVar.getAnAccess() and
+      assgn.getRhs().(DataFlowNode).getALocalSource() = exportsVal and
+      // this is OK if `exportsVal` flows into `module.exports`
+      not exists (PropWriteNode pw |
+        pw.getBase() instanceof ModuleAccess and
+        pw.getPropertyName() = "exports" and
+        pw.getRhs().getALocalSource() = exportsVal and
         // however, if there are no further uses of `exports` the assignment is useless anyway
-        strictcount (exports.getAnAccess()) > 1
+        strictcount (exportsVar.getAnAccess()) > 1
       )
 select assgn, "Assigning to 'exports' does not export anything."

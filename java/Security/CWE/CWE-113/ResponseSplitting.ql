@@ -17,6 +17,7 @@
  *              makes code vulnerable to attack by header splitting.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-113
  */

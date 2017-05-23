@@ -16,6 +16,7 @@
  * @description An expression that always evaluates to the same value, but which has a non-constant subexpression, indicates a mistake.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  *       useless-code
  */

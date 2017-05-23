@@ -17,7 +17,7 @@
  * @kind problem
  * @tags maintainability
  * @problem.severity recommendation
- * @sub-severity high
+ * @sub-severity low
  * @precision very-high
  */
 

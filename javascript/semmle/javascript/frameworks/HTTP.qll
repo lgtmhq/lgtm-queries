@@ -68,4 +68,10 @@ module HTTP {
       this = "UNSUBSCRIBE"
     }
   }
+
+  /**
+   * An expression whose value is sent as (part of) the body of an HTTP response.
+   */
+  abstract class ResponseBody extends Expr {
+  }
 }

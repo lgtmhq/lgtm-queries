@@ -86,8 +86,18 @@ predicate pyflakes_commented(AssignStmt assignment) {
         loc.getStartLine() = pyflakes_commented_line(loc.getFile()))
 }
 
+predicate side_effecting_lhs(Attribute lhs) {
+    exists(ClassObject cls, ClassObject decl |
+        lhs.getObject().refersTo(_, cls, _) and
+        decl = cls.getAnImproperSuperType() and
+        not decl.isBuiltin() |
+        decl.declaresAttribute("__setattr__")
+    )
+}
+
 from AssignStmt a, Expr left, Expr right
 where assignment(a, left, right)
   and same_value(left, right)
-  and not pyflakes_commented(a)
+  and not pyflakes_commented(a) and
+  not side_effecting_lhs(left)
 select a, "This assignment assigns a variable to itself."

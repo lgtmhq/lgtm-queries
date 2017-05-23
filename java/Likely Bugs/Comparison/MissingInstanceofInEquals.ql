@@ -17,6 +17,7 @@
  *              of its argument may lead to failing casts.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  */

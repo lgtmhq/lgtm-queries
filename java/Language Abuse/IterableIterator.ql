@@ -18,6 +18,7 @@
  *              it is viewed as an 'Iterable'.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  */
 import java
 import IterableClass

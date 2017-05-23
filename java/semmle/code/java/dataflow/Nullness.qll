@@ -679,6 +679,8 @@ predicate alwaysNullDeref(SsaSourceVariable v, VarAccess va) {
       not clearlyNotNull(ssa)
     )
     |
+    // Exclude fields as they might not have an accurate ssa representation.
+    not v.getVariable() instanceof Field and
     firstVarDereferenceInBlock(bb, ssa, va) and
     ssa.getSourceVariable() = v and
     not exists(ConditionBlock cond, boolean branch |

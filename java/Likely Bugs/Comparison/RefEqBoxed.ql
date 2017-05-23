@@ -17,6 +17,7 @@
  *              compares object identity, which may not be intended.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-595

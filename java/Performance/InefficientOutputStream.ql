@@ -17,6 +17,7 @@
  *              provided by 'java.io.OutputStream' is very inefficient.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags efficiency
  */
 

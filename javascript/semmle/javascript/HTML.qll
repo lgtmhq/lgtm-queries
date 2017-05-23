@@ -61,6 +61,16 @@ class HTMLElement extends Locatable, @xmlelement {
   }
 
   /**
+   * Gets the root element in which this element is contained.
+   */
+  HTMLElement getRoot() {
+    if isTopLevel() then
+      result = this
+    else
+      result = getParent().getRoot()
+  }
+
+  /**
    * Gets the `i`th child element (0-based) of this element.
    */
   HTMLElement getChild(int i) {
@@ -121,6 +131,14 @@ class HTMLAttribute extends Locatable, @xmlattribute {
    */
   HTMLElement getElement() {
     xmlAttrs(this, result, _, _, _, _)
+  }
+
+  /**
+   * Gets the root element in which the element to which this attribute
+   * belongs is contained.
+   */
+  HTMLElement getRoot() {
+    result = getElement().getRoot()
   }
 
   /**

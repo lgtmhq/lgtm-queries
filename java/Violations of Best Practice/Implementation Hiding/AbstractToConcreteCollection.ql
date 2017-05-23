@@ -16,7 +16,8 @@
  * @description A cast from an abstract collection to a concrete implementation type makes the
  *              code brittle.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
+ * @precision very-high
  * @tags reliability
  *       maintainability
  *       modularity

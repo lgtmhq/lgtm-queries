@@ -236,7 +236,7 @@ class Function extends @function, Parameterized, StmtContainer {
     not hasRestParameter()
   }
 
-  /*
+  /**
    * Gets a description of this function.
    *
    * For named functions such as `function f() { ... }`, this is just the declared
