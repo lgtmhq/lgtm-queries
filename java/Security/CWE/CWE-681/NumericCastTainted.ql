@@ -16,7 +16,8 @@
  * @description Casting user-controlled numeric data to a narrower type without validation
  *              can cause unexpected truncation.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-197
  *       external/cwe/cwe-681

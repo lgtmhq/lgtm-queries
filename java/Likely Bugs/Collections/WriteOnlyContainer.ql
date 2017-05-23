@@ -16,6 +16,7 @@
  * @description A collection or map whose contents are never queried or accessed is useless.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags maintainability
  *       useless-code
  *       external/cwe/cwe-561

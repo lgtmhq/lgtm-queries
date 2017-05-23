@@ -17,6 +17,7 @@
  *              array contents, which is unlikely to be what is intended.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  */

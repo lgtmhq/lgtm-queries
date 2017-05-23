@@ -17,6 +17,7 @@
  *              and can lead to unexpected behavior.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  */
 import java
 import IterableClass

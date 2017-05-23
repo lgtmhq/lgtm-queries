@@ -17,6 +17,7 @@
  *              to understand.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  *       readability
  */

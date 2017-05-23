@@ -17,6 +17,7 @@
  *              malicious SQL code by the user.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-089
  */

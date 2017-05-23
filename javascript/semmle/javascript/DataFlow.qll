@@ -17,14 +17,19 @@
  *
  * We distinguish between _local flow_ and _non-local flow_.
  *
- * Local flow only considers data flow within an expression (for example,
- * from the operands of a `&&` expression to the expression itself), flow
- * through local variables, and flow from the arguments of an immediately
- * invoked function expression to its parameters. Captured variables are
- * treated flow-insensitively, that is, all assignments are considered to
- * flow into all uses.
+ * Local flow only considers three kinds of data flow:
  *
- * Non-local flow considers data flow through global variables.
+ *   1. Flow within an expression, for example from the operands of a `&&`
+ *      expression to the expression itself.
+ *   2. Flow through local variables, that is, from definitions to uses.
+ *      Captured variables are treated flow-insensitively, that is, all
+ *      definitions are considered to flow to all uses, while for non-captured
+ *      variables only definitions that can actually reach a use are considered.
+ *   3. Flow into and out of immediately invoked function expressions, that is,
+ *      flow from arguments to parameters, and from returned expressions to the
+ *      function expression itself.
+ *
+ * Non-local flow additionally tracks data flow through global variables.
  *
  * Flow through object properties or function calls is not modelled (except
  * for immediately invoked functions as explained above).
@@ -163,22 +168,7 @@ private class VarAccessFlow extends DataFlowNode, @varaccess {
 
   override DataFlowNode localFlowPred() {
     // flow through local variable
-    result = getALocalDef().getSourceNode() or
-
-    // flow through IIFE
-    exists (ImmediatelyInvokedFunctionExpr iife, SimpleParameter parm |
-      isIIFEParameterAccess(iife, parm) and
-      iife.argumentPassing(parm, (Expr)result)
-    )
-  }
-
-  /**
-   * Holds if this is an access to parameter `parm` of immediately invoked
-   * function expression `iife`.
-   */
-  private predicate isIIFEParameterAccess(ImmediatelyInvokedFunctionExpr iife, SimpleParameter p) {
-    this = p.getVariable().getAnAccess() and
-    p = iife.getAParameter()
+    result = getALocalDef().getSourceNode()
   }
 
   override DataFlowNode nonLocalFlowPred() {
@@ -224,6 +214,24 @@ private class VarDefFlow extends VarDef {
     exists (ComprehensionBlock cb | this = cb.getIterator()) and cause = "yield" or
     getTarget() instanceof DestructuringPattern and cause = "heap"
   }
+}
+
+/**
+ * An IIFE parameter, viewed as a contributor to the data flow graph.
+ */
+private class IifeParameterFlow extends VarDefFlow {
+  /** The function of which this is a parameter. */
+  ImmediatelyInvokedFunctionExpr iife;
+
+  IifeParameterFlow() {
+    iife.argumentPassing(this, _)
+  }
+
+  override DataFlowNode getSourceNode() {
+    iife.argumentPassing(this, result)
+  }
+
+  override predicate isIncomplete(DataFlowIncompleteness cause) { none() }
 }
 
 /** A parenthesized expression, viewed as a data flow node. */
@@ -278,6 +286,27 @@ private class InterProcFlow extends DataFlowNode, @expr {
   }
 
   override predicate isIncomplete(DataFlowIncompleteness cause) { cause = "call" }
+}
+
+/**
+ * An immediately invoked function expression, viewed as a data flow node.
+ *
+ * Unlike other calls, we can analyze the value of an IIFE completely, hence
+ * we override `InterProcFlow`.
+ */
+private class IifeFlow extends InterProcFlow, @callexpr {
+  /** The function this IIFE invokes. */
+  ImmediatelyInvokedFunctionExpr iife;
+
+  IifeFlow() {
+    this = iife.getInvocation()
+  }
+
+  override DataFlowNode localFlowPred() {
+    result = iife.getAReturnedExpr()
+  }
+
+  override predicate isIncomplete(DataFlowIncompleteness cause) { none() }
 }
 
 /**

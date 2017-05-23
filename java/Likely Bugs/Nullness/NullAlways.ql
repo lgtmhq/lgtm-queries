@@ -16,6 +16,7 @@
  * @description Dereferencing a variable whose value is 'null' causes a 'NullPointerException'.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       exceptions

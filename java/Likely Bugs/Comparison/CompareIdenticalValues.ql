@@ -17,6 +17,7 @@
  *              operator, the operator is redundant, and probably indicates a mistake.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       logic

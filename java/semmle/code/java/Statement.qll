@@ -17,7 +17,6 @@
 
 import Expr
 import metrics.MetricStmt
-private import Successor
 
 /** A common super-class of all statements. */
 class Stmt extends StmtParent, ExprParent, @stmt {
@@ -49,23 +48,9 @@ class Stmt extends StmtParent, ExprParent, @stmt {
   /** A child of this statement, if any. */
   Stmt getAChild() { result.getParent() = this }
 
-  /**
-   * An immediate successor of this statement.
-   *
-   * DEPRECATED: use `ControlFlowNode.getASuccessor()` instead.
-   */
-  deprecated StmtParent getASuccessor() { result = stmtSucc(this) }
-
-  /**
-   * An immediate predecessor of this statement.
-   *
-   * DEPRECATED: use `ControlFlowNode.getAPredecessor()` instead.
-   */
-  deprecated Stmt getAPredecessor() { this = stmtSucc(result) }
-
   /** The basic block in which this statement occurs. */
   BasicBlock getBasicBlock() { result.getANode() = this }
-  
+
   /** Cast this statement to a class that provides access to metrics information. */
   MetricStmt getMetrics() { result = this }
 
@@ -121,35 +106,6 @@ abstract class ConditionalStmt extends Stmt {
    * DEPRECATED: use `ConditionNode.getATrueSuccessor()` instead.
    */
   deprecated abstract Stmt getTrueSuccessor();
-  
-  /**
-   * The statement that is executed whenever the condition
-   * of this branch statement evaluates to `false`.
-   *
-   * DEPRECATED: use `ConditionNode.getAFalseSuccessor()` instead.
-   */
-  deprecated cached
-  Stmt getFalseSuccessor() { result = getASuccessor() and not result = getTrueSuccessor() }
-
-  /**
-   * Any statement that may be executed immediately following
-   * evaluation of the condition of this branch statement.
-   *
-   * DEPRECATED: use `ConditionNode.getABranchSuccessor(_)` instead.
-   */
-  deprecated Stmt getABranch() {
-    result = getTrueSuccessor() or result = getFalseSuccessor()
-  }
-
-  /**
-   * Given one branch of this conditional statement, return the other one.
-   *
-   * DEPRECATED: use `ConditionNode.getABranchSuccessor(boolean)` instead.
-   */
-  deprecated Stmt getOtherBranch(Stmt succ) {
-    succ = getTrueSuccessor() and result = getFalseSuccessor() or
-    succ = getFalseSuccessor() and result = getTrueSuccessor()
-  }
 }
 
 /** An `if` statement. */

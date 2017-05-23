@@ -18,6 +18,7 @@
  *              dead code.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags correctness
  *       logic
  *       external/cwe/cwe-570

@@ -29,6 +29,7 @@ import semmle.code.java.frameworks.android.WebView
 import semmle.code.java.frameworks.android.SQLite
 import semmle.code.java.frameworks.JaxWS
 import semmle.code.java.dataflow.DefUse
+import semmle.code.java.dataflow.SSA
 import semmle.code.java.security.SecurityTests
 import semmle.code.java.security.Validation
 import semmle.code.java.dispatch.VirtualDispatch
@@ -96,7 +97,7 @@ class FlowSource extends Expr {
         flowsTo(tracked, _) and
         m = responderForArg(c, i, tracked) and
         m.getParameter(i) = p and
-        exists(UseStmt u | parameterUse(p, u) and sink = u.getAUse(p)) and
+        parameterDefUsePair(p, sink) and
         fromArg = true
       )
       // Flow out of a method.
@@ -242,14 +243,46 @@ cached private predicate localFlowStep(Expr tracked, Expr sink) {
   or stringBuilderStep(tracked, sink)
 
   or serializationStep(tracked, sink)
+  
+  or argToArgStep(tracked, sink)
+}
+
+/**
+ * Holds if `tracked` and `sink` are arguments to a method that transfers taint
+ * between arguments.
+ */
+private predicate argToArgStep(Expr tracked, VarAccess sink) {
+  exists(MethodAccess ma, Method method, int input, int output, RValue out |
+    dataPreservingArgToArg(method, input, output) and
+    ma.getMethod() = method and
+    ma.getArgument(input) = tracked and
+    ma.getArgument(output) = out and
+    useUsePair(out, sink)
+  )
+}
+
+/**
+ * Holds if `method` is a library method that writes tainted data to the
+ * `output`th argument if the `input`th argument is tainted.
+ */
+private predicate dataPreservingArgToArg(Method method, int input, int output) {
+  method.getDeclaringType().hasQualifiedName("org.apache.commons.io", "IOUtils") and (
+    method.hasName("copy") and input = 0 and output = 1 or
+    method.hasName("copyLarge") and input = 0 and output = 1 or
+    method.hasName("read") and input = 0 and output = 1 or
+    method.hasName("readFully") and input = 0 and output = 1 and not method.getParameterType(1).hasName("int") or
+    method.hasName("write") and input = 0 and output = 1 or
+    method.hasName("writeChunked") and input = 0 and output = 1 or
+    method.hasName("writeLines") and input = 0 and output = 2 or
+    method.hasName("writeLines") and input = 1 and output = 2
+  )
 }
 
 /** A use of a variable that has been assigned a `tracked` expression. */
 private predicate variableStep(Expr tracked, VarAccess sink) {
-  exists(Variable v, DefStmt def, UseStmt use |
-    def.getADef(v).getSource() = tracked and
-    use.getAUse(v) = sink and
-    defUsePair(v, def, use)
+  exists(VariableAssign def |
+    def.getSource() = tracked and
+    defUsePair(def, sink)
   )
 }
 
@@ -318,19 +351,18 @@ private predicate stringBuilderStep(Expr tracked, Expr sink) {
 
 /** Flow through data serialization. */
 private predicate serializationStep(Expr tracked, Expr sink) {
-  exists(ObjectOutputStreamVar v, DefStmt def |
-    def = v.getADefStmt() and
-    exists(MethodAccess ma, UseStmt use |
+  exists(ObjectOutputStreamVar v, VariableAssign def |
+    def = v.getADef() and
+    exists(MethodAccess ma, RValue use |
       ma.getArgument(0) = tracked and
       ma = v.getAWriteObjectMethodAccess() and
-      use = ma.getEnclosingStmt() and
-      defUsePair(v, def, use)
+      use = ma.getQualifier() and
+      defUsePair(def, use)
     ) and
-    exists(LocalVariableDecl v2, UseStmt use, ClassInstanceExpr cie |
-      cie = def.getADef(v).getSource() and
-      v2 = cie.getArgument(0).(RValue).getVariable() and
-      useUsePair(v2, def, use) and
-      use.getAUse(v2) = sink
+    exists(RValue outputstream, ClassInstanceExpr cie |
+      cie = def.getSource() and
+      outputstream = cie.getArgument(0) and
+      useUsePair(outputstream, sink)
     )
   )
 }
@@ -347,9 +379,9 @@ class ObjectOutputStreamVar extends LocalVariableDecl {
     )
   }
 
-  DefStmt getADefStmt() {
-    definition(this, result) and
-    result.getADef(this).getSource().(ClassInstanceExpr).getType() instanceof TypeObjectOutputStream
+  VariableAssign getADef() {
+    result.getSource().(ClassInstanceExpr).getType() instanceof TypeObjectOutputStream and
+    result.getDestVar() = this
   }
 
   MethodAccess getAWriteObjectMethodAccess() {
@@ -390,6 +422,20 @@ class StringBuilderVar extends LocalVariableDecl {
     and result.getMethod().getName() = "append"
   }
 
+  MethodAccess getNextAppend(MethodAccess append) {
+    result = getAnAppend() and
+    append = getAnAppend() and
+    (
+      result.getQualifier() = append or
+      not exists(MethodAccess chainAccess | chainAccess.getQualifier() = append) and
+      exists(RValue sbva1, RValue sbva2 |
+        adjacentUseUse(sbva1, sbva2) and
+        append.getQualifier() = getAChainedReference(sbva1) and
+        result.getQualifier() = sbva2
+      )
+    )
+  }
+
   /**
    * A call that converts this string builder to a string.
    */
@@ -398,15 +444,19 @@ class StringBuilderVar extends LocalVariableDecl {
     and result.getMethod().getName() = "toString"
   }
 
+  private Expr getAChainedReference(VarAccess sbva) {
+    // All the methods on `StringBuilder` that return the same type return
+    // the same object.
+    result = callReturningSameType+(sbva) and sbva = this.getAnAccess()
+    or
+    result = sbva and sbva = this.getAnAccess()
+  }
+
   /**
    * An expression that refers to this `StringBuilder`, possibly after some chained calls.
    */
   Expr getAChainedReference() {
-    // All the methods on `StringBuilder` that return the same type return
-    // the same object.
-    result = callReturningSameType+(this.getAnAccess())
-    or
-    result = this.getAnAccess()
+    result = getAChainedReference(_)
   }
 }
 
@@ -594,6 +644,22 @@ predicate dataPreservingArgument(Method method, int arg) {
       method.getName() = "decode" and arg = 0 and method.getNumberOfParameters() = 1 or
       method.getName() = "encodeToString" and arg = 0 or
       method.getName() = "wrap" and arg = 0
+    )
+  ) or
+  (
+    (
+      method.getDeclaringType().hasQualifiedName("org.apache.commons.io", "IOUtils")
+    ) and
+    (
+      method.getName() = "buffer" and arg = 0 or
+      method.getName() = "readLines" and arg = 0 or
+      method.getName() = "readFully" and arg = 0 and method.getParameterType(1).hasName("int") or
+      method.getName() = "toBufferedInputStream" and arg = 0 or
+      method.getName() = "toBufferedReader" and arg = 0 or
+      method.getName() = "toByteArray" and arg = 0 or
+      method.getName() = "toCharArray" and arg = 0 or
+      method.getName() = "toInputStream" and arg = 0 or
+      method.getName() = "toString" and arg = 0
     )
   )
 }

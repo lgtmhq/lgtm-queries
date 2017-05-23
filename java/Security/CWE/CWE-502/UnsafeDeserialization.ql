@@ -16,7 +16,8 @@
  * @description Deserializing user-controlled data may allow attackers to
  *              execute arbitrary code.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-502
  */
@@ -39,6 +40,12 @@ class XMLDecoderReadObjectMethod extends Method {
   }
 }
 
+class SafeXStream extends FlowSource {
+  SafeXStream() {
+    any(XStreamEnableWhiteListing ma).getQualifier().(VarAccess).getVariable().getAnAccess() = this
+  }
+}
+
 class SafeKryo extends FlowSource {
   SafeKryo() {
     any(KryoEnableWhiteListing ma).getQualifier().(VarAccess).getVariable().getAnAccess() = this
@@ -47,11 +54,19 @@ class SafeKryo extends FlowSource {
 
 predicate unsafeDeserialization(MethodAccess ma, Expr sink) {
   exists(Method m | m = ma.getMethod() |
-    m instanceof ObjectInputStreamReadObjectMethod and sink = ma.getQualifier() or
-    m instanceof XMLDecoderReadObjectMethod and sink = ma.getQualifier() or
-    m instanceof XStreamReadObjectMethod and sink = ma.getAnArgument() or
-    m instanceof KryoReadObjectMethod and sink = ma.getAnArgument() and
-      not exists(SafeKryo sk | sk.flowsTo(ma.getQualifier()))
+    m instanceof ObjectInputStreamReadObjectMethod and
+    sink = ma.getQualifier()
+    or
+    m instanceof XMLDecoderReadObjectMethod and
+    sink = ma.getQualifier()
+    or
+    m instanceof XStreamReadObjectMethod and
+    sink = ma.getAnArgument() and
+    not exists(SafeXStream sxs | sxs.flowsTo(ma.getQualifier()))
+    or
+    m instanceof KryoReadObjectMethod and
+    sink = ma.getAnArgument() and
+    not exists(SafeKryo sk | sk.flowsTo(ma.getQualifier()))
   )
 }
 

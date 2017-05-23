@@ -105,7 +105,7 @@ class LocationHeaderSink extends UrlRedirectSink {
  * Gets a string literal that may flow into `nd` or one of its operands,
  * assuming that it is a concatenation.
  */
-private StringLiteral getASubstring(DataFlowNode nd) {
+private Expr getASubstring(DataFlowNode nd) {
   exists (DataFlowNode src | src = nd.getALocalSource() |
     (src instanceof AddExpr or src instanceof AssignAddExpr) and
     result = getASubstring(src.(Expr).getAChildExpr())
@@ -115,13 +115,28 @@ private StringLiteral getASubstring(DataFlowNode nd) {
 }
 
 /**
+ * Gets a data flow node that may precede `nd` in a string concatenation.
+ */
+private DataFlowNode getALeftPrefix(DataFlowNode nd) {
+  exists (AddExpr add | nd = add.getRightOperand() |
+    result = getASubstring(add.getLeftOperand())
+  ) or
+  exists (ParExpr pe | nd = pe.getExpression() |
+    result = getALeftPrefix(pe)
+  ) or
+  exists (TemplateLiteral tl, int i | nd = tl.getElement(i) |
+    result = getASubstring(tl.getElement([0..i-1]))
+  )
+}
+
+/**
  * A string concatenation containing the character `?` or `#`,
  * considered as a sanitizer for `UrlRedirectDataFlowConfiguration`.
  */
 class ConcatenationSanitizer extends UrlRedirectSanitizer {
   ConcatenationSanitizer() {
-    exists (StringLiteral prefix |
-      prefix = getASubstring(this.(AddExpr).getLeftOperand()) and
+    exists (Expr prefix |
+      prefix = getALeftPrefix(this) and
       prefix.getStringValue().regexpMatch(".*[?#].*")
     )
   }

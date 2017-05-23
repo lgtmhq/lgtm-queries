@@ -17,6 +17,7 @@
  *              result in an infinite loop.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags efficiency
  *       correctness
  *       concurrency

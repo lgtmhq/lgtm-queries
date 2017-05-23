@@ -55,26 +55,19 @@ GlobalVariable candidateVariable(Function f) {
 }
 
 /**
- * Gets an access to `v` in function `f` at line `line` and column `column`.
+ * Gets an access to `v` in function `f`.
  */
-GlobalVarAccess getAccessAt(GlobalVariable v, Function f, int line, int column) {
+GlobalVarAccess getAccessIn(GlobalVariable v, Function f) {
   result.getEnclosingFunction() = f and
-  result = v.getAnAccess() and
-  exists (Location loc | loc = result.getLocation() |
-    line = loc.getStartLine() and
-    column = loc.getStartColumn()
-  )
+  result = v.getAnAccess()
 }
 
 /**
  * Gets the (lexically) first access to variable `v` in function `f`.
  */
 GlobalVarAccess getFirstAccessIn(GlobalVariable v, Function f) {
-  exists (int l, int c |
-    result = getAccessAt(v, f, l, c) and
-    l = min (int ll | exists (getAccessAt(v, f, ll, _))) and
-    c = min (int cc | exists (getAccessAt(v, f, l, cc)))
-  )
+  result = min(getAccessIn(v, f) as gva
+               order by gva.getLocation().getStartLine(), gva.getLocation().getStartColumn())
 }
 
 from Function f, GlobalVariable gv

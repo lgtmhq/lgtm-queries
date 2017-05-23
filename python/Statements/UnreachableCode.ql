@@ -43,7 +43,7 @@ predicate unreachable_in_while(While whilestmt, Stmt s) {
 }
 
 predicate reportable_unreachable(Stmt s) {
-    is_unreachable(s) and  
+    is_unreachable(s) and
     not exists(Stmt other | is_unreachable(other) |
         other.contains(s)
         or

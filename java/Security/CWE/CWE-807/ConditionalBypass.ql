@@ -16,7 +16,8 @@
  * @description User-controlled bypassing of sensitive methods may allow attackers to avoid
  *              passing through authentication systems.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-807
  *       external/cwe/cwe-290

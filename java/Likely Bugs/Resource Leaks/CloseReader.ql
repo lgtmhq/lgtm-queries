@@ -17,6 +17,7 @@
  *              leak.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags efficiency
  *       correctness
  *       resources

@@ -354,30 +354,11 @@ abstract class SsaPseudoDefinition extends SsaImplicitDefinition {
   abstract SsaVariable getAnInput();
 
   /**
-   * Gets the `i`th input of this pseudo-definition
-   * (in lexicographical order, 1-based).
-   */
-  private SsaDefinition getInput(int i) {
-    result.prettyPrintRef() = rank[i](SsaDefinition input |
-      input = getAnInput() | input.prettyPrintRef()
-    )
-  }
-
-  /**
-   * Gets a textual representation of the inputs of this pseudo-definition
-   * in lexicographical order, starting with the `i`th input.
-   */
-  private string ppInputs(int i) {
-    result = ", " + getInput(i).prettyPrintRef() + ppInputs(i+1) or
-    i = count(getAnInput())+1 and result = ""
-  }
-
-  /**
    * Gets a textual representation of the inputs of this pseudo-definition
    * in lexicographical order.
    */
   string ppInputs() {
-    result = ppInputs(1).suffix(2)
+    result = concat(getAnInput().getDefinition().prettyPrintRef(), ", ")
   }
 }
 

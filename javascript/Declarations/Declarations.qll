@@ -29,25 +29,12 @@ newtype RefKind = Ref() or Decl()
 
 /**
  * Gets a reference to `var` (if `kind` is `Ref()`) or declaration of
- * `var` (if `kind` is `Decl()`) in `tl`, where `idx` is the (0-based)
- * index of the token corresponding to the reference among all tokens
- * in `tl`.
+ * `var` (if `kind` is `Decl()`) in `tl`.
  */
-VarRef refInTopLevel(Variable var, RefKind kind, TopLevel tl, int idx) {
-  var = result.getVariable() and
-  exists (Token tk | tk = result.getFirstToken() |
-    tl = tk.getTopLevel() and
-    idx = tk.getIndex()
-  ) and
+VarRef refInTopLevel(Variable var, RefKind kind, TopLevel tl) {
+  result.getVariable() = var and
+  result.getTopLevel() = tl and
   (kind = Decl() implies result instanceof VarDecl)
-}
-
-/**
- * Gets a token index at which a reference to variable `var` of kind `kind`
- * occurs in toplevel `tl`.
- */
-private int refIndexInTopLevel(Variable var, RefKind kind, TopLevel tl) {
-  exists(refInTopLevel(var, kind, tl, result))
 }
 
 /**
@@ -55,8 +42,7 @@ private int refIndexInTopLevel(Variable var, RefKind kind, TopLevel tl) {
  * declaration of `var` (if `kind` is `Decl()`) in `tl`.
  */
 VarRef firstRefInTopLevel(Variable var, RefKind kind, TopLevel tl) {
-  exists (int minIdx |
-    minIdx = min(refIndexInTopLevel(var, kind, tl)) and
-    result = refInTopLevel(var, kind, tl, minIdx)
-  )
+  result = min(refInTopLevel(var, kind, tl) as ref
+               order by ref.getLocation().getStartLine(),
+                        ref.getLocation().getStartColumn())
 }

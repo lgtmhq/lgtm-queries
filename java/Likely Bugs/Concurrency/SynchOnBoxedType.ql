@@ -18,6 +18,7 @@
  *              be shared between many parts of the program.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       concurrency

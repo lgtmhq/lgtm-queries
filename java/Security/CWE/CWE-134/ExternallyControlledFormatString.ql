@@ -16,6 +16,7 @@
  * @description Using external input in format strings can lead to exceptions or information leaks.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-134
  */

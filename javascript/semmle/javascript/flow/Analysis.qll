@@ -1003,6 +1003,69 @@ private predicate hasNonArgumentsBase(PropAccess pacc) {
 }
 
 /**
+ * Flow analysis for immediately-invoked function expressions (IIFEs).
+ */
+private class IifeReturnFlow extends AnalyzedFlowNode, @callexpr {
+  ImmediatelyInvokedFunctionExpr iife;
+
+  IifeReturnFlow() {
+    this = iife.getInvocation()
+  }
+
+  override AbstractValue getAValue() {
+    result = getAReturnValue(iife)
+  }
+}
+
+/**
+ * Gets a return value for the immediately-invoked function expression `f`.
+ */
+private AbstractValue getAReturnValue(ImmediatelyInvokedFunctionExpr f) {
+  // explicit return value
+  result = f.getAReturnedExpr().(AnalyzedFlowNode).getAValue()
+  or
+  // implicit return value
+  (
+    // either because execution of the function may terminate normally
+    mayReturnImplicitly(f)
+    or
+    // or because there is a bare `return;` statement
+    exists (ReturnStmt ret | ret = f.getAReturnStmt() | not exists(ret.getExpr()))
+  ) and
+  result = getDefaultReturnValue(f)
+}
+
+
+/**
+ * Holds if the execution of function `f` may complete normally without
+ * encountering a `return` or `throw` statement.
+ *
+ * Note that this is an overapproximation, that is, the predicate may hold
+ * of functions that cannot actually complete normally, since it does not
+ * account for `finally` blocks and does not check reachability.
+ */
+private predicate mayReturnImplicitly(Function f) {
+  exists (ConcreteControlFlowNode final |
+    final.getContainer() = f and
+    final.isAFinalNode() and
+    not final instanceof ReturnStmt and
+    not final instanceof ThrowStmt
+  )
+}
+
+/**
+ * Gets the default return value for immediately-invoked function expression `f`,
+ * that is, the value that `f` returns if its execution terminates without
+ * encountering an explicit `return` statement.
+ */
+private AbstractValue getDefaultReturnValue(ImmediatelyInvokedFunctionExpr f) {
+  if f.isGenerator() or f.isAsync() then
+    result = TAbstractOtherObject()
+  else
+    result = TAbstractUndefined()
+}
+
+/**
  * DEPRECATED: Use `AnalyzedFlowNode` instead.
  */
 deprecated class AnalysedFlowNode extends AnalyzedFlowNode {

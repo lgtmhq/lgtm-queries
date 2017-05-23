@@ -34,7 +34,8 @@ predicate double_import(Import original, Import duplicate, Module m) {
     /* Imports import the same thing */
     exists (ImportExpr e1, ImportExpr e2 | e1.getName() = m.getName() and e2.getName() = m.getName() and
          e1 = original.getAName().getValue() and e2 = duplicate.getAName().getValue()
-    )
+    ) and
+    original.getAName().getAsname().(Name).getId() = duplicate.getAName().getAsname().(Name).getId()
     and
     exists(Module enclosing |
         original.getScope() = enclosing and
@@ -50,12 +51,12 @@ predicate double_import(Import original, Import duplicate, Module m) {
               i1 < i2
           ) 
           or
-          original.getAFlowNode().getBasicBlock().strictlyDominates(duplicate.getAFlowNode().getBasicBlock()) 
+          original.getAFlowNode().getBasicBlock().strictlyDominates(duplicate.getAFlowNode().getBasicBlock())
         )
      )
 }
 
 from Import original, Import duplicate, Module m
 where double_import(original, duplicate, m)
-select duplicate, "This import of module " + m.getName() + " is redundant, as it was previously imported $@.", 
+select duplicate, "This import of module " + m.getName() + " is redundant, as it was previously imported $@.",
   original, "on line " + original.getLocation().getStartLine().toString()

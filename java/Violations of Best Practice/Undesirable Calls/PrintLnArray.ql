@@ -17,6 +17,7 @@
  *              produces unreadable results.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  */
 import java

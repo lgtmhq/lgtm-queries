@@ -17,6 +17,7 @@
  *              'equals' and 'hashCode' are inconsistent.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-581

@@ -17,6 +17,7 @@
  *              are difficult to read and may even indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  *       readability
  *       external/cwe/cwe-783

@@ -18,6 +18,7 @@
  *              ignore the additional arguments.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  *       useless-code
  *       external/cwe/cwe-685

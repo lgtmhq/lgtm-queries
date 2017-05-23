@@ -39,9 +39,5 @@ class RightShiftOp extends Expr {
 }
 
 VarAccess priorAccess(VarAccess access) {
-  exists(Variable v, UseStmt s |
-    v = access.getVariable() |
-    useUsePair(v, s, access.getEnclosingStmt()) and
-    result = s.getAUse(v)
-  )
+  useUsePair(result, access)
 }

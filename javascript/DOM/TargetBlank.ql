@@ -20,7 +20,7 @@
  * @tags maintainability
  *       security
  *       external/cwe/cwe-200
- * @precision high
+ * @precision very-high
  */
 
 import DOM.DOM

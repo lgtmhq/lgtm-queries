@@ -218,6 +218,9 @@ private class StringManipulationFlowTarget extends TaintFlowTarget {
     this.(AddExpr).getAnOperand() = result or
     this.(AssignAddExpr).getAChildExpr() = result
     or
+    // templating propagates taint
+    this.(TemplateLiteral).getAnElement() = result
+    or
     // other string operations that propagate taint
     exists (string name | name = this.(MethodCallExpr).getMethodName() |
       result = this.(MethodCallExpr).getReceiver() and
@@ -231,6 +234,20 @@ private class StringManipulationFlowTarget extends TaintFlowTarget {
         name = "concat" or
         name = "replace" and i = 1
       )
+    )
+    or
+    // standard library constructors that propagate taint: `RegExp` and `String`
+    exists (InvokeExpr invk, GlobalVarAccess gv |
+      invk = this and gv = invk.getCallee() and result = invk.getArgument(0) |
+      gv.getName() = "RegExp" or gv.getName() = "String"
+    )
+    or
+    // regular expression operations that propagate taint
+    exists (MethodCallExpr mce | mce = this |
+      // RegExp.prototype.exec: from first argument to call
+      mce.getReceiver().(DataFlowNode).getALocalSource() instanceof RegExpLiteral and
+      mce.getMethodName() = "exec" and
+      result = mce.getArgument(0)
     )
   }
 }

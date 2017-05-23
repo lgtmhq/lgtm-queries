@@ -125,4 +125,20 @@ module NodeJSLib {
       )
     }
   }
-}
+
+  /**
+   * An expression passed as the first argument to the `write` or `end` method
+   * of an HTTP response.
+   */
+  private class ResponseBody extends HTTP::ResponseBody {
+    ResponseBody() {
+      exists (MethodCallExpr mce |
+        isResponse(mce.getReceiver()) and
+        (mce.getMethodName() = "write" or mce.getMethodName() = "end") and
+        this = mce.getArgument(0) and
+        // don't mistake callback functions as data
+        not this.(DataFlowNode).getALocalSource() instanceof Function
+      )
+    }
+  }
+ }

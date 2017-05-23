@@ -334,18 +334,14 @@ class PackageDependencies extends JSONObject {
 }
 
 /**
- * Holds if `pkg` is a `package.json` file in folder `f`.
- */
-private predicate npmPkg(PackageJSON pkg, Folder f) {
-  pkg.getFile().getParent() = f
-}
-
-/**
  * An NPM package.
  */
 class NPMPackage extends @folder {
+  /** The `package.json` file of this package. */
+  PackageJSON pkg;
+
   NPMPackage() {
-    npmPkg(_, this)
+    pkg.getFile().getParent() = this
   }
 
   string toString() {
@@ -359,7 +355,7 @@ class NPMPackage extends @folder {
 
   /** Gets the `package.json` object of this package. */
   PackageJSON getPackageJSON() {
-    npmPkg(result, this)
+    result = pkg
   }
 
   /** Gets the name of this package. */

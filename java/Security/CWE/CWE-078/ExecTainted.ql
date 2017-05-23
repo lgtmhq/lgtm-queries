@@ -17,6 +17,7 @@
  *              changes in the strings.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-078
  *       external/cwe/cwe-088

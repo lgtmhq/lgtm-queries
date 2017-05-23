@@ -16,6 +16,7 @@
  * @description A database resource that is opened but not closed may cause a resource leak.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags correctness
  *       resources
  *       external/cwe/cwe-404

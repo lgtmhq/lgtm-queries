@@ -18,6 +18,7 @@
  *              that are useful to an attacker for developing a subsequent exploit.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-209
  *       external/cwe/cwe-497

@@ -17,6 +17,7 @@
  *              possibly be null is useless.
  * @kind problem
  * @problem.severity warning
+ * @precision very-high
  * @tags maintainability
  *       useless-code
  *       external/cwe/cwe-561

@@ -93,16 +93,21 @@ private predicate enclosingFieldAccess(FieldAccess fa, RefType t) {
   TEnclosing(t) = getThisQualifier(fa)
 }
 
+private predicate fieldAccessInCallable(FieldAccess fa, Field f, Callable c) {
+  f = fa.getField() and
+  c = fa.getEnclosingCallable()
+}
+
 private newtype TSsaSourceVariable =
   TLocalVar(LocalScopeVariable v) or
   TPlainField(Callable c, Field f) {
-    exists(FieldRead fr | fr.getField() = f and (ownFieldAccess(fr) or f.isStatic()) and c = fr.getEnclosingCallable())
+    exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and (ownFieldAccess(fr) or f.isStatic()))
   } or
   TEnclosingField(Callable c, Field f, RefType t) {
-    exists(FieldRead fr | fr.getField() = f and enclosingFieldAccess(fr, t) and c = fr.getEnclosingCallable())
+    exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and enclosingFieldAccess(fr, t))
   } or
   TQualifiedField(Callable c, SsaSourceVariable q, InstanceField f) {
-    exists(FieldRead fr | fr.getField() = f and fr.getQualifier() = q.getAnAccess() and c = fr.getEnclosingCallable())
+    exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and fr.getQualifier() = q.getAnAccess())
   }
 
 /**
@@ -129,7 +134,7 @@ class SsaSourceVariable extends TSsaSourceVariable {
   cached
   VarAccess getAnAccess() {
     exists(LocalScopeVariable v | this = TLocalVar(v) and result = v.getAnAccess()) or
-    exists(Field f, Callable c | f = result.getVariable() and result.getEnclosingCallable() = c |
+    exists(Field f, Callable c | fieldAccessInCallable(result, f, c) |
       (ownFieldAccess(result) or f.isStatic()) and this = TPlainField(c, f)
       or
       exists(RefType t | this = TEnclosingField(c, f, t) and enclosingFieldAccess(result, t))
@@ -1031,26 +1036,101 @@ Expr sameValue(SsaVariable v, VarAccess va) {
   result.(RefTypeCastExpr).getExpr() = sameValue(v, va)
 }
 
+/** Holds if `v` is defined or used in `b`. */
+private predicate varOccursInBlock(TrackedVar v, BasicBlock b) {
+  defUseRank(v, b, _, _)
+}
+
+/** Holds if `v` occurs in `b` or one of `b`'s transitive successors. */
+private predicate blockPrecedesVar(TrackedVar v, BasicBlock b) {
+  varOccursInBlock(v, b.getABBSuccessor*())
+}
+
 /**
- * Holds if there exists a path from `def` to `use` without passing through another
- * `VariableUpdate` of the `LocalScopeVariable` that they both refer to.
- *
- * Other paths may also exist, so the SSA variables in `def` and `use` can be different.
+ * Holds if `b2` is a transitive successor of `b1` and `v` occurs in `b1` and
+ * in `b2` or one of its transitive successors but not in any block on the path
+ * between `b1` and `b2`.
  */
-predicate defUsePair(VariableUpdate def, RValue use) {
-  exists (SsaVariable v |
-    v.getAUse() = use and v.getAnUltimateDefinition().(SsaExplicitUpdate).getDefiningExpr() = def
+private predicate varBlockReaches(TrackedVar v, BasicBlock b1, BasicBlock b2) {
+  varOccursInBlock(v, b1) and b2 = b1.getABBSuccessor() or
+  exists(BasicBlock mid |
+    varBlockReaches(v, b1, mid) and
+    b2 = mid.getABBSuccessor() and
+    not varOccursInBlock(v, mid) and
+    blockPrecedesVar(v, b2)
   )
 }
 
 /**
- * Holds if there exists a path from the entry-point of the callable to `use` without
- * passing through a `VariableUpdate` of the parameter `p` that `use` refers to.
- *
- * Other paths may also exist, so the SSA variables can be different.
+ * Holds if `b2` is a transitive successor of `b1` and `v` occurs in `b1` and
+ * `b2` but not in any block on the path between `b1` and `b2`.
  */
-predicate parameterDefUsePair(Parameter p, RValue use) {
-  exists (SsaVariable v |
-    v.getAUse() = use and v.getAnUltimateDefinition().(SsaImplicitInit).isParameterDefinition(p)
+private predicate varBlockStep(TrackedVar v, BasicBlock b1, BasicBlock b2) {
+  varBlockReaches(v, b1, b2) and
+  varOccursInBlock(v, b2)
+}
+
+/**
+ * Holds if `v` occurs at index `i1` in `b1` and at index `i2` in `b2` and
+ * there is a path between them without any occurrence of `v`.
+ */
+private predicate adjacentVarRefs(TrackedVar v, BasicBlock b1, int i1, BasicBlock b2, int i2) {
+  exists(int rankix |
+    b1 = b2 and
+    defUseRank(v, b1, rankix, i1) and
+    defUseRank(v, b2, rankix+1, i2)
+  ) or
+  defUseRank(v, b1, lastRank(v, b1), i1) and
+  varBlockStep(v, b1, b2) and
+  defUseRank(v, b2, 1, i2)
+}
+
+/**
+ * Holds if the value defined at `def` can reach `use` without passing through
+ * any other uses, but possibly through phi nodes and uncertain implicit updates.
+ */
+private predicate firstUse(TrackedSsaDef def, RValue use) {
+  exists(TrackedVar v, BasicBlock b1, int i1, BasicBlock b2, int i2 |
+    adjacentVarRefs(v, b1, i1, b2, i2) and
+    def.definesAt(v, b1, i1) and
+    variableUse(v, use, b2, i2)
+  ) or
+  exists(TrackedVar v, TrackedSsaDef redef, BasicBlock b1, int i1, BasicBlock b2, int i2 |
+    redef instanceof SsaUncertainImplicitUpdate or redef instanceof SsaPhiNode
+    |
+    adjacentVarRefs(v, b1, i1, b2, i2) and
+    def.definesAt(v, b1, i1) and
+    redef.definesAt(v, b2, i2) and
+    firstUse(redef, use)
+  )
+}
+
+/**
+ * Holds if `use1` and `use2` form an adjacent use-use-pair of the same SSA
+ * variable, that is, the value read in `use1` can reach `use2` without passing
+ * through any other use or any SSA definition of the variable.
+ */
+predicate adjacentUseUseSameVar(RValue use1, RValue use2) {
+  exists(TrackedVar v, BasicBlock b1, int i1, BasicBlock b2, int i2 |
+    adjacentVarRefs(v, b1, i1, b2, i2) and
+    variableUse(v, use1, b1, i1) and
+    variableUse(v, use2, b2, i2)
+  )
+}
+
+/**
+ * Holds if `use1` and `use2` form an adjacent use-use-pair of the same
+ * `SsaSourceVariable`, that is, the value read in `use1` can reach `use2`
+ * without passing through any other use or any SSA definition of the variable
+ * except for phi nodes and uncertain implicit updates.
+ */
+predicate adjacentUseUse(RValue use1, RValue use2) {
+  adjacentUseUseSameVar(use1, use2) or
+  exists(TrackedVar v, TrackedSsaDef def, BasicBlock b1, int i1, BasicBlock b2, int i2 |
+    adjacentVarRefs(v, b1, i1, b2, i2) and
+    variableUse(v, use1, b1, i1) and
+    def.definesAt(v, b2, i2) and
+    firstUse(def, use2) and
+    (def instanceof SsaUncertainImplicitUpdate or def instanceof SsaPhiNode)
   )
 }

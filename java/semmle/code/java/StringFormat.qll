@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import java
+import dataflow.DefUse
 
 /**
  * A library method that acts like `String.format` by formatting a number of
@@ -141,6 +142,7 @@ private predicate formatStringValue(Expr e, string fmtvalue) {
   (
     e.(StringLiteral).getRepresentedString() = fmtvalue or
     e.getType() instanceof IntegralType and fmtvalue = "1" or // dummy value
+    e.getType() instanceof BooleanType and fmtvalue = "x" or // dummy value
     e.getType() instanceof EnumType and fmtvalue = "x" or // dummy value
     formatStringValue(e.(ParExpr).getExpr(), fmtvalue) or
     exists(Variable v |
@@ -200,7 +202,10 @@ class FormatString extends string {
   FormattingCall getAFormattingUse() {
     exists(Expr fmt | formatStringValue(fmt, this) |
       result.getFormatArgument() = fmt or
-      result.getFormatArgument().(VarAccess).getVariable().getAnAssignedValue() = fmt
+      exists(VariableAssign va |
+        defUsePair(va, result.getFormatArgument()) and va.getSource() = fmt
+      ) or
+      result.getFormatArgument().(FieldAccess).getField().getAnAssignedValue() = fmt
     )
   }
 

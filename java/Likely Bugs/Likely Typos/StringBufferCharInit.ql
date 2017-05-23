@@ -17,6 +17,7 @@
  *              be converted to an integer and interpreted as the buffer's initial capacity, which is probably not intended.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       maintainability
  */

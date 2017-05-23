@@ -55,16 +55,29 @@ InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
     result = operand.getAType()
   ) or
 
-  // non-strict equality tests convert booleans and strings to numbers, and equate undefined and null
+  // non-strict equality tests perform conversions
   operand = parent.(NonStrictEqualityTest).getAChildExpr() and
   exists (InferredType tp | tp = operand.getAValue().getType() |
-    result = tp or
-    (tp = TTBoolean() and result = TTNumber()) or
-    (tp = TTString() and
-     // exclude cases where the string is guaranteed to coerce to NaN
-     not exists(StringLiteral l | l = operand | not exists(l.getValue().toFloat())) and
-     result = TTNumber()) or
-    (tp = TTUndefined() and result = TTNull())
+    result = tp
+    or
+    // Booleans are converted to numbers
+    tp = TTBoolean() and result = TTNumber()
+    or
+    // and so are strings
+    tp = TTString() and
+    // exclude cases where the string is guaranteed to coerce to NaN
+    not exists(StringLiteral l | l = operand | not exists(l.getValue().toFloat())) and
+    result = TTNumber()
+    or
+    // Dates are converted to strings (which are guaranteed to coerce to NaN)
+    tp = TTDate() and result = TTString()
+    or
+    // other objects are converted to strings, numbers or Booleans
+    (tp = TTObject() or tp = TTFunction() or tp = TTClass()) and
+    (result = TTBoolean() or result = TTNumber() or result = TTString())
+    or
+    // `undefined` and `null` are equated
+    tp = TTUndefined() and result = TTNull()
   ) or
 
   // relational operators convert their operands to numbers or strings

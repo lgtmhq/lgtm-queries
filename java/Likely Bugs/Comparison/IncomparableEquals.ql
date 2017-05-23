@@ -17,6 +17,7 @@
  *              should always return 'false'.
  * @kind problem
  * @problem.severity error
+ * @precision very-high
  * @tags reliability
  *       correctness
  */

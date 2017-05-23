@@ -38,8 +38,8 @@ abstract class DeserializableField extends Field {
  * and may be read or written via serialization.
  */
 library class StandardSerializableField extends SerializableField, DeserializableField {
-  StandardSerializableField(){
-    this.getDeclaringType().getASupertype*().hasName("Serializable") and
+  StandardSerializableField() {
+    this.getDeclaringType().getASupertype*() instanceof TypeSerializable and
     not this.isTransient()
   }
 }

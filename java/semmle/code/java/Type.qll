@@ -840,6 +840,16 @@ class IntegralType extends Type {
   }
 }
 
+/** A boolean type, which may be either a primitive or a boxed type. */
+class BooleanType extends Type {
+  BooleanType() {
+    exists(string name |
+      name = this.(PrimitiveType).getName() or name = this.(BoxedType).getPrimitiveType().getName() |
+      name = "boolean"
+    )
+  }
+}
+
 /** A floating point type, which may be either a primitive or a boxed type. */
 class FloatingPointType extends Type {
   FloatingPointType() {

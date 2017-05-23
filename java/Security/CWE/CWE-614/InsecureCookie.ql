@@ -16,7 +16,8 @@
  * @description Insecured cookies may be sent in cleartext, which makes them vulnerable to
  *              interception.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-614
  */

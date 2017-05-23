@@ -38,3 +38,21 @@ class XStreamReadObjectMethod extends Method {
     )
   }
 }
+
+/**
+ * A call to `XStream.addPermission(NoTypePermission.NONE)`, which enables white-listing.
+ */
+class XStreamEnableWhiteListing extends MethodAccess {
+  XStreamEnableWhiteListing() {
+    exists(Method m |
+      m = this.getMethod() and
+      m.getDeclaringType() instanceof XStream and
+      m.hasName("addPermission") and
+      exists(Field f |
+        this.getAnArgument() = f.getAnAccess() and
+        f.hasName("NONE") and
+        f.getDeclaringType().hasQualifiedName("com.thoughtworks.xstream.security", "NoTypePermission")
+      )
+    )
+  }
+}

@@ -17,6 +17,7 @@
  *              characters is vulnerable to insertion of malicious SQL code.
  * @kind problem
  * @problem.severity error
+ * @precision high
  * @tags security
  *       external/cwe/cwe-089
  */

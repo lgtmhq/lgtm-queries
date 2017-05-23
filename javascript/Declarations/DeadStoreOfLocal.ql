@@ -89,4 +89,4 @@ where deadStoreOfLocal(dead, v) and
       not (isDefaultInit(dead.getSource()) and dead.isOverwritten(v)) and
       // don't flag assignments in externs
       not dead.(ASTNode).inExternsFile()
-select dead, "This statement assigns a value to " + v.getName() + " that is never read."
+select dead, "This definition of " + v.getName() + " is useless, since its value is never read."
