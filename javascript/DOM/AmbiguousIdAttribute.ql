@@ -23,7 +23,7 @@
  * @precision very-high
  */
 
-import DOM.DOM
+import javascript
 
 /**
  * Holds if `elt` defines a DOM element with the given `id`

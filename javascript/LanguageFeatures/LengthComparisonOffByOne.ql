@@ -34,7 +34,7 @@ predicate lengthGuard(ConditionGuardNode cond, Variable index, Variable array) {
     cmp instanceof GEExpr or cmp instanceof LEExpr |
     cmp = cond.getTest() and cond.getOutcome() = true and
     cmp.getGreaterOperand() = len and cmp.getLesserOperand() = index.getAnAccess() and
-    len.getBase() = array.getAnAccess() and len.getPropertyName() = "length"
+    len.accesses(array.getAnAccess(), "length")
   )
 }
 

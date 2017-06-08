@@ -34,8 +34,7 @@ predicate isProto(AnalyzedFlowNode e) {
   // `o.__proto__ = e`, `{ __proto__: e }`, ...
   e = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
   or
-  exists (MethodCallExpr me, Expr recv, string n |
-    recv = me.getReceiver() and n = me.getMethodName() |
+  exists (MethodCallExpr me, Expr recv, string n | me.calls(recv, n) |
     exists (GlobalVarAccess obj | obj = recv.stripParens() and obj.getName() = "Object" |
       // Object.create(e)
       n = "create" and e = me.getArgument(0) or

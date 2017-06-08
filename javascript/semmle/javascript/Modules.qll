@@ -27,12 +27,12 @@ import Paths
 abstract class Module extends TopLevel {
   /** Gets the full path of the file containing this module. */
   string getPath() {
-    result = getFile().getPath()
+    result = getFile().getAbsolutePath()
   }
 
   /** Gets the short name of this module without file extension. */
   string getName() {
-    result = getFile().getShortName()
+    result = getFile().getStem()
   }
 
   /** Gets a module from which this module imports. */
@@ -73,10 +73,10 @@ abstract class Module extends TopLevel {
     exists (string v | v = path.getValue() |
       // paths starting with a dot are resolved relative to the module's directory
       if v.matches(".%") then
-        searchRoot = getFile().getParent()
+        searchRoot = getFile().getParentContainer()
       // all other paths are resolved relative to the file system root
       else
-        searchRoot.getName() = ""
+        searchRoot.getBaseName() = ""
     )
   }
 

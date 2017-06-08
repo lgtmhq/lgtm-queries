@@ -39,7 +39,7 @@ predicate illegalPropAccess(AbstractValue baseVal, string baseDesc, string prop)
 }
 
 from PropAccess acc, AnalyzedFlowNode baseNode, string base, string prop
-where baseNode = acc.getBase() and prop = acc.getPropertyName() and
+where acc.accesses(baseNode, prop) and
       acc.getContainer().isStrict() and
       illegalPropAccess(baseNode.getAValue(), base, prop) and
       forall (AbstractValue av | av = baseNode.getAValue() | illegalPropAccess(av, _, prop))

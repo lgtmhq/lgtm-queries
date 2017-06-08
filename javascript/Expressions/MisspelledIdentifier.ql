@@ -98,7 +98,7 @@ class IdentifierPart extends string {
   predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                                              int endline, int endcolumn) {
     exists (Identifier id, int start, Location l, int len | occursIn(id, start, len) and l = id.getLocation() |
-      filepath = l.getFile().getPath() and
+      filepath = l.getFile().getAbsolutePath() and
       startline = l.getStartLine() and startcolumn = l.getStartColumn() + start and
       // identifiers cannot span more than one line
       endline = startline and endcolumn = startcolumn + len - 1

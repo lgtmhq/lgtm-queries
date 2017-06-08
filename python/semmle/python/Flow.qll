@@ -613,7 +613,7 @@ class DefinitionNode extends ControlFlowNode {
         or
         exists(Alias a | a.getAsname().getAFlowNode() = this)
         or
-        exists(AugAssign a | a.getOperation().(BinaryExpr).getLeft().getAFlowNode() = this)
+        augstore(_, this)
         or
         exists(Assign a | a.getATarget().(Tuple).getAnElt().getAFlowNode() = this)
     }

@@ -12,19 +12,21 @@
 // permissions and limitations under the License.
 
 /**
- * @name URL redirection from remote source
- * @description URL redirection based on unvalidated user input
- *              may cause redirection to malicious web sites.
+ * @name Code injection
+ * @description Interpreting unsanitized user input as code allows a malicious user arbitrary
+ *              code execution.
  * @kind problem
- * @problem.severity warning
- * @tags security
- *       external/cwe/cwe-601
+ * @problem.severity error
  * @precision medium
+ * @tags security
+ *       external/cwe/cwe-094
+ *       external/cwe/cwe-079
+ *       external/cwe/cwe-116
  */
 
 import javascript
-import semmle.javascript.security.dataflow.UrlRedirect
+import semmle.javascript.security.dataflow.CodeInjection
 
-from UrlRedirectDataFlowConfiguration urlRedirect, DataFlowNode source, DataFlowNode sink
-where urlRedirect.flowsTo(source, sink)
-select sink, "Untrusted URL redirection due to $@.", source, "user-provided value"
+from CodeInjectionDataFlowConfiguration codeInjection, DataFlowNode source, DataFlowNode sink
+where codeInjection.flowsTo(source, sink)
+select sink, "$@ flows to here and is interpreted as code.", source, "User-provided value"

@@ -22,7 +22,7 @@
  *       statistical
  * @problem.severity recommendation
  * @sub-severity high
- * @precision very-high
+ * @precision high
  */
 import python
 import CodeDuplication

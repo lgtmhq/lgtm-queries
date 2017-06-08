@@ -160,7 +160,7 @@ class XUnitAnnotation extends Expr {
     exists (Location l1, Location l2 |
       l1 = getFirstToken().getLocation() and
       l2 = getLastToken().getLocation() |
-      filepath = l1.getFile().getPath() and
+      filepath = l1.getFile().getAbsolutePath() and
       startline = l1.getStartLine() and
       startcolumn = l1.getStartColumn() and
       endline = l2.getEndLine() and

@@ -28,6 +28,7 @@ class NameNode extends ControlFlowNode {
     /** Whether this flow node defines the variable v */
     predicate defines(Variable v) {
         exists(Name d | this.getNode() = d and d.defines(v))
+        and not this.isLoad()
     }
 
     /** Whether this flow node deletes the variable v */
@@ -37,7 +38,7 @@ class NameNode extends ControlFlowNode {
 
     /** Whether this flow node uses the variable v */
     predicate uses(Variable v) {
-        exists(Name u | this.getNode() = u and u.uses(v))
+        this.isLoad() and exists(Name u | this.getNode() = u and u.uses(v))
         or
         exists(PlaceHolder u | this.getNode() = u and u.getVariable() = v and u.getCtx() instanceof Load)
         or

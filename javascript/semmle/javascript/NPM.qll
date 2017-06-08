@@ -21,7 +21,7 @@ import NodeJS
 /** A `package.json` configuration object. */
 class PackageJSON extends JSONObject {
   PackageJSON() {
-    getFile().getName() = "package.json" and
+    getFile().getBaseName() = "package.json" and
     isTopLevel()
   }
 
@@ -341,7 +341,7 @@ class NPMPackage extends @folder {
   PackageJSON pkg;
 
   NPMPackage() {
-    pkg.getFile().getParent() = this
+    pkg.getFile().getParentContainer() = this
   }
 
   string toString() {
@@ -350,7 +350,7 @@ class NPMPackage extends @folder {
 
   /** Gets the full file system path of this package. */
   string getPath() {
-    result = this.(Folder).getPath()
+    result = this.(Folder).getAbsolutePath()
   }
 
   /** Gets the `package.json` object of this package. */
@@ -365,8 +365,8 @@ class NPMPackage extends @folder {
 
   /** Gets the `node_modules` folder of this package. */
   Folder getNodeModulesFolder() {
-    result.getName() = "node_modules" and
-    result.getParent() = this
+    result.getBaseName() = "node_modules" and
+    result.getParentContainer() = this
   }
 
   /**
@@ -377,7 +377,7 @@ class NPMPackage extends @folder {
    * considered to belong to that package.
    */
   File getAFile() {
-    this = packageInternalParent*(result.getParent())
+    this = packageInternalParent*(result.getParentContainer())
   }
 
   /**
@@ -397,6 +397,6 @@ class NPMPackage extends @folder {
  * package; that is, `c` must not be a `node_modules` folder.
  */
 private Folder packageInternalParent(Container c) {
-  result = c.getParent() and
-  not c.(Folder).getName() = "node_modules"
+  result = c.getParentContainer() and
+  not c.(Folder).getBaseName() = "node_modules"
 }

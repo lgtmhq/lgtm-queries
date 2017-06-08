@@ -104,16 +104,16 @@ class NodeModule extends Module {
       // paths starting with `./` or `../` are resolved relative to the importing
       // module's folder
       pathval.regexpMatch("\\.\\.?(/.*)?") and
-      (searchRoot = getFile().getParent() and priority = 0)
+      (searchRoot = getFile().getParentContainer() and priority = 0)
       or
       // paths starting with `/` are resolved relative to the file system root
       pathval.matches("/%") and
-      (searchRoot.getName() = "" and priority = 0)
+      (searchRoot.getBaseName() = "" and priority = 0)
       or
       // paths that do not start with `./`, `../` or `/` are resolved relative
       // to `node_modules` folders
       not pathval.regexpMatch("\\.\\.?(/.*)?|/.*") and
-      findNodeModulesFolder(getFile().getParent(), searchRoot, priority)
+      findNodeModulesFolder(getFile().getParentContainer(), searchRoot, priority)
     )
   }
 }
@@ -136,8 +136,8 @@ class NodeModule extends Module {
  * </table>
  */
 private predicate findNodeModulesFolder(Folder f, Folder nodeModules, int distance) {
-  nodeModules = f.getChild("node_modules") and not f.getName() = "node_modules" and distance = 0 or
-  findNodeModulesFolder(f.getParent(), nodeModules, distance-1)
+  nodeModules = f.getFolder("node_modules") and not f.getBaseName() = "node_modules" and distance = 0 or
+  findNodeModulesFolder(f.getParentContainer(), nodeModules, distance-1)
 }
 
 /**
@@ -278,7 +278,7 @@ private File loadAsDirectory(Require req, int rootPriority, int priority) {
  */
 private File resolveMainModule(PackageJSON pkgjson, int priority) {
   exists (Folder dir, string main |
-    dir = pkgjson.getFile().getParent() and main = pkgjson.getMain() |
+    dir = pkgjson.getFile().getParentContainer() and main = pkgjson.getMain() |
     result = dir.getFile(main) and priority = 0 or
     result = tryExtensions(dir, main, priority-1)
   )
@@ -328,7 +328,7 @@ private class DirNamePath extends PathExprInModule, VarAccess {
   }
 
   override string getValue() {
-    result = getFile().getParent().getPath()
+    result = getFile().getParentContainer().getAbsolutePath()
   }
 }
 
@@ -340,7 +340,7 @@ private class FileNamePath extends PathExprInModule, VarAccess {
   }
 
   override string getValue() {
-    result = getFile().getPath()
+    result = getFile().getAbsolutePath()
   }
 }
 

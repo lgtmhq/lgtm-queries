@@ -555,8 +555,8 @@ class Name extends Name_ {
         py_expr_contexts(_, 5, this) or
         /* Treat Param as a definition (which it is) */
         py_expr_contexts(_, 4, this) or
-        /* AugStore is also a definition (and a use) */
-        py_expr_contexts(_, 1, this)
+        /* The target in an augmented assignment is also a definition (and a use) */
+        exists(AugAssign aa | aa.getTarget() = this)
     }
 
     /** Whether this expression defines variable `v`

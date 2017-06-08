@@ -17,7 +17,7 @@
  *              'NullPointerException'.
  * @kind problem
  * @problem.severity warning
- * @precision very-high
+ * @precision high
  * @tags reliability
  *       correctness
  *       exceptions

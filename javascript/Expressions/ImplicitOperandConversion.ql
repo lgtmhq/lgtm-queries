@@ -27,75 +27,200 @@ import javascript
 import semmle.javascript.flow.Analysis
 private import semmle.javascript.flow.InferredTypes
 
-/** Holds if the `i`th operand of `parent` is interpreted as a number. */
-predicate convertToNumber(Expr parent, int i) {
-  (parent instanceof BitwiseExpr or
-   parent instanceof ArithmeticExpr and not parent instanceof AddExpr) and
-  i in [0..1]
-}
+/**
+ * An expression that appears in a syntactic position where its value may be
+ * implicitly converted.
+ */
+abstract class ImplicitConversion extends AnalyzedFlowNode {
+  Expr parent;
 
-/** Holds if the `i`th operand of `parent` is interpreted as an object. */
-predicate convertToObject(Expr parent, int i) {
-  parent instanceof InExpr and i = 1 or
-  parent instanceof InstanceofExpr and i = 0
+  ImplicitConversion() {
+    this = parent.getAChildExpr()
+  }
+
+  /**
+   * Gets a description of the type(s) to which the value `v`, which is
+   * a possible runtime value of this expression, is converted.
+   *
+   * This predicate only considers conversions that are likely to be
+   * unintentional or have unexpected results, for example `null` being
+   * converted to a string as part of a string concatenation.
+   */
+  abstract string getAnImplicitConversionTarget(AbstractValue v);
 }
 
 /**
- * Holds if `v` is an abstract value for `e` computed by the flow analysis,
- * and `e` occurs in a syntactic position where any concrete value represented
- * by `v` would be converted to type `convType` at runtime, but that conversion
- * is unlikely to be intentional.
- *
- * Typical examples of unlikely conversions include arithmetic comparisons involving
- * an object operand: the object will be converted to a number, which is very likely
- * to yield `NaN`.
+ * An implicit conversion with a whitelist of types for which the implicit conversion
+ * is harmless.
  */
-predicate unlikelyConversion(AnalyzedFlowNode e, AbstractValue v, string convType) {
-  exists (Expr parent, int i | e = parent.getChildExpr(i) and v = e.getAValue() |
-    // property names in `in` expressions should be strings or numbers
-    parent instanceof InExpr and i = 0 and
-    not (v.getType() = TTString() or v.getType() = TTNumber()) and
-    convType = "string" or
+abstract class ImplicitConversionWithWhitelist extends ImplicitConversion {
+  /** Gets a type for which this implicit conversion is harmless. */
+  abstract InferredType getAWhitelistedType();
 
-    // property names in index expressions should be booleans, strings or numbers
-    parent instanceof IndexExpr and i = 1 and
-    not exists (InferredType t | t = v.getType() |
-      t = TTBoolean() or t = TTString() or t = TTNumber()
-    ) and
-    convType = "string" or
+  /**
+   * Gets a description of the type(s) to which any value of this expression
+   * is converted.
+   */
+  abstract string getConversionTarget();
 
-    // operands of arithmetic operations should be booleans, numbers or Dates
-    convertToNumber(parent, i) and
-    not v.isCoercibleToNumber() and
-    convType = "number" or
-
-    // if an operand is converted to an object, it shouldn't be a primitive value
-    convertToObject(parent, i) and
-    not v.getType() instanceof NonPrimitiveType and
-    convType = "object" or
-
-    // the right hand operand of `instanceof` should be a function or class
-    parent instanceof InstanceofExpr and i = 1 and
-    not exists (InferredType t | t = v.getType() | t = TTFunction() or t = TTClass()) and
-    convType = "function" or
-
-    // the operands of `+` should not be null or undefined
-    parent instanceof AddExpr and
-    forall (InferredType tp | tp = v.getType() | tp = TTNull() or tp = TTUndefined()) and
-    convType = "number or string" or
-
-    // the operands of a relational comparison should be strings, numbers, or Dates
-    exists (RelationalComparison rel | parent = rel |
-      not exists (InferredType tp | tp = v.getType() |
-        tp = TTString() or tp = TTNumber() or tp = TTDate()
-      ) and
-      convType = "number or string"
-    )
-  )
+  override string getAnImplicitConversionTarget(AbstractValue v) {
+    v = getAValue() and
+    not (v.getType() = getAWhitelistedType()) and
+    result = getConversionTarget()
+  }
 }
 
-from AnalyzedFlowNode e, string convType
-where unlikelyConversion(e, _, convType) and
-      forall (AbstractValue v | v = e.getAValue() | unlikelyConversion(e, v, _))
+/**
+ * Property names in `in` expressions are converted to strings,
+ * so they should be strings or numbers.
+ */
+class PropertyNameConversion extends ImplicitConversionWithWhitelist {
+  PropertyNameConversion() {
+    this = parent.(InExpr).getLeftOperand()
+  }
+
+  override InferredType getAWhitelistedType() {
+    result = TTString() or result = TTNumber()
+  }
+
+  override string getConversionTarget() {
+    result = "string"
+  }
+}
+
+/**
+ * Property names in index expressions are converted to strings,
+ * so they should be Booleans, strings or numbers.
+ */
+class IndexExprConversion extends ImplicitConversionWithWhitelist {
+  IndexExprConversion() {
+    this = parent.(IndexExpr).getIndex()
+  }
+
+  override InferredType getAWhitelistedType() {
+    result = TTBoolean() or result = TTString() or result = TTNumber()
+  }
+
+  override string getConversionTarget() {
+    result = "string"
+  }
+}
+
+/**
+ * Expressions that are interpreted as objects shouldn't be primitive values.
+ */
+class ObjectConversion extends ImplicitConversionWithWhitelist {
+  ObjectConversion() {
+    this = parent.(InExpr).getRightOperand() or
+    this = parent.(InstanceofExpr).getLeftOperand()
+  }
+
+  override InferredType getAWhitelistedType() {
+    result instanceof NonPrimitiveType
+  }
+
+  override string getConversionTarget() {
+    result = "object"
+  }
+}
+
+/**
+ * The right-hand operand of `instanceof` should be a function or class.
+ */
+class ConstructorConversion extends ImplicitConversionWithWhitelist {
+  ConstructorConversion() {
+    this = parent.(InstanceofExpr).getRightOperand()
+  }
+
+  override InferredType getAWhitelistedType() {
+    result = TTFunction() or result = TTClass()
+  }
+
+  override string getConversionTarget() {
+    result = "function"
+  }
+}
+
+/**
+ * Operands of relational operators are converted to strings or numbers,
+ * and hence should be strings, numbers or Dates.
+ */
+class RelationalOperandConversion extends ImplicitConversionWithWhitelist {
+  RelationalOperandConversion() {
+    parent instanceof RelationalComparison
+  }
+
+  override InferredType getAWhitelistedType() {
+    result = TTString() or result = TTNumber() or result = TTDate()
+  }
+
+  override string getConversionTarget() {
+    result = "number or string"
+  }
+}
+
+/**
+ * Operands of arithmetic and bitwise operations are converted to numbers,
+ * so they should be Booleans, numbers or Dates.
+ */
+class NumericConversion extends ImplicitConversion {
+  NumericConversion() {
+    parent instanceof BitwiseExpr or
+    parent instanceof ArithmeticExpr and not parent instanceof AddExpr or
+    parent instanceof CompoundAssignExpr and not parent instanceof AssignAddExpr or
+    parent instanceof UpdateExpr
+  }
+
+  override string getAnImplicitConversionTarget(AbstractValue v) {
+    v = getAValue() and
+    not v.isCoercibleToNumber() and
+    result = "number"
+  }
+}
+
+/**
+ * An expression whose value should not be `null` or `undefined`.
+ */
+abstract class NullOrUndefinedConversion extends ImplicitConversion {
+  abstract string getConversionTarget();
+
+  override string getAnImplicitConversionTarget(AbstractValue v) {
+    v = getAValue() and
+    (v instanceof AbstractNull or v instanceof AbstractUndefined) and
+    result = getConversionTarget()
+  }
+}
+
+/**
+ * Operands of `+` or `+=` are converted to strings or numbers, and hence
+ * should not be `null` or `undefined`.
+ */
+class PlusConversion extends NullOrUndefinedConversion {
+  PlusConversion() {
+    parent instanceof AddExpr or parent instanceof AssignAddExpr
+  }
+
+  override string getConversionTarget() {
+    result = "number or string"
+  }
+}
+
+/**
+ * Template literal elements are converted to strings, and hence should not
+ * be `null` or `undefined`.
+ */
+class TemplateElementConversion extends NullOrUndefinedConversion {
+  TemplateElementConversion() {
+    parent instanceof TemplateLiteral
+  }
+
+  override string getConversionTarget() {
+    result = "string"
+  }
+}
+
+from ImplicitConversion e, string convType
+where convType = e.getAnImplicitConversionTarget(_) and
+      forall (AbstractValue v | v = e.getAValue() | exists(e.getAnImplicitConversionTarget(v)))
 select e, "This expression will be implicitly converted from " +
           e.ppTypes() + " to " + convType + "."

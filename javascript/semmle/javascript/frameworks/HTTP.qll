@@ -74,4 +74,37 @@ module HTTP {
    */
   abstract class ResponseBody extends Expr {
   }
+
+  /**
+   * An expression that sets a cookie in an HTTP response.
+   */
+  abstract class CookieDefinition extends Expr {
+    /**
+     * Gets the argument, if any, specifying the raw cookie header.
+     */
+    Expr getHeaderArgument() { none() }
+
+    /**
+     * Gets the argument, if any, specifying the cookie name.
+     */
+    Expr getNameArgument() { none() }
+
+    /**
+     * Gets the argument, if any, specifying the cookie value.
+     */
+    Expr getValueArgument() { none() }
+  }
+
+  /**
+   * An expression that sets the `Set-Cookie` header of an HTTP response.
+   */
+  class SetCookieHeader extends CookieDefinition {
+    SetCookieHeader() {
+      this.(HeaderDefinition).defines("Set-Cookie", _)
+    }
+
+    override Expr getHeaderArgument() {
+      this.(HeaderDefinition).defines("Set-Cookie", result)
+    }
+  }
 }

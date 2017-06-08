@@ -45,8 +45,8 @@ predicate explicitly_hashed(ControlFlowNode f) {
      exists(CallNode c, GlobalVariable hash | c.getArg(0) = f and c.getFunction().(NameNode).uses(hash) and hash.getId() = "hash")
 }
 
-predicate unhashable_subscript(ControlFlowNode f, ClassObject c) {
-    is_unhashable(f, c) and
+predicate unhashable_subscript(ControlFlowNode f, ClassObject c, ControlFlowNode origin) {
+    is_unhashable(f, c, origin) and
     exists(SubscriptNode sub | sub.getIndex() = f |
         exists(ClassObject custom_getitem |
             sub.getValue().refersTo(_, custom_getitem, _) and
@@ -55,17 +55,17 @@ predicate unhashable_subscript(ControlFlowNode f, ClassObject c) {
     )
 }
 
-predicate is_unhashable(ControlFlowNode f, ClassObject cls) {
-    f.refersTo(_, cls, _) and
+predicate is_unhashable(ControlFlowNode f, ClassObject cls, ControlFlowNode origin) {
+    f.refersTo(_, cls, origin) and
     (not cls.hasAttribute("__hash__") and not cls.unknowableAttributes() and cls.isNewStyle()
      or
      cls.lookupAttribute("__hash__") = theNoneObject()
     )
 }
 
-from ControlFlowNode f, ClassObject c
+from ControlFlowNode f, ClassObject c, ControlFlowNode origin
 where 
-explicitly_hashed(f) and is_unhashable(f, c)
+explicitly_hashed(f) and is_unhashable(f, c, origin)
 or
-unhashable_subscript(f, c)
-select f.getNode(), "This instance of $@ is unhashable.", c, c.getQualifiedName()
+unhashable_subscript(f, c, origin)
+select f.getNode(), "This $@ of $@ is unhashable.", origin, "instance", c, c.getQualifiedName()

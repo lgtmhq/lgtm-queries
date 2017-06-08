@@ -409,7 +409,6 @@ private predicate correlatedConditions(SsaSourceVariable npecand, ConditionBlock
   interestingCond(npecand, cond1) and
   interestingCond(npecand, cond2) and
   cond1 != cond2 and
-  cond1.getLocation().getStartLine() <= cond2.getLocation().getStartLine() and
   (
     exists(SsaVariable v |
       cond1.getCondition() = v.getAUse() and
@@ -445,36 +444,32 @@ private predicate correlatedConditions(SsaSourceVariable npecand, ConditionBlock
   )
 }
 
-/** The state value after passing through a given branch of one of the conditions in the correlated pair. */
-newtype ConditionState =
-  FstCondIs(boolean branch) { branch = true or branch = false } or
-  SndCondIs(boolean branch) { branch = true or branch = false } or
-  InitialCondState()
-
 /**
  * This is again the transitive closure of `nullVarStep` similarly to `varMaybeNullInBlock`, but
- * this time restricted based on a given pair of correlated conditions. The `state` argument tracks
- * whether a condition was passed through and what branch was taken.
+ * this time restricted based on pairs of correlated conditions consistent with `cond1`
+ * evaluating to `branch`.
  */
-private predicate varMaybeNullInBlock_corrCond(SsaVariable origin, SsaVariable ssa, BasicBlock bb, boolean storedcompletion, ConditionBlock cond1, ConditionBlock cond2, boolean inverted, ConditionState state) {
+private predicate varMaybeNullInBlock_corrCond(SsaVariable origin, SsaVariable ssa, BasicBlock bb, boolean storedcompletion, ConditionBlock cond1, boolean branch) {
   exists(SsaSourceVariable npecand | npecand = ssa.getSourceVariable() |
-    nullDerefCandidateVariable(npecand) and correlatedConditions(npecand, cond1, cond2, inverted)
+    nullDerefCandidateVariable(npecand) and correlatedConditions(npecand, cond1, _, _)
   ) and
   (
-    exists(boolean branch | varConditionallyNull(ssa, cond1, branch) and state = FstCondIs(branch)) or
-    exists(boolean branch | varConditionallyNull(ssa, cond2, branch) and state = SndCondIs(branch)) or
-    not varConditionallyNull(ssa, cond1, _) and not varConditionallyNull(ssa, cond2, _) and state = InitialCondState()
+    varConditionallyNull(ssa, cond1, branch) or
+    not varConditionallyNull(ssa, cond1, _) and (branch = true or branch = false)
   ) and
   varMaybeNull(ssa, _, _) and bb = ssa.getBasicBlock() and storedcompletion = false and origin = ssa
   or
-  exists(BasicBlock mid, SsaVariable midssa, boolean midstoredcompletion, ConditionState midstate |
-    varMaybeNullInBlock_corrCond(origin, midssa, mid, midstoredcompletion, cond1, cond2, inverted, midstate) and
+  exists(BasicBlock mid, SsaVariable midssa, boolean midstoredcompletion |
+    varMaybeNullInBlock_corrCond(origin, midssa, mid, midstoredcompletion, cond1, branch) and
     (
-      cond1 = mid and exists(boolean branch | cond1.getTestSuccessor(branch) = bb and midstate = InitialCondState() and state = FstCondIs(branch)) or
-      cond1 = mid and exists(boolean branch | cond1.getTestSuccessor(branch) = bb and midstate = state and state = SndCondIs(branch.booleanXor(inverted))) or
-      cond2 = mid and exists(boolean branch | cond2.getTestSuccessor(branch) = bb and midstate = InitialCondState() and state = SndCondIs(branch)) or
-      cond2 = mid and exists(boolean branch | cond2.getTestSuccessor(branch) = bb and midstate = state and state = FstCondIs(branch.booleanXor(inverted))) or
-      cond1 != mid and cond2 != mid and state = midstate
+      cond1 = mid and cond1.getTestSuccessor(branch) = bb or
+      exists(ConditionBlock cond2, boolean inverted, boolean branch2 |
+        cond2 = mid and
+        correlatedConditions(_, cond1, cond2, inverted) and
+        cond2.getTestSuccessor(branch2) = bb and
+        branch = branch2.booleanXor(inverted)
+      ) or
+      cond1 != mid and not exists(ConditionBlock cond2 | cond2 = mid and correlatedConditions(_, cond1, cond2, _))
     ) and
     nullVarStep(midssa, mid, midstoredcompletion, ssa, bb, storedcompletion)
   )
@@ -654,9 +649,9 @@ predicate nullDeref(SsaSourceVariable v, VarAccess va, string msg, Expr reason) 
     varMaybeNull(origin, msg, reason) and
     ssa.getSourceVariable() = v and
     firstVarDereferenceInBlock(bb, ssa, va) and
-    forall(ConditionBlock cond1, ConditionBlock cond2, boolean inverted |
-      correlatedConditions(v, cond1, cond2, inverted) |
-      varMaybeNullInBlock_corrCond(origin, ssa, bb, _, cond1, cond2, inverted, _)
+    forall(ConditionBlock cond |
+      correlatedConditions(v, cond, _, _) |
+      varMaybeNullInBlock_corrCond(origin, ssa, bb, _, cond, _)
     ) and
     forall(SsaVariable guardssa, SsaSourceVariable guardvar, TrackVarKind kind |
       trackingVar(v, guardssa, guardvar, kind, _) |

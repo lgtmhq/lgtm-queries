@@ -150,3 +150,18 @@ class URLValuedAttribute extends DOMAttributeDefinition {
     result = getStringValue().trim()
   }
 }
+
+/**
+ * Holds if `e` accesses the global variable `g`, either directly
+ * or through the `window` object.
+ */
+predicate accessesGlobal(Expr e, string g) {
+  // direct global variable access
+  e.(GlobalVarAccess).getName() = g
+  or
+  // property access through 'window'
+  exists (PropAccess pacc | pacc = e |
+    accessesGlobal(pacc.getBase(), "window") and
+    pacc.getPropertyName() = g
+  )
+}

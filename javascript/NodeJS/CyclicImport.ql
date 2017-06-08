@@ -32,13 +32,13 @@ import javascript
  */
 string ppDiff(Container c1, Container c2) {
   relatedAncestors(c1, c2) and
-  if c1.getName() = c2.getName() then
-    result = ppDiff(c1.getParent(), c2.getParent()) + "/" + c1.getName()
-  else if not exists(c1.getParent()) or
-          sourceLocationPrefix(c1.getParent().getPath()) then
-    result = "/" + c1.getName()
+  if c1.getBaseName() = c2.getBaseName() then
+    result = ppDiff(c1.getParentContainer(), c2.getParentContainer()) + "/" + c1.getBaseName()
+  else if not exists(c1.getParentContainer()) or
+          sourceLocationPrefix(c1.getParentContainer().getAbsolutePath()) then
+    result = "/" + c1.getBaseName()
   else
-    result = ".../" + c1.getName()
+    result = ".../" + c1.getBaseName()
 }
 
 /**
@@ -51,7 +51,7 @@ predicate relatedAncestors(Container c1, Container c2) {
   exists (NodeModule m, NodeModule n | relatedModules(m, n) |
     c1 = m.getFile() and c2 = n.getFile()
   ) or
-  relatedAncestors(c1.(Folder).getAChild(), c2.(Folder).getAChild())
+  relatedAncestors(c1.(Folder).getAChildContainer(), c2.(Folder).getAChildContainer())
 }
 
 /**

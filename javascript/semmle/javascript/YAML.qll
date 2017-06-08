@@ -257,7 +257,7 @@ class YAMLInclude extends YAMLScalar {
 
   override YAMLValue eval() {
     exists (YAMLDocument targetDoc |
-      targetDoc.getFile().getPath() = getTargetPath() and
+      targetDoc.getFile().getAbsolutePath() = getTargetPath() and
       result = targetDoc.eval()
     )
   }
@@ -270,7 +270,7 @@ class YAMLInclude extends YAMLScalar {
       if path.matches("/%") then
         result = path
       else
-        result = getDocument().getFile().getParent().getPath() + "/" + path
+        result = getDocument().getFile().getParentContainer().getAbsolutePath() + "/" + path
     )
   }
 }

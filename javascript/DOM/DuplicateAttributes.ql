@@ -22,7 +22,7 @@
  * @precision very-high
  */
 
-import DOM.DOM
+import javascript
 
 /**
  * Holds if `earlier` and `later` are attribute definitions with the same name
