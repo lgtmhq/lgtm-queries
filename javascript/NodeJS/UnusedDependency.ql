@@ -23,7 +23,6 @@
  */
 
 import javascript
-import DOM.DOM
 
 /**
  * Holds if the NPM package `pkg` declares a dependency on package `name`,

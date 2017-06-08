@@ -165,7 +165,7 @@ private int importsDependency(Import i, NPMPackage pkg, NPMDependency dep) {
  */
 private int distance(Folder ancestor, Container descendant) {
   ancestor = descendant and result = 0 or
-  result = 1 + distance(ancestor, descendant.getParent())
+  result = 1 + distance(ancestor, descendant.getParentContainer())
 }
 
 /**

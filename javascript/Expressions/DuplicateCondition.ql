@@ -14,7 +14,7 @@
 /**
  * @name Duplicate 'if' condition
  * @description If two conditions in an 'if'-'else if' chain are identical, the
- *              second condition will never be evaluated.
+ *              second condition will never hold.
  * @kind problem
  * @problem.severity error
  * @tags maintainability

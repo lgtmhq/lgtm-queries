@@ -200,4 +200,33 @@ module Express {
       )
     }
   }
+
+  /**
+   * An invocation of the `cookie` method on an HTTP response object.
+   */
+  private class SetCookie extends HTTP::CookieDefinition, MethodCallExpr {
+    SetCookie() {
+      isResponse(getReceiver()) and
+      getMethodName() = "cookie"
+    }
+
+    override Expr getNameArgument() { result = getArgument(0) }
+    override Expr getValueArgument() { result = getArgument(1) }
+  }
+
+  /*
+   * An expression passed to the `render` method of an HTTP response object
+   * as the value of a template variable.
+   */
+  private class TemplateInput extends HTTP::ResponseBody {
+    TemplateInput() {
+      exists (MethodCallExpr mce, DataFlowNode locals, PropWriteNode pw |
+        isResponse(mce.getReceiver()) and
+        mce.getMethodName() = "render" and
+        mce.getArgument(1).(DataFlowNode).getALocalSource() = locals and
+        pw.getBase().getALocalSource() = locals and
+        pw.getRhs() = this
+      )
+    }
+  }
 }

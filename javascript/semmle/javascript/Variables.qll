@@ -627,16 +627,3 @@ class Parameter extends BindingPattern {
 class SimpleParameter extends Parameter, VarDecl {
   override predicate isLValue() { Parameter.super.isLValue() }
 }
-
-/** Holds if `e` is a variable access or property access referring to the global variable `g`. */
-predicate accessesGlobal(Expr e, string g) {
-  // direct global variable access
-  ((GlobalVarAccess)e).getName() = g or
-
-  // property access through 'window'
-  exists (PropAccess pacc |
-    pacc = e and
-    accessesGlobal(pacc.getBase(), "window") and
-    pacc.getPropertyName() = g
-  )
-}

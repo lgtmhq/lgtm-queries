@@ -53,7 +53,7 @@ class OmittedArrayElement extends ArrayExpr {
       i = getFirstOmittedElementIndex() and
       pre = getTokenBeforeElement(i).getLocation() and
       post = getTokenAfterElement(i).getLocation() and
-      filepath = pre.getFile().getPath() and
+      filepath = pre.getFile().getAbsolutePath() and
       startline = pre.getStartLine() and
       startcolumn = pre.getStartColumn() and
       endline = post.getEndLine() and

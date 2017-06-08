@@ -174,7 +174,14 @@ class ExternalMemberDecl extends ExternalVarDecl, ExprStmt {
   }
 
   override string getQualifiedName() {
-    result = getProperty().getQualifiedName()
+    result = getBaseName() + "." + getName()
+  }
+
+  /**
+   * Holds if this member belongs to type `base` and has name `name`.
+   */
+  predicate hasQualifiedName(string base, string name) {
+    base = getBaseName() and name = getName()
   }
 
   override string getName() {

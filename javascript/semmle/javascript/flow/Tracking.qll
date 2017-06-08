@@ -157,6 +157,52 @@ abstract class TaintTrackingConfiguration extends FlowTrackingConfiguration {
   override predicate isExtraFlowEdge(DataFlowNode src, DataFlowNode trg) {
     src = trg.(TaintFlowTarget).getATaintSource()
   }
+
+  override predicate isProhibitedFlowNode(DataFlowNode nd) {
+    sanitizedByGuard(this, nd)
+  }
+}
+
+/**
+ * Holds if variable use `u` is sanitized for the purposes of taint-tracking
+ * configuration `cfg`.
+ */
+private predicate sanitizedByGuard(TaintTrackingConfiguration cfg, VarUse u) {
+  exists (SsaVariable v | u = v.getAUse() |
+    // either `v` is a refined variable where the guard performs
+    // sanitization
+    exists (SsaRefinementNode ref | v = ref.getVariable() |
+      guardSanitizes(cfg, ref.getGuard(), _)
+    )
+    or
+    // or there is a non-refining guard that dominates this use
+    exists (ConditionGuardNode guard |
+      guardSanitizes(cfg, guard, v) and guard.dominates(u.getBasicBlock())
+    )
+  )
+}
+
+/**
+ * Holds if `guard` is sanitizes `v` for the purposes of taint-tracking
+ * configuration `cfg`.
+ */
+private predicate guardSanitizes(TaintTrackingConfiguration cfg,
+                                 ConditionGuardNode guard, SsaVariable v) {
+  exists (SanitizingGuard sanitizer | sanitizer = guard.getTest() |
+    sanitizer.sanitizes(cfg, guard.getOutcome(), v)
+  )
+}
+
+/**
+ * An expression that can act as a sanitizer for a variable when appearing
+ * in a condition.
+ */
+abstract class SanitizingGuard extends Expr {
+  /**
+   * Holds if this expression sanitizes variable `v` for the purposes of taint-tracking
+   * configuration `cfg`, provided it evaluates to `outcome`.
+   */
+  abstract predicate sanitizes(TaintTrackingConfiguration cfg, boolean outcome, SsaVariable v);
 }
 
 /**
@@ -249,5 +295,29 @@ private class StringManipulationFlowTarget extends TaintFlowTarget {
       mce.getMethodName() = "exec" and
       result = mce.getArgument(0)
     )
+    or
+    // `(encode|decode)URI(Component)?` propagate taint
+    exists (CallExpr c, string name |
+      c = this and accessesGlobal(c.getCallee(), name) and result = c.getArgument(0) |
+      name = "encodeURI" or name = "decodeURI" or
+      name = "encodeURIComponent" or name = "decodeURIComponent"
+    )
+  }
+}
+
+/**
+ * A taint propagating data flow edge arising from JSON parsing or unparsing.
+ */
+private class JsonManipulationFlowTarget extends TaintFlowTarget, @callexpr {
+  JsonManipulationFlowTarget() {
+    exists (MethodCallExpr mce, string methodName |
+      mce = this and methodName = mce.getMethodName() |
+      accessesGlobal(mce.getReceiver(), "JSON") and
+      (methodName = "parse" or methodName = "stringify")
+    )
+  }
+
+  override DataFlowNode getATaintSource() {
+    result = this.(CallExpr).getArgument(0)
   }
 }

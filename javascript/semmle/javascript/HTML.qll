@@ -200,9 +200,9 @@ class HTMLScriptTag extends HTMLElement {
    */
   Folder getSearchRoot() {
     if getSourcePath().matches("/%") then
-      result.getName() = ""
+      result.getBaseName() = ""
     else
-      result = getFile().getParent()
+      result = getFile().getParentContainer()
   }
 
   /**
@@ -210,7 +210,7 @@ class HTMLScriptTag extends HTMLElement {
    * if it can be determined.
    */
   Script resolveSource() {
-    result.getFile().getPath() = resolveSourcePath()
+    result.getFile().getAbsolutePath() = resolveSourcePath()
   }
 }
 

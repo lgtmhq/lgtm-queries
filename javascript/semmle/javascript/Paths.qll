@@ -24,14 +24,14 @@ import Expr
 private newtype TPath =
   /** A root path. */
   TRootPath(string root) {
-    root = any(Folder f | not exists(f.getParent())).getPath()
+    root = any(Folder f | not exists(f.getParentContainer())).getAbsolutePath()
   }
   or
   /** A path of the form `<parent>/<component>`.*/
   TConsPath(Path parent, string component) {
     // make sure we can represent paths of files in snapshot
     exists (Folder f | f = parent.getContainer() |
-      exists (f.getChild(component))
+      exists (f.getChildContainer(component))
     )
     or
     // make sure we can resolve path strings
@@ -65,7 +65,7 @@ class Path extends TPath {
    * Gets the file or folder referred to by this path, if it exists.
    */
   Container getContainer() {
-    result.getPath() = this.toString()
+    result.getAbsolutePath() = this.toString()
   }
 
   /**
@@ -147,7 +147,7 @@ abstract class PathString extends string {
         // special handling for Windows drive letters when resolving absolute path:
         // the extractor populates "C:/" as a folder that has path "C:/" but name ""
         n = 1 and next.regexpMatch("[A-Za-z]:") and
-        root.getName() = "" and root.toString() = next.toUpperCase() + "/" and
+        root.getBaseName() = "" and root.toString() = next.toUpperCase() + "/" and
         result = base or
         // default case
         result = TConsPath(base, next)

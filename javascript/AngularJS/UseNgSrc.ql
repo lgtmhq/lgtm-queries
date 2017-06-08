@@ -25,7 +25,6 @@
  */
 
 import javascript
-import DOM.DOM
 
 from HTMLAttribute attr, string name
 where name = attr.getName() and

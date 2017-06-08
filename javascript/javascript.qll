@@ -42,6 +42,9 @@ import semmle.javascript.ES2015Modules
 import semmle.javascript.JSX
 import semmle.javascript.HTML
 import semmle.javascript.StandardLibrary
+import semmle.javascript.DOM
 import semmle.javascript.Util
 import semmle.javascript.SSA
 import semmle.javascript.security.dataflow.RemoteFlowSources
+import semmle.javascript.frameworks.AngularJS
+import semmle.javascript.frameworks.xUnit

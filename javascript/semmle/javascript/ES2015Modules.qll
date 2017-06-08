@@ -31,12 +31,12 @@ class ES2015Module extends Module {
 
   /** Gets the full path of the file containing this module. */
   override string getPath() {
-    result = getFile().getPath()
+    result = getFile().getAbsolutePath()
   }
 
   /** Gets the short name of this module without file extension. */
   override string getName() {
-    result = getFile().getShortName()
+    result = getFile().getStem()
   }
 
   /** Gets an import declaration in this module. */

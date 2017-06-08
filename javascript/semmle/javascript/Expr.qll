@@ -681,6 +681,11 @@ class MethodCallExpr extends CallExpr {
   string getMethodName() {
     result = getMethodRef().getPropertyName()
   }
+
+  /** Holds if this invocation calls method `m` on expression `base`. */
+  predicate calls(Expr base, string m) {
+    getMethodRef().accesses(base, m)
+  }
 }
 
 /**
@@ -705,6 +710,12 @@ class PropAccess extends @propaccess, Expr {
       basename = getBase().(PropAccess).getQualifiedName() |
       result = basename + "." + getPropertyName()
     )
+  }
+
+  /** Holds if this property name accesses property `p` on expression `base`. */
+  predicate accesses(Expr base, string p) {
+    base = getBase() and
+    p = getPropertyName()
   }
 
   override ControlFlowNode getFirstControlFlowNode() {

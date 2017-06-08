@@ -23,7 +23,7 @@
  * @precision very-high
  */
 
-import DOM.DOM
+import javascript
 
 /**
  * A link that opens in a new browsing context (that is, it has `target="_blank"`).

@@ -88,5 +88,7 @@ where deadStoreOfLocal(dead, v) and
       // don't flag default inits that are later overwritten
       not (isDefaultInit(dead.getSource()) and dead.isOverwritten(v)) and
       // don't flag assignments in externs
-      not dead.(ASTNode).inExternsFile()
+      not dead.(ASTNode).inExternsFile() and
+      // don't flag exported variables
+      not any(ES2015Module m).exportsAs(v, _)
 select dead, "This definition of " + v.getName() + " is useless, since its value is never read."

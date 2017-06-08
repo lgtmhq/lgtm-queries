@@ -23,7 +23,7 @@
  * @precision very-high
  */
 
-import DOM.DOM
+import javascript
 
 from DOMAttributeDefinition id, string reason
 where id.getName() = "id" and

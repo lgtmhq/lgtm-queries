@@ -52,9 +52,27 @@ class TemplateLiteral extends Expr, @templateliteral {
 
 /** A constant template element. */
 class TemplateElement extends Expr, @templateelement {
-  /** Gets the value of this template element. */
+  /**
+   * Holds if this template element has a "cooked" value.
+   *
+   * Starting with ECMAScript 2018, tagged template literals may contain
+   * elements with invalid escape sequences, which only have a raw value but
+   * no cooked value.
+   */
+  predicate hasValue() {
+    exists(getValue())
+  }
+
+  /**
+   * Gets the "cooked" value of this template element, if any.
+   *
+   * Starting with ECMAScript 2018, tagged template literals may contain
+   * elements with invalid escape sequences, which only have a raw value but
+   * no cooked value.
+   */
   string getValue() {
-    literals(result, _, this)
+    // empty string means no cooked value
+    literals(result, _, this) and result != ""
   }
 
   /** Gets the raw value of this template element. */

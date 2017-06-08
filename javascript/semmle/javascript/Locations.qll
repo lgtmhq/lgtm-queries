@@ -91,7 +91,7 @@ class Location extends @location {
 
   /** Gets a textual representation of this element. */
   string toString() {
-    result = this.getFile().getName() + ":" + this.getStartLine().toString()
+    result = this.getFile().getBaseName() + ":" + this.getStartLine().toString()
   }
 
   /**
@@ -105,7 +105,7 @@ class Location extends @location {
                                              int endline, int endcolumn) {
     exists(File f |
       locations_default(this, f, startline, startcolumn, endline, endcolumn) and
-      filepath = f.getPath()
+      filepath = f.getAbsolutePath()
     )
   }
 }
