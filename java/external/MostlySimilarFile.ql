@@ -29,5 +29,5 @@ import CodeDuplication
 
 from File f, File other, int percent
 where similarFiles(f, other, percent)
-select f, percent + "% of the lines in " + f.getName() + " are similar to lines in $@.",
-  other, other.getName()
+select f, percent + "% of the lines in " + f.getStem() + " are similar to lines in $@.",
+  other, other.getStem()

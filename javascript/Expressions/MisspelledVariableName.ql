@@ -12,22 +12,20 @@
 // permissions and limitations under the License.
 
 /**
- * @name Duplicate anonymous class
- * @description Duplicated anonymous classes indicate that refactoring is necessary.
+ * @name Misspelled variable name
+ * @description Misspelling a variable name implicitly introduces a global
+ *              variable, which may not lead to a runtime error, but is
+ *              likely to give wrong results.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
+ * @tags maintainability
+ *       readability
+ *       correctness
  * @precision high
- * @tags testability
- *       maintainability
- *       useless-code
- *       duplicate-code
- *       statistical
  */
-import java
-import CodeDuplication
 
-from AnonymousClass c, AnonymousClass other
-where duplicateAnonymousClass(c, other)
-  and not fileLevelDuplication(c.getCompilationUnit(), other.getCompilationUnit())
-select c, "Anonymous class is identical to $@.",
-  other, "another anonymous class in " + other.getFile().getStem()
+import Misspelling
+
+from GlobalVarAccess gva, VarDecl lvd
+where misspelledVariableName(gva, lvd)
+select gva, "'" + gva + "' may be a typo for variable $@.", lvd, lvd.getName()

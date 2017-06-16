@@ -28,11 +28,41 @@ private predicate isCallable(AbstractValue v, Function f) {
   f = v.(AbstractClass).getClass().getConstructor().getBody()
 }
 
-/** A function call or `new` expression, with information about its potential callees. */
-class CallSite extends InvokeExpr {
+/**
+ * A function call or `new` expression, with information about its potential callees.
+ *
+ * Both direct calls and reflective calls using `call` or `apply` are modelled.
+ */
+class CallSite extends @invokeexpr {
+  InvokeExpr invk;
+
+  CallSite() { invk = this }
+
   /** Gets an abstract value representing possible callees of this call site. */
-  private AbstractValue getACalleeValue() {
-    result = getCallee().(AnalyzedFlowNode).getAValue()
+  AbstractValue getACalleeValue() {
+    result = invk.getCallee().(AnalyzedFlowNode).getAValue()
+  }
+
+  /**
+   * Gets the data flow node corresponding to the `i`th argument passed to the callee
+   * invoked at this call site.
+   *
+   * For direct calls, this is the `i`th argument to the call itself: for instance,
+   * for a call `f(x, y)`, the 0th argument node is `x` and the first argument node is `y`.
+   *
+   * For reflective calls using `call`, the 0th argument to the call denotes the
+   * receiver, so argument positions are shifted by one: for instance, for a call
+   * `f.call(x, y, z)`, the 0th argument node is `y` and the first argument node is `z`,
+   * while `x` is not an argument node at all.
+   *
+   * Note that this predicate is not defined for arguments following a spread
+   * argument: for instance, for a call `f(x, ...y, z)`, the 0th argument node is `x`,
+   * but the position of `z` cannot be determined, hence there are no first and second
+   * argument nodes.
+   */
+  AnalyzedFlowNode getArgumentNode(int i) {
+    result = invk.getArgument(i) and
+    not invk.getArgument([0..i]) instanceof SpreadElement
   }
 
   /** Gets a potential callee of this call site. */
@@ -82,5 +112,38 @@ class CallSite extends InvokeExpr {
    */
   predicate isUncertain() {
     isImprecise() or isIncomplete()
+  }
+
+  /**
+   * Gets a textual representation of this invocation.
+   */
+  string toString() {
+    result = this.(InvokeExpr).toString()
+  }
+
+  Location getLocation() {
+    result = this.(InvokeExpr).getLocation()
+  }
+}
+
+/**
+ * A reflective function call using `call` or `apply`.
+ */
+class ReflectiveCallSite extends CallSite {
+  AnalyzedFlowNode callee;
+  string callMode;
+
+  ReflectiveCallSite() {
+    this.(MethodCallExpr).calls(callee, callMode) and
+    (callMode = "call" or callMode = "apply")
+  }
+
+  override AbstractValue getACalleeValue() {
+    result = callee.getAValue()
+  }
+
+  override AnalyzedFlowNode getArgumentNode(int i) {
+    callMode = "call" and
+    result = super.getArgumentNode(i+1)
   }
 }

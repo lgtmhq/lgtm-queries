@@ -53,7 +53,7 @@ predicate calls(CallSite cs, Function callee, int imprecision) {
     // if global flow was used to derive the callee, we may be imprecise
     if cs.isIndefinite("global") then
       // callees within the same file are probably genuine
-      callee.getFile() = cs.getFile() and imprecision = 0
+      callee.getFile() = cs.(Locatable).getFile() and imprecision = 0
       or
       // calls to global functions declared in an externs file are fairly
       // safe as well
@@ -87,6 +87,8 @@ where // externs are special, so don't flag them
       not new.(CallSite).isUncertain() and
       not call.(CallSite).isUncertain() and
       // super constructor calls behave more like `new`, so don't flag them
-      not call instanceof SuperCall
+      not call instanceof SuperCall and
+      // reflective calls provide an explicit receiver object, so don't flag them either
+      not call instanceof ReflectiveCallSite
 select (FirstLineOf)f, capitalize(f.describe()) + " is invoked as a constructor here $@, " +
       "and as a normal function here $@.", new, new.toString(), call, call.toString()

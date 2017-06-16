@@ -21,64 +21,7 @@
  * @precision high
  */
 
-import javascript
-
-// import typo database (generated from Wikipedia, licensed under CC BY-SA 3.0)
-import TypoDatabase
-
-/**
- * Holds if `wrong` is a misspelling of `right` that might be intentional or
- * is not interesting enough to flag.
- */
-predicate whitelisted(string wrong, string right) {
-  wrong = "thru" and right = "through" or
-  wrong = "cant" and right = "cannot" or
-  wrong = "inbetween" and right = "between" or
-  wrong = "strat" and right = "start" // often used as abbreviation for "strategy"
-}
-
-/**
- * Holds if `wrong` is a misspelling of `right` that is not white-listed,
- * where `wrongstart` and `wrongend` are the first and last characters, respectively,
- * of `wrong`, and similarly for `rightstart` and `rightend`.
- */
-cached
-predicate normalized_typos(string wrong, string right,
-    string wrongstart, string wrongend, string rightstart, string rightend) {
-  typos(wrong, right) and
-  not whitelisted(wrong, right) and
-  // omit very short identifiers, which are often idiosyncratic abbreviations
-  wrong.length() > 3 and
-  // record first and last characters
-  wrongstart = wrong.charAt(0) and wrongend = wrong.charAt(wrong.length()-1) and
-  rightstart = right.charAt(0) and rightend = right.charAt(right.length()-1)
-}
-
-/**
- * Holds if `part` is an identifier part of `id` starting at `offset`.
- *
- * An identifier part is a maximal substring of an identifier that falls into one
- * of the following categories:
- *
- * 1.  It consists of two or more upper-case characters;
- * 2.  It consists of a single initial upper-case character followed by one or more
- *     lower-case characters, and is not preceded by another upper-case character
- *     (and hence does not overlap with the previous case);
- * 3.  It consists entirely of lower-case characters, which are not preceded by
- *     a single upper-case character (and hence not covered by the previous case).
- *
- * For instance, `memberVariable` has two parts, `member` and
- * `Variable`, as does `member_Variable`.
- */
-predicate idPart(Identifier id, string part, int offset) {
-  exists (string idname, string str |
-    idname = id.getName() and
-    part = str.toLowerCase() |
-    str = idname.regexpFind("(?<![A-Z])[A-Z]{2,}(?![A-Z])", _, offset) or
-    str = idname.regexpFind("(?<![A-Z])[A-Z][a-z]+(?![a-z])", _, offset) or
-    str = idname.regexpFind("(?<=^|[^A-Za-z]|[A-Z]{2,})[a-z]+(?![a-z])", _, offset)
-  )
-}
+import Misspelling
 
 /**
  * An identifier part.
@@ -125,8 +68,10 @@ class WrongIdentifierPart extends IdentifierPart {
   /**
    * Gets an identifier part that corresponds to a correction of this typo.
    */
-  IdentifierPart getASuggestion() {
-    normalized_typos(this, result, _, _, _, _)
+  string getASuggestion() {
+    exists (IdentifierPart right | normalized_typos(this, right, _, _, _, _) |
+      result = "'" + right + "'"
+    )
   }
 
   /**
@@ -151,7 +96,9 @@ class WrongIdentifierPart extends IdentifierPart {
         this.prefixOf(right, rightlen) and lowerid.substring(start, start+rightlen) = right or
         this.suffixOf(right, rightlen) and lowerid.substring(start+len-rightlen, start+len) = right
       )
-    )
+    ) and
+    // also throw out cases flagged by another query
+    not misspelledVariableName(id, _)
   }
 
   /**
@@ -184,4 +131,4 @@ where // make sure we have at least one occurrence of a correction
       exists(wrong.getASuggestion()) and
       // make sure we have at least one unambiguous occurrence of the wrong word
       wrong.occursIn(_, _, _)
-select wrong, "This may be a typo for " + wrong.ppSuggestions() + "."
+select wrong, "'" + wrong + "' may be a typo for " + wrong.ppSuggestions() + "."

@@ -50,5 +50,5 @@ class AntTarget extends XMLElement {
 
 /** An Ant target that occurs in an Ant build file with the default name `build.xml`. */
 class MainAntTarget extends AntTarget {
-  MainAntTarget() { this.getFile().getName() = "build.xml" }
+  MainAntTarget() { this.getFile().getBaseName() = "build.xml" }
 }

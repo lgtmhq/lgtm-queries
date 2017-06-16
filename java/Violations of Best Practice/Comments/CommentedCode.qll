@@ -110,7 +110,7 @@ class CommentedOutCode extends Javadoc {
   }
   
   predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
-    path = getLocation().getFile().getFullName() and
+    path = getLocation().getFile().getAbsolutePath() and
     sl = getLocation().getStartLine() and
     sc = getLocation().getStartColumn() and
     exists(Location end | end = this.getLastSuccessor().getLocation() |

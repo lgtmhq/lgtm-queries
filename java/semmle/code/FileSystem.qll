@@ -11,19 +11,13 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/**
- * Provides classes that represent objects in the file system,
- * such as individual files or folders.
- */
+/** Provides classes for working with files and folders. */
 
 import Location
 
-/**
- * A container is an abstract representation of a file system object that can
- * hold elements of interest.
- */
+/** A file or folder. */
 class Container extends @container, Top {
-    /**
+  /**
    * Gets the absolute, canonical path of this container, using forward slashes
    * as path separator.
    *
@@ -47,19 +41,14 @@ class Container extends @container, Top {
    * a bare root prefix, that is, the path has no path segments. A container
    * whose absolute path has no segments is always a `Folder`, not a `File`.
    */
-  string getAbsolutePath() {
-    folders(this,result,_) or
-    files(this,result,_,_,_)
-  }
+  abstract string getAbsolutePath();
 
   /**
    * Gets a URL representing the location of this container.
    *
    * For more information see https://lgtm.com/docs/ql/locations#providing-urls.
    */
-  string getURL() {
-    none()
-  }
+  abstract string getURL();
 
   /**
    * Gets the relative path of this file or folder from the root folder of the
@@ -147,6 +136,7 @@ class Container extends @container, Top {
   string getStem() {
     result = getAbsolutePath().regexpCapture(".*/([^/]*?)(?:\\.([^.]*))?", 1)
   }
+
   /** Gets the parent container of this file or folder. */
   Container getParentContainer() {
     containerparent(result, this)
@@ -188,45 +178,75 @@ class Container extends @container, Top {
     result = getAbsolutePath()
   }
 
-  /** The name of this container. */
+  /**
+   * DEPRECATED: use `getAbsolutePath()`, `getBaseName()` or `getStem()` instead.
+   *
+   * Gets the name of this container.
+   */
+  deprecated
   string getName() {
     result = getAbsolutePath()
   }
 
   /**
+   * DEPRECATED: use `getBaseName()` or `getStem()` instead.
+   *
    * The short name of this container, excluding its path and (for files) extension.
    *
    * For folders, the short name includes the extension (if any), so the short name
    * of the folder with absolute path `/home/user/.m2` is `.m2`.
    */
+  deprecated
   string getShortName() {
     folders(this,_,result) or
     files(this,_,result,_,_)
   }
 
-  /** The full name of this container, including its path and extension (if any). */
+  /**
+   * DEPRECATED: use `getAbsolutePath()` instead.
+   *
+   * The full name of this container, including its path and extension (if any).
+   */
+  deprecated
   string getFullName() {
     result = getAbsolutePath()
   }
 }
 
-/** A folder holds files. */
+/** A folder. */
 class Folder extends Container, @folder {
-  /** The URL of this folder. */
-  override string getURL() { result = "folder://" + getName() }
+  override string getAbsolutePath() {
+    folders(this, result, _)
+  }
+
+  /** Gets the URL of this folder. */
+  override string getURL() {
+    result = "folder://" + getAbsolutePath()
+  }
 }
 
 /**
- * A file on disk.
+ * A file.
  *
  * Note that `File` extends `Container` as it may be a `jar` file.
  */
 class File extends Container, @file {
-  /** Holds if this file has a specific name. */
-  predicate hasName(string name) { name = this.getName() }
-  
-  /** The URL of this file. */
-  override string getURL() { result = "file://" + this.getFullName() + ":0:0:0:0" }
+  override string getAbsolutePath() {
+    files(this, result, _, _, _)
+  }
+
+  /** Gets the URL of this file. */
+  override string getURL() {
+    result = "file://" + this.getAbsolutePath() + ":0:0:0:0"
+  }
+
+  /**
+   * DEPRECATED: use `getAbsolutePath()`, `getBaseName()` or `getStem()` instead.
+   *
+   * Holds if this file has the specified `name`.
+   */
+  deprecated
+  predicate hasName(string name) { name = this.getAbsolutePath() }
 }
 
 /**

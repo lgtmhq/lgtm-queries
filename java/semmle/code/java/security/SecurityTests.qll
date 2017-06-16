@@ -19,9 +19,9 @@ import java
 class NonSecurityTestClass extends TestClass {
   NonSecurityTestClass() {
     not exists(RefType s | this.getASupertype*().getSourceDeclaration() =  s and s.fromSource() |
-      s.getLocation().getFile().getFullName().matches("%semmle%")
-      or s.getLocation().getFile().getFullName().matches("%packs/security/tests/qltest%")
-      or s.getLocation().getFile().getFullName().matches("%CWE%")
+      s.getLocation().getFile().getAbsolutePath().matches("%semmle%")
+      or s.getLocation().getFile().getAbsolutePath().matches("%packs/security/tests/qltest%")
+      or s.getLocation().getFile().getAbsolutePath().matches("%CWE%")
     )
   }
 }

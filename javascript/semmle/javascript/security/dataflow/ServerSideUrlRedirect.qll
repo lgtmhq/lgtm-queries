@@ -66,20 +66,20 @@ abstract class ServerSideUrlRedirectSanitizer extends DataFlowNode { }
 /**
  * A taint-tracking configuration for reasoning about unvalidated URL redirections.
  */
-class ServerSideUrlRedirectDataFlowConfiguration extends TaintTrackingConfiguration {
+class ServerSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configuration {
   ServerSideUrlRedirectDataFlowConfiguration() { this = "ServerSideUrlRedirectDataFlowConfiguration" }
 
-  override predicate isValidFlowSource(DataFlowNode source) {
+  override predicate isSource(DataFlowNode source) {
     source instanceof ServerSideUrlRedirectSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isValidFlowSink(DataFlowNode sink) {
+  override predicate isSink(DataFlowNode sink) {
     sink instanceof ServerSideUrlRedirectSink
   }
 
-  override predicate isProhibitedFlowNode(DataFlowNode node) {
-    super.isProhibitedFlowNode(node) or
+  override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     node instanceof ServerSideUrlRedirectSanitizer
   }
 }
@@ -117,8 +117,8 @@ class ConcatenationSanitizer extends ServerSideUrlRedirectSanitizer {
  * A call to a function called `isLocalUrl` or similar, which is
  * considered to sanitize a variable for purposes of URL redirection.
  */
-class LocalUrlSanitizingGuard extends SanitizingGuard, CallExpr {
-  override predicate sanitizes(TaintTrackingConfiguration cfg, boolean outcome, SsaVariable v) {
+class LocalUrlSanitizingGuard extends TaintTracking::SanitizingGuard, CallExpr {
+  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
     cfg instanceof ServerSideUrlRedirectDataFlowConfiguration and
     // `isLocalUrl(v)` sanitizes `v` if it evaluates to `true`
     this.getCalleeName().regexpMatch("(?i)(is_?)?local_?url") and
@@ -131,8 +131,8 @@ class LocalUrlSanitizingGuard extends SanitizingGuard, CallExpr {
  * A comparison to a constant string, which is considered to
  * sanitize a variable for purposes of URL redirection.
  */
-class UrlWhitelistSanitizingGuard extends SanitizingGuard, EqualityTest {
-  override predicate sanitizes(TaintTrackingConfiguration cfg, boolean outcome, SsaVariable v) {
+class UrlWhitelistSanitizingGuard extends TaintTracking::SanitizingGuard, EqualityTest {
+  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
     cfg instanceof ServerSideUrlRedirectDataFlowConfiguration and
     // `v === "foo"` sanitizes `v` if it evaluates to `true`, `v !== "bar"`
     // if it evaluates to `false`

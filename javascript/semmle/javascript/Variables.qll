@@ -63,6 +63,11 @@ class GlobalScope extends Scope, @globalscope {
   }
 }
 
+/** A local scope, that is, a scope that is not the global scope. */
+class LocalScope extends Scope {
+  LocalScope() { not this instanceof GlobalScope }
+}
+
 /**
  * A scope induced by a Node.js or ES2015 module
  */

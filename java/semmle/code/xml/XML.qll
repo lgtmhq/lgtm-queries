@@ -32,7 +32,7 @@ abstract class XMLLocatable extends @xmllocatable {
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f, Location l | l = this.getLocation() |
       locations_default(l,f,startline,startcolumn,endline,endcolumn) and
-      filepath = f.getFullName()
+      filepath = f.getAbsolutePath()
     )
   }
 
@@ -121,15 +121,7 @@ class XMLFile extends XMLParent, File {
 
   /** The name of this XML file. */
   override
-  string getName() { files(this,result,_,_,_) }
-
-  /** The path of this XML file. */
-  string getPath() { files(this,_,result,_,_) }
-
-  /** The path of the folder that contains this XML file. */
-  string getFolder() {
-    result = this.getPath().substring(0, this.getPath().length()-this.getName().length())
-  }
+  string getName() { result = File.super.getAbsolutePath() }
 
   /** The encoding of this XML file. */
   string getEncoding() { xmlEncoding(this,result) }

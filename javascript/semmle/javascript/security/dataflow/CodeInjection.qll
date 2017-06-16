@@ -39,24 +39,24 @@ abstract class CodeInjectionSanitizer extends DataFlowNode { }
 /**
  * A taint-tracking configuration for reasoning about CodeInjection.
  */
-class CodeInjectionDataFlowConfiguration extends TaintTrackingConfiguration {
+class CodeInjectionDataFlowConfiguration extends TaintTracking::Configuration {
   CodeInjectionDataFlowConfiguration() { this = "CodeInjectionDataFlowConfiguration" }
 
-  override predicate isValidFlowSource(DataFlowNode source) {
+  override predicate isSource(DataFlowNode source) {
     source instanceof CodeInjectionSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isValidFlowSink(DataFlowNode sink) {
+  override predicate isSink(DataFlowNode sink) {
     sink instanceof CodeInjectionSink
   }
 
-  override predicate isProhibitedFlowNode(DataFlowNode node) {
+  override predicate isSanitizer(DataFlowNode node) {
     node instanceof CodeInjectionSanitizer
   }
 
-  override predicate isExtraFlowEdge(DataFlowNode src, DataFlowNode trg) {
-    super.isExtraFlowEdge(src, trg)
+  override predicate isAdditionalTaintStep(DataFlowNode src, DataFlowNode trg) {
+    super.isAdditionalTaintStep(src, trg)
     or
     // HTML sanitizers are insufficient protection against code injection
     exists(CallExpr htmlSanitizer, string calleeName |

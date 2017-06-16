@@ -23,7 +23,7 @@ predicate isGwtXmlIncluded() {
 /** A GWT module XML file with a `.gwt.xml` suffix. */
 class GwtXmlFile extends XMLFile {
   GwtXmlFile() {
-    this.getName().matches("%.gwt.xml")
+    this.getBaseName().matches("%.gwt.xml")
   }
 
   /** The top-level module element of a GWT module XML file. */
@@ -40,7 +40,7 @@ class GwtXmlFile extends XMLFile {
   GwtXmlFile getAnInheritedXmlFile() {
     exists(GwtXmlFile f, string name |
       name = getAnInheritedModuleName() and
-      f.getName().matches("%/" + name.replaceAll(".","/") + ".gwt.xml") and
+      f.getAbsolutePath().matches("%/" + name.replaceAll(".","/") + ".gwt.xml") and
       result = f
     )
   }
