@@ -219,9 +219,21 @@ class SixToFiveDirective extends Directive {
   SixToFiveDirective() { getDirectiveText() = "use 6to5" }
 }
 
+/** A SystemJS `format` directive. */
+class SystemJSFormatDirective extends Directive {
+  SystemJSFormatDirective() {
+    getDirectiveText().regexpMatch("format (cjs|esm|global|register)")
+  }
+}
+
 /** A SystemJS `format register` directive. */
-class FormatRegisterDirective extends Directive {
+class FormatRegisterDirective extends SystemJSFormatDirective {
   FormatRegisterDirective() { getDirectiveText() = "format register" }
+}
+
+/** A `ngInject` or `ngNoInject` directive. */
+class NgInjectDirective extends Directive {
+  NgInjectDirective() { getDirectiveText().regexpMatch("ng(No)?Inject") }
 }
 
 /** An `if` statement. */

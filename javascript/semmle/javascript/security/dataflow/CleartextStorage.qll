@@ -42,24 +42,24 @@ abstract class CleartextStorageSanitizer extends DataFlowNode { }
  * added either by extending the relevant class, or by subclassing this configuration itself,
  * and amending the sources and sinks.
  */
-class CleartextStorageDataFlowConfiguration extends TaintTrackingConfiguration {
+class CleartextStorageDataFlowConfiguration extends TaintTracking::Configuration {
   CleartextStorageDataFlowConfiguration() {
     this = "ClearTextStorage"
   }
 
   override
-  predicate isValidFlowSource(DataFlowNode source) {
+  predicate isSource(DataFlowNode source) {
     source instanceof CleartextStorageSource or
     source instanceof SensitiveExpr
   }
 
   override
-  predicate isValidFlowSink(DataFlowNode sink) {
+  predicate isSink(DataFlowNode sink) {
     sink instanceof CleartextStorageSink
   }
 
   override
-  predicate isProhibitedFlowNode(DataFlowNode node) {
+  predicate isSanitizer(DataFlowNode node) {
     node instanceof CleartextStorageSanitizer
   }
 }

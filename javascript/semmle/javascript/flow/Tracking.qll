@@ -17,6 +17,9 @@
  * The classes in this module allow restricting the data flow analysis
  * to a particular set of source or sink nodes, and providing extra
  * edges along which flow should be propagated.
+ *
+ * NOTE: The API of this library is not stable yet and may change in
+ *       the future.
  */
 
 import javascript
@@ -26,40 +29,40 @@ import javascript
  *
  * Each use of the data flow tracking library must define its own unique extension
  * of this abstract class. A configuration defines a set of relevant sources
- * (`isValidFlowSource`) and sinks (`isValidFlowSink`), and may additionally
- * define additional edges beyond the standard data flow edges (`isExtraFlowEdge`)
- * and prohibit intermediate flow nodes (`isProhibitedFlowNode`).
+ * (`isSource`) and sinks (`isSink`), and may additionally
+ * define additional edges beyond the standard data flow edges (`isAdditionalFlowStep`)
+ * and prohibit intermediate flow nodes (`isBarrier`).
  */
 abstract class FlowTrackingConfiguration extends string {
   bindingset[this]
   FlowTrackingConfiguration() { any() }
 
   /**
-   * Holds if `source` is a valid flow source.
-   *
-   * The smaller this predicate is, the faster `flowsTo()` will converge.
-   */
-  abstract predicate isValidFlowSource(DataFlowNode source);
-
-  /**
-   * Holds if `sink` is a valid flow sink.
+   * Holds if `source` is a relevant data flow source.
    *
    * The smaller this predicate is, the faster `flowsFrom()` will converge.
    */
-  abstract predicate isValidFlowSink(DataFlowNode sink);
+  abstract predicate isSource(DataFlowNode source);
+
+  /**
+   * Holds if `sink` is a relevant data flow sink.
+   *
+   * The smaller this predicate is, the faster `flowsFrom()` will converge.
+   */
+  abstract predicate isSink(DataFlowNode sink);
 
   /**
    * Holds if `source -> sink` should be considered as a flow edge
    * in addition to standard data flow edges.
    */
-  predicate isExtraFlowEdge(DataFlowNode src, DataFlowNode trg) { none() }
+  predicate isAdditionalFlowStep(DataFlowNode src, DataFlowNode trg) { none() }
 
   /**
    * Holds if the intermediate flow node `node` is prohibited.
    *
    * Note that flow through standard data flow edges cannot be prohibited.
    */
-  predicate isProhibitedFlowNode(DataFlowNode node) { none() }
+  predicate isBarrier(DataFlowNode node) { none() }
 
   /**
    * Holds if `source` flows to `sink`.
@@ -71,7 +74,7 @@ abstract class FlowTrackingConfiguration extends string {
    */
   predicate flowsTo(DataFlowNode source, DataFlowNode sink) {
     flowsTo(source, sink, this) and
-    isValidFlowSink(sink)
+    isSink(sink)
   }
 
   /**
@@ -84,7 +87,7 @@ abstract class FlowTrackingConfiguration extends string {
    */
   predicate flowsFrom(DataFlowNode sink, DataFlowNode source) {
     flowsFrom(source, sink, this) and
-    isValidFlowSource(source)
+    isSource(source)
   }
 }
 
@@ -96,7 +99,7 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink, FlowTrackingCo
   (
     // Base case
     sink = source and
-    configuration.isValidFlowSource(source)
+    configuration.isSource(source)
     or
     // Local flow
     exists (DataFlowNode mid |
@@ -107,11 +110,11 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink, FlowTrackingCo
     // Extra flow
     exists(DataFlowNode mid |
       flowsTo(source, mid, configuration) and
-      configuration.isExtraFlowEdge(mid, sink)
+      configuration.isAdditionalFlowStep(mid, sink)
     )
   )
   and
-  not configuration.isProhibitedFlowNode(sink)
+  not configuration.isBarrier(sink)
 }
 
 /**
@@ -125,7 +128,7 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink, FlowTracking
   (
     // Base case
     sink = source and
-    configuration.isValidFlowSink(sink)
+    configuration.isSink(sink)
     or
     // Local flow
     exists (DataFlowNode mid |
@@ -136,188 +139,222 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink, FlowTracking
     // Extra flow
     exists (DataFlowNode mid |
       flowsFrom(mid, sink, configuration) and
-      configuration.isExtraFlowEdge(source, mid)
+      configuration.isAdditionalFlowStep(source, mid)
     )
   )
   and
-  not configuration.isProhibitedFlowNode(source)
+  not configuration.isBarrier(source)
 }
 
 /**
- * A data flow tracking configuration that considers taint propagation through
- * objects, arrays, promises and strings in addition to standard data flow.
- *
- * If a different set of flow edges is desired, extend this class and override
- * `isExtraFlowEdge`.
+ * Provides classes for modelling taint propagation.
  */
-abstract class TaintTrackingConfiguration extends FlowTrackingConfiguration {
-  bindingset[this]
-  TaintTrackingConfiguration() { any() }
-
-  override predicate isExtraFlowEdge(DataFlowNode src, DataFlowNode trg) {
-    src = trg.(TaintFlowTarget).getATaintSource()
-  }
-
-  override predicate isProhibitedFlowNode(DataFlowNode nd) {
-    sanitizedByGuard(this, nd)
-  }
-}
-
-/**
- * Holds if variable use `u` is sanitized for the purposes of taint-tracking
- * configuration `cfg`.
- */
-private predicate sanitizedByGuard(TaintTrackingConfiguration cfg, VarUse u) {
-  exists (SsaVariable v | u = v.getAUse() |
-    // either `v` is a refined variable where the guard performs
-    // sanitization
-    exists (SsaRefinementNode ref | v = ref.getVariable() |
-      guardSanitizes(cfg, ref.getGuard(), _)
-    )
-    or
-    // or there is a non-refining guard that dominates this use
-    exists (ConditionGuardNode guard |
-      guardSanitizes(cfg, guard, v) and guard.dominates(u.getBasicBlock())
-    )
-  )
-}
-
-/**
- * Holds if `guard` is sanitizes `v` for the purposes of taint-tracking
- * configuration `cfg`.
- */
-private predicate guardSanitizes(TaintTrackingConfiguration cfg,
-                                 ConditionGuardNode guard, SsaVariable v) {
-  exists (SanitizingGuard sanitizer | sanitizer = guard.getTest() |
-    sanitizer.sanitizes(cfg, guard.getOutcome(), v)
-  )
-}
-
-/**
- * An expression that can act as a sanitizer for a variable when appearing
- * in a condition.
- */
-abstract class SanitizingGuard extends Expr {
+module TaintTracking {
   /**
-   * Holds if this expression sanitizes variable `v` for the purposes of taint-tracking
-   * configuration `cfg`, provided it evaluates to `outcome`.
+   * A data flow tracking configuration that considers taint propagation through
+   * objects, arrays, promises and strings in addition to standard data flow.
+   *
+   * If a different set of flow edges is desired, extend this class and override
+   * `isAdditionalTaintStep`.
    */
-  abstract predicate sanitizes(TaintTrackingConfiguration cfg, boolean outcome, SsaVariable v);
-}
+  abstract class Configuration extends FlowTrackingConfiguration {
+    bindingset[this]
+    Configuration() { any() }
 
-/**
- * A taint propagating data flow edge, represented by its target node.
- */
-abstract class TaintFlowTarget extends DataFlowNode {
-  /** Gets another data flow node from which taint is propagated to this node. */
-  abstract DataFlowNode getATaintSource();
-}
+    /**
+     * Holds if `source` is a relevant taint source.
+     *
+     * The smaller this predicate is, the faster `hasFlow()` will converge.
+     */
+    // overridden to provide taint-tracking specific qldoc
+    abstract override predicate isSource(DataFlowNode source);
 
-/**
- * A taint propagating data flow edge through object or array elements and
- * promises.
- */
-private class DefaultTaintFlowTarget extends TaintFlowTarget {
-  DefaultTaintFlowTarget() {
-    this instanceof Expr
+    /**
+     * Holds if `sink` is a relevant taint sink.
+     *
+     * The smaller this predicate is, the faster `hasFlow()` will converge.
+     */
+    // overridden to provide taint-tracking specific qldoc
+    abstract override predicate isSink(DataFlowNode sink);
+
+    /** Holds if the intermediate node `node` is a taint sanitizer. */
+    predicate isSanitizer(DataFlowNode node) {
+      sanitizedByGuard(this, node)
+    }
+
+    final
+    override predicate isBarrier(DataFlowNode node) { isSanitizer(node) }
+
+    /**
+     * Holds if the additional taint propagation step from `pred` to `succ`
+     * must be taken into account in the analysis.
+     */
+    predicate isAdditionalTaintStep(DataFlowNode pred, DataFlowNode succ) {
+      pred = succ.(FlowTarget).getATaintSource()
+    }
+
+    final
+    override predicate isAdditionalFlowStep(DataFlowNode pred, DataFlowNode succ) {
+      isAdditionalTaintStep(pred, succ)
+    }
   }
 
-  override DataFlowNode getATaintSource() {
-    // iterating over a tainted iterator taints the loop variable
-    exists (EnhancedForLoop efl | result = efl.getIterationDomain() |
-      this = efl.getAnIterationVariable().getAnAccess()
-    )
-    or
-    // arrays with tainted elements and objects with tainted properties are tainted
-    this.(ArrayExpr).getAnElement() = result or
-    exists (Property prop | this.(ObjectExpr).getAProperty() = prop |
-      prop.isComputed() and result = prop.getNameExpr() or
-      result = prop.getInit()
-    )
-    or
-    // reading from a tainted object or with a tainted index yields a tainted result
-    this.(IndexExpr).getAChildExpr() = result or
-    this.(DotExpr).getBase() = result
-    or
-    // awaiting a tainted expression gives a tainted result
-    this.(AwaitExpr).getOperand() = result
-    or
-    // comparing a tainted expression against a constant gives a tainted result
-    this.(Comparison).hasOperands(result, any(Expr e | exists(e.getStringValue())))
-  }
-}
-
-/**
- * A taint propagating data flow edge arising from string append and other string
- * operations defined in the standard library.
- *
- * Note that since we cannot easily distinguish string append from addition, we consider
- * any `+` operation to propagate taint.
- */
-private class StringManipulationFlowTarget extends TaintFlowTarget {
-  StringManipulationFlowTarget() {
-    this instanceof Expr
-  }
-
-  override DataFlowNode getATaintSource() {
-    // addition propagates taint
-    this.(AddExpr).getAnOperand() = result or
-    this.(AssignAddExpr).getAChildExpr() = result
-    or
-    // templating propagates taint
-    this.(TemplateLiteral).getAnElement() = result
-    or
-    // other string operations that propagate taint
-    exists (string name | name = this.(MethodCallExpr).getMethodName() |
-      result = this.(MethodCallExpr).getReceiver() and
-      (name = "concat" or name = "match" or name = "replace" or name = "slice" or
-       name = "split" or name = "substr" or name = "substring" or
-       name = "toLocaleLowerCase" or name = "toLocaleUpperCase" or
-       name = "toLowerCase" or name = "toString" or name = "toUpperCase" or
-       name = "trim" or name = "valueOf")
+  /**
+   * Holds if variable use `u` is sanitized for the purposes of taint-tracking
+   * configuration `cfg`.
+   */
+  private predicate sanitizedByGuard(Configuration cfg, VarUse u) {
+    exists (SsaVariable v | u = v.getAUse() |
+      // either `v` is a refined variable where the guard performs
+      // sanitization
+      exists (SsaRefinementNode ref | v = ref.getVariable() |
+        guardSanitizes(cfg, ref.getGuard(), _)
+      )
       or
-      exists (int i | result = this.(MethodCallExpr).getArgument(i) |
-        name = "concat" or
-        name = "replace" and i = 1
+      // or there is a non-refining guard that dominates this use
+      exists (ConditionGuardNode guard |
+        guardSanitizes(cfg, guard, v) and guard.dominates(u.getBasicBlock())
       )
     )
-    or
-    // standard library constructors that propagate taint: `RegExp` and `String`
-    exists (InvokeExpr invk, GlobalVarAccess gv |
-      invk = this and gv = invk.getCallee() and result = invk.getArgument(0) |
-      gv.getName() = "RegExp" or gv.getName() = "String"
-    )
-    or
-    // regular expression operations that propagate taint
-    exists (MethodCallExpr mce | mce = this |
-      // RegExp.prototype.exec: from first argument to call
-      mce.getReceiver().(DataFlowNode).getALocalSource() instanceof RegExpLiteral and
-      mce.getMethodName() = "exec" and
-      result = mce.getArgument(0)
-    )
-    or
-    // `(encode|decode)URI(Component)?` propagate taint
-    exists (CallExpr c, string name |
-      c = this and accessesGlobal(c.getCallee(), name) and result = c.getArgument(0) |
-      name = "encodeURI" or name = "decodeURI" or
-      name = "encodeURIComponent" or name = "decodeURIComponent"
-    )
   }
-}
 
-/**
- * A taint propagating data flow edge arising from JSON parsing or unparsing.
- */
-private class JsonManipulationFlowTarget extends TaintFlowTarget, @callexpr {
-  JsonManipulationFlowTarget() {
-    exists (MethodCallExpr mce, string methodName |
-      mce = this and methodName = mce.getMethodName() |
-      accessesGlobal(mce.getReceiver(), "JSON") and
-      (methodName = "parse" or methodName = "stringify")
+  /**
+   * Holds if `guard` is sanitizes `v` for the purposes of taint-tracking
+   * configuration `cfg`.
+   */
+  private predicate guardSanitizes(Configuration cfg,
+                                   ConditionGuardNode guard, SsaVariable v) {
+    exists (SanitizingGuard sanitizer | sanitizer = guard.getTest() |
+      sanitizer.sanitizes(cfg, guard.getOutcome(), v)
     )
   }
 
-  override DataFlowNode getATaintSource() {
-    result = this.(CallExpr).getArgument(0)
+  /**
+   * An expression that can act as a sanitizer for a variable when appearing
+   * in a condition.
+   */
+  abstract class SanitizingGuard extends Expr {
+    /**
+     * Holds if this expression sanitizes variable `v` for the purposes of taint-tracking
+     * configuration `cfg`, provided it evaluates to `outcome`.
+     */
+    abstract predicate sanitizes(Configuration cfg, boolean outcome, SsaVariable v);
+  }
+
+  /**
+   * A taint propagating data flow edge, represented by its target node.
+   */
+  abstract class FlowTarget extends DataFlowNode {
+    /** Gets another data flow node from which taint is propagated to this node. */
+    abstract DataFlowNode getATaintSource();
+  }
+
+  /**
+   * A taint propagating data flow edge through object or array elements and
+   * promises.
+   */
+  private class DefaultFlowTarget extends FlowTarget {
+    DefaultFlowTarget() {
+      this instanceof Expr
+    }
+
+    override DataFlowNode getATaintSource() {
+      // iterating over a tainted iterator taints the loop variable
+      exists (EnhancedForLoop efl | result = efl.getIterationDomain() |
+        this = efl.getAnIterationVariable().getAnAccess()
+      )
+      or
+      // arrays with tainted elements and objects with tainted properties are tainted
+      this.(ArrayExpr).getAnElement() = result or
+      exists (Property prop | this.(ObjectExpr).getAProperty() = prop |
+        prop.isComputed() and result = prop.getNameExpr() or
+        result = prop.getInit()
+      )
+      or
+      // reading from a tainted object or with a tainted index yields a tainted result
+      this.(IndexExpr).getAChildExpr() = result or
+      this.(DotExpr).getBase() = result
+      or
+      // awaiting a tainted expression gives a tainted result
+      this.(AwaitExpr).getOperand() = result
+      or
+      // comparing a tainted expression against a constant gives a tainted result
+      this.(Comparison).hasOperands(result, any(Expr e | exists(e.getStringValue())))
+    }
+  }
+
+  /**
+   * A taint propagating data flow edge arising from string append and other string
+   * operations defined in the standard library.
+   *
+   * Note that since we cannot easily distinguish string append from addition, we consider
+   * any `+` operation to propagate taint.
+   */
+  private class StringManipulationFlowTarget extends FlowTarget {
+    StringManipulationFlowTarget() {
+      this instanceof Expr
+    }
+
+    override DataFlowNode getATaintSource() {
+      // addition propagates taint
+      this.(AddExpr).getAnOperand() = result or
+      this.(AssignAddExpr).getAChildExpr() = result
+      or
+      // templating propagates taint
+      this.(TemplateLiteral).getAnElement() = result
+      or
+      // other string operations that propagate taint
+      exists (string name | name = this.(MethodCallExpr).getMethodName() |
+        result = this.(MethodCallExpr).getReceiver() and
+        (name = "concat" or name = "match" or name = "replace" or name = "slice" or
+         name = "split" or name = "substr" or name = "substring" or
+         name = "toLocaleLowerCase" or name = "toLocaleUpperCase" or
+         name = "toLowerCase" or name = "toString" or name = "toUpperCase" or
+         name = "trim" or name = "valueOf")
+        or
+        exists (int i | result = this.(MethodCallExpr).getArgument(i) |
+          name = "concat" or
+          name = "replace" and i = 1
+        )
+      )
+      or
+      // standard library constructors that propagate taint: `RegExp` and `String`
+      exists (InvokeExpr invk, GlobalVarAccess gv |
+        invk = this and gv = invk.getCallee() and result = invk.getArgument(0) |
+        gv.getName() = "RegExp" or gv.getName() = "String"
+      )
+      or
+      // regular expression operations that propagate taint
+      exists (MethodCallExpr mce | mce = this |
+        // RegExp.prototype.exec: from first argument to call
+        mce.getReceiver().(DataFlowNode).getALocalSource() instanceof RegExpLiteral and
+        mce.getMethodName() = "exec" and
+        result = mce.getArgument(0)
+      )
+      or
+      // `(encode|decode)URI(Component)?` propagate taint
+      exists (CallExpr c, string name |
+        c = this and accessesGlobal(c.getCallee(), name) and result = c.getArgument(0) |
+        name = "encodeURI" or name = "decodeURI" or
+        name = "encodeURIComponent" or name = "decodeURIComponent"
+      )
+    }
+  }
+
+  /**
+   * A taint propagating data flow edge arising from JSON parsing or unparsing.
+   */
+  private class JsonManipulationFlowTarget extends FlowTarget, @callexpr {
+    JsonManipulationFlowTarget() {
+      exists (MethodCallExpr mce, string methodName |
+        mce = this and methodName = mce.getMethodName() |
+        accessesGlobal(mce.getReceiver(), "JSON") and
+        (methodName = "parse" or methodName = "stringify")
+      )
+    }
+
+    override DataFlowNode getATaintSource() {
+      result = this.(CallExpr).getArgument(0)
+    }
   }
 }

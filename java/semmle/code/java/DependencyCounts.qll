@@ -133,7 +133,7 @@ predicate hasDashedVersion(string target, string name, string version) {
 predicate fileJarDependencyCount(File sourceFile, int total, string entity) {
   exists(Container targetJar |
     targetJar.(File).getExtension() = "jar" and
-    targetJar.getShortName() != "rt" |
+    targetJar.getStem() != "rt" |
     total = strictsum(RefType r, RefType dep, int num |
       r.getFile() = sourceFile and
       r.fromSource() and
@@ -141,10 +141,10 @@ predicate fileJarDependencyCount(File sourceFile, int total, string entity) {
       numDepends(r, dep, num) |
       num)
     and exists(string name, string version |
-          if hasDashedVersion(targetJar.getShortName(), _, _) then
-            hasDashedVersion(targetJar.getShortName(), name, version)
+          if hasDashedVersion(targetJar.getStem(), _, _) then
+            hasDashedVersion(targetJar.getStem(), name, version)
           else
-            (name = targetJar.getShortName() and version = "unknown") |
+            (name = targetJar.getStem() and version = "unknown") |
             entity = "/" + sourceFile.getRelativePath() + "<|>" + name + "<|>" + version)
   )
 }

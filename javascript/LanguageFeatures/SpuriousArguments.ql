@@ -33,7 +33,7 @@ import semmle.javascript.flow.CallGraph
 predicate isFixedArity(Function fn) {
   not fn.usesArgumentsObject() and
   not fn.hasRestParameter() and
-  (fn instanceof ExternalFunction implies not fn.(ExternalFunction).isVarArgs())
+  not fn.(ExternalFunction).isVarArgs()
 }
 
 /**
@@ -55,10 +55,8 @@ int maxArity(CallSite invk) {
  * This predicate is only defined for call sites where callee information is complete.
  */
 predicate firstSpuriousArgument(CallSite invk, Expr arg) {
-  arg = invk.getArgument(maxArity(invk)) and
-  not invk.isIncomplete() and
-  // exclude calls with an unknown number of arguments
-  not invk.getAnArgument() instanceof SpreadElement
+  arg = invk.getArgumentNode(maxArity(invk)) and
+  not invk.isIncomplete()
 }
 
 /**
@@ -86,7 +84,7 @@ class SpuriousArguments extends Expr {
    * expected by any potential callee.
    */
   int getCount() {
-    result = getCall().getNumArgument() - maxArity(getCall())
+    result = getCall().(InvokeExpr).getNumArgument() - maxArity(getCall())
   }
 
   /**
@@ -98,7 +96,7 @@ class SpuriousArguments extends Expr {
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     this.getLocation().hasLocationInfo(filepath, startline, startcolumn, _, _) and
-    exists (Expr lastArg | lastArg = getCall().getLastArgument() |
+    exists (Expr lastArg | lastArg = getCall().(InvokeExpr).getLastArgument() |
       lastArg.getLocation().hasLocationInfo(_, _, _, endline, endcolumn)
     )
   }

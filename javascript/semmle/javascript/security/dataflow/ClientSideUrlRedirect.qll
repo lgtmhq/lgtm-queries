@@ -39,19 +39,19 @@ abstract class ClientSideUrlRedirectSanitizer extends DataFlowNode { }
 /**
  * A taint-tracking configuration for reasoning about unvalidated URL redirections.
  */
-class ClientSideUrlRedirectDataFlowConfiguration extends TaintTrackingConfiguration {
+class ClientSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configuration {
   ClientSideUrlRedirectDataFlowConfiguration() { this = "ClientSideUrlRedirectDataFlowConfiguration" }
 
-  override predicate isValidFlowSource(DataFlowNode source) {
+  override predicate isSource(DataFlowNode source) {
     source instanceof ClientSideUrlRedirectSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isValidFlowSink(DataFlowNode sink) {
+  override predicate isSink(DataFlowNode sink) {
     sink instanceof ClientSideUrlRedirectSink
   }
 
-  override predicate isProhibitedFlowNode(DataFlowNode node) {
+  override predicate isSanitizer(DataFlowNode node) {
     node instanceof ClientSideUrlRedirectSanitizer
   }
 }
@@ -88,16 +88,16 @@ private predicate queryAccess(DataFlowNode nd, DataFlowNode queryAccess) {
 /**
  * A taint tracking configuration for identifying accesses of the query string of the current URL.
  */
-private class LocationHrefDataFlowConfiguration extends TaintTrackingConfiguration {
+private class LocationHrefDataFlowConfiguration extends TaintTracking::Configuration {
   LocationHrefDataFlowConfiguration() {
     this = "LocationHrefDataFlowConfiguration"
   }
 
-  override predicate isValidFlowSource(DataFlowNode source) {
+  override predicate isSource(DataFlowNode source) {
     isDocumentURL(source)
   }
 
-  override predicate isValidFlowSink(DataFlowNode sink) {
+  override predicate isSink(DataFlowNode sink) {
     queryAccess(sink, _)
   }
 }

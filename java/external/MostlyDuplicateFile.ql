@@ -29,5 +29,5 @@ import CodeDuplication
 
 from File f, File other, int percent
 where duplicateFiles(f, other, percent)
-select f, percent + "% of the lines in " + f.getName() + " are copies of lines in $@.",
-  other, other.getName()
+select f, percent + "% of the lines in " + f.getStem() + " are copies of lines in $@.",
+  other, other.getStem()

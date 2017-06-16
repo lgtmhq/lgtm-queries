@@ -43,7 +43,7 @@ private predicate defn(ControlFlowNode def, Expr lhs, DataFlowNode rhs) {
   exists (Function f | def = f.getId() |
     lhs = def and rhs = f
   ) or
-  exists (ClassDeclStmt c | def = c.getIdentifier() |
+  exists (ClassDefinition c | def = c.getIdentifier() |
     lhs = def and rhs = c
   )
 }

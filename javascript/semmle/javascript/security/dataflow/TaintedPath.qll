@@ -36,21 +36,21 @@ abstract class TaintedPathSanitizer extends DataFlowNode { }
 /**
  * A taint-tracking configuration for reasoning about tainted-path vulnerabilities.
  */
-class TaintedPathTrackingConfig extends TaintTrackingConfiguration {
+class TaintedPathTrackingConfig extends TaintTracking::Configuration {
   TaintedPathTrackingConfig() {
     this = "TaintedPath"
   }
 
-  override predicate isValidFlowSource(DataFlowNode source) {
+  override predicate isSource(DataFlowNode source) {
     source instanceof TaintedPathSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isValidFlowSink(DataFlowNode sink) {
+  override predicate isSink(DataFlowNode sink) {
     sink instanceof TaintedPathSink
   }
 
-  override predicate isProhibitedFlowNode(DataFlowNode node) {
+  override predicate isSanitizer(DataFlowNode node) {
     node instanceof TaintedPathSanitizer
   }
 }
@@ -131,12 +131,12 @@ private predicate inWeakCheck(Expr e) {
 /**
  * A conditional involving the path, that is not considered to be a weak check.
  */
-class StrongPathCheck extends SanitizingGuard, VarUse {
+class StrongPathCheck extends TaintTracking::SanitizingGuard, VarUse {
   StrongPathCheck() {
     not inWeakCheck(this)
   }
 
-  override predicate sanitizes(TaintTrackingConfiguration cfg, boolean outcome, SsaVariable v) {
+  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
     cfg instanceof TaintedPathTrackingConfig and
     (outcome = true or outcome = false) and
     this = v.getAUse()

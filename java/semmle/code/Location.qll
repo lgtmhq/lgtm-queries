@@ -59,7 +59,7 @@ class Top extends @top {
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f, Location l | fixedHasLocation(this, l, f) |
       locations_default(l,f,startline,startcolumn,endline,endcolumn) and
-      filepath = f.getFullName()
+      filepath = f.getAbsolutePath()
     )
   }
   
@@ -153,7 +153,7 @@ class Location extends @location {
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f | locations_default(this,f,startline,startcolumn,endline,endcolumn) |
-      filepath = f.getFullName()
+      filepath = f.getAbsolutePath()
     )
   }
 }

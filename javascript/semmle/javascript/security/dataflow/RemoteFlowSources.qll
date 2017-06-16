@@ -17,9 +17,25 @@
 
 import semmle.javascript.flow.Tracking
 import semmle.javascript.frameworks.HTTP
+import DOM
 
 /** A data flow source of remote user input. */
 abstract class RemoteFlowSource extends DataFlowNode {
   /** Gets a string that describes the type of this remote flow source. */
   abstract string getSourceType();
+}
+
+
+/**
+ * An access to `document.cookie`, viewed as a source of remote user input.
+ */
+private class DocumentCookieSource extends RemoteFlowSource, @propaccess {
+  DocumentCookieSource() {
+    isDocument(this.(PropAccess).getBase()) and
+    this.(PropAccess).getPropertyName() = "cookie"
+  }
+
+  override string getSourceType() {
+    result = "document.cookie"
+  }
 }

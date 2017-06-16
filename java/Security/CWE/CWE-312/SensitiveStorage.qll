@@ -25,7 +25,7 @@ predicate testMethod(Method m) {
     m.getDeclaringType() instanceof TestClass
   ) and
   // Do report results in the Juliet tests.
-  not m.getLocation().getFile().getFullName().matches("%CWE%")
+  not m.getLocation().getFile().getAbsolutePath().matches("%CWE%")
 }
 
 /** Class for expressions that may represent 'sensitive' information */

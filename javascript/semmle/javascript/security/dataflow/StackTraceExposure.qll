@@ -28,16 +28,16 @@ abstract class StackTraceExposureSource extends DataFlowNode { }
  */
 abstract class StackTraceExposureSink extends DataFlowNode { }
 
-class StackTraceExposureTrackingConfig extends TaintTrackingConfiguration {
+class StackTraceExposureTrackingConfig extends TaintTracking::Configuration {
   StackTraceExposureTrackingConfig() {
     this = "StackTraceExposureTrackingConfig"
   }
 
-  override predicate isValidFlowSource(DataFlowNode src) {
+  override predicate isSource(DataFlowNode src) {
     src instanceof StackTraceExposureSource
   }
 
-  predicate isValidFlowSink(DataFlowNode snk) {
+  predicate isSink(DataFlowNode snk) {
     snk instanceof StackTraceExposureSink
   }
 }
