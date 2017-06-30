@@ -30,6 +30,8 @@ where
   use = l.getALeakedVariableUse() and
   defn = l.getDefinition() and
   l.getAFlowNode().strictlyReaches(use.getAFlowNode()) and
+  /* Make sure we aren't in a loop, as the variable may be redefined */
+  not use.getAFlowNode().strictlyReaches(l.getAFlowNode()) and
   not l.contains(use) and
   not use.deletes(_) and
   not exists(SsaVariable v |

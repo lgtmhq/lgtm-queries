@@ -128,6 +128,13 @@ class Attribute extends Attribute_ {
         result = Attribute_.super.getValue()
     }
 
+    /** Gets the expression corresponding to the object of the attribute, if the name of the attribute is `name`.
+     * Equivalent to `this.getObject() and this.getName() = name`. */
+    Expr getObject(string name) {
+        result = Attribute_.super.getValue() and
+        name = Attribute_.super.getAttr()
+    }
+
 }
 
 /** A subscript expression, such as `value[slice]` */

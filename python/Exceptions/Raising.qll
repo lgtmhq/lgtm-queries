@@ -23,5 +23,5 @@ predicate type_or_typeof(Raise r, ClassObject type, AstNode orig) {
         not type = theTypeType() and // First value is an unknown exception type
         exception.refersTo(_, type, orig)
     )
-  
+
 }
