@@ -55,6 +55,20 @@ abstract class FrameworkLibrary extends string {
    * but it should be treated as an opaque value.
    */
   string getId() { result = this }
+
+  /**
+   * Gets the name of a global variable or of a property of a global
+   * variable that serves as an API entry point for this framework
+   * library.
+   *
+   * For example, jQuery has two entry points `$` and `jQuery`,
+   * while jQuery Mobile has an entry point `$.mobile`.
+   *
+   * Subclasses do not have to override this predicate, but dependency
+   * counts for frameworks without known API entry points are less
+   * precise.
+   */
+  string getAnEntryPoint() { none() }
 }
 
 /**
@@ -222,6 +236,7 @@ class FrameworkLibraryReferenceWithURL extends FrameworkLibraryReference {
  * `fl` at `version`.
  */
 private predicate matchURL(HTMLAttribute attr, FrameworkLibraryWithURLRegex fl, string version) {
+  attr.getName() = "src" and attr.getElement() instanceof HTMLScriptTag and
   version = attr.getValue().regexpCapture(fl.getAURLRegex(), 1)
 }
 
@@ -239,6 +254,7 @@ private string versionRegex() {
  */
 private class JQuery extends FrameworkLibraryWithGenericURL {
   JQuery() { this = "jquery" }
+  override string getAnEntryPoint() { result = "$" or result = "jQuery" }
 }
 
 /**
@@ -278,6 +294,7 @@ private class JQueryMobile extends FrameworkLibraryWithGenericURL,
   JQueryMobile() { this = "jquery-mobile" }
   override string getAnAlias() { result = "jquery.mobile" }
   override string getAMarkerCommentRegex() { result = "(?s).*jQuery Mobile (<VERSION>).*" }
+  override string getAnEntryPoint() { result = "$.mobile" or result = "jQuery.mobile" }
 }
 
 
@@ -287,6 +304,7 @@ private class JQueryMobile extends FrameworkLibraryWithGenericURL,
 private class JQueryUI extends FrameworkLibraryWithGenericURL, FrameworkLibraryWithMarkerComment {
   JQueryUI() { this = "jquery-ui" }
   override string getAMarkerCommentRegex() { result = "(?s).*jQuery UI - v?(<VERSION>).*" }
+  override string getAnEntryPoint() { result = "$.ui" or result = "jQuery.ui" }
 }
 
 /**
@@ -299,6 +317,7 @@ private class JQueryTextExt extends FrameworkLibraryWithGenericURL,
   override string getAMarkerCommentRegex() {
     result = "(?s).*jQuery TextExt Plugin.*@version (<VERSION>).*"
   }
+  override string getAnEntryPoint() { result = "$.text" or result = "jQuery.text" }
 }
 
 /**
@@ -309,6 +328,7 @@ private class Bootstrap extends FrameworkLibraryWithGenericURL, FrameworkLibrary
   override string getAMarkerCommentRegex() {
     result = "(?s).*Bootstrap v(<VERSION>) \\(http://getbootstrap.com\\).*"
   }
+  override string getAnEntryPoint() { result = "$" }
 }
 
 /**
@@ -319,6 +339,7 @@ private class Modernizr extends FrameworkLibraryWithGenericURL, FrameworkLibrary
   override string getAMarkerCommentRegex() {
     result = "(?s).*(?<!@license )Modernizr (?:JavaScript library )?v?(<VERSION>).*"
   }
+  override string getAnEntryPoint() { result = "Modernizr" }
 }
 
 /**
@@ -326,6 +347,7 @@ private class Modernizr extends FrameworkLibraryWithGenericURL, FrameworkLibrary
  */
 private class MooTools extends FrameworkLibraryWithGenericURL {
   MooTools() { this = "mootools" }
+  override string getAnEntryPoint() { /* not easily detectable */ none() }
 }
 
 /**
@@ -364,6 +386,7 @@ private class MooToolsInstance extends FrameworkLibraryInstance {
  */
 private class Prototype extends FrameworkLibraryWithGenericURL {
   Prototype() { this = "prototype" }
+  override string getAnEntryPoint() { /* not easily detectable */ none() }
 }
 
 /**
@@ -399,6 +422,7 @@ private class PrototypeInstance extends FrameworkLibraryInstance {
  */
 private class Scriptaculous extends FrameworkLibraryWithGenericURL {
   Scriptaculous() { this = "scriptaculous" }
+  override string getAnEntryPoint() { /* not easily detectable */ none() }
 }
 
 /**
@@ -435,6 +459,7 @@ private class ScriptaculousInstance extends FrameworkLibraryInstance {
 private class Underscore extends FrameworkLibraryWithGenericURL, FrameworkLibraryWithMarkerComment {
   Underscore() { this = "underscore" }
   override string getAMarkerCommentRegex() { result = "^\\s*Underscore.js (<VERSION>).*" }
+  override string getAnEntryPoint() { result = "_" }
 }
 
 
@@ -449,12 +474,15 @@ private class Lodash extends FrameworkLibraryWithGenericURL, FrameworkLibraryWit
              "(?: \\(Custom Build\\))? " +
              "<https?://lodash.com/>.*"
   }
+
+  override string getAnEntryPoint() { result = "_" }
 }
 
 
 /** The Dojo framework. */
 private class Dojo extends FrameworkLibraryWithGenericURL {
   Dojo() { this = "dojo" }
+  override string getAnEntryPoint() { result = "dojo" }
 }
 
 /**
@@ -490,6 +518,8 @@ private class ExtJS extends FrameworkLibraryWithGenericURL, FrameworkLibraryWith
   }
 
   override string getAnAlias() { result = "ext" }
+
+  override string getAnEntryPoint() { result = "Ext" }
 }
 
 
@@ -501,6 +531,8 @@ private class YUI extends FrameworkLibraryWithGenericURL, FrameworkLibraryWithMa
   override string getAMarkerCommentRegex() {
     result = "(?s).*YUI (<VERSION>) \\(build \\d+\\).*"
   }
+
+  override string getAnEntryPoint() { result = "YUI" }
 }
 
 
@@ -512,7 +544,9 @@ private class Knockout extends FrameworkLibraryWithGenericURL, FrameworkLibraryW
   override string getAMarkerCommentRegex() {
     result = "(?s).*Knockout JavaScript library v(<VERSION>).*"
   }
+  override string getAnEntryPoint() { result = "ko" }
 }
+
 
 
 /**
@@ -521,6 +555,7 @@ private class Knockout extends FrameworkLibraryWithGenericURL, FrameworkLibraryW
 private class AngularJS extends FrameworkLibraryWithGenericURL {
   AngularJS() { this = "angularjs" }
   override string getAnAlias() { result = "angular" or result = "angular2" }
+  override string getAnEntryPoint() { result = "angular" }
 }
 
 /**
@@ -621,6 +656,7 @@ private class MicrosoftAJAXFrameworkInstance extends FrameworkLibraryInstance {
  */
 private class Polymer extends FrameworkLibraryWithGenericURL {
   Polymer() { this = "polymer" }
+  override string getAnEntryPoint() { result = "Polymer" }
 }
 
 /**
@@ -654,6 +690,7 @@ private class VueJS extends FrameworkLibraryWithGenericURL, FrameworkLibraryWith
   override string getAMarkerCommentRegex() {
     result = "(?s).*Vue\\.js v(<VERSION>).*"
   }
+  override string getAnEntryPoint() { result = "Vue" }
 }
 
 /**
@@ -674,6 +711,7 @@ private class BackboneJS extends FrameworkLibraryWithGenericURL, FrameworkLibrar
   override string getAMarkerCommentRegex() {
     result = "(?s).*Backbone\\.js (<VERSION>).*"
   }
+  override string getAnEntryPoint() { result = "Backbone" }
 }
 
 /**
@@ -684,6 +722,7 @@ private class EmberJS extends FrameworkLibraryWithGenericURL, FrameworkLibraryWi
   override string getAMarkerCommentRegex() {
     result = "(?s).*Ember - JavaScript Application Framework.*@version\\s*(<VERSION>).*"
   }
+  override string getAnEntryPoint() { result = "Ember" }
 }
 
 /**
@@ -694,6 +733,7 @@ private class QUnitJS extends FrameworkLibraryWithGenericURL, FrameworkLibraryWi
   override string getAMarkerCommentRegex() {
     result = "(?s).*QUnit\\s*(<VERSION>).*"
   }
+  override string getAnEntryPoint() { result = "QUnit" }
 }
 
 /**

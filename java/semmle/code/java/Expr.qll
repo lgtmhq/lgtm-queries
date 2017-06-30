@@ -241,15 +241,13 @@ class CompileTimeConstantExpr extends Expr {
    * Get the integer value of this expression, where possible.
    *
    * All computations are performed on QL 32-bit `int`s, so no
-   * truncation is performed in the case of downcasts:
-   * `(byte)256` evaluates to 256 rather than to 0.
+   * truncation is performed in the case of overflow within `byte` or `short`:
+   * `((byte)127)+((byte)1)` evaluates to 128 rather than to -128.
    *
    * Note that this does not handle the following cases:
    *
    * - values of type `long`,
    * - `char` literals.
-   *
-   * No constant-folding over bitwise operations is performed.
    */
   int getIntValue() {
     exists(IntegralType t | this.getType() = t |
@@ -263,13 +261,17 @@ class CompileTimeConstantExpr extends Expr {
         result = lit.toInt()
       )
       or
-      result = this.(CastExpr).getExpr().(CompileTimeConstantExpr).getIntValue()
-      or
+      exists(CastExpr cast, int val | cast = this and val = cast.getExpr().(CompileTimeConstantExpr).getIntValue() |
+        if cast.getType().hasName("byte") then result = (val + 128).bitAnd(255) - 128
+        else if cast.getType().hasName("short") then result = (val + 32768).bitAnd(65535) - 32768
+        else result = val
+      ) or
       result = this.(PlusExpr).getExpr().(CompileTimeConstantExpr).getIntValue()
       or
       result = -(this.(MinusExpr).getExpr().(CompileTimeConstantExpr).getIntValue())
+      or
+      result = this.(BitNotExpr).getExpr().(CompileTimeConstantExpr).getIntValue().bitNot()
       // No `int` value for `LogNotExpr`.
-      // `BitNotExpr` is not implemented.
       or
       exists (BinaryExpr b, int v1, int v2 | b = this and
         v1 = b.getLeftOperand().(CompileTimeConstantExpr).getIntValue() and
@@ -284,9 +286,17 @@ class CompileTimeConstantExpr extends Expr {
         or
         b instanceof SubExpr and result = v1 - v2
         or
-        b instanceof LShiftExpr and result = v1 * 2.pow(v2)
-        // `RShiftExpr` and `URShiftExpr` not implemented.
-        // `AndBitwiseExpr`, `OrBitwiseExpr` and `XorBitwiseExpr` not implemented.
+        b instanceof LShiftExpr and result = v1.bitShiftLeft(v2)
+        or
+        b instanceof RShiftExpr and result = v1.bitShiftRightSigned(v2)
+        or
+        b instanceof URShiftExpr and result = v1.bitShiftRight(v2)
+        or
+        b instanceof AndBitwiseExpr and result = v1.bitAnd(v2)
+        or
+        b instanceof OrBitwiseExpr and result = v1.bitOr(v2)
+        or
+        b instanceof XorBitwiseExpr and result = v1.bitXor(v2)
         // No `int` value for `AndLogicalExpr` or `OrLogicalExpr`.
         // No `int` value for `LTExpr`, `GTExpr`, `LEExpr`, `GEExpr`, `EQExpr` or `NEExpr`.
         )

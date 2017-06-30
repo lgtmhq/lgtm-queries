@@ -172,14 +172,21 @@ private predicate validReturnInCustomNullGuard(ReturnStmt ret, Parameter p, bool
     m.getReturnType().(PrimitiveType).hasName("boolean")
   ) and
   exists(SsaImplicitInit ssa | ssa.isParameterDefinition(p) |
-    exists(ConditionBlock cond, boolean branch |
-      cond.controls(ret.getBasicBlock(), branch) and
-      (retval = true or retval = false) and
-      cond.getCondition() = nullGuard(ssa, branch, isnull)
+    exists(ConditionBlock cond |
+      // lifted to assist join ordering
+      validReturnHelper(ret, ssa, cond, isnull) and
+      (retval = true or retval = false)
     ) or
     exists(Expr res | res = ret.getResult() |
       res = nullGuard(ssa, retval, isnull)
     )
+  )
+}
+
+private predicate validReturnHelper(ReturnStmt ret, SsaImplicitInit ssa, ConditionBlock cond, boolean isnull) {
+  exists(boolean branch | 
+    cond.controls(ret.getBasicBlock(), branch) and
+    cond.getCondition() = nullGuard(ssa, branch, isnull)
   )
 }
 

@@ -12,25 +12,20 @@
 // permissions and limitations under the License.
 
 /**
- * @name Non-callable called
- * @description A call to an object which is not a callable will raise a TypeError at runtime.
+ * @name NotImplemented is not an Exception
+ * @description Using 'NotImplemented' as an exception will result in a type error.
  * @kind problem
- * @tags reliability
- *       correctness
- *       types
- * @problem.severity error
+ * @problem.severity warning
  * @sub-severity high
- * @precision high
+ * @precision very-high
+ * @tags reliability
+ *       maintainability
  */
 
 import python
 import Exceptions.NotImplemented
 
-from Call c, ClassObject t, Expr f, AstNode origin
-where f = c.getFunc() and f.refersTo(_, t, origin) and
-      not t.isCallable() and not t.unknowableAttributes()
-      and not t.isDescriptorType()
-      and not t = theNoneType()
-      and not use_of_not_implemented_in_raise(_, f)
+from Expr notimpl
+where use_of_not_implemented_in_raise(_, notimpl)
 
-select c, "Call to a $@ of $@.", origin, "non-callable", t, t.toString()
+select notimpl, "NotImplemented is not an Exception. Did you mean NotImplementedError?"

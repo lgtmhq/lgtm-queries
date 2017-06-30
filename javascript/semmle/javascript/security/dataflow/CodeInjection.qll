@@ -103,7 +103,7 @@ class AngularJSExpressionSink extends CodeInjectionSink {
  */
 class EvalJavaScriptSink extends CodeInjectionSink {
   EvalJavaScriptSink() {
-    exists(CallExpr c, string callName, int index |
+    exists(InvokeExpr c, string callName, int index |
       callName = c.getCalleeName() and this = c.getArgument(index) |
       callName = "eval" and index = 0 or
       callName = "Function" or

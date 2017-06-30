@@ -64,9 +64,30 @@ abstract class NPMDependency extends Dependency {
     result = getNPMPackageName()
   }
 
-  override Module getAUse(string kind) {
-    kind = "import" and result = getAnImport().getEnclosingModule()
+  override Locatable getAUse(string kind) {
+    exists (Import i | i = getAnImport() |
+      kind = "import" and result = i or
+      kind = "use" and result = getATargetVariable(i).getAnAccess()
+    )
   }
+}
+
+/**
+ * Gets a variable into which something is imported by `i`.
+ */
+private Variable getATargetVariable(Import i) {
+  // `var v = require('m')` or `var w = require('n').p`
+  result.getAnAssignedValue().(DataFlowNode).getALocalSource() = propAccessOn*(i)
+  or
+  // `import { x as y }, * as z from 'm'`
+  result = i.(ImportDeclaration).getASpecifier().getLocal().getVariable()
+}
+
+/**
+ * Gets a property access of which `e` is the base.
+ */
+private Expr propAccessOn(Expr e) {
+  result.(PropAccess).getBase() = e
 }
 
 /**
@@ -169,32 +190,58 @@ private int distance(Folder ancestor, Container descendant) {
 }
 
 /**
+ * Holds if `e` is  of the form `g.x.y.z`, where `g` is an
+ * access to a global variable and `.x.y.z` is a (possibly empty)
+ * sequence of property accesses. The parameter `n` is bound
+ * to the string `g.x.y.z`.
+ */
+private predicate propAccessOnGlobal(Expr e, string n) {
+  e.(GlobalVarAccess).getName() = n
+  or
+  exists (PropAccess pacc, string q |
+    pacc = e and propAccessOnGlobal(pacc.getBase(), q) |
+    n = q + "." + pacc.getPropertyName()
+  )
+}
+
+/**
  * A plain JavaScript library imported via a `<script>` tag.
  */
 abstract class ScriptDependency extends Dependency {
-  override HTMLFile getAUse(string kind) {
-    kind = "import" and
-    result = this.getFile()
+  /**
+   * Gets a use of a variable defined by the imported script.
+   */
+  abstract Expr getAnApiUse();
+
+  override Locatable getAUse(string kind) {
+    kind = "import" and (HTMLFile)result = this.getFile()
+    or
+    kind = "use" and result = getAnApiUse()
   }
 }
 
 /**
  * An embedded JavaScript library included inside a `<script>` tag.
  */
-class InlineScriptDependency extends ScriptDependency {
+class InlineScriptDependency extends ScriptDependency, @toplevel {
+  FrameworkLibrary fl;
+
   InlineScriptDependency() {
-    this instanceof FrameworkLibraryInstance
+    fl = this.(FrameworkLibraryInstance).getFramework()
   }
 
   override string getId() {
-    exists (FrameworkLibrary fl |
-      fl = this.(FrameworkLibraryInstance).getFramework() and
-      result = fl.getId()
-    )
+    result = fl.getId()
   }
 
   override string getVersion() {
     result = this.(FrameworkLibraryInstance).getVersion()
+  }
+
+  override Expr getAnApiUse() {
+    propAccessOnGlobal(result, fl.getAnEntryPoint()) and
+    result.getFile() = this.getFile() and
+    result.getTopLevel() != this
   }
 }
 
@@ -202,20 +249,24 @@ class InlineScriptDependency extends ScriptDependency {
  * An external JavaScript library referenced via the `src` attribute
  * of a `<script>` tag.
  */
-class ExternalScriptDependency extends ScriptDependency {
+class ExternalScriptDependency extends ScriptDependency, @xmlattribute {
+  FrameworkLibrary fl;
+
   ExternalScriptDependency() {
-    this instanceof FrameworkLibraryReference
+    fl = this.(FrameworkLibraryReference).getFramework()
   }
 
   override string getId() {
-    exists (FrameworkLibrary fl |
-      fl = this.(FrameworkLibraryReference).getFramework() and
-      result = fl.getId()
-    )
+    result = fl.getId()
   }
 
   override string getVersion() {
     result = this.(FrameworkLibraryReference).getVersion()
+  }
+
+  override Expr getAnApiUse() {
+    propAccessOnGlobal(result, fl.getAnEntryPoint()) and
+    result.getFile() = this.getFile()
   }
 }
 
@@ -237,6 +288,8 @@ private class GWTDependency extends ScriptDependency {
       not exists(h.getGWTVersion()) and result = "unknown"
     )
   }
+
+  override Expr getAnApiUse() { none() }
 }
 
 /**

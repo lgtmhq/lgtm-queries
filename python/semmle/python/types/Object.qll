@@ -401,6 +401,11 @@ Object quitterObject(string name) {
     result = builtin_object(name)
 }
 
+/** The builtin object `NotImplemented`. Not be confused with `NotImplementedError`. */
+Object theNotImplementedObject() {
+    result = builtin_object("NotImplemented")
+}
+
 
 private ClassObject comprehension(Expr e) {
     e instanceof ListComp and result = theListType()

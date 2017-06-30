@@ -806,12 +806,18 @@ predicate penultimate_super_method_call(CallNode call, ClassObject self_type, Fu
     exists(AttrNode attr |
         attr = call.getFunction() and
         exists(CallNode super_call, ClassObject start_type, string name |
-            penultimate_super_call_types(super_call, self_type, start_type) |
-            layer0_points_to(attr.getObject(name), super_call, _, _) and
+            // lifted to help join-ordering
+            penultimate_super_method_call_helper(attr, self_type, super_call, start_type, name) and
             /* super().name lookup */
             penultimate_class_lookup_in_mro(self_type, start_type, name, method)
         )
     )
+}
+
+pragma[noinline]
+private predicate penultimate_super_method_call_helper(AttrNode attr, ClassObject self_type, CallNode super_call, ClassObject start_type, string name) {
+    penultimate_super_call_types(super_call, self_type, start_type) and 
+    layer0_points_to(attr.getObject(name), super_call, _, _)
 }
 
 /** INTERNAL -- Do not use */
@@ -1390,7 +1396,7 @@ predicate penultimate_module_imported_as(ModuleObject m, string name) {
  */
 
 private predicate penultimate_sys_version_info_index(SubscriptNode s) {
-    penultimate_points_to(s.getValue(), theSysVersionInfoTuple(), _, _) and
+    penultimate_points_to_10(theSysVersionInfoTuple(), s.getValue()) and
     exists(NumericObject zero |
         zero.intValue() = 0 |
         penultimate_points_to(s.getIndex(), zero, _, _)
@@ -1398,10 +1404,15 @@ private predicate penultimate_sys_version_info_index(SubscriptNode s) {
 }
 
 private predicate penultimate_sys_version_info_slice(SubscriptNode s) {
-    penultimate_points_to(s.getValue(), theSysVersionInfoTuple(), _, _) and
+    penultimate_points_to_10(theSysVersionInfoTuple(), s.getValue()) and
     exists(Slice index | index = s.getIndex().getNode() |
         not exists(index.getStart())
     )
+}
+
+pragma[noinline]
+private predicate penultimate_points_to_10(Object value, ControlFlowNode f) {
+    penultimate_points_to(f, value, _, _)
 }
 
 private predicate penultimate_comparison(CompareNode cmp, ControlFlowNode fv, ControlFlowNode fc, string opname) {
@@ -1534,6 +1545,15 @@ predicate penultimate_function_never_returns(FunctionObject func) {
     )
     or
     func = theExitFunctionObject()
+    or
+    /* Special case "obvious" non-returning functions when points-to has otherwise failed */
+    exists(Function f | f = func.getFunction() |
+        not f.getAStmt() instanceof If and
+        exists(ExprStmt last |
+            last = f.getStmt(count(f.getAStmt())-1) |
+            last.getValue().(Call).getFunc().(Attribute).getObject("exit").(Name).getId() = "sys"
+        )
+    )
 }
 
 /** INTERNAL -- Use FunctionObject.getACall() */

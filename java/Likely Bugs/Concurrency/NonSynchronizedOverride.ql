@@ -58,13 +58,13 @@ predicate delegatingOverride(Method sub, Method sup) {
   )
 }
 
-from Method sub, Method sup, Class sup_src
+from Method sub, Method sup, Class supSrc
 where sub.overrides(sup) and
       sub.fromSource() and
       sup.isSynchronized() and
       not sub.isSynchronized() and
       not delegatingOverride(sub, sup) and
-      sup_src = sup.getDeclaringType().getSourceDeclaration()
+      supSrc = sup.getDeclaringType().getSourceDeclaration()
 select sub,
-  "Method '" + sub.getName() + "' overrides a synchronized method in " +
-  sup_src.getQualifiedName() + " but is not synchronized."
+  "Method '" + sub.getName() + "' overrides a synchronized method in $@ but is not synchronized.",
+  supSrc, supSrc.getQualifiedName()
