@@ -41,7 +41,6 @@ library class PossibleAdvancedFormatString extends StrConst {
 
     private string fieldId(int start, int end) {
         this.field(start, end) and
-        not exists(int istart, int iend | this.field(istart, iend) and istart > start and iend < end) and
         (
             result = this.getText().substring(start, end).regexpCapture("\\{([^!:.\\[]+)[!:.\\[].*", 1)
             or

@@ -68,21 +68,21 @@ class CommentBlock extends @py_comment {
     CommentBlock() {
         comment_block_part(this, _)
     }
-    
+
     private Comment last() {
         comment_block_part(this, result) and
         not exists(result.getFollowing())
     }
-    
+
     string toString() {
         result = "Comment block" 
     }
-    
+
     /** The length of this comment block (in comments) */
     int length() {
         result = count(Comment c | this.contains(c))
     }
-    
+
     predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
         ((Comment)this).getLocation().hasLocationInfo(filepath, bl, bc, _, _)
         and
@@ -91,11 +91,20 @@ class CommentBlock extends @py_comment {
             end.getLocation().hasLocationInfo(_, _, _, el, ec)
         )
     }
-    
+
     predicate contains(Comment c) {
         comment_block_part(this, c)
         or
         this = c
+    }
+
+}
+
+/** A type-hint comment. Any comment that starts with `# type:` */
+class TypeHintComment extends Comment {
+
+    TypeHintComment() {
+        this.getText().regexpMatch("# +type:.*")
     }
 
 }

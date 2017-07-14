@@ -23,6 +23,7 @@
  * @precision medium
  */
 import python
+import semmle.python.filters.Tests
 
 from ImportMember im, ModuleObject m, AttrNode store_attr, string name
 where im.getModule().(ImportExpr).getImportedModuleName() = m.getName() and 
@@ -34,7 +35,9 @@ not im.getScope() instanceof Function and
 store_attr.isStore() and
 store_attr.getObject(name).refersTo(m) and
 /* Import not in same module as modification. */
-not im.getEnclosingModule() = store_attr.getScope().getEnclosingModule()
+not im.getEnclosingModule() = store_attr.getScope().getEnclosingModule() and
+/* Modification is not in a test */
+not store_attr.getScope().getScope*() instanceof TestScope
 
 select im, "Importing the value of '" + name + "' from $@ means that any change made to $@ will be not be observed locally.",
 m, "module " + m.getName(), store_attr, m.getName() + "." + store_attr.getName()

@@ -24,27 +24,19 @@
 
 import python
 
-predicate is_unreachable(Stmt s) {
-    not exists(ControlFlowNode flow | flow.getNode() = s)
-    or
-    exists(If i | unreachable_in_if(i, s))
-    or
-    exists(While w | unreachable_in_while(w, s))
-}
-
-predicate unreachable_in_if(If ifstmt, Stmt s) {
-    ifstmt.getTest().(ImmutableLiteral).booleanValue() = false and ifstmt.getBody().contains(s)
-    or
-    ifstmt.getTest().(ImmutableLiteral).booleanValue() = true and ifstmt.getOrelse().contains(s)
-}
-
-predicate unreachable_in_while(While whilestmt, Stmt s) {
-    whilestmt.getTest().(ImmutableLiteral).booleanValue() = false and whilestmt.getBody().contains(s)
+predicate typing_import(ImportingStmt is) {
+    exists(Module m |
+        is.getScope() = m and
+        exists(TypeHintComment tc |
+            tc.getLocation().getFile() = m.getFile()
+        )
+    )
 }
 
 predicate reportable_unreachable(Stmt s) {
-    is_unreachable(s) and
-    not exists(Stmt other | is_unreachable(other) |
+    s.isUnreachable() and
+    not typing_import(s) and
+    not exists(Stmt other | other.isUnreachable() |
         other.contains(s)
         or
         exists(StmtList l, int i, int j | 

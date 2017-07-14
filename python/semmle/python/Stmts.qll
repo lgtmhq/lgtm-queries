@@ -50,6 +50,21 @@ class Stmt extends Stmt_, AstNode {
         result = this.getASubStatement()
     }
 
+    /** Holds if this statement cannot be reached */
+    predicate isUnreachable() {
+        not exists(ControlFlowNode flow | flow.getNode() = this)
+        or
+        exists(If ifstmt |
+            ifstmt.getTest().(ImmutableLiteral).booleanValue() = false and ifstmt.getBody().contains(this)
+            or
+            ifstmt.getTest().(ImmutableLiteral).booleanValue() = true and ifstmt.getOrelse().contains(this)
+        )
+        or
+        exists(While whilestmt | 
+            whilestmt.getTest().(ImmutableLiteral).booleanValue() = false and whilestmt.getBody().contains(this)
+        )
+    }
+
 }
 
 /** A statement that includes a binding (except imports) */
