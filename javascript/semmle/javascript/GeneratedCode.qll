@@ -37,9 +37,9 @@ private class SourceMappingCommentMarkerComment extends GeneratedCodeMarkerComme
 }
 
 /**
- * A marker comment left by a specific code generator.
+ * A marker comment left by a known code generator.
  */
-library class CodeGeneratorMarkerComment extends GeneratedCodeMarkerComment {
+class CodeGeneratorMarkerComment extends GeneratedCodeMarkerComment {
   CodeGeneratorMarkerComment() {
     codeGeneratorMarkerComment(this, _)
   }
@@ -55,8 +55,8 @@ library class CodeGeneratorMarkerComment extends GeneratedCodeMarkerComment {
  */
 private predicate codeGeneratorMarkerComment(Comment c, string tool) {
   exists (string toolPattern |
-    toolPattern = "js_of_ocaml|CoffeeScript|LiveScript|dart2js|ANTLR|PEG\\.js|Opal" and
-    tool = c.getText().regexpCapture("(?s)[\\s*]*Generated (?:from .*)?by (" + toolPattern + ")\\b.*", 1)
+    toolPattern = "js_of_ocaml|CoffeeScript|LiveScript|dart2js|ANTLR|PEG\\.js|Opal|JSX|jison(?:-lex)?" and
+    tool = c.getText().regexpCapture("(?s)[\\s*]*(?:parser )?[gG]eneratedy? (?:from .*)?by (" + toolPattern + ")\\b.*", 1)
   )
 }
 

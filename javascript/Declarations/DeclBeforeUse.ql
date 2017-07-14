@@ -15,7 +15,7 @@
  * @name Variable not declared before use
  * @description Variables should be declared before their first use.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity recommendation
  * @tags maintainability
  *       readability
  * @precision very-high
