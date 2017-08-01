@@ -17,6 +17,7 @@
  *              a definition of the same name is confusing and may indicate a bug.
  * @kind problem
  * @problem.severity error
+ * @id js/node/missing-exports-qualifier
  * @tags maintainability
  *       frameworks/node.js
  * @precision high

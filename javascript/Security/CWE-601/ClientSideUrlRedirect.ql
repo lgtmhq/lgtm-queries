@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id js/client-side-url-redirect
  * @tags security
  *       external/cwe/cwe-079
  *       external/cwe/cwe-116

@@ -18,6 +18,7 @@
  *              state.
  * @kind problem
  * @problem.severity warning
+ * @id js/react/inconsistent-state-update
  * @tags reliability
  *       frameworks/react
  * @precision very-high

@@ -17,6 +17,7 @@
  *              redundant and may indicate a copy-paste mistake.
  * @kind problem
  * @problem.severity warning
+ * @id js/duplicate-html-attribute
  * @tags maintainability
  *       readability
  * @precision very-high

@@ -20,6 +20,7 @@
  *              indicative of a typo.
  * @kind problem
  * @problem.severity error
+ * @id js/inconsistent-loop-direction
  * @tags correctness
  *       external/cwe/cwe-835
  * @precision very-high

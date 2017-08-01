@@ -18,6 +18,7 @@
  *              likely to give wrong results.
  * @kind problem
  * @problem.severity warning
+ * @id js/misspelled-variable-name
  * @tags maintainability
  *       readability
  *       correctness

@@ -17,6 +17,7 @@
  *              since it could be mistaken for a word boundary assertion.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/regex/backspace-escape
  * @tags maintainability
  *       readability
  *       regular-expressions

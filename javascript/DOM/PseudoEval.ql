@@ -17,6 +17,7 @@
  *              program analysis and understanding. Consequently, they should not be used.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/eval-like-call
  * @tags maintainability
  *       external/cwe/cwe-676
  * @precision very-high

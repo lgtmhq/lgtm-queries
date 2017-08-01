@@ -17,6 +17,7 @@
  *              two scripts to improve maintainability.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/duplicate-script
  * @tags testability
  *       maintainability
  *       useless-code

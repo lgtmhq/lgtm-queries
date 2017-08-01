@@ -17,6 +17,7 @@
  *              but different values, its behavior may be browser-dependent.
  * @kind problem
  * @problem.severity error
+ * @id js/conflicting-html-attribute
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-758

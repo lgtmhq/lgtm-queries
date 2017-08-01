@@ -17,6 +17,7 @@
  *              right operand into account. Thus, it is not possible to shift by more than 31 bits.
  * @kind problem
  * @problem.severity error
+ * @id js/shift-out-of-range
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-197

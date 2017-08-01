@@ -17,6 +17,7 @@
  *              error on ECMAScript 2015-compatible platforms.
  * @kind problem
  * @problem.severity error
+ * @id js/variable-use-in-temporal-dead-zone
  * @tags portability
  *       correctness
  * @precision very-high

@@ -19,7 +19,8 @@ import java
 import SSA
 private import Guards
 private import DefUse
-private import RangeAnalysis
+private import RangeUtils
+private import IntegerGuards
 
 /** An expression that is always `null`. */
 Expr alwaysNullExpr() {

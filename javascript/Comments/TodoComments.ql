@@ -17,6 +17,7 @@
  *              broken, or it may highlight an ambiguity in the software's specification.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/todo-comment
  * @tags maintainability
  *       external/cwe/cwe-546
  * @precision very-high

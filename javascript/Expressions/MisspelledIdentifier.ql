@@ -16,6 +16,7 @@
  * @description Misspelled identifiers make code harder to read and understand.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/misspelled-identifier
  * @tags maintainability
  *       readability
  * @precision high

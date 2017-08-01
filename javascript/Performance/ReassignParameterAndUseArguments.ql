@@ -17,6 +17,7 @@
  *              may not be optimized properly.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/parameter-reassignment-with-arguments
  * @tags efficiency
  *       maintainability
  * @precision very-high

@@ -17,6 +17,7 @@
  *              which is probably not what was expected.
  * @kind problem
  * @problem.severity error
+ * @id js/regex/back-reference-before-group
  * @tags reliability
  *       correctness
  *       regular-expressions

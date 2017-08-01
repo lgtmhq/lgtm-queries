@@ -17,6 +17,7 @@
  *              Extract the common parts to a shared utility function to improve maintainability.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/duplicate-function
  * @tags testability
  *       useless-code
  *       maintainability

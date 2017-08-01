@@ -18,6 +18,7 @@
  *              as a normal function, that is, without 'new'.
  * @kind problem
  * @problem.severity warning
+ * @id js/inconsistent-use-of-new
  * @tags reliability
  *       correctness
  *       language-features

@@ -17,6 +17,7 @@
  *              interpretation may be browser-dependent.
  * @kind problem
  * @problem.severity warning
+ * @id js/malformed-html-id
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-758

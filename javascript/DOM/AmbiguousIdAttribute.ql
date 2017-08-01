@@ -18,6 +18,7 @@
  *              by different browsers.
  * @kind problem
  * @problem.severity error
+ * @id js/duplicate-html-id
  * @tags maintainability
  *       correctness
  * @precision very-high

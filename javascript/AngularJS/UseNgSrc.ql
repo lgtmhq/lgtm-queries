@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id js/angular/expression-in-url-attribute
  * @tags maintainability
  *       usability
  *       frameworks/angularjs

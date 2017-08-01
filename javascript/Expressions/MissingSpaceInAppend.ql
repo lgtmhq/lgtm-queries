@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id js/missing-space-in-concatenation
  * @tags readability
  */
 

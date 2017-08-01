@@ -17,6 +17,7 @@
  *              confusing and hard to maintain.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/duplicate-variable-declaration
  * @tags maintainability
  * @precision very-high
  */

@@ -16,6 +16,7 @@
  * @description Empty character classes are not normally useful and may indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @id js/regex/empty-character-class
  * @tags reliability
  *       correctness
  *       regular-expressions

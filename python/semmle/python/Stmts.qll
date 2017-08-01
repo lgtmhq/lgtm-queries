@@ -405,7 +405,12 @@ class Try extends Try_ {
     }
 
     ExceptStmt getHandler(int i) {
-        result =Try_.super.getHandler(i)
+        result = Try_.super.getHandler(i)
+    }
+
+    /** Gets an exception handler of this try statement. */
+    ExceptStmt getAHandler() {
+        result = Try_.super.getAHandler()
     }
 
 }

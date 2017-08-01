@@ -639,6 +639,13 @@ class InvokeExpr extends @invokeexpr, Expr {
       rparen.getPreviousToken().getValue() = ","
     )
   }
+
+  /**
+   * Holds if the `i`th argument of this invocation is a spread element.
+   */
+  predicate isSpreadArgument(int i) {
+    getArgument(i).stripParens() instanceof SpreadElement
+  }
 }
 
 /** A `new` expression. */
@@ -1487,7 +1494,7 @@ class ImmediatelyInvokedFunctionExpr extends Function {
    * Holds if the `i`th argument of this IIFE is a spread element.
    */
   predicate isSpreadArgument(int i) {
-    getArgument(i).stripParens() instanceof SpreadElement
+    invk.isSpreadArgument(i)
   }
 
   /**

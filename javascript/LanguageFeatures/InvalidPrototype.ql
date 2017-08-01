@@ -17,6 +17,7 @@
  *              prototype will either be ignored or result in a runtime error.
  * @kind problem
  * @problem.severity error
+ * @id js/invalid-prototype-value
  * @tags correctness
  *       language-features
  *       external/cwe/cwe-704

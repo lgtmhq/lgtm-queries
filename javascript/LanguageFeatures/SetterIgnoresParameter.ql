@@ -17,6 +17,7 @@
  *              be set to, but this may result in unexpected behavior and could indicate a bug.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/ignored-setter-parameter
  * @tags reliability
  *       maintainability
  *       language-features

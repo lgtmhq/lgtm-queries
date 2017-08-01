@@ -17,6 +17,7 @@
  *              label is confusing to read, or may even indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @id js/label-in-switch
  * @tags reliability
  *       readability
  * @precision very-high

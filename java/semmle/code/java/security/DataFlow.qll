@@ -519,7 +519,14 @@ predicate constructorStep(Expr tracked, ConstructorCall sink) {
       s = "java.lang.StringBuffer" and argi = 0  or
       // a cookie with tainted ingredients is tainted
       s = "javax.servlet.http.Cookie" and argi = 0 or
-      s = "javax.servlet.http.Cookie" and argi = 1
+      s = "javax.servlet.http.Cookie" and argi = 1 or
+      // various xml stream source constructors.
+      s = "org.xml.sax.InputSource" and argi = 0 or
+      s = "javax.xml.transform.sax.SAXSource" and argi = 0 and sink.getNumArgument() = 1 or
+      s = "javax.xml.transform.sax.SAXSource" and argi = 1 and sink.getNumArgument() = 2 or
+      s = "javax.xml.transform.stream.StreamSource" and argi = 0 or
+      //a URI constructed from a tainted string is tainted.
+      s = "java.net.URI" and argi = 0 and sink.getNumArgument() = 1
     ) or
     exists(RefType t | t.getQualifiedName() = "java.lang.Number" |
       hasSubtypeStar(t, sink.getConstructedType())
@@ -598,6 +605,10 @@ class DataPreservingMethod extends Method {
       (
         this.getName() = "toString" or this.getName() = "append"
       )
+    ) or
+    (
+      this.getDeclaringType().hasQualifiedName("javax.xml.transform.sax", "SAXSource") and
+      this.hasName("getInputSource")
     )
   }
 }
@@ -661,6 +672,15 @@ predicate dataPreservingArgument(Method method, int arg) {
       method.getName() = "toInputStream" and arg = 0 or
       method.getName() = "toString" and arg = 0
     )
+  ) or
+  (
+    //A URI created from a tainted string is still tainted.
+    method.getDeclaringType().hasQualifiedName("java.net", "URI") and
+    method.hasName("create") and arg = 0
+  ) or
+  (
+    method.getDeclaringType().hasQualifiedName("javax.xml.transform.sax", "SAXSource") and
+    method.hasName("sourceToInputSource") and arg = 0
   )
 }
 

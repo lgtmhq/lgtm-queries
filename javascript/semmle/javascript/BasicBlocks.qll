@@ -25,30 +25,8 @@ import DefUse
 private predicate startsBB(ControlFlowNode nd) {
   (not exists(nd.getAPredecessor()) and exists(nd.getASuccessor())) or
   nd.isJoin() or
-  exists (ControlFlowNode pred | pred = nd.getAPredecessor() |
-    pred.isBranch() or
-    // `yield` expressions always end their basic block to simplify
-    // SSA conversion; see discussion in SSA.qll
-    pred instanceof YieldExpr
-  )
+  nd.getAPredecessor().isBranch()
 }
-
-/**
- * Holds if `succ` is a control flow successor of `nd` within the same basic block.
- */
-private predicate intraBBSucc(ControlFlowNode nd, ControlFlowNode succ) {
-  succ = nd.getASuccessor() and
-  not succ instanceof BasicBlock
-}
-
-/**
- * Holds if `nd` is the `i`th node in basic block `bb`.
- *
- * In other words, `i` is the shortest distance from a node `bb`
- * that starts a basic block to `nd` along the `intraBBSucc` relation.
- */
-private cached predicate bbIndex(BasicBlock bb, ControlFlowNode nd, int i) =
-  shortestDistances(startsBB/1, intraBBSucc/2)(bb, nd, i)
 
 /**
  * Holds if the first node of basic block `succ` is a control flow
@@ -63,9 +41,37 @@ private predicate entryBB(BasicBlock bb) {
   bb.getFirstNode() instanceof ControlFlowEntryNode
 }
 
-/** Holds if `dom` is an immediate dominator of `bb`. */
-private cached predicate bbIDominates(BasicBlock dom, BasicBlock bb) =
-  idominance(entryBB/1, succBB/2)(_, dom, bb)
+private cached module Internal {
+  /**
+   * Holds if `succ` is a control flow successor of `nd` within the same basic block.
+   */
+  private predicate intraBBSucc(ControlFlowNode nd, ControlFlowNode succ) {
+    succ = nd.getASuccessor() and
+    not succ instanceof BasicBlock
+  }
+
+  /**
+   * Holds if `nd` is the `i`th node in basic block `bb`.
+   *
+   * In other words, `i` is the shortest distance from a node `bb`
+   * that starts a basic block to `nd` along the `intraBBSucc` relation.
+   */
+  cached predicate bbIndex(BasicBlock bb, ControlFlowNode nd, int i) =
+    shortestDistances(startsBB/1, intraBBSucc/2)(bb, nd, i)
+
+  /** Holds if `dom` is an immediate dominator of `bb`. */
+  cached predicate bbIDominates(BasicBlock dom, BasicBlock bb) =
+    idominance(entryBB/1, succBB/2)(_, dom, bb)
+
+  cached predicate useAt(BasicBlock bb, int i, Variable v, VarUse u) {
+    v = u.getVariable() and bbIndex(bb, u, i)
+  }
+
+  cached predicate defAt(BasicBlock bb, int i, Variable v, VarDef d) {
+    v = d.getAVariable() and bbIndex(bb, d, i)
+  }
+}
+private import Internal
 
 /**
  * A basic block, that is, a maximal straight-line sequence of control flow nodes
@@ -107,12 +113,12 @@ class BasicBlock extends @cfg_node, Locatable {
 
   /** Holds if this basic block uses variable `v` in its `i`th node `u`. */
   predicate useAt(int i, Variable v, VarUse u) {
-    v = u.getVariable() and u = this.getNode(i)
+    useAt(this, i, v, u)
   }
 
   /** Holds if this basic block defines variable `v` in its `i`th node `u`. */
   predicate defAt(int i, Variable v, VarDef d) {
-    v = d.getAVariable() and d = this.getNode(i)
+    defAt(this, i, v, d)
   }
 
   /**

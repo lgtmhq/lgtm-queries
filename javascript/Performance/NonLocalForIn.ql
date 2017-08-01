@@ -17,6 +17,7 @@
  *              prevent optimization of the surrounding function.
  * @kind problem
  * @problem.severity warning
+ * @id js/iteration-using-non-local-variable
  * @tags efficiency
  *       maintainability
  * @precision very-high

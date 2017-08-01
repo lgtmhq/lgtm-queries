@@ -18,6 +18,7 @@
  *              description is useless and should be removed.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/jsdoc/malformed-param-tag
  * @tags maintainability
  *       readability
  *       documentation

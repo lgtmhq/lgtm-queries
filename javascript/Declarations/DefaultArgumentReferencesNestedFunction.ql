@@ -18,6 +18,7 @@
  *              the function is not yet defined at the point where it is referenced.
  * @kind problem
  * @problem.severity error
+ * @id js/nested-function-reference-in-default-parameter
  * @tags reliability
  *       correctness
  * @precision very-high

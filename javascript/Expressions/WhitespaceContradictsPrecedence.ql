@@ -17,6 +17,7 @@
  *              are difficult to read and may even indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @id js/whitespace-contradicts-precedence
  * @tags maintainability
  *       correctness
  *       statistical

@@ -17,6 +17,7 @@
  *              shadows the first one, which makes the code hard to understand and error-prone.
  * @kind problem
  * @problem.severity error
+ * @id js/duplicate-parameter-name
  * @tags reliability
  *       correctness
  * @precision very-high
@@ -46,5 +47,7 @@ where parmBinds(f, i, p, name) and
       parmBinds(f, j, q, name) and
       i < j and
       j = max(int k | parmBinds(f, k, _, name) | k) and
-      not isDummy(p)
+      not isDummy(p) and
+      // duplicate parameters in strict mode functions are flagged by the 'Syntax error' rule
+      not f.isStrict()
 select p, "This parameter has the same name as $@ of the same function.", q, "another parameter"

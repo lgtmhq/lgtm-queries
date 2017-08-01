@@ -16,6 +16,7 @@
  * @description The 'debugger' statement should not be used in production code.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/debugger-statement
  * @tags efficiency
  *       maintainability
  *       language-features

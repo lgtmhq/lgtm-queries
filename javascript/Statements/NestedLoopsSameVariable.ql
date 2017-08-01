@@ -17,6 +17,7 @@
  *              to understand.
  * @kind problem
  * @problem.severity warning
+ * @id js/nested-loops-with-same-variable
  * @tags maintainability
  *       correctness
  * @precision medium

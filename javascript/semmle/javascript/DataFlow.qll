@@ -44,6 +44,7 @@ class DataFlowNode extends @dataflownode {
   /**
    * Gets another flow node from which data may flow to this node in one local step.
    */
+  cached
   DataFlowNode localFlowPred() {
     // to be overridden by subclasses
     none()
@@ -156,13 +157,9 @@ private class VarAccessFlow extends DataFlowNode, @varaccess {
    * this access may refer.
    */
   private VarDefFlow getALocalDef() {
-    // flow-sensitive handling of un-captured variables
-    localDefinitionReaches(_, result, this)
-    or
-    // flow-insensitive handling for captured ones
-    exists (LocalVariable lv | lv.isCaptured() |
-      lv = result.getAVariable() and
-      this = lv.getAnAccess()
+    exists (SsaDefinition def |
+      this = def.getVariable().getAUse() and
+      result = def.getAContributingVarDef()
     )
   }
 
@@ -180,13 +177,33 @@ private class VarAccessFlow extends DataFlowNode, @varaccess {
   }
 
   override predicate isIncomplete(DataFlowIncompleteness cause) {
-    this.(VarUse).getADef().(VarDefFlow).isIncomplete(cause) or
+    exists (SsaDefinition ssa, VarDefFlow def |
+      this = ssa.getVariable().getAUse() and def = ssa.getAContributingVarDef() |
+      def.isIncomplete(cause)
+    )
+    or
     exists (Variable v | this = v.getAnAccess() |
       v.isGlobal() and cause = "global" or
+      globalIsIncomplete(v, cause) or
       v instanceof ArgumentsVariable and cause = "call" or
       any(DirectEval e).mayAffect(v) and cause = "eval"
     )
   }
+}
+
+/**
+ * Holds if `v` has a definition that introduces analysis incompleteness due to
+ * the given `cause`.
+ *
+ * We exclude cause `"global"`, since all global variables have this incompleteness anyway.
+ */
+pragma[noinline]
+private predicate globalIsIncomplete(GlobalVariable v, DataFlowIncompleteness cause) {
+  exists (VarDefFlow def |
+    v = def.getAVariable() and
+    def.isIncomplete(cause) and
+    cause != "global"
+  )
 }
 
 /**

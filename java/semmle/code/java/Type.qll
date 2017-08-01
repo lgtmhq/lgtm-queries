@@ -850,6 +850,26 @@ class BooleanType extends Type {
   }
 }
 
+/** A character type, which may be either a primitive or a boxed type. */
+class CharacterType extends Type {
+  CharacterType() {
+    exists(string name |
+      name = this.(PrimitiveType).getName() or name = this.(BoxedType).getPrimitiveType().getName() |
+      name = "char"
+    )
+  }
+}
+
+/** A numeric or character type, which may be either a primitive or a boxed type. */
+class NumericOrCharType extends Type {
+  NumericOrCharType() {
+    exists(string name |
+      name = this.(PrimitiveType).getName() or name = this.(BoxedType).getPrimitiveType().getName() |
+      name.regexpMatch("byte|char|short|int|long|double|float")
+    )
+  }
+}
+
 /** A floating point type, which may be either a primitive or a boxed type. */
 class FloatingPointType extends Type {
   FloatingPointType() {

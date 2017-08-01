@@ -23,6 +23,7 @@
  */
 
 import javascript
+import semmle.javascript.flow.CallGraph
 
 /**
  * A data flow tracking configuration.
@@ -73,7 +74,7 @@ abstract class FlowTrackingConfiguration extends string {
    * expected to be smaller than the set of sources.
    */
   predicate flowsTo(DataFlowNode source, DataFlowNode sink) {
-    flowsTo(source, sink, this) and
+    flowsTo(source, sink, this, _) and
     isSink(sink)
   }
 
@@ -86,30 +87,75 @@ abstract class FlowTrackingConfiguration extends string {
    * expected to be smaller than the set of sinks.
    */
   predicate flowsFrom(DataFlowNode sink, DataFlowNode source) {
-    flowsFrom(source, sink, this) and
+    flowsFrom(source, sink, this, _) and
     isSource(source)
   }
 }
 
 /**
+ * Holds if `invk` may invoke `f`.
+ */
+private predicate calls(InvokeExpr invk, Function f) {
+  exists (CallSite cs | cs = invk |
+    if cs.isIndefinite("global") then
+      (f = cs.getACallee() and f.getFile() = invk.getFile())
+    else
+      f = cs.getACallee()
+  )
+}
+
+/**
+ * Holds if `arg` is passed as an argument into parameter `parm`.
+ */
+private predicate argumentPassing(Expr arg, SimpleParameter parm) {
+  exists (InvokeExpr invk, Function f, int i |
+    calls(invk, f) and
+    f.getParameter(i) = parm and not parm.isRestParameter() and
+    invk.getArgument(i) = arg and not invk.isSpreadArgument([0..i])
+  )
+}
+
+/**
  * Holds if `source` can flow to `sink` under the given `configuration`
  * in zero or more steps.
+ *
+ * The parameter `stepIn` indicates whether steps from arguments to
+ * parameters are necessary to derive this flow.
  */
-private predicate flowsTo(DataFlowNode source, DataFlowNode sink, FlowTrackingConfiguration configuration) {
+private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
+                          FlowTrackingConfiguration configuration, boolean stepIn) {
   (
     // Base case
     sink = source and
-    configuration.isSource(source)
+    configuration.isSource(source) and
+    stepIn = false
     or
     // Local flow
     exists (DataFlowNode mid |
-      flowsTo(source, mid, configuration) and
+      flowsTo(source, mid, configuration, stepIn) and
       mid = sink.localFlowPred()
+    )
+    or
+    // Flow into function
+    exists (Expr arg, SimpleParameter parm, SsaExplicitDefinition parmDef |
+      flowsTo(source, arg, configuration, _) and
+      argumentPassing(arg, parm) and parmDef.getDef() = parm and
+      sink = parmDef.getVariable().getAUse() and
+      stepIn = true
+    )
+    or
+    // Flow out of function
+    // This path is only enabled if the flow so far did not involve
+    // any interprocedural steps from an argument to a caller.
+    exists (InvokeExpr invk, Function f |
+      flowsTo(source, f.getAReturnedExpr(), configuration, stepIn) and stepIn = false and
+      calls(invk, f) and
+      sink = invk
     )
     or
     // Extra flow
     exists(DataFlowNode mid |
-      flowsTo(source, mid, configuration) and
+      flowsTo(source, mid, configuration, stepIn) and
       configuration.isAdditionalFlowStep(mid, sink)
     )
   )
@@ -121,24 +167,47 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink, FlowTrackingCo
  * Holds if `source` can flow to `sink` under the given `configuration`
  * in zero or more steps.
  *
+ * The parameter `stepOut` indicates whether steps from `return` statements to
+ * invocation sites are necessary to derive this flow.
+ *
  * Unlike `flowsTo`, this predicate searches backwards from the sink
  * to the source.
  */
-private predicate flowsFrom(DataFlowNode source, DataFlowNode sink, FlowTrackingConfiguration configuration) {
+private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
+                            FlowTrackingConfiguration configuration, boolean stepOut) {
   (
     // Base case
     sink = source and
-    configuration.isSink(sink)
+    configuration.isSink(sink) and
+    stepOut = false
     or
     // Local flow
     exists (DataFlowNode mid |
-      flowsFrom(mid, sink, configuration) and
+      flowsFrom(mid, sink, configuration, stepOut) and
       source = mid.localFlowPred()
+    )
+    or
+    // Flow into function
+    // This path is only enabled if the flow so far did not involve
+    // any interprocedural steps from a `return` statement to the invocation site.
+    exists (SimpleParameter parm, SsaExplicitDefinition parmDef |
+      parmDef.getDef() = parm and
+      flowsFrom(parmDef.getVariable().getAUse(), sink, configuration, stepOut) and
+      stepOut = false and
+      argumentPassing(source, parm)
+    )
+    or
+    // Flow out of function
+    exists (InvokeExpr invk, Function f |
+      flowsFrom(invk, sink, configuration, _) and
+      calls(invk, f) and
+      source = f.getAReturnedExpr() and
+      stepOut = true
     )
     or
     // Extra flow
     exists (DataFlowNode mid |
-      flowsFrom(mid, sink, configuration) and
+      flowsFrom(mid, sink, configuration, stepOut) and
       configuration.isAdditionalFlowStep(source, mid)
     )
   )
@@ -355,6 +424,47 @@ module TaintTracking {
 
     override DataFlowNode getATaintSource() {
       result = this.(CallExpr).getArgument(0)
+    }
+  }
+
+  /**
+   * Holds if `params` is a `URLSearchParams` object providing access to
+   * the parameters encoded in `input`.
+   */
+  predicate isUrlSearchParams(DataFlowNode params, DataFlowNode input) {
+    exists (NewExpr urlSearchParams | urlSearchParams = params |
+      accessesGlobal(urlSearchParams.getCallee(), "URLSearchParams") and
+      input = urlSearchParams.getArgument(0)
+    )
+    or
+    exists (NewExpr url, DataFlowNode recv |
+      params.(PropAccess).accesses(recv, "searchParams") and
+      recv.getALocalSource() = url and
+      accessesGlobal(url.getCallee(), "URL") and
+      input = url.getArgument(0)
+    )
+  }
+
+  /**
+   * A taint propagating data flow edge arising from URL parameter parsing.
+   */
+  private class UrlSearchParamsFlowTarget extends FlowTarget {
+    DataFlowNode source;
+
+    UrlSearchParamsFlowTarget() {
+      // either this is itself an `URLSearchParams` object
+      isUrlSearchParams(this, source)
+      or
+      // or this is a call to `get` or `getAll` on a `URLSearchParams` object
+      exists (DataFlowNode recv, string m |
+        this.(MethodCallExpr).calls(recv, m) and
+        isUrlSearchParams(recv.getALocalSource(), source) and
+        m.matches("get%")
+      )
+    }
+
+    override DataFlowNode getATaintSource() {
+      result = source
     }
   }
 }

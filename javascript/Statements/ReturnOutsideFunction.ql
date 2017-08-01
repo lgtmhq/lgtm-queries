@@ -17,6 +17,7 @@
  *              when it is executed.
  * @kind problem
  * @problem.severity warning
+ * @id js/return-outside-function
  * @tags reliability
  *       correctness
  * @precision medium

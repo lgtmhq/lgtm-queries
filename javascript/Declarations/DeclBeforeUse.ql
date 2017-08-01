@@ -16,6 +16,7 @@
  * @description Variables should be declared before their first use.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/use-before-declaration
  * @tags maintainability
  *       readability
  * @precision very-high

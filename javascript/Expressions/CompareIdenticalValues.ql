@@ -17,6 +17,7 @@
  *              operator, the operator is redundant, and probably indicates a mistake.
  * @kind problem
  * @problem.severity warning
+ * @id js/comparison-of-identical-expressions
  * @tags reliability
  *       correctness
  *       readability

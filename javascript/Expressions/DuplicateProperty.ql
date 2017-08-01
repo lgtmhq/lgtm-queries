@@ -17,6 +17,7 @@
  *              redundant and may indicate a copy-paste mistake.
  * @kind problem
  * @problem.severity warning
+ * @id js/duplicate-property
  * @tags maintainability
  *       external/cwe/cwe-563
  * @precision very-high

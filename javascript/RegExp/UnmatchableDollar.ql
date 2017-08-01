@@ -18,6 +18,7 @@
  *              regular expression cannot match any string.
  * @kind problem
  * @problem.severity error
+ * @id js/regex/unmatchable-dollar
  * @tags reliability
  *       correctness
  *       regular-expressions

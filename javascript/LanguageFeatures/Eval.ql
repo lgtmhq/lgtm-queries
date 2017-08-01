@@ -17,6 +17,7 @@
  *              program analysis and understanding. Consequently, these two functions should not be used.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/eval-call
  * @tags maintainability
  *       language-features
  *       external/cwe/cwe-676

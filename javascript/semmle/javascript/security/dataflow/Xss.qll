@@ -127,6 +127,7 @@ class XssDataFlowConfiguration extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    isSafeLocationProperty(node) or
     node instanceof XssSanitizer
   }
 }

@@ -18,6 +18,7 @@
  *              this comparison can never succeed.
  * @kind problem
  * @problem.severity error
+ * @id js/useless-type-test
  * @tags maintainability
  *       correctness
  *       language-features

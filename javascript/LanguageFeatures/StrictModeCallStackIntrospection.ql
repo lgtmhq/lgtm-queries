@@ -18,6 +18,7 @@
  *              in strict mode will cause a runtime error.
  * @kind problem
  * @problem.severity error
+ * @id js/strict-mode-call-stack-introspection
  * @tags correctness
  *       language-features
  * @precision high

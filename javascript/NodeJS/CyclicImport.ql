@@ -17,6 +17,7 @@
  *              with partially loaded dependencies. This is error-prone and should be avoided.
  * @kind problem
  * @problem.severity warning
+ * @id js/node/cyclic-import
  * @tags reliability
  *       maintainability
  *       frameworks/node.js

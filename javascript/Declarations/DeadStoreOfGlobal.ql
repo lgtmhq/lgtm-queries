@@ -16,6 +16,7 @@
  * @description An assignment to a global variable that is never used has no effect.
  * @kind problem
  * @problem.severity warning
+ * @id js/useless-assignment-to-global
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-563

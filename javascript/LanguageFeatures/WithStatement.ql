@@ -16,6 +16,7 @@
  * @description The 'with' statement has subtle semantics and should not be used.
  * @kind problem
  * @problem.severity warning
+ * @id js/with-statement
  * @tags maintainability
  *       language-features
  * @precision very-high

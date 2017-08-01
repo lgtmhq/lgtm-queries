@@ -16,6 +16,7 @@
  * @description Future reserved words should not be used as variable names.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/use-of-reserved-word
  * @tags changeability
  *       maintainability
  *       language-features

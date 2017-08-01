@@ -17,6 +17,7 @@
  *              that is no longer supported.
  * @kind problem
  * @problem.severity error
+ * @id js/for-in-comprehension
  * @tags portability
  *       maintainability
  *       language-features

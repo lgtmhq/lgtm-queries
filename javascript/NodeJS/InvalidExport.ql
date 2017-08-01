@@ -17,6 +17,7 @@
  *              anything. Such an assignment is hence most likely unintentional.
  * @kind problem
  * @problem.severity warning
+ * @id js/node/assignment-to-exports-variable
  * @tags maintainability
  *       frameworks/node.js
  *       external/cwe/cwe-563

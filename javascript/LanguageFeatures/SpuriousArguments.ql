@@ -16,6 +16,7 @@
  * @description A function is invoked with extra trailing arguments that are ignored.
  * @kind problem
  * @problem.severity warning
+ * @id js/superfluous-trailing-arguments
  * @tags maintainability
  *       correctness
  *       language-features

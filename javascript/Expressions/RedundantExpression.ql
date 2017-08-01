@@ -18,6 +18,7 @@
  *              even if it is intentional, it makes the code hard to read.
  * @kind problem
  * @problem.severity warning
+ * @id js/redundant-operation
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-480

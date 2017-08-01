@@ -17,6 +17,7 @@
  *              second condition will never hold.
  * @kind problem
  * @problem.severity error
+ * @id js/duplicate-condition
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-561

@@ -52,6 +52,7 @@ class ClientSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configur
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    isSafeLocationProperty(node) or
     node instanceof ClientSideUrlRedirectSanitizer
   }
 }

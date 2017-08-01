@@ -18,6 +18,7 @@
  *              may even lead to platform-dependent behavior.
  * @kind problem
  * @problem.severity error
+ * @id js/function-declaration-conflict
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-563

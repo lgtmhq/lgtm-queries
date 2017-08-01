@@ -17,6 +17,7 @@
  *              in a runtime exception.
  * @kind problem
  * @problem.severity error
+ * @id js/call-to-non-callable
  * @tags correctness
  *       external/cwe/cwe-476
  * @precision high

@@ -18,6 +18,7 @@
  *              unintentional.
  * @kind problem
  * @problem.severity error
+ * @id js/non-linear-pattern
  * @tags reliability
  *       correctness
  *       language-features

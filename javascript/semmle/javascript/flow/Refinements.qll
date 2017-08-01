@@ -88,7 +88,7 @@ class Refinement extends Expr {
 }
 
 /** A literal, viewed as a refinement expression. */
-private class LiteralRefinement extends RefinementCandidate, Literal {
+private abstract class LiteralRefinement extends RefinementCandidate, Literal {
   override SsaSourceVariable getARefinedVar() {
     none()
   }
@@ -129,15 +129,20 @@ private class StringRefinement extends LiteralRefinement, StringLiteral {
 }
 
 /** A numeric literal, viewed as a refinement expression. */
-private class NumberRefinement extends LiteralRefinement, NumberLiteral {
+private abstract class NumberRefinement extends LiteralRefinement, NumberLiteral {
   override RefinementValue eval() {
     result = TValueWithType(TTNumber())
   }
 }
 
-/** An integer literal, viewed as a refinement expression. */
-private class IntRefinement extends NumberRefinement {
-  IntRefinement() { exists(getValue().toInt()) }
+/**
+ * An integer literal, viewed as a refinement expression.
+ *
+ * At the moment, we only refine with the integer zero, not with any
+ * other integer values.
+ */
+private class IntRefinement extends NumberRefinement, NumberLiteral {
+  IntRefinement() { getValue().toInt() = 0 }
 
   override RefinementValue eval() {
     result = TIntConstant(getValue().toInt())
@@ -156,7 +161,7 @@ private class VariableRefinement extends RefinementCandidate, VarUse {
 
   override RefinementValue eval(RefinementContext ctxt) {
     ctxt.appliesTo(this) and
-    result = TValueWithType(ctxt.(VarRefinementContext).getAType())
+    result = ctxt.(VarRefinementContext).getAValue()
   }
 }
 
@@ -301,11 +306,16 @@ class VarRefinementContext extends RefinementContext, TVarRefinementContext {
   }
 
   /**
-   * Gets a type corresponding to the abstract value the variable is assumed to have.
+   * Gets the abstract refinement value the variable is assumed to have.
    */
-  InferredType getAType() {
-    exists (AbstractValue val | this = TVarRefinementContext(_, _, val) |
-      result = val.getType()
+  RefinementValue getAValue() {
+    exists (AbstractValue av | this = TVarRefinementContext(_, _, av) |
+      if av instanceof AbstractBoolean then
+        result.(BoolConstant).getValue() = av.(AbstractBoolean).getBooleanValue()
+      else if av instanceof AbstractZero then
+        result.(IntConstant).getValue() = 0
+      else
+        result.(ValueWithType).getType() = av.getType()
     )
   }
 
@@ -353,10 +363,11 @@ private newtype TRefinementValue =
   /**
    * An abstract value representing the integer `i`.
    *
-   * There are abstract values for every integer literal appearing anywhere
+   * There are abstract values for zero and for every integer literal appearing
    * in a guard node.
    */
   TIntConstant(int i) {
+    i = 0 or
     i = any(IntRefinement ir | inGuard(ir)).getValue().toInt()
   }
 

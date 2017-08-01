@@ -21,6 +21,7 @@ import Member
 
 /** The class `java.lang.Object`. */
 class TypeObject extends Class {
+  pragma[noinline]
   TypeObject() {
     this.hasQualifiedName("java.lang", "Object")
   }

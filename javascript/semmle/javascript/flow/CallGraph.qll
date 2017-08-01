@@ -39,7 +39,7 @@ class CallSite extends @invokeexpr {
   CallSite() { invk = this }
 
   /** Gets an abstract value representing possible callees of this call site. */
-  AbstractValue getACalleeValue() {
+  cached AbstractValue getACalleeValue() {
     result = invk.getCallee().(AnalyzedFlowNode).getAValue()
   }
 

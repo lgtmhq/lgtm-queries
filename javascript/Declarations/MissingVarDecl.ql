@@ -17,6 +17,7 @@
  *              by default, which may be unintentional and could lead to unexpected behavior.
  * @kind problem
  * @problem.severity error
+ * @id js/missing-variable-declaration
  * @tags reliability
  *       maintainability
  * @precision high

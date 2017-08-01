@@ -56,11 +56,18 @@ predicate iter_not_exhausted(Object iterator) {
     )
 }
 
+predicate stop_iteration_handled(CallNode call) {
+    exists(Try t |
+        t.containsInScope(call.getNode()) and
+        t.getAHandler().getType().refersTo(theStopIterationType())
+    )
+}
 
 from CallNode call, Object iterator
 where call_to_next(call, iterator) and
 call.getNode().getScope().(Function).isGenerator() and
-not iter_not_exhausted(iterator)
+not iter_not_exhausted(iterator) and
+not stop_iteration_handled(call)
 
 select call, "Call to next() in a generator"
 

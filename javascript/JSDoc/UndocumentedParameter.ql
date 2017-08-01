@@ -17,6 +17,7 @@
  *              are not, this may indicate badly maintained code.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/jsdoc/missing-parameter
  * @tags maintainability
  *       readability
  *       documentation

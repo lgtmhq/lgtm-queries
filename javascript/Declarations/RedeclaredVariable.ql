@@ -16,6 +16,7 @@
  * @description Declaring the same variable twice is confusing and may even suggest a latent bug.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/variable-redeclaration
  * @tags reliability
  *       readability
  * @precision very-high

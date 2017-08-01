@@ -18,6 +18,7 @@
  *              yield 'true'.
  * @kind problem
  * @problem.severity error
+ * @id js/comparison-between-incompatible-types
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-570

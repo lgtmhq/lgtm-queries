@@ -16,6 +16,7 @@
  * @description Unused variables may be a symptom of a bug and should be examined carefully.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/unused-local-variable
  * @tags maintainability
  * @precision very-high
  */

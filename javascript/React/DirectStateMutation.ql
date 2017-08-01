@@ -17,6 +17,7 @@
  *              lost updates.
  * @kind problem
  * @problem.severity warning
+ * @id js/react/direct-state-mutation
  * @tags reliability
  *       frameworks/react
  * @precision very-high
