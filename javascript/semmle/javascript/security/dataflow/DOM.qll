@@ -52,22 +52,30 @@ predicate isDocument(DataFlowNode nd) {
   accessesGlobal(nd.getALocalSource(), "document")
 }
 
-/** Holds if `nd` could hold (part of) the document URL. */
+/** Holds if `nd` could refer to the document URL. */
 predicate isDocumentURL(DataFlowNode nd) {
   exists (Expr base, string propName | nd.(PropAccess).accesses(base, propName) |
     isDocument(base) and
     (propName = "documentURI" or
      propName = "documentURIObject" or
+     propName = "location" or
      propName = "referrer" or
      propName = "URL")
     or
     isDomValue(base) and propName = "baseUri"
-    or
-    isLocation(base) and
-    (propName = "href" or
-     propName = "hash" or
-     propName = "search")
   )
   or
   accessesGlobal(nd, "location")
+}
+
+/**
+ * Holds if `pacc` accesses a part of `document.location` that is
+ * not considered user-controlled, that is, anything except
+ * `href`, `hash` and `search`.
+ */
+predicate isSafeLocationProperty(PropAccess pacc) {
+  exists (DataFlowNode loc, string prop |
+    isLocation(loc) and pacc.accesses(loc, prop) |
+    prop != "href" and prop != "hash" and prop != "search"
+  )
 }

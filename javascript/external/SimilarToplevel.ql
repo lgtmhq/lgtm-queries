@@ -17,6 +17,7 @@
  *              Extract the common parts to a new script to improve maintainability..
  * @kind problem
  * @problem.severity recommendation
+ * @id js/similar-script
  * @tags testability
  *       maintainability
  *       useless-code

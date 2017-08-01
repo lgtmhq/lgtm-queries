@@ -68,7 +68,7 @@ class Module extends Module_, Scope, AstNode {
 
     /** Whether this module is a package initializer */
     predicate isPackageInit() {
-        this.getName().matches("%__init__") and not this.isPackage()
+        this.getName().matches("%\\_\\_init\\_\\_") and not this.isPackage()
     }
 
     /** Gets a name exported by this module, that is the names that will be added to a namespace by 'from this-module import *'  */

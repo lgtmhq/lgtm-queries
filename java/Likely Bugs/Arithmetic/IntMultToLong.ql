@@ -28,7 +28,7 @@
  *       external/cwe/cwe-681
  */
 import java
-import semmle.code.java.dataflow.RangeAnalysis
+import semmle.code.java.dataflow.RangeUtils
 
 /** Either the boxed type `java.lang.Long` or the primitive type `long`. */
 class Long extends Type {

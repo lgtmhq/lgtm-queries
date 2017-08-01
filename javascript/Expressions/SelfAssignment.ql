@@ -16,6 +16,7 @@
  * @description Assigning a variable to itself has no effect.
  * @kind problem
  * @problem.severity error
+ * @id js/redundant-assignment
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-480

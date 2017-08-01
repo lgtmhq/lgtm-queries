@@ -16,6 +16,7 @@
  * @description 'yield' should only be used in generator functions.
  * @kind problem
  * @problem.severity error
+ * @id js/yield-outside-generator
  * @tags maintainability
  *       language-features
  *       external/cwe/cwe-758

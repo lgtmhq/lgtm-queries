@@ -17,6 +17,7 @@
  *              may cause redirection to malicious web sites.
  * @kind problem
  * @problem.severity warning
+ * @id js/server-side-url-redirect
  * @tags security
  *       external/cwe/cwe-601
  * @precision medium

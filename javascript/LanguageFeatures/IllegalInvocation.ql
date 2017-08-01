@@ -18,6 +18,7 @@
  *              error.
  * @kind problem
  * @problem.severity error
+ * @id js/illegal-invocation
  * @tags correctness
  *       language-features
  * @precision high

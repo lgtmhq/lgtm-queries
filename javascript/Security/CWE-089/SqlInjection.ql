@@ -12,19 +12,19 @@
 // permissions and limitations under the License.
 
 /**
- * @name URL redirection from remote source
- * @description URL redirection based on unvalidated user input
- *              may cause redirection to malicious web sites.
- * @kind problem
- * @problem.severity warning
- * @tags security
- *       external/cwe/cwe-601
- * @precision medium
- */
+* @name SQL query built from user-controlled sources
+* @description Building a SQL query from user-controlled sources is vulnerable to insertion of
+*              malicious SQL code by the user.
+* @kind problem
+* @problem.severity error
+* @precision medium
+* @tags security
+*       external/cwe/cwe-089
+*/
 
 import javascript
-import semmle.javascript.security.dataflow.UrlRedirect
+import semmle.javascript.security.dataflow.SqlInjection
 
-from UrlRedirectDataFlowConfiguration urlRedirect, DataFlowNode source, DataFlowNode sink
-where urlRedirect.flowsTo(source, sink)
-select sink, "Untrusted URL redirection due to $@.", source, "user-provided value"
+from SqlInjectionTrackingConfig cfg, DataFlowNode source, DataFlowNode sink
+where cfg.flowsFrom(sink, source)
+select sink, "This query depends on $@.", source, "a user-provided value"

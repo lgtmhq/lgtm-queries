@@ -85,3 +85,11 @@ newtype TAbstractValue =
    * `cause` recording the cause of the incompleteness.
    */
   TIndefiniteAbstractValue(DataFlowIncompleteness cause)
+
+
+/**
+ * Gets a definite abstract value with the given type.
+ */
+DefiniteAbstractValue abstractValueOfType(TypeTag type) {
+  result.getType() = type
+}

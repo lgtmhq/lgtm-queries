@@ -217,15 +217,11 @@ class VarUse extends ControlFlowNode, @varaccess {
   /**
    * Gets a definition that may reach this use.
    *
-   * For global variables and variables that are captured in a closure, each definition is
-   * considered to reach each use.
+   * For global variables, each definition is considered to reach each use.
    */
   VarDef getADef() {
-    localDefinitionReaches(_, result, this) or
-    exists (Variable v | v.isGlobal() or v.isCaptured() |
-      v = getVariable() and
-      result.getAVariable() = v
-    )
+    result = getSsaVariable().getDefinition().getAContributingVarDef() or
+    result.getAVariable() = (GlobalVariable)getVariable()
   }
 
   /**

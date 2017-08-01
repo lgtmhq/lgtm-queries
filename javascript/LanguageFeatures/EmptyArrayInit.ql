@@ -16,6 +16,7 @@
  * @description Omitted elements in array literals are easy to miss and should not be used.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/omitted-array-element
  * @tags maintainability
  *       readability
  *       language-features

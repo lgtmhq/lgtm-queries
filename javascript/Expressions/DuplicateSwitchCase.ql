@@ -17,6 +17,7 @@
  *              will never be executed.
  * @kind problem
  * @problem.severity error
+ * @id js/duplicate-switch-case
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-561

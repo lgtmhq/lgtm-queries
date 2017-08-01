@@ -17,6 +17,7 @@
  *              indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @id js/regex/duplicate-in-character-class
  * @tags reliability
  *       correctness
  *       regular-expressions

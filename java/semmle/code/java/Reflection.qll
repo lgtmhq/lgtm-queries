@@ -57,11 +57,21 @@ private XMLElement elementReferencingType(RefType rt) {
   result.getAnAttribute().getValue() = rt.getSourceDeclaration().getQualifiedName()
 }
 
+private abstract class ReflectiveClassIdentifier extends Expr {
+  abstract RefType getReflectivelyIdentifiedClass();
+}
+
+private class ReflectiveClassIdentifierLiteral extends ReflectiveClassIdentifier, TypeLiteral {
+  RefType getReflectivelyIdentifiedClass() {
+    result = getTypeName().getType().(RefType).getSourceDeclaration()
+  }
+}
+
 /**
  * A call to a Java standard library method which constructs or returns a `Class<T>` from a `String`.
  */
-library class ReflectiveClassIdentifier extends MethodAccess {
-  ReflectiveClassIdentifier() {
+library class ReflectiveClassIdentifierMethodAccess extends ReflectiveClassIdentifier, MethodAccess {
+  ReflectiveClassIdentifierMethodAccess() {
     // A call to `Class.forName(...)`, from which we can infer `T` in the returned type `Class<T>`.
     getCallee().getDeclaringType() instanceof TypeClass and getCallee().hasName("forName") or
     // A call to `ClassLoader.loadClass(...)`, from which we can infer `T` in the returned type `Class<T>`.

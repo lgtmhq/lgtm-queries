@@ -16,6 +16,7 @@
  * @description The 'else' clause of an 'if' statement should be aligned with the 'if' it belongs to.
  * @kind problem
  * @problem.severity warning
+ * @id js/misleading-indentation-of-dangling-else
  * @tags changeability
  *       readability
  *       statistical

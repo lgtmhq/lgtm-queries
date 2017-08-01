@@ -17,6 +17,7 @@
  *              unexpected behavior of directives, performance problems, and memory leaks.
  * @kind problem
  * @problem.severity warning
+ * @id js/angular/double-compilation
  * @tags reliability
  *       frameworks/angularjs
  * @precision high

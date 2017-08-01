@@ -17,6 +17,7 @@
  *              make code non-modular and hard to maintain. Consequently, they should not be used.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/call-stack-introspection
  * @tags maintainability
  *       language-features
  * @precision very-high

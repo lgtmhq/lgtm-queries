@@ -17,6 +17,7 @@
  *              as a conditional.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/single-run-loop
  * @tags readability
  * @precision very-high
  */

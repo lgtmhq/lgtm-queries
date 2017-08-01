@@ -17,6 +17,7 @@
  *              hard to read.
  * @kind problem
  * @problem.severity warning
+ * @id js/implicit-operand-conversion
  * @tags reliability
  *       readability
  *       external/cwe/cwe-704

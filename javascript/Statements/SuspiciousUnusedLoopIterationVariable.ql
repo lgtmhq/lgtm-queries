@@ -16,6 +16,7 @@
  * @description A loop iteration variable is unused, which suggests an error.
  * @kind problem
  * @problem.severity error
+ * @id js/unused-loop-variable
  * @tags maintainability
  *       correctness
  * @precision high

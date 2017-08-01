@@ -15,26 +15,34 @@
  * Provides classes for working with static single assignment form (SSA).
  *
  * We compute SSA form based on the intra-procedural CFG, without
- * any call graph information. Hence we can only deal with local variables
- * that are not assigned to outside the function that declares them (though
- * they may be read by nested functions).
+ * any call graph information. This means that we have to make worst-case
+ * assumptions about the possible effects of function calls and `yield`:
  *
- * Such variables are called _SSA source variables_ or _SSA-convertible
- * variables_. They can be treated as purely local within their declaring
- * function, since any assignments to the variable must be within that
- * function.
+ *  - For a variable `x` declared in a function `f`, if `x` has assignments
+ *    in a function other than `f`, then any function call and `yield`
+ *    expression is assumed to write `x`.
+ *  - If `x` is not written outside `f`, then function calls can never
+ *    affect `x`, while `yield` expressions in functions other than `f`
+ *    still may affect it.
  *
- * Within each nested function `f` that accesses a captured variable
- * `x`, we introduce a pseudo-assignment to `x` called a _capture_ of `x`
- * at the beginning of the function that (conceptually) captures
+ * This is modelled as follows.
+ *
+ * Within each function `g` that accesses a variable `x` declared in an
+ * enclosing function `f`, we introduce a pseudo-assignment to `x` called
+ * a _capture_ of `x` at the beginning of `g` that (conceptually) captures
  * the current value of `x`.
  *
- * Additionally, if `f` is a generator containing a `yield` expression,
- * each `yield` is considered to "re-capture" the current value of `x`.
- * This is necessary because, in general, the `yield` might transfer control
- * back to the declaring function of `x` which might update `x`.
+ * Additionally, we introduce _re-captures_ for `x` in the following
+ * places:
  *
- * For example, consider the following function:
+ *   - At any function call and `yield`, if `x` is assigned outside `f`.
+ *   - At any `yield` outside `f`, if `x` is not assigned outside `f`.
+ *
+ * Re-captures are introduced only where needed, that is, where there
+ * is a live use of `x` after the re-capture.
+ *
+ * To see why re-captures need to be placed at `yield` expressions,
+ * consider the following function:
  *
  * ```
  * function k() {
@@ -53,31 +61,42 @@
  * }
  * ```
  *
- * Here, `x` is SSA-convertible (since it is only assigned within `k`),
- * so `iter` has a pseudo-assignment for `x` at its beginning.
- * Additionally, the `yield` is also counted as an assignment to `x`,
- * which reflects the fact that `x` is incremented between the
+ * Here, `iter` has a capture for `x` at its beginning, and a re-capture
+ * at the `yield` to reflect the fact that `x` is incremented between the
  * two `console.log` calls.
+ *
+ * In the above example, `x` is only assigned inside its declaring function
+ * `k`, so function calls and `yield` expressions inside `k` cannot affect it.
+ *
+ * Consider another example:
+ *
+ * ```
+ * function* k() {
+ *   var x = 0;
+ *   console.log(x);
+ *   yield () => ++x;
+ *   console.log(x);
+ * }
+ * var gen = k();
+ * gen.next().value();
+ * gen.next();
+ * ```
+ *
+ * Here, `x` is assigned outside its declaring function `k`, so the `yield`
+ * expression in `k` induces a re-capture of `x` to reflect the fact that `x`
+ * is incremented between the two `console.log` calls.
  */
 
 import javascript
 private import semmle.javascript.flow.Refinements
 
 /**
- * A variable that can be SSA converted, meaning that all its definitions
- * appear in the container inside which it is declared.
+ * A variable that can be SSA converted, that is, a local variable.
  */
 class SsaSourceVariable extends LocalVariable {
-  SsaSourceVariable() {
-    exists (StmtContainer sc | sc = getDeclaringContainer() |
-      forall (LValue def | def = getAnAccess() |
-        def.getContainer() = sc
-      )
-    )
-  }
 }
 
-private module Internal {
+private cached module Internal {
   /**
    * A data type representing SSA definitions.
    *
@@ -88,7 +107,8 @@ private module Internal {
    *      the start of a function, which do not correspond directly to
    *      CFG nodes.
    *   3. Pseudo-definitions for captured variables at the beginning of
-   *      the capturing function as well as after `yield` expressions.
+   *      the capturing function as well as after `yield` expressions
+   *      and calls.
    *   4. Phi nodes.
    *   5. Refinement nodes at points in the CFG where additional information
    *      about a variable becomes available, which may constrain the set of
@@ -98,27 +118,23 @@ private module Internal {
    * unreachable code has no SSA definitions associated with it, and neither
    * have dead assignments (that is, assignments whose value is never read).
    */
-  newtype TSsaDefinition =
+  cached newtype TSsaDefinition =
        TExplicitDef(ReachableBasicBlock bb, int i, VarDef d, SsaSourceVariable v) {
-         bb.defAt(i, v, d) and not v instanceof PurelyLocalVariable or
-         bb.localLiveDefAt(v, i, d)
+         bb.defAt(i, v, d) and
+         (
+           liveAfterDef(bb, i, v) or
+           v.isCaptured()
+         )
        }
     or TImplicitInit(EntryBasicBlock bb, SsaSourceVariable v) {
          bb.getContainer() = v.getDeclaringContainer() and
-         bb.localIsLiveAtEntry(v)
+         liveAtEntry(bb, v)
        }
     or TCapture(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
-         exists (BasicBlock liveBB |
-           liveBB.localIsLiveAtEntry(v) and liveBB.getContainer() != v.getDeclaringContainer() |
-           // local variable capture at the beginning of a nested function
-           bb instanceof EntryBasicBlock and i = 0 and liveBB = bb
-           or
-           // local variable re-capture after a `yield` expression
-           liveBB.getFirstNode().getAPredecessor() = (YieldExpr)bb.getNode(i)
-         )
+         mayCapture(bb, i, v) and liveAfterDef(bb, i, v)
        }
     or TPhi(ReachableJoinBlock bb, SsaSourceVariable v) {
-         bb.localIsLiveAtEntry(v) and
+         liveAtEntry(bb, v) and
          exists (ReachableBasicBlock defbb, SsaDefinition def |
           def.definesAt(defbb, _, v) and
           bb.inDominanceFrontierOf(defbb)
@@ -127,8 +143,217 @@ private module Internal {
     or TRefinement(ReachableBasicBlock bb, GuardControlFlowNode guard, SsaSourceVariable v) {
          bb.getNode(0) = guard and
          guard.getTest().(Refinement).getRefinedVar() = v and
-         bb.localIsLiveAtEntry(v)
+         liveAtEntry(bb, v)
        }
+
+  /**
+   * Holds if `v` is a captured variable which is declared in `declContainer` and read in
+   * `useContainer`.
+   */
+  private predicate readsCapturedVar(StmtContainer useContainer,
+                                     SsaSourceVariable v, StmtContainer declContainer) {
+    declContainer = v.getDeclaringContainer() and
+    useContainer = any(VarUse u | u.getVariable() = v).getContainer() and v.isCaptured()
+  }
+
+  /**
+   * Holds if the `i`th node of `bb` in container `sc` is entry node `nd`.
+   */
+  private predicate entryNode(StmtContainer sc, ReachableBasicBlock bb, int i,
+                              ControlFlowEntryNode nd) {
+    sc = bb.getContainer() and bb.getNode(i) = nd
+  }
+
+  /**
+   * Holds if the `i`th node of `bb` in container `sc` is yield expression `nd`.
+   */
+  private predicate yieldNode(StmtContainer sc, ReachableBasicBlock bb, int i,
+                              YieldExpr nd) {
+    sc = bb.getContainer() and bb.getNode(i) = nd
+  }
+
+  /**
+   * Holds if the `i`th node of `bb` in container `sc` is invocation expresison `nd`.
+   */
+  private predicate invokeNode(StmtContainer sc, ReachableBasicBlock bb, int i,
+                               InvokeExpr nd) {
+    sc = bb.getContainer() and bb.getNode(i) = nd
+  }
+
+  /**
+   * Holds if the `i`th node of basic block `bb` may induce a pseudo-definition for
+   * modelling updates to captured variable `v`. Whether the definition is actually
+   * introduced depends on whether `v` is live at this point in the program.
+   */
+  private predicate mayCapture(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
+    exists (ControlFlowNode nd, StmtContainer capturingContainer, StmtContainer declContainer |
+      // capture initial value of variable declared in enclosing scope
+      readsCapturedVar(capturingContainer, v, declContainer) and
+      capturingContainer != declContainer and
+      entryNode(capturingContainer, bb, i, nd)
+      or
+      // re-capture value of variable after `yield` if it is declared in enclosing scope
+      // or assigned non-locally
+      readsCapturedVar(capturingContainer, v, declContainer) and
+      (capturingContainer != declContainer or assignedThroughClosure(v)) and
+      yieldNode(capturingContainer, bb, i, nd)
+      or
+      // re-capture value of variable after a call if it is assigned non-locally
+      readsCapturedVar(capturingContainer, v, declContainer) and
+      assignedThroughClosure(v) and
+      invokeNode(capturingContainer, bb, i, nd)
+    )
+  }
+
+  /**
+   * A classification of variable references into reads and writes.
+   */
+  cached newtype RefKind = Read() or Write()
+
+  /**
+   * Holds if the `i`th node of basic block `bb` is a reference to `v`, either a read
+   * (when `tp` is `Read()`) or a direct or indirect write (when `tp` is `Write()`).
+   */
+  private predicate ref(ReachableBasicBlock bb, int i, SsaSourceVariable v, RefKind tp) {
+    bb.useAt(i, v, _) and tp = Read()
+    or
+    (mayCapture(bb, i, v) or bb.defAt(i, v, _)) and tp = Write()
+  }
+
+  /**
+   * Gets the (1-based) rank of the reference to `v` at the `i`th node of basic block `bb`,
+   * which has the given reference kind `tp`.
+   */
+  private int refRank(ReachableBasicBlock bb, int i, SsaSourceVariable v, RefKind tp) {
+    i = rank[result](int j | ref(bb, j, v, _)) and
+    ref(bb, i, v, tp)
+  }
+
+  /**
+   * Holds if variable `v` is live after the `i`th node of basic block `bb`, where
+   * `i` is the index of a node that may assign or capture `v`.
+   *
+   * For the purposes of this predicate, `yield` expressions and function invocations
+   * are considered as writes of captured variables.
+   */
+  private predicate liveAfterDef(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
+    exists (int r | r = refRank(bb, i, v, Write()) |
+      // the next reference to `v` inside `bb` is a read
+      r+1 = refRank(bb, _, v, Read())
+      or
+      // this is the last reference to `v` inside `bb`, but `v` is live at entry
+      // to a successor basic block of `bb`
+      r = max(refRank(bb, _, v, _)) and
+      liveAtEntry(bb.getASuccessor(), v)
+    )
+  }
+
+  /**
+   * Holds if variable `v` is live at the beginning of basic block `bb`.
+   *
+   * For the purposes of this predicate, `yield` expressions and function invocations
+   * are considered as writes of captured variables.
+   */
+  private predicate liveAtEntry(ReachableBasicBlock bb, SsaSourceVariable v) {
+    // the first reference to `v` inside `bb` is a read
+    refRank(bb, _, v, Read()) = 1
+    or
+    // there is no reference to `v` inside `bb`, but `v` is live at entry
+    // to a successor basic block of `bb`
+    not exists(refRank(bb, _, v, _)) and
+    liveAtEntry(bb.getASuccessor(), v)
+  }
+
+  /**
+   * Holds if `v` is assigned outside its declaring function.
+   */
+  private predicate assignedThroughClosure(SsaSourceVariable v) {
+    v.getAnAccess().(LValue).getContainer() != v.getDeclaringContainer()
+  }
+
+  /**
+   * Holds if the `i`th node of `bb` is a use or an SSA definition of variable `v`, with
+   * `k` indicating whether it is the former or the latter.
+   */
+  private predicate ssaRef(ReachableBasicBlock bb, int i, SsaSourceVariable v, RefKind k) {
+    bb.useAt(i, v, _) and k = Read()
+    or
+    any(SsaDefinition def).definesAt(bb, i, v) and k = Write()
+  }
+
+  /**
+   * Gets the (1-based) rank of the `i`th node of `bb` among all SSA definitions
+   * and uses of `v` in `bb`, with `k` indicating whether it is a definition or a use.
+   *
+   * For example, if `bb` is a basic block with a phi node for `v` (considered
+   * to be at index -1), uses `v` at node 2 and defines it at node 5, we have:
+   *
+   * ```
+   * ssaRefRank(bb, -1, v, Write()) = 1    // phi node
+   * ssaRefRank(bb,  2, v, Read())  = 2    // use at node 2
+   * ssaRefRank(bb,  5, v, Write()) = 3    // definition at node 5
+   * ```
+   */
+  private int ssaRefRank(ReachableBasicBlock bb, int i, SsaSourceVariable v, RefKind k) {
+    i = rank[result](int j | ssaRef(bb, j, v, _)) and
+    ssaRef(bb, i, v, k)
+  }
+
+  /**
+   * Gets the minimum rank of a read in `bb` such that all references to `v` between that
+   * read and the read at index `i` are reads (and not writes).
+   */
+  private int rewindReads(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
+    exists (int r | r = ssaRefRank(bb, i, v, Read()) |
+      exists (int j, RefKind k | r-1 = ssaRefRank(bb, j, v, k) |
+        k = Read() and result = rewindReads(bb, j, v)
+        or
+        k = Write() and result = r
+      )
+      or
+      r = 1 and result = r
+    )
+  }
+
+  /**
+   * Gets the SSA definition of `v` in `bb` that reaches the read of `v` at node `i`, if any.
+   */
+  private SsaDefinition getLocalDefinition(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
+    exists (int r | r = rewindReads(bb, i, v) |
+      exists (int j | result.definesAt(bb, j, v) and ssaRefRank(bb, j, v, _) = r-1)
+    )
+  }
+
+  /**
+   * Gets an SSA definition of `v` that reaches the end of basic block `bb`.
+   */
+  cached SsaDefinition getDefReachingEndOf(ReachableBasicBlock bb, SsaSourceVariable v) {
+    bb.getASuccessor().localIsLiveAtEntry(v) and
+    (
+      exists (int lastRef | lastRef = max(int i | ssaRef(bb, i, v, _)) |
+        result = getLocalDefinition(bb, lastRef, v)
+        or
+        result.definesAt(bb, lastRef, v)
+      )
+      or
+      /* In SSA form, the (unique) reaching definition of a use is the closest
+       * definition that dominates the use. If two definitions dominate a node
+       * then one must dominate the other, so we can find the reaching definition
+       * by following the idominance relation backwards. */
+      result = getDefReachingEndOf(bb.getImmediateDominator(), v) and
+      not exists (SsaDefinition ssa | ssa.definesAt(bb, _, v))
+    )
+  }
+
+  /**
+   * Gets the unique SSA definition of `v` whose value reaches the `i`th node of `bb`,
+   * which is a use of `v`.
+   */
+  cached SsaDefinition getDefinition(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
+    result = getLocalDefinition(bb, i, v)
+    or
+    rewindReads(bb, i, v) = 1 and result = getDefReachingEndOf(bb.getImmediateDominator(), v)
+  }
 }
 private import Internal
 
@@ -147,7 +372,12 @@ class SsaVariable extends TSsaDefinition {
   }
 
   /** Gets a use that refers to this SSA variable. */
-  VarUse getAUse() { this = getDefinition(getSourceVariable(), result) }
+  VarUse getAUse() {
+    exists (ReachableBasicBlock bb, int i, SsaSourceVariable v |
+      v = getSourceVariable() |
+      bb.useAt(i, v, result) and this = getDefinition(bb, i, v)
+    )
+  }
 
   /** Gets a textual representation of this element. */
   string toString() {
@@ -196,6 +426,12 @@ class SsaDefinition extends TSsaDefinition {
    * the control flow node they correspond to.
    */
   abstract predicate definesAt(ReachableBasicBlock bb, int idx, SsaSourceVariable v);
+
+  /**
+   * Gets a variable definition node whose value may end up contributing
+   * to the SSA variable defined by this definition.
+   */
+  abstract VarDef getAContributingVarDef();
 
   /**
    * INTERNAL: Use `toString()` instead.
@@ -252,6 +488,10 @@ class SsaExplicitDefinition extends SsaDefinition, TExplicitDef {
     this = TExplicitDef(_, _, _, result)
   }
 
+  override VarDef getAContributingVarDef() {
+    result = getDef()
+  }
+
   override string prettyPrintRef() {
     exists (int l, int c | hasLocationInfo(_, l, c, _, _) |
       result = "def@" + l + ":" + c
@@ -305,6 +545,8 @@ class SsaImplicitInit extends SsaImplicitDefinition, TImplicitInit {
 
   override string getKind() { result = "implicitInit" }
 
+  override VarDef getAContributingVarDef() { none() }
+
   override string prettyPrintDef() {
     result = "implicit initialization of " + getSourceVariable()
   }
@@ -315,16 +557,20 @@ class SsaImplicitInit extends SsaImplicitDefinition, TImplicitInit {
  * in the closure of a nested function.
  *
  * Capturing definitions appear at the beginning of such functions, as well as
- * after any `yield` expressions.
+ * at any `yield` expressions or calls that may affect the value of the variable.
  */
 class SsaVariableCapture extends SsaImplicitDefinition, TCapture {
   override predicate definesAt(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
     this = TCapture(bb, i, v)
   }
 
-  override ReachableBasicBlock getBasicBlock() { this = TCapture(result, _, _) }
+  override ReachableBasicBlock getBasicBlock() { definesAt(result, _, _) }
 
-  override SsaSourceVariable getSourceVariable() { this = TCapture(_, _, result) }
+  override SsaSourceVariable getSourceVariable() { definesAt(_, _, result) }
+
+  override VarDef getAContributingVarDef() {
+    result.getAVariable() = getSourceVariable()
+  }
 
   override string getKind() { result = "capture" }
 
@@ -334,7 +580,7 @@ class SsaVariableCapture extends SsaImplicitDefinition, TCapture {
 
   override predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                                      int endline, int endcolumn) {
-    exists (ReachableBasicBlock bb, int i | this = TCapture(bb, i, _) |
+    exists (ReachableBasicBlock bb, int i | definesAt(bb, i, _) |
       bb.getNode(i).getLocation().hasLocationInfo(filepath, startline, startcolumn,
                                                             endline, endcolumn)
     )
@@ -353,6 +599,10 @@ abstract class SsaPseudoDefinition extends SsaImplicitDefinition {
    */
   abstract SsaVariable getAnInput();
 
+  override VarDef getAContributingVarDef() {
+    result = getAnInput().getDefinition().getAContributingVarDef()
+  }
+
   /**
    * Gets a textual representation of the inputs of this pseudo-definition
    * in lexicographical order.
@@ -369,7 +619,7 @@ abstract class SsaPseudoDefinition extends SsaImplicitDefinition {
  */
 class SsaPhiNode extends SsaPseudoDefinition, TPhi {
   override SsaVariable getAnInput() {
-    result = getDefReachingEndOf(getSourceVariable(), getBasicBlock().getAPredecessor())
+    result = getDefReachingEndOf(getBasicBlock().getAPredecessor(), getSourceVariable())
   }
 
   override predicate definesAt(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
@@ -414,7 +664,7 @@ class SsaRefinementNode extends SsaPseudoDefinition, TRefinement {
       if exists(SsaPhiNode phi | phi.definesAt(bb, _, v)) then
         result.(SsaPhiNode).definesAt(bb, _, v)
       else
-        result = getDefReachingEndOf(v, bb.getAPredecessor())
+        result = getDefReachingEndOf(bb.getAPredecessor(), v)
     )
   }
 
@@ -436,96 +686,4 @@ class SsaRefinementNode extends SsaPseudoDefinition, TRefinement {
                                      int endline, int endcolumn) {
     getGuard().getLocation().hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
   }
-}
-
-/**
- * Gets the (1-based) rank of the `i`th node of `bb` among all SSA definitions
- * and uses of `v` in `bb`.
- *
- * For example, if `bb` is a basic block with a phi node for `v` (considered
- * to be at index -1), uses `v` at node 2 and defines it at node 5, we have:
- *
- * ```
- * defUseRank(bb, -1, v) = 1    // phi node
- * defUseRank(bb,  2, v) = 2    // use at node 2
- * defUseRank(bb,  5, v) = 3    // definition at node 5
- * ```
- */
-private
-int defUseRank(SsaSourceVariable v, BasicBlock bb, int i) {
-  i = rank[result](int j |
-    any(SsaDefinition ssa).definesAt(bb, j, v) or
-    bb.useAt(j, v, _)
-  )
-}
-
-/**
- * Gets the number of SSA definitions and uses of `v` in `bb`.
- */
-private
-int lastDefUseRank(SsaSourceVariable v, BasicBlock bb) {
-  result = max(defUseRank(v, bb, _))
-}
-
-/**
- * Gets the (1-based) rank of `def` among all SSA definitions and uses of `v` in `bb`.
- */
-private
-int ssaDefRank(SsaSourceVariable v, SsaDefinition def, BasicBlock bb) {
-  exists (int i | def.definesAt(bb, i, v) | result = defUseRank(v, bb, i))
-}
-
-/**
- * Gets the unique SSA definition in `bb`, if it exists, whose value
- * reaches the `k`th definition or use of `v` in `bb`.
- */
-private
-SsaDefinition getLocalDefAt(SsaSourceVariable v, ReachableBasicBlock bb, int k) {
-  k = ssaDefRank(v, result, bb)
-  or
-  result = getLocalDefAt(v, bb, k-1) and k <= lastDefUseRank(v, bb) and
-  not k = ssaDefRank(v, _, bb)
-}
-
-/**
- * Gets an SSA definition of `v` that reaches the end of basic block `bb`.
- */
-private
-SsaDefinition getDefReachingEndOf(SsaSourceVariable v, BasicBlock bb) {
-  bb.getASuccessor().localIsLiveAtEntry(v) and
-  (
-    result = getLocalDefAt(v, bb, lastDefUseRank(v, bb))
-    or
-    /* In SSA form, the (unique) reaching definition of a use is the closest
-     * definition that dominates the use. If two definitions dominate a node
-     * then one must dominate the other, so we can find the reaching definition
-     * by following the idominance relation backwards. */
-    result = getDefReachingEndOf(v, bb.getImmediateDominator()) and
-    not exists (SsaDefinition ssa | ssa.definesAt(bb, _, v))
-  )
-}
-
-/**
- * Gets the (unique) SSA definition of `v` in the same block as `u`
- * whose value reaches `u`, if any.
- */
-private
-SsaDefinition getLocalDef(SsaSourceVariable v, VarUse u) {
-  exists (BasicBlock bb, int i |
-    bb.useAt(i, v, u) and
-    result = getLocalDefAt(v, bb, defUseRank(v, bb, i))
-  )
-}
-
-/**
- * Gets the unique SSA definition of `v` whose value reaches the use `u`.
- */
-private
-SsaDefinition getDefinition(SsaSourceVariable v, VarUse u) {
-  result = getLocalDef(v, u)
-  or
-  exists (BasicBlock bb | bb.useAt(_, v, u) |
-    not exists(getLocalDef(v, u)) and
-    result = getDefReachingEndOf(v, bb.getImmediateDominator())
-  )
 }

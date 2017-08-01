@@ -17,6 +17,7 @@
  *              and similarly nothing is considered greater or less than NaN.
  * @kind problem
  * @problem.severity error
+ * @id js/comparison-with-nan
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-570

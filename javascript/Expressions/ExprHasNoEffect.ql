@@ -17,6 +17,7 @@
  *              likely redundant and may indicate a bug.
  * @kind problem
  * @problem.severity warning
+ * @id js/useless-expression
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-480

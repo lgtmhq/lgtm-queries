@@ -17,6 +17,7 @@
  *              package will become harder to install.
  * @kind problem
  * @problem.severity warning
+ * @id js/node/unused-npm-dependency
  * @tags maintainability
  *       frameworks/node.js
  * @precision very-high

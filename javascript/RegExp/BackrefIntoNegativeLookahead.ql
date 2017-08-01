@@ -17,6 +17,7 @@
  *              then the back reference always matches the empty string, which probably indicates a mistake.
  * @kind problem
  * @problem.severity error
+ * @id js/regex/back-reference-to-negative-lookahead
  * @tags reliability
  *       correctness
  *       regular-expressions

@@ -50,7 +50,8 @@ import java
 private import SSA
 private import Guards
 private import DefUse
-private import RangeAnalysis
+private import RangeUtils
+private import IntegerGuards
 private import NullGuards
 private import semmle.code.java.Collections
 private import semmle.code.java.frameworks.Assertions

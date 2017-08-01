@@ -18,6 +18,7 @@
  *              optimizations.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/arguments-redefinition
  * @tags efficiency
  *       maintainability
  * @precision very-high

@@ -16,6 +16,7 @@
  * @description Storing JSON in files with extension 'js' or 'jsx' is error-prone.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/json-in-javascript-file
  * @tags maintainability
  *       language-features
  * @precision very-high

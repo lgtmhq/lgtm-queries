@@ -17,6 +17,7 @@
  *              statements it controls and which ones it does not control.
  * @kind problem
  * @problem.severity warning
+ * @id js/misleading-indentation-after-control-statement
  * @tags changeability
  *       correctness
  *       statistical

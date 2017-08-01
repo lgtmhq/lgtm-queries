@@ -17,6 +17,7 @@
  *              immediately go out of scope and its value is lost.
  * @kind problem
  * @problem.severity warning
+ * @id js/useless-assignment-in-return
  * @tags maintainability
  *       readability
  *       external/cwe/cwe-563

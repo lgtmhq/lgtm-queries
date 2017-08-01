@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id js/code-injection
  * @tags security
  *       external/cwe/cwe-094
  *       external/cwe/cwe-079

@@ -339,4 +339,19 @@ class IndefiniteAbstractValue extends AbstractValue, TIndefiniteAbstractValue {
       result = "indefinite value (" + cause + ")"
     )
   }
+
+  /**
+   * Gets an abstract value representing a subset of the concrete values represented by
+   * this abstract value.
+   *
+   * Taken together, all results of this predicate taken together must cover the entire
+   * set of concrete values represented by this abstract value.
+   */
+  AbstractValue split() {
+    exists (string cause | isIndefinite(cause) |
+      result = TIndefiniteFunctionOrClass(cause) or
+      result = TIndefiniteObject(cause) or
+      result = abstractValueOfType(any(PrimitiveType pt))
+    )
+  }
 }

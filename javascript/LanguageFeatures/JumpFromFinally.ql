@@ -17,6 +17,7 @@
  *              a 'finally' block.
  * @kind problem
  * @problem.severity warning
+ * @id js/exit-from-finally
  * @tags reliability
  *       maintainability
  *       language-features

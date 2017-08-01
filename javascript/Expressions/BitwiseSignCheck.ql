@@ -16,6 +16,7 @@
  * @description Checking the sign of the result of a bitwise operation may yield unexpected results.
  * @kind problem
  * @problem.severity warning
+ * @id js/bitwise-sign-check
  * @tags reliability
  *       correctness
  * @precision medium

@@ -17,6 +17,7 @@
  *              and may trigger a runtime error.
  * @kind problem
  * @problem.severity error
+ * @id js/property-assignment-on-primitive
  * @tags correctness
  *       language-features
  *       external/cwe/cwe-704

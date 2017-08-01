@@ -17,6 +17,7 @@
  *              subclass before calling the super constructor will cause a runtime error.
  * @kind problem
  * @problem.severity error
+ * @id js/incomplete-object-initialization
  * @tags correctness
  *       language-features
  * @precision high

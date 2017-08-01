@@ -17,6 +17,7 @@
  *              parsing a number as octal.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/parseint-without-radix
  * @tags reliability
  *       maintainability
  *       external/cwe/cwe-676

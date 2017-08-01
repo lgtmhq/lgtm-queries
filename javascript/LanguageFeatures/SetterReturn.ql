@@ -17,6 +17,7 @@
  *              always be ignored.
  * @kind problem
  * @problem.severity warning
+ * @id js/setter-return
  * @tags maintainability
  *       language-features
  * @precision very-high

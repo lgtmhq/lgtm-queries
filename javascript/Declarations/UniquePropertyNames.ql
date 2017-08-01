@@ -18,6 +18,7 @@
  *              which makes the code hard to understand and error-prone.
  * @kind problem
  * @problem.severity error
+ * @id js/overwritten-property
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-563

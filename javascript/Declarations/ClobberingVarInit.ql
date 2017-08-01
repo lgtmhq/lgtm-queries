@@ -17,6 +17,7 @@
  *              statement, the second initialization immediately overwrites the first one.
  * @kind problem
  * @problem.severity error
+ * @id js/variable-initialization-conflict
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-563

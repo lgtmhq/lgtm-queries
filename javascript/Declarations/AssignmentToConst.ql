@@ -17,6 +17,7 @@
  *              runtime error, depending on the platform.
  * @kind problem
  * @problem.severity error
+ * @id js/assignment-to-constant
  * @tags reliability
  *       correctness
  * @precision very-high

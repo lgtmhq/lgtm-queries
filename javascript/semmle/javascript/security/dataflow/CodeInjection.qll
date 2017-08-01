@@ -52,6 +52,7 @@ class CodeInjectionDataFlowConfiguration extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    isSafeLocationProperty(node) or
     node instanceof CodeInjectionSanitizer
   }
 

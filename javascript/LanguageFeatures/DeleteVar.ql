@@ -16,6 +16,7 @@
  * @description The operand of the 'delete' operator should always be a property accessor.
  * @kind problem
  * @problem.severity warning
+ * @id js/deletion-of-non-property
  * @tags reliability
  *       maintainability
  *       language-features

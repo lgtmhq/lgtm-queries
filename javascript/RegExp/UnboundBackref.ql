@@ -18,6 +18,7 @@
  *              by the ECMAScript standard.
  * @kind problem
  * @problem.severity warning
+ * @id js/regex/unbound-back-reference
  * @tags reliability
  *       correctness
  *       regular-expressions

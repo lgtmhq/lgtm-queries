@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id js/stack-trace-exposure
  * @tags security
  *       external/cwe/cwe-209
  */

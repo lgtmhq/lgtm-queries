@@ -16,6 +16,7 @@
  * @description Unreachable statements are often indicative of missing code or latent bugs and should be avoided.
  * @kind problem
  * @problem.severity warning
+ * @id js/unreachable-statement
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-561

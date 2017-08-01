@@ -23,13 +23,6 @@ private import AbstractValuesImpl
 private import Refinements
 
 /**
- * Gets a definite abstract value with the given type.
- */
-private DefiniteAbstractValue abstractValueOfType(TypeTag type) {
-  result.getType() = type
-}
-
-/**
  * A data flow node for which analysis results are available.
  */
 class AnalyzedFlowNode extends @dataflownode {
@@ -424,25 +417,11 @@ private class AddAssignSource extends CompoundAssignSource, @assignaddexpr {
 
 
 /**
- * Flow analysis for variable accesses.
+ * Flow analysis for captured variables.
  */
-private class VarAccessAnalysis extends AnalyzedFlowNode, @varaccess {
-  override AbstractValue getAValue() {
-    result = getVariable().(AnalyzedVariable).getAValue()
-  }
-
-  /** Gets the variable to which this is an access. */
-  Variable getVariable() {
-    this = result.getAnAccess()
-  }
-}
-
-/**
- * Flow analysis for accesses to non-SSA variables.
- */
-private class AnalyzedVariable extends @variable {
-  AnalyzedVariable() {
-    not this instanceof SsaSourceVariable
+private class AnalyzedCapturedVariable extends @variable {
+  AnalyzedCapturedVariable() {
+    this.(Variable).isCaptured()
   }
 
   /**
@@ -469,9 +448,9 @@ private class AnalyzedVariable extends @variable {
 /**
  * Flow analysis for accesses to SSA variables.
  */
-private class SsaVarAccessAnalysis extends VarAccessAnalysis {
+private class SsaVarAccessAnalysis extends AnalyzedFlowNode, @varaccess {
   SsaVarAccessAnalysis() {
-    getVariable() instanceof SsaSourceVariable
+    this = any(SsaVariable v).getAUse()
   }
 
   override AbstractValue getAValue() {
@@ -686,10 +665,7 @@ private class AnalyzedImplicitInit extends AnalyzedSsaDefinition, SsaImplicitIni
 private class AnalyzedVariableCapture extends AnalyzedSsaDefinition, SsaVariableCapture {
   override AbstractValue getAnRhsValue() {
     exists (LocalVariable v | v = getSourceVariable() |
-      exists (AnalyzedVarDef def | v = def.getAVariable() |
-        result = def.getAnAssignedValue()
-      )
-      or
+      result = v.(AnalyzedCapturedVariable).getAValue() or
       not guaranteedToBeInitialized(v) and result = getImplicitInitValue(v)
     )
   }
@@ -718,6 +694,26 @@ class AnalyzedRefinement extends AnalyzedSsaDefinition, SsaRefinementNode {
    */
   AbstractValue getAnInputRhsValue() {
     result = getAnInput().(AnalyzedSsaDefinition).getAnRhsValue()
+  }
+}
+
+/**
+ * Flow analysis for refinement nodes where the guard is a condition.
+ *
+ * For such nodes, we want to split any indefinite abstract values flowing into the node
+ * into sets of more precise abstract values to enable them to be refined.
+ */
+class AnalyzedConditionGuard extends AnalyzedRefinement {
+  AnalyzedConditionGuard() {
+    getGuard() instanceof ConditionGuardNode
+  }
+
+  override AbstractValue getAnInputRhsValue() {
+    exists (AbstractValue input | input = super.getAnInputRhsValue() |
+      result = input.(IndefiniteAbstractValue).split()
+      or
+      not input instanceof IndefiniteAbstractValue and result = input
+    )
   }
 }
 
@@ -840,6 +836,8 @@ private class GlobalVarAccessSource extends AnalyzedFlowNode, @varaccess {
   }
 
   override AbstractValue getAValue() {
+    result = this.(VarAccess).getVariable().(AnalyzedCapturedVariable).getAValue()
+    or
     result = TIndefiniteAbstractValue("global")
     or
     result = getAnAssigningPropWrite().getRhs().(AnalyzedFlowNode).getAValue()
@@ -867,7 +865,7 @@ private predicate clobberedProp(string name, DataFlowIncompleteness reason) {
 /**
  * Flow analysis for `undefined`.
  */
-private class UndefinedSource extends GlobalVarAccessSource, VarAccessAnalysis {
+private class UndefinedSource extends GlobalVarAccessSource {
   UndefinedSource() { getVariableName() = "undefined" }
 
   override AbstractValue getAValue() { result = TAbstractUndefined() }

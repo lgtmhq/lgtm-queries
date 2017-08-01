@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id js/clear-text-storage-of-sensitive-data
  * @tags security
  *       external/cwe/cwe-312
  *       external/cwe/cwe-315

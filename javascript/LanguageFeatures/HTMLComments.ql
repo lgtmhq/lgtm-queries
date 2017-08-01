@@ -16,6 +16,7 @@
  * @description HTML-style comments are not a standard ECMAScript feature and should be avoided.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/html-comment
  * @tags maintainability
  *       language-features
  *       external/cwe/cwe-758

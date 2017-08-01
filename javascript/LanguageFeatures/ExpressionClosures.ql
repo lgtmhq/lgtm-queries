@@ -17,6 +17,7 @@
  *              make it harder to reuse code.
  * @kind problem
  * @problem.severity warning
+ * @id js/non-standard-language-feature
  * @tags portability
  *       maintainability
  *       language-features

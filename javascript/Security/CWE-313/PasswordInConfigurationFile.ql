@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id js/password-in-configuration-file
  * @tags security
  *       external/cwe/cwe-256
  *       external/cwe/cwe-260

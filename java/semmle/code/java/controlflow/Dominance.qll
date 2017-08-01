@@ -25,6 +25,11 @@ private import semmle.code.java.ControlFlowGraph
 /** Entry points for control-flow. */
 private predicate flowEntry(Stmt entry) {
   exists (Callable c | entry = c.getBody())
+  or
+  // This disjunct is technically superfluous, but safeguards against extractor problems.
+  entry instanceof Block and
+  not exists(entry.getEnclosingCallable()) and
+  not entry.getParent() instanceof Stmt
 }
 
 /** The successor relation for basic blocks. */
@@ -33,7 +38,12 @@ private predicate bbSucc(BasicBlock pre, BasicBlock post) {
 }
 
 /** The immediate dominance relation for basic blocks. */
-predicate bbIDominates(BasicBlock dom, BasicBlock node) = idominance(flowEntry/1, bbSucc/2)(_, dom, node)
+cached predicate bbIDominates(BasicBlock dom, BasicBlock node) = idominance(flowEntry/1, bbSucc/2)(_, dom, node)
+
+/** Holds if the dominance relation is calculated for `bb`. */
+predicate hasDominanceInformation(BasicBlock bb) {
+  exists(BasicBlock entry | flowEntry(entry) and bbSucc*(entry, bb))
+}
 
 /** Exit points for control-flow. */
 private predicate flowExit(Callable exit) {
@@ -51,7 +61,7 @@ private predicate bbPred(BasicBlock post, BasicBlock pre) {
 }
 
 /** The immediate post-dominance relation on basic blocks. */
-predicate bbIPostDominates(BasicBlock dominator, BasicBlock node) = idominance(bbSink/1,bbPred/2)(_, dominator, node)
+cached predicate bbIPostDominates(BasicBlock dominator, BasicBlock node) = idominance(bbSink/1,bbPred/2)(_, dominator, node)
 
 /** Holds if `dom` strictly dominates `node`. */
 predicate bbStrictlyDominates(BasicBlock dom, BasicBlock node) { bbIDominates+(dom, node) }

@@ -16,6 +16,7 @@
  * @description 'alert' should not be used in production code.
  * @kind problem
  * @problem.severity recommendation
+ * @id js/alert-call
  * @tags usability
  *       maintainability
  *       external/cwe/cwe-489

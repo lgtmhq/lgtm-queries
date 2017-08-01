@@ -17,6 +17,7 @@
  *              overwritten, has no effect.
  * @kind problem
  * @problem.severity warning
+ * @id js/useless-assignment-to-local
  * @tags maintainability
  *       external/cwe/cwe-563
  * @precision very-high

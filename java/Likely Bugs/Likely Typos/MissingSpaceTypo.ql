@@ -23,7 +23,13 @@
  */
 import java
 
-from StringLiteral s, string word
+class SourceStringLiteral extends StringLiteral {
+  SourceStringLiteral() {
+    this.getCompilationUnit().fromSource()
+  }
+}
+
+from SourceStringLiteral s, string word
 where
   // Match ` word" + "word2` taking punctuation after `word` into account.
   // `word2` is only matched on the first character whereas `word` is matched

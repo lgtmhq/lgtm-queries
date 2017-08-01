@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id js/angular/dependency-injection-mismatch
  * @tags correctness
  *       maintainability
  *       frameworks/angularjs
