@@ -22,6 +22,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high
+ * @id py/local-shadows-builtin
  */
  
 import python

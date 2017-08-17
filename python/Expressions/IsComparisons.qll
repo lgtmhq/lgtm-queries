@@ -110,7 +110,7 @@ predicate invalid_portable_is_comparison(Compare comp, Cmpop op, ClassObject cls
         or
         exists(ClassObject other | comparison_both_types(comp, op, cls, other) |
             invalid_to_use_is_portably(cls) and
-            overrides_eq_or_cmp(other)
+            invalid_to_use_is_portably(other)
         )
     )
     and

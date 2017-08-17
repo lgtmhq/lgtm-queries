@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision high
+ * @id py/regex/incomplete-special-group
  */
 
 import python

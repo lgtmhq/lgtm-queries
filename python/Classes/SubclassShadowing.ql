@@ -21,6 +21,7 @@
  *       correctness
  * @sub-severity low
  * @precision high
+ * @id py/attribute-shadows-method
  */
 
 /* Determine if a class defines a method that is shadowed by an attribute

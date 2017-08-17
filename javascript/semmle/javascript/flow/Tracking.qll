@@ -105,13 +105,62 @@ private predicate calls(InvokeExpr invk, Function f) {
 }
 
 /**
- * Holds if `arg` is passed as an argument into parameter `parm`.
+ * Holds if `arg` is passed as an argument into parameter `parm`
+ * through invocation `invk` of function `f`.
  */
-private predicate argumentPassing(Expr arg, SimpleParameter parm) {
-  exists (InvokeExpr invk, Function f, int i |
+private predicate argumentPassing(InvokeExpr invk, Expr arg, Function f, SimpleParameter parm) {
+  exists (int i |
     calls(invk, f) and
     f.getParameter(i) = parm and not parm.isRestParameter() and
     invk.getArgument(i) = arg and not invk.isSpreadArgument([0..i])
+  )
+}
+
+/**
+ * Gets a use of `parm` that refers to its initial value as
+ * passed in from the caller.
+ */
+private DataFlowNode getInitialUseOfParameter(SimpleParameter parm) {
+  exists (SsaExplicitDefinition parmDef |
+    parmDef.getDef() = parm and
+    result = parmDef.getVariable().getAUse()
+  )
+}
+
+/**
+ * Holds if `p` is a parameter of `f` whose value flows into `sink`
+ * under `configuration`, possibly through callees.
+ */
+private predicate parameterFlow(Function f, SimpleParameter p,
+                                DataFlowNode sink, FlowTrackingConfiguration configuration) {
+  (
+    p = f.getAParameter() and sink = getInitialUseOfParameter(p)
+    or
+    exists (DataFlowNode mid | parameterFlow(f, p, mid, configuration) |
+      mid = sink.localFlowPred()
+      or
+      flowThroughCall(mid, sink, configuration)
+    )
+  ) and
+  not configuration.isBarrier(sink)
+}
+
+/**
+ * Holds if function `f` returns an expression into which its parameter `p` flows
+ * under `configuration`, possibly through callees.
+ */
+private predicate parameterReturn(Function f, SimpleParameter p, FlowTrackingConfiguration configuration) {
+  parameterFlow(f, p, f.getAReturnedExpr(), configuration)
+}
+
+/**
+ * Holds if `arg` is passed as an argument by invocation `invk` to
+ * a function such that the argument may flow into the function's
+ * return value under `configuration`.
+ */
+private predicate flowThroughCall(Expr arg, InvokeExpr invk, FlowTrackingConfiguration configuration) {
+  exists (Function g, SimpleParameter q |
+    argumentPassing(invk, arg, g, q) and parameterReturn(g, q, configuration)
   )
 }
 
@@ -137,11 +186,16 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     )
     or
     // Flow into function
-    exists (Expr arg, SimpleParameter parm, SsaExplicitDefinition parmDef |
+    exists (Expr arg, SimpleParameter parm |
       flowsTo(source, arg, configuration, _) and
-      argumentPassing(arg, parm) and parmDef.getDef() = parm and
-      sink = parmDef.getVariable().getAUse() and
+      argumentPassing(_, arg, _, parm) and sink = getInitialUseOfParameter(parm) and
       stepIn = true
+    )
+    or
+    // Flow through a function that returns a value that depends on one of its arguments
+    exists(Expr arg |
+      flowsTo(source, arg, configuration, stepIn) and
+      flowThroughCall(arg, sink, configuration)
     )
     or
     // Flow out of function
@@ -194,7 +248,13 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
       parmDef.getDef() = parm and
       flowsFrom(parmDef.getVariable().getAUse(), sink, configuration, stepOut) and
       stepOut = false and
-      argumentPassing(source, parm)
+      argumentPassing(_, source, _, parm)
+    )
+    or
+    // Flow through a function that returns a value that depends on one of its arguments
+    exists(InvokeExpr invk |
+      flowsFrom(invk, sink, configuration, stepOut) and
+      flowThroughCall(source, invk, configuration)
     )
     or
     // Flow out of function

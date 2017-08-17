@@ -19,6 +19,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high
+ * @id py/raises-tuple
  */
 
 import python

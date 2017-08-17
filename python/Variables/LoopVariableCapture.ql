@@ -19,6 +19,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision high
+ * @id py/loop-variable-capture
  */
 
 import python

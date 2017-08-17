@@ -20,16 +20,32 @@ import semmle.javascript.frameworks.HTTP
 
 module Express {
   /**
-   * Holds if `e` creates an Express router.
+   * Holds if `e` creates an Express application.
    */
-  predicate isRouterCreation(InvokeExpr e) {
+  predicate isAppCreation(InvokeExpr e) {
     exists (ModuleInstance express | express.getPath() = "express" |
       // `app = express()`
       e.getCallee().(DataFlowNode).getALocalSource() = express
       or
       // `app = express.createServer()`
       e = express.getAMethodCall("createServer")
-      or
+    )
+  }
+
+  /**
+   * Holds if `e` is an Express application object
+   */
+  predicate isApp(DataFlowNode e) {
+    isAppCreation(e.getALocalSource())
+  }
+
+  /**
+   * Holds if `e` creates an Express router (possibly an application).
+   */
+  predicate isRouterCreation(InvokeExpr e) {
+    isAppCreation(e)
+    or
+    exists (ModuleInstance express | express.getPath() = "express" |
       // `app = express.Router()`
       e = express.getAMethodCall("Router")
     )

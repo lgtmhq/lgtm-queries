@@ -21,6 +21,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision medium
+ * @id py/overwritten-inherited-attribute
  */
 
 import python

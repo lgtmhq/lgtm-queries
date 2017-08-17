@@ -20,6 +20,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high
+ * @id py/multiple-imports-on-line
  */
 
 /* Look for imports of the form:

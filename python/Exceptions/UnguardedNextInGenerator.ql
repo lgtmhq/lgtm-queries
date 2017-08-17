@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision very-high
+ * @id py/unguarded-next-in-generator
  */
 
 import python

@@ -20,6 +20,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high
+ * @id py/string-concatenation-in-loop
  */
 
 import python

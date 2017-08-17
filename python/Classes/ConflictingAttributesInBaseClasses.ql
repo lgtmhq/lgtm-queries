@@ -21,6 +21,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision high
+ * @id py/conflicting-attributes
  */
 
 import python

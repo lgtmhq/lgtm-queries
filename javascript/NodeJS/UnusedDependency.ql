@@ -69,8 +69,32 @@ predicate usesDependency(NPMPackage pkg, string name) {
   )
 }
 
+/**
+ * Holds if `pkg` implicitly requires module `name`.
+ *
+ * Currently, the only implicit requires that are recognized are Express
+ * view engine definitions, which (may) implicitly require the specified
+ * engine as a module.
+ */
+predicate implicitRequire(NPMPackage pkg, string name) {
+  // look for Express `set('view engine', ...)` calls
+  exists (MethodCallExpr setViewEngine, string engine |
+    Express::isApp(setViewEngine.getReceiver()) and
+    setViewEngine.getMethodName() = "set" and
+    setViewEngine.getArgument(0).getStringValue() = "view engine" and
+    setViewEngine.getArgument(1).getStringValue() = engine and
+    setViewEngine.getTopLevel() = pkg.getAModule() |
+    // chop off leading dot, if any
+    if engine.matches(".%") then
+      name = engine.suffix(1)
+    else
+      name = engine
+  )
+}
+
 from NPMPackage pkg, string name, JSONValue dep
 where exists (pkg.getAModule()) and
       declaresDependency(pkg, name, dep) and
-      not usesDependency(pkg, name)
+      not usesDependency(pkg, name) and
+      not implicitRequire(pkg, name)
 select dep, "Unused dependency '" + name + "'."

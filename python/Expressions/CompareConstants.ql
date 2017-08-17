@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision very-high
+ * @id py/comparison-of-constants
  */
 
 import python

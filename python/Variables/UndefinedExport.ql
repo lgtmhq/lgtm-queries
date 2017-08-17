@@ -21,6 +21,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision high
+ * @id py/undefined-export
  */
 
 import python

@@ -48,4 +48,4 @@ where v = gva.getVariable() and
       not exists (JSLintGlobal decl | decl.appliesTo(gva) | decl.declaresGlobal(v.getName(), _)) and
       // ignore accesses under 'with', since they may well refer to properties of the with'ed object
       not exists (WithStmt with | with.mayAffect(gva))
-select gva, "This statement assigns a value to " + v.getName() + " that is never read."
+select gva, "This definition of " + v.getName() + " is useless, since its value is never read."

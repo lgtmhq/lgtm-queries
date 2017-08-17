@@ -22,6 +22,7 @@
  * @problem.severity recommendation
  * @sub-severity high
  * @precision high
+ * @id py/not-named-cls
  */
 
 import python

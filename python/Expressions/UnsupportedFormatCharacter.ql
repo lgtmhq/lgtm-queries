@@ -20,6 +20,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision high
+ * @id py/percent-format/unsupported-character
  */
 
 import python

@@ -19,6 +19,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high
+ * @id py/import-shadowed-loop-variable
  */
 
 import python

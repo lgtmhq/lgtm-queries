@@ -19,6 +19,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision high
+ * @id py/procedure-return-value-used
  */
 
 import python

@@ -20,6 +20,7 @@
  * @problem.severity recommendation
  * @sub-severity high
  * @precision very-high
+ * @id py/unused-import
  */
 
 import python

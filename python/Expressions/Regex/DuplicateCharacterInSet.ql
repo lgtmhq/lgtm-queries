@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Duplication in regular expression character set
+ * @name Duplication in regular expression character class
  * @description Duplicate characters in a class have no effect and may indicate an error in the regular expression.
  * @kind problem
  * @tags reliability
@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision very-high
+ * @id py/regex/duplicate-in-character-class
  */
 
 import python

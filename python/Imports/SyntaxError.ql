@@ -20,6 +20,7 @@
  * @problem.severity error
  * @sub-severity high
  * @precision high
+ * @id py/syntax-error
  */
 
 import python

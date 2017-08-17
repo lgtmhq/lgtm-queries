@@ -19,6 +19,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision high
+ * @id py/inheritance/incorrect-overriding-signature
  */
 
 import python

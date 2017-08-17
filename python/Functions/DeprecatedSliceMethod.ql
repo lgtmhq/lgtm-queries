@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high
+ * @id py/deprecated-slice-method
  */
 
 import python

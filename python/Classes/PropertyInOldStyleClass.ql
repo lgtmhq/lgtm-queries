@@ -20,6 +20,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision very-high
+ * @id py/property-in-old-style-class
  */
 
 import python

@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision high
+ * @id py/str-format/surplus-argument
  */
 
 import python

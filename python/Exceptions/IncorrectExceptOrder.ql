@@ -21,6 +21,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision very-high
+ * @id py/unreachable-except
  */
 
 import python

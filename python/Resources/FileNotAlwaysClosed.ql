@@ -21,6 +21,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision high
+ * @id py/file-not-closed
  */
 
 import python

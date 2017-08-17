@@ -23,6 +23,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high
+ * @id similar-function
  */
 import python
 import CodeDuplication

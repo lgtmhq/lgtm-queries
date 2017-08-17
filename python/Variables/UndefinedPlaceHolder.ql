@@ -18,6 +18,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision medium
+ * @id py/undefined-placeholder-variable
  */
 
 import python

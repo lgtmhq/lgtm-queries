@@ -21,6 +21,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision high
+ * @id py/cyclic-import
  */
 
 import python

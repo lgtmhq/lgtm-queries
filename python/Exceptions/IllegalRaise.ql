@@ -21,6 +21,7 @@
  * @problem.severity error
  * @sub-severity high
  * @precision very-high
+ * @id py/illegal-raise
  */
 
 import python

@@ -20,6 +20,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision high
+ * @id py/old-style-octal-literal
  */
 
 import python

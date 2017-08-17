@@ -21,6 +21,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high
+ * @id py/test-equals-none
  */
 
 import python
