@@ -21,6 +21,7 @@
  * @problem.severity recommendation
  * @sub-severity high
  * @precision very-high
+ * @id py/catch-base-exception
  */
 
 import python

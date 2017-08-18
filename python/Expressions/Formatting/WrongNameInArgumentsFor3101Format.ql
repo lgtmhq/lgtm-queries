@@ -21,6 +21,7 @@
  *       correctness
  * @sub-severity low
  * @precision high
+ * @id py/str-format/missing-named-argument
  */
 
 import python

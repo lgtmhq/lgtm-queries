@@ -21,6 +21,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision high
+ * @id py/str-format/missing-argument
  */
 
 import python

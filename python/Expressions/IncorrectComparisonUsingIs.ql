@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision high
+ * @id py/comparison-using-is
  */
 
 import python

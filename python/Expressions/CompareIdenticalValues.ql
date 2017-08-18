@@ -22,6 +22,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high
+ * @id py/comparison-of-identical-expressions
  */
 
 import python

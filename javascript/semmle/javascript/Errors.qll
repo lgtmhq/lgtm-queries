@@ -33,10 +33,15 @@ abstract class Error extends Locatable {
 class JSParseError extends @js_parse_error, Error {
   /** Gets the toplevel element this error occurs in. */
   TopLevel getTopLevel() {
-    jsParseErrors(this, result, _)
+    jsParseErrors(this, result, _, _)
   }
 
   override string getMessage() {
-    jsParseErrors(this, _, result)
+    jsParseErrors(this, _, result, _)
+  }
+
+  /** Gets the source text of the line this error occurs on. */
+  string getLine() {
+    jsParseErrors(this, _, _, result)
   }
 }

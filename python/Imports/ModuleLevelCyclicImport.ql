@@ -22,6 +22,7 @@
  * @sub-severity low
  * @precision high
  * @comprehension 0.5
+ * @id py/unsafe-cyclic-import
  */
 
 import python

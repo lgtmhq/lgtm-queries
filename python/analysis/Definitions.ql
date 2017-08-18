@@ -15,6 +15,7 @@
  * @name Definitions
  * @description Jump to definition helper query.
  * @kind definitions
+ * @id py/jump-to-definition
  */
 
 import python

@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision very-high
+ * @id py/unreachable-statement
  */
 
 import python

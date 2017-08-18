@@ -168,9 +168,15 @@ private predicate hasViableSubtype(RefType t, SrcRefType sub) {
 private Expr variableTrackStep(Expr use) {
   exists(Variable v |
     use = v.getAnAccess() and
-    not v instanceof Parameter and
-    result = v.getAnAssignedValue() and
     not result instanceof NullLiteral
+    |
+    not v instanceof Parameter and
+    result = v.getAnAssignedValue()
+    or
+    exists(Parameter p | p = v and use.getEnclosingCallable().isPrivate() |
+      result = p.getAnAssignedValue() or
+      result = p.getAnArgument()
+    )
   )
 }
 

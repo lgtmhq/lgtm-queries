@@ -21,6 +21,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision high
+ * @id py/init-calls-subclass
  */
 
 import python

@@ -21,6 +21,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision very-high
+ * @id py/nested-loops-with-same-variable
  */
 import python
 

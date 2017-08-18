@@ -19,6 +19,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision high
+ * @id py/redundant-comparison
  */
 
 import python

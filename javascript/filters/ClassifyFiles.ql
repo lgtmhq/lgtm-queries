@@ -24,19 +24,59 @@ import semmle.javascript.frameworks.Testing
 import semmle.javascript.dependencies.FrameworkLibraries
 
 /**
+ * Gets a string that is known to be used as a template delimiter.
+ */
+string getATemplateDelimiter() {
+  result = "<%" or result = "%>" or
+  result = "{{" or result = "}}" or
+  result = "{%" or result = "%}" or
+  result = "<@" or result = "@>" or
+  result = "<#" or result = "#>" or
+  result = "{#" or result = "#}" or
+  result = "[%" or result = "%]" or
+  result = "<?" or result = "?>"
+}
+
+/**
+ * Holds if `e` may be caused by parsing a template HTML file as plain HTML.
+ *
+ * Our heuristic is to check for the presence of a known template delimiter preceding
+ * the error on the same line.
+ */
+predicate maybeCausedByTemplate(JSParseError e) {
+  exists (HTMLFile f | f = e.getFile() |
+    exists (string prefix, string pattern |
+      prefix = e.getLine().substring(0, e.getLocation().getStartColumn()) and
+      pattern = concat("\\Q" + getATemplateDelimiter() + "\\E", "|") |
+      prefix.regexpMatch(".*(" + pattern + ").*")
+    )
+    or
+    f.getAbsolutePath().regexpMatch("(?i).*\\btemplates?\\b.*")
+  )
+}
+
+/**
  * Holds if `f` is classified as belonging to `category`.
  *
  * There are currently four categories:
  *   - `"generated"`: `f` contains generated or minified code;
  *   - `"test"`: `f` contains test code;
  *   - `"externs"`: `f` contains externs declarations;
- *   - `"library"`: `f` contains library code.
+ *   - `"library"`: `f` contains library code;
+ *   - `"template"`: `f` contains as HTML template.
  */
 predicate classify(File f, string category) {
-  isGenerated(f.getATopLevel()) and category = "generated" or
-  exists (Test t | t.getFile() = f | category = "test") or
-  f.getATopLevel().isExterns() and category = "externs" or
+  isGenerated(f.getATopLevel()) and category = "generated"
+  or
+  exists (Test t | t.getFile() = f | category = "test")
+  or
+  f.getATopLevel().isExterns() and category = "externs"
+  or
   f.getATopLevel() instanceof FrameworkLibraryInstance and category = "library"
+  or
+  exists (JSParseError err | maybeCausedByTemplate(err) |
+    f = err.getFile() and category = "template"
+  )
 }
 
 from File f, string category

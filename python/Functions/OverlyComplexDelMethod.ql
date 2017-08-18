@@ -22,6 +22,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision high
+ * @id py/overly-complex-delete
  */
 
 import python

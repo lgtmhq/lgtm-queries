@@ -20,6 +20,7 @@
  * @problem.severity error
  * @sub-severity high
  * @precision very-high
+ * @id py/inconsistent-mro
  */
 
 import python

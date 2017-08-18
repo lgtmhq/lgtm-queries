@@ -20,6 +20,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high
+ * @id py/use-of-apply
  */
 
 import python

@@ -20,6 +20,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision very-high
+ * @id py/super-in-old-style
  */
 
 import python

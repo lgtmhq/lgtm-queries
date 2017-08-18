@@ -20,6 +20,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high
+ * @id py/comparison-using-is-non-portable
  */
 
 import python

@@ -23,6 +23,7 @@
  * @problem.severity recommendation
  * @sub-severity high
  * @precision high
+ * @id py/mostly-duplicate-class
  */
 import python
 import CodeDuplication

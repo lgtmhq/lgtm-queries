@@ -21,6 +21,7 @@
  *       correctness
  * @sub-severity low
  * @precision very-high
+ * @id py/slots-in-old-style-class
  */
 
 import python

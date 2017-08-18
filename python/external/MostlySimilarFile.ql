@@ -24,6 +24,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision high
+ * @id py/mostly-similar-file
  */
 import python
 import CodeDuplication

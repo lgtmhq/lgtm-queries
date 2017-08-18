@@ -20,6 +20,7 @@
  *       correctness
  * @sub-severity low
  * @precision high
+ * @id py/str-format/mixed-fields
  */
 
 import python

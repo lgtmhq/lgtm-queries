@@ -20,6 +20,7 @@
  * @problem.severity recommendation
  * @sub-severity low
  * @precision high
+ * @id py/unused-global-variable
  */
 
 import python

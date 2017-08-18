@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Non-iterator used in for loop
+ * @name Non-iterable used in for loop
  * @description Using a non-iterable as the object in a 'for' loop causes a TypeError.
  * @kind problem
  * @tags reliability
@@ -21,6 +21,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision high
+ * @id py/non-iterable-in-for-loop
  */
 
 import python

@@ -18,6 +18,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high
+ * @id py/raise-not-implemented
  * @tags reliability
  *       maintainability
  */

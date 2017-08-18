@@ -73,6 +73,17 @@ predicate isReactImportForJSX(UnusedLocal v) {
   )
 }
 
+/**
+ * Gets a description of the declaration `vd`, which is either of the form "function f" if
+ * it is a function name, or "variable v" if it is not.
+ */
+string describe(VarDecl vd) {
+  if vd = any(Function f).getId() then
+    result = "function " + vd.getName()
+  else
+    result = "variable " + vd.getName()
+}
+
 from VarDecl vd, UnusedLocal v
 where v = vd.getVariable() and
       // exclude variables mentioned in JSDoc comments in externs
@@ -81,4 +92,4 @@ where v = vd.getVariable() and
       not isPropertyFilter(v) and
       // exclude imports of React that are implicitly referenced by JSX
       not isReactImportForJSX(v)
-select vd, "Unused variable " + v + "."
+select vd, "Unused " + describe(vd) + "."

@@ -20,6 +20,7 @@
  * @problem.severity error
  * @sub-severity low
  * @precision high
+ * @id py/uninitialized-local-variable
  */
 
 import python
