@@ -25,6 +25,16 @@ class NodeModule extends Module {
     isNodejs(this)
   }
 
+  /** Gets the `module` variable of this module. */
+  Variable getModuleVariable() {
+    result = getScope().getVariable("module")
+  }
+
+  /** Gets the `exports` variable of this module. */
+  Variable getExportsVariable() {
+    result = getScope().getVariable("exports")
+  }
+
   /** Gets the scope induced by this module. */
   override ModuleScope getScope() {
     result.getScopeElement() = this

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/input-resource-leak
  * @tags efficiency
  *       correctness
  *       resources

@@ -13,6 +13,7 @@
 
 import python
 import semmle.python.flow.NameNode
+private import semmle.python.pointsto.Final
 
 private predicate augstore(ControlFlowNode load, ControlFlowNode store) {
     exists(Expr load_store | exists(AugAssign aa | aa.getTarget() = load_store) |
@@ -190,6 +191,15 @@ class ControlFlowNode extends @py_flow_node {
     }
 
     string toString() {
+        exists(Scope s | s.getEntryNode() = this |
+            result = "Entry node for " + s.toString()
+        )
+        or
+        exists(Scope s | s.getANormalExit() = this |
+            result = "Exit node for " + s.toString()
+        )
+        or
+        not exists(Scope s | s.getEntryNode() = this or s.getANormalExit() = this) and
         result = "ControlFlowNode for " + this.getNode().toString()
     }
 
@@ -216,7 +226,7 @@ class ControlFlowNode extends @py_flow_node {
     predicate refersTo(Object value, ClassObject cls, ControlFlowNode origin) {
         not py_special_objects(cls, "_semmle_unknown_type")
         and
-        final_points_to(this, value, cls, origin)
+        FinalPointsTo::points_to(this, _, value, cls, origin)
     }
 
     /** Whether this flow node might "refer-to" to `value` which is from `origin` 
@@ -224,12 +234,12 @@ class ControlFlowNode extends @py_flow_node {
      * where the class cannot be inferred. 
      */
     predicate refersTo(Object value, ControlFlowNode origin) {
-        final_points_to(this, value, _, origin)
+        FinalPointsTo::points_to(this, _, value, _, origin)
     }
 
     /** Equivalent to `this.refersTo(value, _)` */
     predicate refersTo(Object value) {
-        final_points_to(this, value, _, _)
+        FinalPointsTo::points_to(this, _, value, _, _)
     }
 
     /** Gets the basic block containing this flow node */
@@ -275,6 +285,11 @@ class ControlFlowNode extends @py_flow_node {
     /** Whether the scope may be exited as a result of this node raising an exception */
     predicate isExceptionalExit(Scope s) {
         py_scope_flow(this, s, 1)
+    }
+
+    /** Whether this node is a normal (non-exceptional) exit */
+    predicate isNormalExit() {
+        py_scope_flow(this, _, 0) or py_scope_flow(this, _, 2)
     }
 
     /** Whether it is unlikely that this ControlFlowNode can be reached */
@@ -349,10 +364,29 @@ class ControlFlowNode extends @py_flow_node {
         )
     }
 
+    /* Holds if this CFG node is a branch */
     predicate isBranch() {
         py_true_successors(this, _) or py_false_successors(this, _)
     }
 
+    /* Gets a CFG node that corresponds to a child of the AST node for this node */
+    cached ControlFlowNode getAChild() {
+        this.getNode().getAChildNode() = result.getNode() and
+        result.getBasicBlock().dominates(this.getBasicBlock())
+    }
+
+}
+
+
+/*  This class exists to provide an implementation over ControlFlowNode.getNode() 
+ * that subsumes all the others in an way that's obvious to the optimiser. 
+ * This avoids wasting time on the trivial overrides on the ControlFlowNode subclasses.
+ */
+private class AnyNode extends ControlFlowNode {
+
+    AstNode getNode() {
+        result = super.getNode()
+    }
 }
 
 
@@ -379,6 +413,7 @@ private predicate varHasCompletePointsToSet(SsaVariable var) {
 
 /** A control flow node corresponding to a call expression, such as `func(...)` */
 class CallNode extends ControlFlowNode {
+
     CallNode() {
         toAst(this) instanceof Call
     }
@@ -470,6 +505,18 @@ class ImportMemberNode extends ControlFlowNode {
     }
 
     ImportMember getNode() { result = super.getNode() }
+}
+
+
+/** A control flow node corresponding to an artificial expression representing an import */
+class ImportExprNode extends ControlFlowNode {
+
+    ImportExprNode() {
+        toAst(this) instanceof ImportExpr
+    }
+
+    ImportExpr getNode() { result = super.getNode() }
+
 }
 
 /** A control flow node corresponding to a `from ... import *` statement */
@@ -600,6 +647,11 @@ class UnaryExprNode extends ControlFlowNode {
     }
 
     UnaryExpr getNode() { result = super.getNode() }
+
+    ControlFlowNode getAChild() {
+        result = this.getAPredecessor()
+    }
+
 }
 
 /** A control flow node corresponding to a definition, that is a control flow node
@@ -795,7 +847,7 @@ class BasicBlock extends @py_flow_node {
     }
 
     private predicate startLocationInfo(string file, int line, int col) {
-        if (this.firstNode().getNode() instanceof Scope and not this.oneNodeBlock()) then
+        if this.firstNode().getNode() instanceof Scope then
             this.firstNode().getASuccessor().getLocation().hasLocationInfo(file, line, col, _, _)
         else
             this.firstNode().getLocation().hasLocationInfo(file, line, col, _, _)
@@ -844,12 +896,14 @@ class BasicBlock extends @py_flow_node {
     /** Gets the scope of this block */
     pragma [nomagic] Scope getScope() {
         exists(ControlFlowNode n |
+            n.getBasicBlock() = this |
             /* Take care not to use an entry or exit node as that node's scope will be the outer scope */
             not py_scope_flow(n, _, -1) and
             not py_scope_flow(n, _, 0) and
             not py_scope_flow(n, _, 2) and
-            n.getBasicBlock() = this and
             result = n.getScope()
+            or
+            py_scope_flow(n, result, _)
         )
     }
 
@@ -859,9 +913,14 @@ class BasicBlock extends @py_flow_node {
         this.getLastNode().(RaisingNode).unlikelySuccessor(succ.firstNode())
     }
 
-    /** Whether this basic block strictly reaches the other. Is the start of other reachable from the end of this. */
+    /** Holds if this basic block strictly reaches the other. Is the start of other reachable from the end of this. */
     predicate strictlyReaches(BasicBlock other) {
         this.getASuccessor+() = other
+    }
+
+    /** Holds if this basic block reaches the other. Is the start of other reachable from the end of this. */
+    predicate reaches(BasicBlock other) {
+        this = other or this.strictlyReaches(other)
     }
 
     /** Whether (as inferred by type inference) this basic block is likely to be reachable.

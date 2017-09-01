@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/potentially-weak-cryptographic-algorithm
  * @tags security
  *       external/cwe/cwe-327
  */

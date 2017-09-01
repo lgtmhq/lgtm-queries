@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/constant-comparison
  * @tags correctness
  *       logic
  *       external/cwe/cwe-570

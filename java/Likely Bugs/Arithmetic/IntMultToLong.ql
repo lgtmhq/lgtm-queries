@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/integer-multiplication-cast-to-long
  * @tags reliability
  *       security
  *       correctness

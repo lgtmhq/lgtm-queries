@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/contradictory-type-checks
  * @tags correctness
  *       logic
  */

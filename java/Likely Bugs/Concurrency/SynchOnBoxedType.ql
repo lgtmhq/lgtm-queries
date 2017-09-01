@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/sync-on-boxed-types
  * @tags reliability
  *       correctness
  *       concurrency

@@ -104,7 +104,7 @@ private module SsaSourceVariableImpl {
 private import SsaSourceVariableImpl
 
 private newtype TSsaSourceVariable =
-  TLocalVar(LocalScopeVariable v) or
+  TLocalVar(Callable c, LocalScopeVariable v) { c = v.getCallable() or c = v.getAnAccess().getEnclosingCallable() } or
   TPlainField(Callable c, Field f) {
     exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and (ownFieldAccess(fr) or f.isStatic()))
   } or
@@ -126,7 +126,7 @@ private newtype TSsaSourceVariable =
 class SsaSourceVariable extends TSsaSourceVariable {
   /** Gets the variable corresponding to this `SsaSourceVariable`. */
   Variable getVariable() {
-    this = TLocalVar(result) or
+    this = TLocalVar(_, result) or
     this = TPlainField(_, result) or
     this = TEnclosingField(_, result, _) or
     this = TQualifiedField(_, _, result)
@@ -138,7 +138,7 @@ class SsaSourceVariable extends TSsaSourceVariable {
    */
   cached
   VarAccess getAnAccess() {
-    exists(LocalScopeVariable v | this = TLocalVar(v) and result = v.getAnAccess()) or
+    exists(LocalScopeVariable v, Callable c | this = TLocalVar(c, v) and result = v.getAnAccess() and result.getEnclosingCallable() = c) or
     exists(Field f, Callable c | fieldAccessInCallable(result, f, c) |
       (ownFieldAccess(result) or f.isStatic()) and this = TPlainField(c, f)
       or
@@ -150,14 +150,16 @@ class SsaSourceVariable extends TSsaSourceVariable {
 
   /** Gets the `Callable` in which this `SsaSourceVariable` is defined. */
   Callable getEnclosingCallable() {
-    exists(LocalScopeVariable v | this = TLocalVar(v) and result = v.getCallable()) or
+    this = TLocalVar(result, _) or
     this = TPlainField(result, _) or
     this = TEnclosingField(result, _, _) or
     this = TQualifiedField(result, _, _)
   }
 
   string toString() {
-    exists(LocalScopeVariable v | this = TLocalVar(v) and result = v.getName()) or
+    exists(LocalScopeVariable v, Callable c | this = TLocalVar(c, v) |
+      if c = v.getCallable() then result = v.getName() else result = c.getName() + "(..)." + v.getName()
+    ) or
     result = this.(SsaSourceField).ppQualifier() + "." + getVariable().toString()
   }
 
@@ -172,7 +174,7 @@ class SsaSourceVariable extends TSsaSourceVariable {
   }
 
   Location getLocation() {
-    exists(LocalScopeVariable v | this = TLocalVar(v) and result = v.getLocation()) or
+    exists(LocalScopeVariable v | this = TLocalVar(_, v) and result = v.getLocation()) or
     this instanceof SsaSourceField and result = getFirstAccess().getLocation()
   }
 
@@ -275,7 +277,7 @@ private module TrackedVariablesImpl {
    */
   class TrackedVar extends SsaSourceVariable {
     TrackedVar() {
-      this = TLocalVar(_) or
+      this = TLocalVar(_, _) or
       trackField(this)
     }
   }
@@ -292,7 +294,9 @@ private cached module SsaImpl {
   cached
   TrackedVar getDestVar(VariableUpdate upd) {
     result.getAnAccess() = upd.(Assignment).getDest() or
-    result = TLocalVar(upd.(LocalVariableDeclExpr).getVariable()) or
+    exists(LocalVariableDecl v | v = upd.(LocalVariableDeclExpr).getVariable() |
+      result = TLocalVar(v.getCallable(), v)
+    ) or
     result.getAnAccess() = upd.(UnaryAssignExpr).getExpr()
   }
 
@@ -323,27 +327,36 @@ private cached module SsaImpl {
 
   /**
    * Gets the control flow node at which the variable is read to get the value for
-   * a `VarAccess` inside a closure.
+   * a `VarAccess` inside a closure. `capturedvar` is the variable in its defining
+   * scope, and `closurevar` is the variable in the closure.
    */
-  private ControlFlowNode parentAccess(VarAccess va) {
-    exists(LocalScopeVariable v, Callable inner, Callable outer, NestedClass innerclass |
+  private ControlFlowNode captureNode(TrackedVar capturedvar, TrackedVar closurevar) {
+    exists(LocalScopeVariable v, Callable inner, Callable outer, NestedClass innerclass, VarAccess va |
       va.getVariable() = v and
       inner = va.getEnclosingCallable() and
       outer = v.getCallable() and
       inner != outer and
       inner.getDeclaringType() = innerclass and
       result = parentDef(desugaredGetEnclosingType*(innerclass)) and
-      result.getEnclosingStmt().getEnclosingCallable() = outer
+      result.getEnclosingStmt().getEnclosingCallable() = outer and
+      capturedvar = TLocalVar(outer, v) and
+      closurevar = TLocalVar(inner, v)
     )
   }
 
   /** Holds if `VarAccess` `use` of `v` occurs in `b` at index `i`. */
   private predicate variableUse(TrackedVar v, RValue use, BasicBlock b, int i) {
-    exists(ControlFlowNode n |
-      v.getAnAccess() = use and b.getNode(i) = n
-      |
-      n = use or n = parentAccess(use)
-    )
+    v.getAnAccess() = use and b.getNode(i) = use
+  }
+
+  /** Holds if the value of `v` is captured in `b` at index `i`. */
+  private predicate variableCapture(TrackedVar capturedvar, TrackedVar closurevar, BasicBlock b, int i) {
+    b.getNode(i) = captureNode(capturedvar, closurevar)
+  }
+
+  /** Holds if the value of `v` is read in `b` at index `i`. */
+  private predicate variableUseOrCapture(TrackedVar v, BasicBlock b, int i) {
+    variableUse(v, _, b, i) or variableCapture(v, _, b, i)
   }
 
   /*
@@ -351,7 +364,7 @@ private cached module SsaImpl {
    */
 
   private predicate liveAtEntry(TrackedVar v, BasicBlock b) {
-    exists (int i | variableUse(v, _, b, i) |
+    exists (int i | variableUseOrCapture(v, b, i) |
       not exists (int j | certainVariableUpdate(v, _, b, j) | j < i))
     or
     liveAtExit(v, b) and not certainVariableUpdate(v, _, b, _)
@@ -503,7 +516,7 @@ private cached module SsaImpl {
    */
   private predicate callDefUseRank(TrackedField f, BasicBlock b, int rankix, int i) {
     updateCandidate(f, _, b, _) and
-    i = rank[rankix](int j | certainVariableUpdate(f, _, b, j) or variableUse(f, _, b, j) or updateCandidate(f, _, b, j))
+    i = rank[rankix](int j | certainVariableUpdate(f, _, b, j) or variableUseOrCapture(f, b, j) or updateCandidate(f, _, b, j))
   }
 
   /**
@@ -515,7 +528,7 @@ private cached module SsaImpl {
     (
       rankix = max(int rix | callDefUseRank(f, b, rix, _)) and liveAtExit(f, b)
       or
-      variableUse(f, _, b, i)
+      variableUseOrCapture(f, b, i)
       or
       exists(int j | liveAtRank(f, b, rankix+1, j) and not certainVariableUpdate(f, _, b, j))
     )
@@ -629,11 +642,16 @@ private cached module SsaImpl {
   /** Holds if `v` has an implicit definition at the entry, `b`, of the callable. */
   cached
   predicate hasEntryDef(TrackedVar v, BasicBlock b) {
-    exists(Parameter p | v = TLocalVar(p) and p.getCallable().getBody() = b) or
+    exists(LocalScopeVariable l, Callable c |
+      v = TLocalVar(c, l) and c.getBody() = b
+      |
+      l instanceof Parameter or
+      l.getCallable() != c
+    ) or
     v instanceof SsaSourceField and v.getEnclosingCallable().getBody() = b and liveAtEntry(v, b)
   }
 
-  /*
+  /**
    * The construction of SSA form ensures that each use of a variable is
    * dominated by its definition. A definition of an SSA variable therefore
    * reaches a `ControlFlowNode` if it is the _closest_ SSA variable definition
@@ -642,155 +660,203 @@ private cached module SsaImpl {
    * dominator tree. Thus, reaching definitions can be calculated in terms of
    * dominance.
    */
+  cached module SsaDefReaches {
 
-  /**
-   * Holds if `rankix` is the rank the index `i` at which there is an SSA definition or use of
-   * `v` in the basic block `b`.
-   *
-   * Basic block indices are translated to rank indices in order to skip
-   * irrelevant indices at which there is no definition or use when traversing
-   * basic blocks.
-   */
-  private predicate defUseRank(TrackedVar v, BasicBlock b, int rankix, int i) {
-    i = rank[rankix](int j | any(TrackedSsaDef def).definesAt(v, b, j) or variableUse(v, _, b, j))
-  }
+    /**
+     * Holds if `rankix` is the rank the index `i` at which there is an SSA definition or use of
+     * `v` in the basic block `b`.
+     *
+     * Basic block indices are translated to rank indices in order to skip
+     * irrelevant indices at which there is no definition or use when traversing
+     * basic blocks.
+     */
+    private predicate defUseRank(TrackedVar v, BasicBlock b, int rankix, int i) {
+      i = rank[rankix](int j | any(TrackedSsaDef def).definesAt(v, b, j) or variableUseOrCapture(v, b, j))
+    }
 
-  /** Gets the maximum rank index for the given variable and basic block. */
-  private int lastRank(TrackedVar v, BasicBlock b) {
-    result = max(int rankix | defUseRank(v, b, rankix, _))
-  }
+    /** Gets the maximum rank index for the given variable and basic block. */
+    private int lastRank(TrackedVar v, BasicBlock b) {
+      result = max(int rankix | defUseRank(v, b, rankix, _))
+    }
 
-  /** Holds if a definition of an SSA variable occurs at the specified rank index in basic block `b`. */
-  private predicate ssaDefRank(TrackedVar v, TrackedSsaDef def, BasicBlock b, int rankix) {
-    exists(int i |
-      def.definesAt(v, b, i) and
-      defUseRank(v, b, rankix, i)
-    )
-  }
-
-  /** Holds if the SSA definition reaches the rank index `rankix` in its own basic block `b`. */
-  private predicate ssaDefReachesRank(TrackedVar v, TrackedSsaDef def, BasicBlock b, int rankix) {
-    ssaDefRank(v, def, b, rankix) or
-    ssaDefReachesRank(v, def, b, rankix-1) and rankix <= lastRank(v, b) and not ssaDefRank(v, _, b, rankix)
-  }
-
-  /**
-   * Holds if the SSA definition of `v` at `def` reaches the end of a basic block `b`, at
-   * which point it is still live, without crossing another SSA definition of `v`.
-   */
-  cached
-  predicate ssaDefReachesEndOfBlock(TrackedVar v, TrackedSsaDef def, BasicBlock b) {
-    liveAtExit(v, b) and
-    (
-      ssaDefReachesRank(v, def, b, lastRank(v, b)) or
-      exists(BasicBlock idom |
-        bbIDominates(idom, b) and // It is sufficient to traverse the dominator graph, cf. discussion above.
-        ssaDefReachesEndOfBlock(v, def, idom) and
-        not any(TrackedSsaDef other).definesAt(v, b, _)
+    /** Holds if a definition of an SSA variable occurs at the specified rank index in basic block `b`. */
+    private predicate ssaDefRank(TrackedVar v, TrackedSsaDef def, BasicBlock b, int rankix) {
+      exists(int i |
+        def.definesAt(v, b, i) and
+        defUseRank(v, b, rankix, i)
       )
-    )
+    }
+
+    /** Holds if the SSA definition reaches the rank index `rankix` in its own basic block `b`. */
+    private predicate ssaDefReachesRank(TrackedVar v, TrackedSsaDef def, BasicBlock b, int rankix) {
+      ssaDefRank(v, def, b, rankix) or
+      ssaDefReachesRank(v, def, b, rankix-1) and rankix <= lastRank(v, b) and not ssaDefRank(v, _, b, rankix)
+    }
+
+    /**
+     * Holds if the SSA definition of `v` at `def` reaches the end of a basic block `b`, at
+     * which point it is still live, without crossing another SSA definition of `v`.
+     */
+    cached
+    predicate ssaDefReachesEndOfBlock(TrackedVar v, TrackedSsaDef def, BasicBlock b) {
+      liveAtExit(v, b) and
+      (
+        ssaDefReachesRank(v, def, b, lastRank(v, b)) or
+        exists(BasicBlock idom |
+          bbIDominates(idom, b) and // It is sufficient to traverse the dominator graph, cf. discussion above.
+          ssaDefReachesEndOfBlock(v, def, idom) and
+          not any(TrackedSsaDef other).definesAt(v, b, _)
+        )
+      )
+    }
+
+    /**
+     * Holds if the SSA definition of `v` at `def` reaches `use` in the same basic block
+     * without crossing another SSA definition of `v`.
+     */
+    private predicate ssaDefReachesUseWithinBlock(TrackedVar v, TrackedSsaDef def, RValue use) {
+      exists(BasicBlock b, int rankix, int i |
+        ssaDefReachesRank(v, def, b, rankix) and
+        defUseRank(v, b, rankix, i) and
+        variableUse(v, use, b, i)
+      )
+    }
+
+    /**
+     * Holds if the SSA definition of `v` at `def` reaches `use` without crossing another
+     * SSA definition of `v`.
+     */
+    cached
+    predicate ssaDefReachesUse(TrackedVar v, TrackedSsaDef def, RValue use) {
+      ssaDefReachesUseWithinBlock(v, def, use) or
+      exists(BasicBlock b |
+        variableUse(v, use, b, _) and
+        ssaDefReachesEndOfBlock(v, def, b.getABBPredecessor()) and
+        not ssaDefReachesUseWithinBlock(v, _, use)
+      )
+    }
+
+    /**
+     * Holds if the SSA definition of `v` at `def` reaches the capture point of
+     * `closurevar` in the same basic block without crossing another SSA
+     * definition of `v`.
+     */
+    private predicate ssaDefReachesCaptureWithinBlock(TrackedVar v, TrackedSsaDef def, TrackedVar closurevar) {
+      exists(BasicBlock b, int rankix, int i |
+        ssaDefReachesRank(v, def, b, rankix) and
+        defUseRank(v, b, rankix, i) and
+        variableCapture(v, closurevar, b, i)
+      )
+    }
+
+    /**
+     * Holds if the SSA definition of `v` at `def` reaches capture point of
+     * `closurevar` without crossing another SSA definition of `v`.
+     */
+    cached
+    predicate ssaDefReachesCapture(TrackedVar v, TrackedSsaDef def, TrackedVar closurevar) {
+      ssaDefReachesCaptureWithinBlock(v, def, closurevar) or
+      exists(BasicBlock b |
+        variableCapture(v, closurevar, b, _) and
+        ssaDefReachesEndOfBlock(v, def, b.getABBPredecessor()) and
+        not ssaDefReachesCaptureWithinBlock(v, _, closurevar)
+      )
+    }
+
+    /**
+     * Holds if the SSA definition of `v` at `def` reaches `redef` in the same basic block
+     * without crossing another SSA definition of `v`.
+     */
+    private predicate ssaDefReachesUncertainDefWithinBlock(TrackedVar v, TrackedSsaDef def, SsaUncertainImplicitUpdate redef) {
+      exists(BasicBlock b, int rankix, int i |
+        ssaDefReachesRank(v, def, b, rankix) and
+        defUseRank(v, b, rankix+1, i) and
+        redef.(TrackedSsaDef).definesAt(v, b, i)
+      )
+    }
+
+    /**
+     * Holds if the SSA definition of `v` at `def` reaches `redef` without crossing another
+     * SSA definition of `v`.
+     */
+    cached
+    predicate ssaDefReachesUncertainDef(TrackedVar v, TrackedSsaDef def, SsaUncertainImplicitUpdate redef) {
+      ssaDefReachesUncertainDefWithinBlock(v, def, redef) or
+      exists(BasicBlock b |
+        redef.(TrackedSsaDef).definesAt(v, b, _) and
+        ssaDefReachesEndOfBlock(v, def, b.getABBPredecessor()) and
+        not ssaDefReachesUncertainDefWithinBlock(v, _, redef)
+      )
+    }
+
   }
 
-  /**
-   * Holds if the SSA definition of `v` at `def` reaches `use` in the same basic block
-   * without crossing another SSA definition of `v`.
-   */
-  private predicate ssaDefReachesUseWithinBlock(TrackedVar v, TrackedSsaDef def, RValue use) {
-    exists(BasicBlock b, int rankix, int i |
-      ssaDefReachesRank(v, def, b, rankix) and
-      defUseRank(v, b, rankix, i) and
-      variableUse(v, use, b, i)
-    )
-  }
+  private module AdjacentUsesImpl {
 
-  /**
-   * Holds if the SSA definition of `v` at `def` reaches `use` without crossing another
-   * SSA definition of `v`.
-   */
-  cached
-  predicate ssaDefReachesUse(TrackedVar v, TrackedSsaDef def, RValue use) {
-    ssaDefReachesUseWithinBlock(v, def, use) or
-    exists(BasicBlock b |
-      variableUse(v, use, b, _) and
-      ssaDefReachesEndOfBlock(v, def, b.getABBPredecessor()) and
-      not ssaDefReachesUseWithinBlock(v, _, use)
-    )
-  }
+    /**
+     * Holds if `rankix` is the rank the index `i` at which there is an SSA definition or explicit use of
+     * `v` in the basic block `b`.
+     */
+    private predicate defUseRank(TrackedVar v, BasicBlock b, int rankix, int i) {
+      i = rank[rankix](int j | any(TrackedSsaDef def).definesAt(v, b, j) or variableUse(v, _, b, j))
+    }
 
-  /**
-   * Holds if the SSA definition of `v` at `def` reaches `redef` in the same basic block
-   * without crossing another SSA definition of `v`.
-   */
-  private predicate ssaDefReachesUncertainDefWithinBlock(TrackedVar v, TrackedSsaDef def, SsaUncertainImplicitUpdate redef) {
-    exists(BasicBlock b, int rankix, int i |
-      ssaDefReachesRank(v, def, b, rankix) and
-      defUseRank(v, b, rankix+1, i) and
-      redef.(TrackedSsaDef).definesAt(v, b, i)
-    )
-  }
+    /** Gets the maximum rank index for the given variable and basic block. */
+    private int lastRank(TrackedVar v, BasicBlock b) {
+      result = max(int rankix | defUseRank(v, b, rankix, _))
+    }
 
-  /**
-   * Holds if the SSA definition of `v` at `def` reaches `redef` without crossing another
-   * SSA definition of `v`.
-   */
-  cached
-  predicate ssaDefReachesUncertainDef(TrackedVar v, TrackedSsaDef def, SsaUncertainImplicitUpdate redef) {
-    ssaDefReachesUncertainDefWithinBlock(v, def, redef) or
-    exists(BasicBlock b |
-      redef.(TrackedSsaDef).definesAt(v, b, _) and
-      ssaDefReachesEndOfBlock(v, def, b.getABBPredecessor()) and
-      not ssaDefReachesUncertainDefWithinBlock(v, _, redef)
-    )
-  }
+    /** Holds if `v` is defined or used in `b`. */
+    private predicate varOccursInBlock(TrackedVar v, BasicBlock b) {
+      defUseRank(v, b, _, _)
+    }
 
-  /** Holds if `v` is defined or used in `b`. */
-  private predicate varOccursInBlock(TrackedVar v, BasicBlock b) {
-    defUseRank(v, b, _, _)
-  }
+    /** Holds if `v` occurs in `b` or one of `b`'s transitive successors. */
+    private predicate blockPrecedesVar(TrackedVar v, BasicBlock b) {
+      varOccursInBlock(v, b.getABBSuccessor*())
+    }
 
-  /** Holds if `v` occurs in `b` or one of `b`'s transitive successors. */
-  private predicate blockPrecedesVar(TrackedVar v, BasicBlock b) {
-    varOccursInBlock(v, b.getABBSuccessor*())
-  }
+    /**
+     * Holds if `b2` is a transitive successor of `b1` and `v` occurs in `b1` and
+     * in `b2` or one of its transitive successors but not in any block on the path
+     * between `b1` and `b2`.
+     */
+    private predicate varBlockReaches(TrackedVar v, BasicBlock b1, BasicBlock b2) {
+      varOccursInBlock(v, b1) and b2 = b1.getABBSuccessor() or
+      exists(BasicBlock mid |
+        varBlockReaches(v, b1, mid) and
+        b2 = mid.getABBSuccessor() and
+        not varOccursInBlock(v, mid) and
+        blockPrecedesVar(v, b2)
+      )
+    }
 
-  /**
-   * Holds if `b2` is a transitive successor of `b1` and `v` occurs in `b1` and
-   * in `b2` or one of its transitive successors but not in any block on the path
-   * between `b1` and `b2`.
-   */
-  private predicate varBlockReaches(TrackedVar v, BasicBlock b1, BasicBlock b2) {
-    varOccursInBlock(v, b1) and b2 = b1.getABBSuccessor() or
-    exists(BasicBlock mid |
-      varBlockReaches(v, b1, mid) and
-      b2 = mid.getABBSuccessor() and
-      not varOccursInBlock(v, mid) and
-      blockPrecedesVar(v, b2)
-    )
-  }
+    /**
+     * Holds if `b2` is a transitive successor of `b1` and `v` occurs in `b1` and
+     * `b2` but not in any block on the path between `b1` and `b2`.
+     */
+    private predicate varBlockStep(TrackedVar v, BasicBlock b1, BasicBlock b2) {
+      varBlockReaches(v, b1, b2) and
+      varOccursInBlock(v, b2)
+    }
 
-  /**
-   * Holds if `b2` is a transitive successor of `b1` and `v` occurs in `b1` and
-   * `b2` but not in any block on the path between `b1` and `b2`.
-   */
-  private predicate varBlockStep(TrackedVar v, BasicBlock b1, BasicBlock b2) {
-    varBlockReaches(v, b1, b2) and
-    varOccursInBlock(v, b2)
-  }
+    /**
+     * Holds if `v` occurs at index `i1` in `b1` and at index `i2` in `b2` and
+     * there is a path between them without any occurrence of `v`.
+     */
+    predicate adjacentVarRefs(TrackedVar v, BasicBlock b1, int i1, BasicBlock b2, int i2) {
+      exists(int rankix |
+        b1 = b2 and
+        defUseRank(v, b1, rankix, i1) and
+        defUseRank(v, b2, rankix+1, i2)
+      ) or
+      defUseRank(v, b1, lastRank(v, b1), i1) and
+      varBlockStep(v, b1, b2) and
+      defUseRank(v, b2, 1, i2)
+    }
 
-  /**
-   * Holds if `v` occurs at index `i1` in `b1` and at index `i2` in `b2` and
-   * there is a path between them without any occurrence of `v`.
-   */
-  private predicate adjacentVarRefs(TrackedVar v, BasicBlock b1, int i1, BasicBlock b2, int i2) {
-    exists(int rankix |
-      b1 = b2 and
-      defUseRank(v, b1, rankix, i1) and
-      defUseRank(v, b2, rankix+1, i2)
-    ) or
-    defUseRank(v, b1, lastRank(v, b1), i1) and
-    varBlockStep(v, b1, b2) and
-    defUseRank(v, b2, 1, i2)
   }
+  private import AdjacentUsesImpl
 
   /**
    * Holds if the value defined at `def` can reach `use` without passing through
@@ -851,6 +917,7 @@ private cached module SsaImpl {
 
 }
 private import SsaImpl
+private import SsaDefReaches
 import SsaPublic
 
 private newtype TSsaVariable =
@@ -936,10 +1003,15 @@ class SsaVariable extends TSsaVariable {
     ssaDefReachesEndOfBlock(_, this, b)
   }
 
-  /** Gets an SSA variable by `getAPhiInput` or `getPriorDef`. */
+  /**
+   * Gets an SSA variable whose value can flow to this one in one step. This
+   * includes inputs to phi nodes, the prior definition of uncertain updates,
+   * and the captured ssa variable for a closure variable.
+   */
   private SsaVariable getAPhiInputOrPriorDef() {
     result = this.(SsaPhiNode).getAPhiInput() or
-    result = this.(SsaUncertainImplicitUpdate).getPriorDef()
+    result = this.(SsaUncertainImplicitUpdate).getPriorDef() or
+    this.(SsaImplicitInit).captures(result)
   }
 
   /** Gets a definition that ultimately defines this variable and is not itself a phi node. */
@@ -1044,18 +1116,23 @@ class SsaUncertainImplicitUpdate extends SsaImplicitUpdate, TSsaUncertainUpdate 
 
 /**
  * An SSA variable that is defined by its initial value in the callable. This
- * includes initial values of parameters and fields.
+ * includes initial values of parameters, fields, and closure variables.
  */
 class SsaImplicitInit extends SsaVariable, TSsaEntryDef {
   override string toString() {
     result = "SSA init(" + getSourceVariable() + ")"
   }
 
+  /** Holds if this is a closure variable that captures the value of `capturedvar`. */
+  predicate captures(SsaVariable capturedvar) {
+    ssaDefReachesCapture(_, capturedvar, getSourceVariable())
+  }
+
   /**
    * Holds if the SSA variable is a parameter defined by its initial value in the callable.
    */
   predicate isParameterDefinition(Parameter p) {
-    getSourceVariable() = TLocalVar(p) and p.getCallable().getBody() = getCFGNode()
+    getSourceVariable() = TLocalVar(p.getCallable(), p) and p.getCallable().getBody() = getCFGNode()
   }
 }
 
@@ -1111,20 +1188,20 @@ class SsaDefinition extends ControlFlowNode {
 
   /** An access of the SSA variable. */
   RValue getAUse(LocalScopeVariable v) {
-    ssaDefReachesUse(TLocalVar(v), any(SsaVariable ssa | ssa.getCFGNode() = this), result)
+    ssaDefReachesUse(TLocalVar(_, v), any(SsaVariable ssa | ssa.getCFGNode() = this), result)
   }
 
   /** Holds if the SSA variable is defined by a phi node. */
   predicate isPhiNode(LocalScopeVariable v) {
-    phiNode(TLocalVar(v), this)
+    phiNode(TLocalVar(_, v), this)
   }
 
   /** An input to the phi node defining the SSA variable if `isPhiNode(v)`. */
   SsaDefinition getAPhiInput(LocalScopeVariable v) {
-    phiNode(TLocalVar(v), this) and
+    phiNode(TLocalVar(_, v), this) and
     exists (BasicBlock phiPred |
       this.(BasicBlock).getABBPredecessor() = phiPred and
-      ssaDefReachesEndOfBlock(TLocalVar(v), any(SsaVariable ssa | ssa.getCFGNode() = result), phiPred)
+      ssaDefReachesEndOfBlock(TLocalVar(_, v), any(SsaVariable ssa | ssa.getCFGNode() = result), phiPred)
     )
   }
 
@@ -1144,7 +1221,7 @@ class SsaDefinition extends ControlFlowNode {
   }
 
   predicate isLiveAtEndOfBlock(LocalScopeVariable v, BasicBlock b) {
-    ssaDefReachesEndOfBlock(TLocalVar(v), any(SsaVariable ssa | ssa.getCFGNode() = this), b)
+    ssaDefReachesEndOfBlock(TLocalVar(_, v), any(SsaVariable ssa | ssa.getCFGNode() = this), b)
   }
 
   /** The reflexive, transitive closure of `getAPhiInput`. */

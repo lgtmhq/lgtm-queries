@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/random-used-once
  * @tags reliability
  *       maintainability
  *       external/cwe/cwe-335

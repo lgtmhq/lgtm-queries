@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/missing-call-to-super-clone
  * @tags reliability
  *       maintainability
  *       external/cwe/cwe-580

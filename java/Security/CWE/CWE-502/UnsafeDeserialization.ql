@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/unsafe-deserialization
  * @tags security
  *       external/cwe/cwe-502
  */

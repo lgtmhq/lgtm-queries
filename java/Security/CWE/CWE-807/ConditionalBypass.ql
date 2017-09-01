@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/user-controlled-bypass
  * @tags security
  *       external/cwe/cwe-807
  *       external/cwe/cwe-290

@@ -37,7 +37,11 @@ predicate is_used(Call c) {
 }
 
 from Call c, FunctionObject func
-where is_used(c) and c.getFunc().refersTo(func) and func.getFunction().isProcedure() and 
+where 
+/* Call result is used, but callee is a procedure */
+is_used(c) and c.getFunc().refersTo(func) and func.getFunction().isProcedure() and
+/* All callees are procedures */
+forall(FunctionObject callee | c.getFunc().refersTo(callee) | callee.getFunction().isProcedure()) and
 /* Mox return objects have an `AndReturn` method */
 not useOfMoxInModule(c.getEnclosingModule())
 select c, "The result of '$@' is used even though it is always None.", func, func.getQualifiedName()

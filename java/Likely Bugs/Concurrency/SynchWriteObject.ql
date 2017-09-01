@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/inconsistent-sync-writeobject
  * @tags reliability
  *       correctness
  *       concurrency

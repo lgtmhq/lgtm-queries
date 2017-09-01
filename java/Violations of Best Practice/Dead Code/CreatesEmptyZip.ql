@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/empty-zip-file-entry
  * @tags reliability
  *       readability
  */

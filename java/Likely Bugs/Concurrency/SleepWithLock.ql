@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/sleep-with-lock-held
  * @tags reliability
  *       correctness
  *       concurrency

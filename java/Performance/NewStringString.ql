@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/inefficient-string-constructor
  * @tags efficiency
  *       maintainability
  */

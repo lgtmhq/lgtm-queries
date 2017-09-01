@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/deprecated-call
  * @tags changeability
  *       external/cwe/cwe-477
  */

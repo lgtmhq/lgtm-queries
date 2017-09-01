@@ -30,10 +30,7 @@ import Expressions.CallArgs
 from Call call, FunctionObject func, string name
 where
 illegally_named_parameter(call, func, name) and
-// Only report this as a fault of the call-site if the method is correctly overridden.
-forall(FunctionObject over |
-    overridden_call(func, over, call) or overridden_call(over, func, call) |
-    illegally_named_parameter(call, over, name)
-)
+not func.isAbstract() and
+not exists(FunctionObject overridden | func.overrides(overridden) and overridden.getFunction().getAnArg().(Name).getId() = name)
 select
 call, "Keyword argument '" + name + "' is not a supported parameter name of $@.", func, func.descriptiveString()

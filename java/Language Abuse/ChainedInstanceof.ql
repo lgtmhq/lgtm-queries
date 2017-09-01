@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/chained-type-tests
  * @tags maintainability
  *       language-features
  */

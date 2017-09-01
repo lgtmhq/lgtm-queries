@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/missing-space-in-concatenation
  * @tags readability
  */
 import java

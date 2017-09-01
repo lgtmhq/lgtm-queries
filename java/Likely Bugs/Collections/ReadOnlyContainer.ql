@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/empty-container
  * @tags reliability
  *       maintainability
  *       useless-code

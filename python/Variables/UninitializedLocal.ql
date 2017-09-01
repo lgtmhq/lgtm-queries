@@ -49,9 +49,9 @@ predicate calls_exit_func(Function f) {
                                                                cls.getPyClass() = f.getScope() and never_returns(cls.lookupAttribute(name)))
 }
 
-predicate nonlocal(Name use) {
+predicate nonlocal(NameNode use) {
     exists(Nonlocal l, Variable v | 
-        v.getALoad() = use and
+        v.getAUse() = use and
         l.getAVariable() = v
     )
 }
@@ -80,36 +80,38 @@ predicate undefined_ssa(SsaVariable l) {
     )
 }
 
-predicate uninitialized_local(Name use) {
-    exists(SsaVariable l, Function f | f = use.getScope() and l.getAUse() = use.getAFlowNode() |
+predicate possibly_uninitialized_local(NameNode use) {
+    exists(SsaVariable l, Function f | f = use.getScope() and l.getAUse() = use |
         l.getVariable() instanceof FastLocalVariable and
         undefined_ssa(l) and
-        not defined_and_used_in_condition(use) and
+        not defined_and_used_in_condition(use.getNode()) and
         not calls_exit_func(f) and
-        not probably_defined_in_loop(use)
+        not probably_defined_in_loop(use.getNode())
     ) and
     not nonlocal(use)
 }
 
-private predicate first_use_in_a_block(ControlFlowNode use) {
-    exists(SsaVariable v, BasicBlock b, int i |
-        i = min(int j | b.getNode(j) = v.getAUse()) and b.getNode(i) = use
+/** Since any use of a local will raise if it is undefined, then
+ * any use dominated by another use of the same variable must be defined.
+ */
+predicate uninitialized_local(NameNode use) {
+    possibly_uninitialized_local(use) and
+    not exists(NameNode other, LocalVariable v |
+        other != use and
+        other.uses(v) and use.uses(v) and
+        other.dominates(use) and
+        possibly_uninitialized_local(other)
     )
 }
 
-predicate first_uninitialized_local(Name use) {
-    uninitialized_local(use) and
-    exists(SsaVariable v, ControlFlowNode first_use |
-        use.getAFlowNode() = first_use and v.getAUse() = first_use |
-        first_use_in_a_block(first_use) and
-        not exists(ControlFlowNode other | 
-            other = v.getAUse() and
-            other.getBasicBlock().strictlyDominates(first_use.getBasicBlock())
-        )
+predicate explicitly_guarded(NameNode u) {
+    exists(Try t |
+        t.getBody().contains(u.getNode()) and
+        t.getAHandler().getType().refersTo(theNameErrorType())
     )
 }
 
-from Name u
-where first_uninitialized_local(u)
-select u, "Local variable '" + u.getId() + "' may be used before it is initialized."
+from NameNode u
+where uninitialized_local(u) and not explicitly_guarded(u)
+select u.getNode(), "Local variable '" + u.getId() + "' may be used before it is initialized."
 

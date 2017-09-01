@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/comparison-with-wider-type
  * @tags reliability
  *       security
  *       external/cwe/cwe-190

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/wait-on-condition-interface
  * @tags reliability
  *       correctness
  *       concurrency

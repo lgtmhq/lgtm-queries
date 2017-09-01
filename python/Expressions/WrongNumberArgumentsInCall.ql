@@ -29,18 +29,14 @@ import CallArgs
 from Call call, FunctionObject func, string too, string should, int limit
 where
 (
-    too_many_args(call, func, limit) and too = "Too many" and should = "no more than "
+    too_many_args(call, func, limit) and too = "too many arguments" and should = "no more than "
     or
-    too_few_args(call, func, limit) and too = "Too few" and should = "no fewer than "
-)
-and
-// Only report this as a fault of the call-site if all calls have the incorrect number of arguments.
-forall(FunctionObject over |
-    overridden_call(func, over, call) or overridden_call(over, func, call) |
-    too_many_args(call, over, _) or too_few_args(call, over, _)
-)
+    too_few_args(call, func, limit) and too = "too few arguments" and should = "no fewer than "
+) and
+not func.isAbstract() and
+not exists(FunctionObject overridden | func.overrides(overridden) and correct_args_if_called_as_method(call, overridden))
 /* The semantics of `__new__` can be a bit subtle, so we simply exclude `__new__` methods */
 and not func.getName() = "__new__"
 
-select call, too + " arguments in call to $@; should be " + should + limit.toString() + ".", func, func.descriptiveString()
+select call, "Call to $@ with " + too + "; should be " + should + limit.toString() + ".", func, func.descriptiveString()
 

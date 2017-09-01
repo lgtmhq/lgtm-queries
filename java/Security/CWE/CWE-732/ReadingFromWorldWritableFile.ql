@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/world-writable-file-read
  * @tags security
  *       external/cwe/cwe-732
  */

@@ -16,9 +16,14 @@ import python
 /** A source code comment */
 class Comment extends @py_comment {
 
-    /** the text of the comment */
+    /** Gets the full text of the comment including the leading '#' */
     string getText() {
-    		py_comments(this, result, _)
+        py_comments(this, result, _)
+    }
+
+    /** Gets the contents of the comment excluding the leading '#' */
+    string getContents() {
+        result = this.getText().suffix(1)
     }
 
     Location getLocation() {
@@ -29,7 +34,7 @@ class Comment extends @py_comment {
     string toString() {
         result = "Comment " + this.getText()
     }
-    
+
     /** Gets this immediately following comment. 
      * Blanks line are allowed between this comment and the following comment,
      * but code or other comments are not.
@@ -44,34 +49,34 @@ class Comment extends @py_comment {
             result.file_line(f, n+3) and f.emptyLine(n+2) and f.emptyLine(n+1)
         )
     }
-    
+
     private predicate file_line(File f, int n) {
         this.getLocation().getFile() = f and
         this.getLocation().getStartLine() = n
     }
-    
+
 }
 
-private predicate comment_block_part(Comment start, Comment end) {
-    not exists(Comment prev | prev.getFollowing() = start) and
-    end = start.getFollowing()
+private predicate comment_block_part(Comment start, Comment part, int i) {
+    not exists(Comment prev | prev.getFollowing() = part) and
+    exists(Comment following | part.getFollowing() = following) and
+    start = part and i = 1
     or
-    exists(Comment mid |
-        comment_block_part(start, mid) and
-        end = mid.getFollowing()
+    exists(Comment prev |
+        comment_block_part(start, prev, i-1) and
+        part = prev.getFollowing()
     )
 }
 
 /** A block of consecutive comments */
 class CommentBlock extends @py_comment {
-  
+
     CommentBlock() {
-        comment_block_part(this, _)
+        comment_block_part(this, _, _)
     }
 
     private Comment last() {
-        comment_block_part(this, result) and
-        not exists(result.getFollowing())
+        comment_block_part(this, result, this.length())
     }
 
     string toString() {
@@ -80,7 +85,7 @@ class CommentBlock extends @py_comment {
 
     /** The length of this comment block (in comments) */
     int length() {
-        result = count(Comment c | this.contains(c))
+        result = max(int i | comment_block_part(this, _, i))
     }
 
     predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
@@ -93,9 +98,16 @@ class CommentBlock extends @py_comment {
     }
 
     predicate contains(Comment c) {
-        comment_block_part(this, c)
+        comment_block_part(this, c, _)
         or
         this = c
+    }
+
+    string getContents() {
+        result = concat(Comment c,int i | 
+            comment_block_part(this, c, i) or this = c and i = 0 |
+            c.getContents() order by i
+        )
     }
 
 }

@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/type-mismatch-modification
  * @tags reliability
  *       correctness
  *       logic

@@ -31,5 +31,18 @@ class ImportTimeScope extends Scope {
         exists(SsaVariable var | name = var.getId() and var.getAUse() = this.getANormalExit())
     }
 
+    /** Holds if the control flow passes from `outer` to `inner` when this scope starts executing */
+    predicate entryEdge(ControlFlowNode outer, ControlFlowNode inner) {
+        inner = this.getEntryNode() and
+        outer.getNode().(ClassExpr).getInnerScope() = this
+    }
+
+    /** Gets the global variable that is used during lookup, should `var` be undefined. */
+    GlobalVariable getOuterVariable(LocalVariable var) {
+        this instanceof Class and
+        var.getScope() = this and
+        result.getScope() = this.getEnclosingModule() and
+        var.getId() = result.getId()
+    }
 
 }

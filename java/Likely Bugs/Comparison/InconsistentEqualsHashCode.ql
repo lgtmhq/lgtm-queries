@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/inconsistent-equals-and-hashcode
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-581

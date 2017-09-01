@@ -47,5 +47,7 @@ import semmle.javascript.Util
 import semmle.javascript.SSA
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.frameworks.AngularJS
+import semmle.javascript.frameworks.jQuery
 import semmle.javascript.frameworks.SQL
 import semmle.javascript.frameworks.xUnit
+import semmle.javascript.XML

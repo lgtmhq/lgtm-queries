@@ -49,7 +49,7 @@ private int positional_arg_count_for_call(Call call, FunctionObject func) {
     )
 }
 
-private int total_arg_count(Call call) {
+int arg_count(Call call) {
     result = count(call.getAnArg()) + varargs_length(call) + count(call.getAKeyword())
 }
 
@@ -65,7 +65,7 @@ predicate too_few_args(Call call, FunctionObject func, int limit) {
     // Exclude cases where an incorrect name is used as that is covered by 'Wrong name for an argument in a call'
     not illegally_named_parameter(call, func, _) and
     not exists(call.getStarargs()) and not exists(call.getKwargs()) and
-    total_arg_count(call) < limit and
+    arg_count(call) < limit and
     (call = func.getAFunctionCall().getNode() and limit = func.minParameters() and
     /* The combination of misuse of `mox.Mox().StubOutWithMock()`
      * and a bug in mox's implementation of methods results in having to
@@ -90,11 +90,25 @@ predicate too_many_args(Call call, FunctionObject func, int limit) {
     positional_arg_count_for_call(call, func) > limit
 }
 
-/** Holds if `call` is a call to both `overriding`, which overrides `func`, and `func`. */
-predicate overridden_call(FunctionObject func, FunctionObject overriding, Call call)  {
-    overriding.overrides(func) and
-    func.getACall().getNode() = call and
-    overriding.getACall().getNode() = call
+/** Holds if `call` has too many or too few arguments for `func` */
+predicate wrong_args(Call call, FunctionObject func, int limit, string too) {
+    too_few_args(call, func, limit) and too = "too few"
+    or
+    too_many_args(call, func, limit) and too = "too many"
 }
 
+/** Holds if `call` has correct number of arguments for `func`.
+ * Implies nothing about whether `call` could call `func`.
+ */
+ bindingset[call, func]
+predicate correct_args_if_called_as_method(Call call, FunctionObject func) {
+    arg_count(call)+1 >= func.minParameters()
+    and
+    arg_count(call) < func.maxParameters()
+}
 
+/** Holds if `call` is a call to `overriding`, which overrides `func`. */
+predicate overridden_call(FunctionObject func, FunctionObject overriding, Call call)  {
+    overriding.overrides(func) and
+    overriding.getACall().getNode() = call
+}

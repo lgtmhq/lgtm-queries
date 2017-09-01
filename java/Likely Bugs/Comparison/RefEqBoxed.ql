@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/reference-equality-of-boxed-types
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-595

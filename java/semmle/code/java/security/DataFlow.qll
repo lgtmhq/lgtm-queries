@@ -609,6 +609,10 @@ class DataPreservingMethod extends Method {
     (
       this.getDeclaringType().hasQualifiedName("javax.xml.transform.sax", "SAXSource") and
       this.hasName("getInputSource")
+    ) or
+    (
+      this.getDeclaringType().hasQualifiedName("javax.xml.transform.stream", "StreamSource") and
+      this.hasName("getInputStream")
     )
   }
 }

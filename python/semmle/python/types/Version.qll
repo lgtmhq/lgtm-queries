@@ -13,6 +13,7 @@
 
 import python
 import semmle.python.GuardedControlFlow
+private import semmle.python.pointsto.Final
 
 /** A major version of the Python interpreter, either 2 or 3 */
 class Version extends int {
@@ -31,6 +32,11 @@ Object theSysHexVersionNumber() {
     py_cmembers_versioned(theSysModuleObject(), "hexversion", result, major_version().toString())
 }
 
+Object theSysVersionString() {
+    py_cmembers_versioned(theSysModuleObject(), "version", result, major_version().toString())
+}
+
+
 string reversed(Cmpop op) {
     op instanceof Lt and result = ">"
     or
@@ -47,14 +53,22 @@ string reversed(Cmpop op) {
 
 
 /** A test on the major version of the Python interpreter */
-class VersionTest extends ControlFlowNode {
+class VersionTest extends @py_flow_node {
 
-    VersionTest() {
-        final_version_test(this, _)
+    string toString() {
+        result = "VersionTest"
     }
 
-    Version getVersion() {
-        final_version_test(this, result)
+    VersionTest() {
+        FinalPointsTo::version_const(this, _, _)
+    }
+
+    predicate isTrue() {
+        FinalPointsTo::version_const(this, _, true)
+    }
+
+    AstNode getNode() {
+        result = this.(ControlFlowNode).getNode()
     }
 
 }
@@ -64,16 +78,16 @@ class VersionGuard extends ConditionBlock {
 
     VersionGuard() {
         exists(VersionTest v |
-            final_points_to(this.getLastNode(), v, _, _) or
-            final_points_to(this.getLastNode(), _, _, v)
+            FinalPointsTo::points_to(this.getLastNode(), _, v, _, _) or
+            FinalPointsTo::points_to(this.getLastNode(), _, _, _, v)
         )
     }
 
-    Version getVersion() {
+    predicate isTrue() {
         exists(VersionTest v |
-            result = v.getVersion() |
-            final_points_to(this.getLastNode(), v, _, _) or
-            final_points_to(this.getLastNode(), _, _, v)
+            v.isTrue() |
+            FinalPointsTo::points_to(this.getLastNode(), _, v, _, _) or
+            FinalPointsTo::points_to(this.getLastNode(), _, _, _, v)
         )
     }
 
@@ -118,7 +132,7 @@ predicate os_compare(ControlFlowNode f, string name) {
     )
 }
 
-class OsTest extends Object {
+class OsTest extends @py_flow_node {
 
     OsTest() {
         os_compare(this, _)
@@ -128,6 +142,14 @@ class OsTest extends Object {
         os_compare(this, result)
     }
 
+    string toString() {
+        result = "OsTest"
+    }
+
+    AstNode getNode() {
+        result = this.(ControlFlowNode).getNode()
+    }
+
 }
 
 
@@ -135,13 +157,13 @@ class OsGuard extends ConditionBlock {
 
     OsGuard() {
         exists(OsTest t |
-            final_points_to(this.getLastNode(), t, _, _)
+            FinalPointsTo::points_to(this.getLastNode(), _, theBoolType(), t, _)
         )
     }
 
     string getOs() {
         exists(OsTest t |
-            final_points_to(this.getLastNode(), t, _, _) and result = t.getOs()
+            FinalPointsTo::points_to(this.getLastNode(), _, theBoolType(), t, _) and result = t.getOs()
         )
     }
 

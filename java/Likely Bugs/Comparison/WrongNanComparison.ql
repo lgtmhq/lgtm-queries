@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/comparison-with-nan
  * @tags correctness
  */
 import java

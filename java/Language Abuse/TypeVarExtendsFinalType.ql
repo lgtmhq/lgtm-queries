@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/type-bound-extends-final
  * @tags maintainability
  *       readability
  *       types

@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/inefficient-empty-string-test
  * @tags efficiency
  *       maintainability
  */

@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/field-masks-super-field
  * @tags maintainability
  *       readability
  */

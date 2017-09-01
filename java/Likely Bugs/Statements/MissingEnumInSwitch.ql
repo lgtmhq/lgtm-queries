@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/missing-case-in-switch
  * @tags reliability
  *       readability
  *       external/cwe/cwe-478

@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import python
+private import semmle.python.pointsto.Final
 
 /** A module. This is the top level element in an AST, corresponding to a source file. 
  * It is also a Scope; the scope of global variables. */
@@ -75,7 +76,7 @@ class Module extends Module_, Scope, AstNode {
     string getAnExport() {
         py_exports(this, result)
         or
-        not final_module_defines_name(this, "__all__") and final_module_defines_name(this, result)
+        not FinalPointsTo::module_defines_name(this, "__all__") and FinalPointsTo::module_defines_name(this, result)
     }
 
     /** Gets the source file for this module */

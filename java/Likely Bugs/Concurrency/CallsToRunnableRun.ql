@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/call-to-thread-run
  * @tags reliability
  *       correctness
  *       concurrency

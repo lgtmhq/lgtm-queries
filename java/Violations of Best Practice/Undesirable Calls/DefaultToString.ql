@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/call-to-object-tostring
  * @tags reliability
  *       maintainability
  */

@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/useless-tostring-call
  * @tags maintainability
  */
 import java

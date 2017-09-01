@@ -33,26 +33,22 @@ FunctionObject next() {
     result = builtin_object("next")
 }
 
-predicate call_to_iter(CallNode call, Object sequence) {
-    iter().getArgumentForCall(call, 0).refersTo(sequence)
+predicate call_to_iter(CallNode call, EssaVariable sequence) {
+    sequence.getAUse() = iter().getArgumentForCall(call, 0)
 }
 
-predicate call_to_next(CallNode call, Object iterator) {
-    next().getArgumentForCall(call, 0).refersTo(iterator)
+predicate call_to_next(CallNode call, ControlFlowNode iter) {
+    iter = next().getArgumentForCall(call, 0)
 }
 
-predicate guarded_not_empty_sequence(Object sequence) {
-    exists(IsTrue guard, ControlledVariable var, NameNode use |
-        use = var.getAUse() |
-        use.refersTo(sequence) and
-        guard.controls(var, use.getBasicBlock(), true)
-    )
+predicate guarded_not_empty_sequence(EssaVariable sequence) {
+    sequence.getDefinition() instanceof EssaEdgeRefinement
 }
 
 /** The pattern `next(iter(x))` is often used where `x` is known not be empty. Check for that. */
-predicate iter_not_exhausted(Object iterator) {
-    exists(Object sequence |
-        call_to_iter(iterator, sequence) and
+predicate iter_not_exhausted(EssaVariable iterator) {
+    exists(EssaVariable sequence |
+        call_to_iter(iterator.getDefinition().(AssignmentDefinition).getValue(), sequence) and
         guarded_not_empty_sequence(sequence)
     )
 }
@@ -64,10 +60,14 @@ predicate stop_iteration_handled(CallNode call) {
     )
 }
 
-from CallNode call, Object iterator
-where call_to_next(call, iterator) and
+from CallNode call
+where call_to_next(call, _) and
+not exists(EssaVariable iterator |
+    call_to_next(call, iterator.getAUse()) and
+    iter_not_exhausted(iterator)
+) and
 call.getNode().getScope().(Function).isGenerator() and
-not iter_not_exhausted(iterator) and
+not exists(Comp comp | comp.contains(call.getNode())) and
 not stop_iteration_handled(call)
 
 select call, "Call to next() in a generator"

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/missing-format-argument
  * @tags correctness
  *       external/cwe/cwe-685
  */

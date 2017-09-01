@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/non-sync-override
  * @tags reliability
  *       correctness
  *       concurrency

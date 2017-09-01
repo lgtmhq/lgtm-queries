@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/http-response-splitting
  * @tags security
  *       external/cwe/cwe-113
  */

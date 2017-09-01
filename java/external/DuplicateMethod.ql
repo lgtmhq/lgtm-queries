@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/duplicate-method
  * @tags testability
  *       maintainability
  *       useless-code

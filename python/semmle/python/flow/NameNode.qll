@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 import python
-import semmle.python.pointsto.Base
+private import semmle.python.pointsto.Base
 
 /** A control flow node corresponding to a (plain variable) name expression, such as `var`.
  * `None`, `True` and `False` are excluded.
@@ -25,18 +25,18 @@ class NameNode extends ControlFlowNode {
         exists(PlaceHolder p | py_flow_bb_node(this, p, _, _))
     }
 
-    /** Whether this flow node defines the variable v */
+    /** Whether this flow node defines the variable `v`. */
     predicate defines(Variable v) {
         exists(Name d | this.getNode() = d and d.defines(v))
         and not this.isLoad()
     }
 
-    /** Whether this flow node deletes the variable v */
+    /** Whether this flow node deletes the variable `v`. */
     predicate deletes(Variable v) {
         exists(Name d | this.getNode() = d and d.deletes(v))
     }
 
-    /** Whether this flow node uses the variable v */
+    /** Whether this flow node uses the variable `v`. */
     predicate uses(Variable v) {
         this.isLoad() and exists(Name u | this.getNode() = u and u.uses(v))
         or
@@ -51,27 +51,19 @@ class NameNode extends ControlFlowNode {
         result = this.getNode().(PlaceHolder).getId()
     }
 
-    /** Whether this is a use of a local variable */
+    /** Whether this is a use of a local variable. */
     predicate isLocal() {
         local(this)
     }
 
-    /** Whether this is a use of a non-local variable */
+    /** Whether this is a use of a non-local variable. */
     predicate isNonLocal() {
         non_local(this)
     }
 
-    /** Whether this is a use of a global (including builtin) variable */
+    /** Whether this is a use of a global (including builtin) variable. */
     predicate isGlobal() {
         use_of_global_variable(this, _, _)
-    }
-
-    /** Gets an `import *` node that reaches this use without passing through a 
-     * definition and thus *may* (without analysis of the imported module) define 
-     * this node.
-     */
-    ImportStarNode getAReachingImportStar() {
-         result = reaching_import_star(this)
     }
 
     predicate isSelf() {
@@ -80,11 +72,6 @@ class NameNode extends ControlFlowNode {
         )
     }
 
-}
-
-private ImportStarNode reaching_import_star(NameNode n) {
-      // To do...
-      none()
 }
 
 private predicate fast_local(NameNode n) {
@@ -151,7 +138,7 @@ private predicate maybe_undefined(SsaVariable var) {
     )
 }
 
-/** A control flow node corresponding to a named constant, one of `None`, `True` or `False` */
+/** A control flow node corresponding to a named constant, one of `None`, `True` or `False`. */
 class NameConstantNode extends NameNode {
 
     NameConstantNode() {

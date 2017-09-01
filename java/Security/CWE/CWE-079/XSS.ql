@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/xss
  * @tags security
  *       external/cwe/cwe-079
  */

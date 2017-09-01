@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/toctou-race-condition
  * @tags security
  *       external/cwe/cwe-367
  */

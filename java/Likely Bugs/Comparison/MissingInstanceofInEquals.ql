@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/unchecked-cast-in-equals
  * @tags reliability
  *       correctness
  */

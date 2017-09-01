@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/missing-super-finalize
  * @tags reliability
  *       maintainability
  *       external/cwe/cwe-568

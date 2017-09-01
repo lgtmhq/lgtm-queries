@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/constants-only-interface
  * @tags maintainability
  *       modularity
  */

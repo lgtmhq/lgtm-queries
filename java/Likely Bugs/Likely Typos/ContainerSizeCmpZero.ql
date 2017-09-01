@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/test-for-negative-container-size
  * @tags reliability
  *       correctness
  *       logic

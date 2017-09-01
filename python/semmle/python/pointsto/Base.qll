@@ -11,146 +11,27 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/** 
+/**
  * Combined points-to and type-inference for "run-time" (as opposed to "import-time" values)
- * The main relation runtime_points_to(node, object, cls, origin) relates a control flow node
+ * The main relation `runtime_points_to(node, object, cls, origin)` relates a control flow node
  * to the possible objects it points-to the inferred types of those objects and the 'origin'
  * of those objects. The 'origin' is the point in source code that the object can be traced
- * back to. To handle the case where the class of an object cannot be inferred, but so that
- * we can track the object regardless, a special object "theUnknownType()" is used.
+ * back to.
+ * 
+ * This file contains non-layered parts of the points-to analysis.
  */
 import python
+import semmle.python.dataflow.SsaDefinitions
 
-predicate original_values(ControlFlowNode f, Object value) {
+module BasePointsTo {
+    /** INTERNAL -- Use n.refersTo(value, _, origin) instead */
+    cached predicate points_to(ControlFlowNode f, Object value, ControlFlowNode origin) {
     (
-        value = f.getNode().(ImmutableLiteral).getLiteralObject()
-        or
-        f.isLiteral() and value = f and not f.getNode() instanceof ImmutableLiteral
-        or
-        f.isClass() and value = f
-        or
-        f.isFunction() and value = f
-    )
-}
-
-predicate original_unknowns(ControlFlowNode f) {
-    f.getNode() instanceof BinaryExpr
-    or
-    f.getNode() instanceof UnaryExpr
-    or
-    f.getNode() instanceof BoolExpr
-    or
-    f.getNode() instanceof Compare
-    or
-    f.isParameter()
-}
-
-/** INTERNAL -- Use n.refersTo(value, _, origin) instead */
-cached predicate base_points_to(ControlFlowNode n, Object value, ControlFlowNode origin) {
-    original_values(n, value) and origin = n
-    or
-    original_unknowns(n) and origin = n and value = n
-}
-
-/** Does a call dominates all of the normal exits? 
- * This is a cheap, conservative approximation for "is a method called 
- * unconditionally, given that this function exits normally".
- * The exact version is just too slow.
- */
-predicate dominates_all_normal_exits(CallNode call) {
-    exists(Function f |
-        call.getScope() = f |
-        forex(ControlFlowNode exit |
-            f.getANormalExit() = exit |
-            call.getBasicBlock().dominates(exit.getBasicBlock())
-        )
-    )
-}
-
-/** Whether this variable is not bound. ie. free. */
-predicate not_bound(SsaVariable var) {
-    not exists(var.getDefinition()) and not exists(var.getAPhiInput())
-    or exists(SsaVariable phi | phi = var.getAPhiInput() | not_bound(phi))
-}
-
-/** INTERNAL -- Do not use */
-ClassObject theUnknownType() {
-    py_special_objects(result, "_semmle_unknown_type")
-}
-
-
-/** INTERNAL -- Use m.exportsComplete() instead */
-predicate module_exports_complete(Module m) {
-    not exists(Call modify, Attribute attr, GlobalVariable all | 
-        modify.getScope() = m and modify.getFunc() = attr and 
-        all.getId() = "__all__" |
-        attr.getObject().(Name).uses(all)
-    )
-}
-
-/** INTERNAL -- May be modified or deleted without warning. */
-predicate is_locally_defined_from_dot_import_in_init(ImportMemberNode f, string name) {
-    exists(ImportMember im, ImportExpr mod |
-        im.getAFlowNode() = f and
-        name = im.getName() and
-        im.getEnclosingModule().getName().matches("%.\\_\\_init\\_\\_") and
-        mod = im.getModule()
-        |
-        mod.getLevel() = 1 and
-        not exists(mod.getName())
-        or
-        mod.getImportedModuleName() = im.getEnclosingModule().getPackage().getName()
-    )
-}
-
-/** Special case of `from . import name` in an `__init__` module.
- *  In this case the value can be defined in the `__init__` module, 
- *  thus needs to be flow sensitive.
- */
-predicate locally_defined_from_dot_import_in_init(ImportMemberNode f, SsaVariable var) {
-    is_locally_defined_from_dot_import_in_init(f, var.getId())
-    and var.getDefinition().strictlyDominates(f)
-}
-
-
-predicate nonlocal_points_to_candidate(NameNode f) { 
-    exists(Function inner, Function outer, Variable var |
-        /* use of var in inner function */
-        f.uses(var) and f.getScope() = inner and
-        /* var's scope is the outer function and inner is defined within outer */
-        var.getScope() = outer and inner.getScope().getScope*() = outer and
-        /* Variable is not redefined in inner (or any other inner function) */
-        forall(NameNode def | def.defines(var) | def.getScope() = outer) and
-        /* There is no call to inner in outer (which might see the variables uninitialized) */
-        not call_to_inner_function(inner, outer)
-    )
-}
-
-predicate call_to_inner_function(Function inner, Function outer) {
-    exists(SsaVariable v |
-        exists(CallNode c | 
-            c.getFunction() =  v.getAUse() and
-            c.getScope().getScope*() = outer
-        )
-        and
-        exists(FunctionExpr func |
-            func = v.getDefinition().(DefinitionNode).getValue().getNode() and
-            func.getInnerScope() = inner and
-            func.getScope() = outer
-        )
-    )
-}
-
-/** Whether f is a use of a variable and the value of that use must be tf */
-predicate must_have_boolean_value(ControlFlowNode f, boolean tf) {
-    exists(IsTrue ist | ist.appliesTo(_, f, tf))
-}
-
-/** Whether f is a use of a variable and the value of that use must be tf */
-predicate must_have_boolean_value_on_edge(ControlledVariable var, BasicBlock pred, BasicBlock succ, boolean tf) {
-    exists(IsTrue ist |
-        ist.controlsEdge(var, pred, succ, tf)
-    )
+            f.isLiteral() and value = f and not f.getNode() instanceof ImmutableLiteral
+            or
+            f.isFunction() and value = f
+        ) and origin = f
+    }
 }
 
 /** The kwargs parameter (**kwargs) in a function definition is always a dict */
@@ -167,7 +48,6 @@ predicate varargs_points_to(ControlFlowNode f, ClassObject cls) {
     cls = theTupleType()
 }
 
-
 /** Gets the class of the object for simple cases, namely constants, functions, 
  * comprehensions and built-in objects.
  *
@@ -177,8 +57,6 @@ cached ClassObject simple_types(Object obj) {
     result = comprehension(obj.getOrigin())
     or
     result = collection_literal(obj.getOrigin())
-    or
-    result = string_literal(obj.getOrigin())
     or
     obj.getOrigin() instanceof CallableExpr and result = thePyFunctionType()
     or
@@ -207,94 +85,31 @@ private ClassObject collection_literal(Expr e) {
     e instanceof Tuple and result = theTupleType()
 }
 
-private ClassObject string_literal(Expr e) {
-    e instanceof Bytes and result = theBytesType()
+private int tuple_index_value(Object t, int i) {
+    result = t.(TupleNode).getElement(i).getNode().(Num).getN().toInt()
     or
-    e instanceof Unicode and result = theUnicodeType()
-}
-
-private int tuple_index_value(TupleObject t, int i) {
-    result = t.getSourceElement(i).getNode().(Num).getN().toInt()
-    or
-    result = t.getBuiltinElement(i).(NumericObject).intValue()
-}
-
-bindingset[hex]
-int scale_hex_version(int hex) {
-    hex >= 50331648 and result = 48 + (hex-50331648)/65536
-    or
-    hex < 50331648 and result = 32 + (hex-33554432)/65536
-}
-
-int version_tuple_value(TupleObject t) {
-    not exists(tuple_index_value(t, 1)) and result = tuple_index_value(t, 0)*16
-    or
-    not exists(tuple_index_value(t, 2)) and result = tuple_index_value(t, 0)*16 + tuple_index_value(t, 1)
-    or
-    tuple_index_value(t, 2) = 0 and result = tuple_index_value(t, 0)*16 + tuple_index_value(t, 1)
-    or
-    tuple_index_value(t, 2) > 0 and result = tuple_index_value(t, 0)*16 + tuple_index_value(t, 1) + 1
-}
-
-predicate version_compare(Version version, int n, string opname) {
-    (n in [32 .. 40] or n in [48 .. 58]) // Versions 2.0 to 2.8 and versions 3.0 to 3.10
-    and
-    exists(int v |
-        version = 2 and v in [32 .. 39]
-        or
-        version = 3 and v in [48 .. 56]
-        |
-        v < n and opname = "<"
-        or
-        v <= n and opname = "<="
-        or
-        v > n and opname = ">"
-        or
-        v >= n and opname = ">="
-        or
-        v = n and opname = "=="
-        or
-        v != n and opname = "!="
+    exists(Object item |
+         py_citems(t, i, item) and
+        result = item.(NumericObject).intValue()
     )
 }
 
-class Layer0CustomPointsToFact extends @py_flow_node {
-
-    string toString() { none() }
-
-    predicate pointsTo(Object value, ClassObject cls, ControlFlowNode origin) {
-        none()
-    }
-
-}
-
-class Layer0PointsToFilter extends ConditionalControlFlowNode {
-
-    Layer0PointsToFilter() {
-        none()
-    }
-
-    boolean isTrueFor(ControlledVariable var) { none() }
-
-    boolean isTrueForAttribute(SsaVariable var, string attr_name) { none() }
-
-    predicate allowedValue(ControlledVariable var, Object value) { none() }
-
-    predicate allowedClass(ClassObject cls) { none() }
-
-    predicate prohibitedValue(ControlledVariable var, Object value) { none() }
-
-    predicate prohibitedClass(ClassObject cls) { none() }
-  
-    ControlFlowNode getRelevantUse(ControlledVariable var) { none() }
-    
-}
-
-
-predicate baseless_is_new_style(ClassObject cls) {
-    cls.isC()
+cached
+int version_tuple_value(Object t) {
+    not exists(tuple_index_value(t, 1)) and result = tuple_index_value(t, 0)*10
     or
-    major_version() >= 3
+    not exists(tuple_index_value(t, 2)) and result = tuple_index_value(t, 0)*10 + tuple_index_value(t, 1)
+    or
+    tuple_index_value(t, 2) = 0 and result = tuple_index_value(t, 0)*10 + tuple_index_value(t, 1)
+    or
+    tuple_index_value(t, 2) > 0 and result = tuple_index_value(t, 0)*10 + tuple_index_value(t, 1) + 1
+}
+
+/* Holds if `cls` is a new-style class if it were to have no explicit base classes */
+predicate baseless_is_new_style(ClassObject cls) {
+    cls.isBuiltin()
+    or
+    major_version() = 3
     or
     exists(cls.declaredMetaClass())
 }
@@ -309,20 +124,20 @@ predicate baseless_is_new_style(ClassObject cls) {
 cached
 ClassObject builtin_base_type(ClassObject cls) {
     /* The extractor uses the special name ".super." to indicate the super class of a builtin class */
-    py_cmembers_versioned(cls, ".super.", result, major_version().toString())
+    py_cmembers_versioned(cls, ".super.", result, _)
 }
 
 /** Gets the `name`d attribute of built-in class `cls` */
 cached
 Object builtin_class_attribute(ClassObject cls, string name) {
     not name = ".super." and
-    py_cmembers_versioned(cls, name, result, major_version().toString())
+    py_cmembers_versioned(cls, name, result, _)
 }
 
-/** Gets the `name`d attribute of built-in module `m` */
-cached 
-Object builtin_module_attribute(ModuleObject m, string name) {
-     py_cmembers_versioned(m, name, result, major_version().toString())
+/** Holds if the `name`d attribute of built-in module `m` is `value` of `cls` */
+cached
+predicate builtin_module_attribute(ModuleObject m, string name, Object value, ClassObject cls) {
+    py_cmembers_versioned(m, name, value, _) and cls = builtin_object_type(value)
 }
 
 /** Gets the (built-in) class of the built-in object `obj` */
@@ -346,42 +161,26 @@ predicate extensional_name(string n) {
 }
 
 
-/** Whether this class (not on a super-class) declares name */
+/** Holds if this class (not on a super-class) declares name */
 cached
 predicate class_declares_attribute(ClassObject cls, string name) {
-    class_defines_name(cls.getPyClass(), name)
+    exists(Class defn |
+        defn = cls.getPyClass() and
+        class_defines_name(defn, name)
+    )
     or
     exists(Object o |
         o = builtin_class_attribute(cls, name) and 
         not exists(ClassObject sup |
-            sup = builtin_base_type(cls) and 
+            sup = builtin_base_type(cls) and
             o = builtin_class_attribute(sup, name)
         )
     )
 }
 
-/** Whether the class defines name */
+/** Holds if the class defines name */
 private predicate class_defines_name(Class cls, string name) {
     exists(SsaVariable var | name = var.getId() and var.getAUse() = cls.getANormalExit())
-}
-
-/** Whether pre precedes post, ignoring the inferred call graph.
- *  That is, is it impossible for post to execute without pre 
- *  having executed at least once, ignoring the inferred call graph.
- */
-predicate base_scope_precedes(Scope pre, Scope post, int ranking) {
-    not post instanceof Module and
-    post.getEnclosingModule() = pre and ranking = 2
-    or
-    post.getScope() = pre and not pre instanceof ImportTimeScope and ranking = 2
-    or
-    ranking = 1 and
-    exists(Class c |
-        pre != post and
-        pre.getScope() = c and post.getScope() = c and
-        not exists(post.(Function).getADecorator()) |
-        pre.getName() = "__init__" or pre.getName() = "new"
-    )
 }
 
 /** Gets a return value CFG node, provided that is safe to track across returns */
@@ -393,67 +192,381 @@ ControlFlowNode safe_return_node(PyFunctionObject func) {
         result = pvar.getAUse()
     ) and
     // No alternatives
-    not exists(ControlFlowNode branch |
-        branch.getScope() = func.getFunction() and
-        branch.isBranch()
+    not exists(ControlFlowNode branch | branch.isBranch() and branch.getScope() = func.getFunction())
+}
+
+/** Holds if it can be determined from the control flow graph alone that this function can never return */
+predicate function_can_never_return(FunctionObject func) {
+    /* A Python function never returns if it has no normal exits that are not dominated by a
+     * call to a function which itself never returns.
+     */
+    exists(Function f |
+        f = func.getFunction() and
+        not exists(f.getAnExitNode())
+    )
+    or
+    func = theExitFunctionObject()
+}
+
+/** Python specific sub-class of generic EssaNodeDefinition */
+class PyNodeDefinition extends EssaNodeDefinition {
+
+    PyNodeDefinition() {
+        this.getSourceVariable().hasDefiningNode(this.getDefiningNode())
+    }
+
+    override string getRepresentation() {
+        result = this.getAQlClass()
+    }
+
+}
+
+/** Python specific sub-class of generic EssaNodeRefinement */
+class PyNodeRefinement extends EssaNodeRefinement {
+
+    override string getRepresentation() {
+        result = this.getAQlClass() + "(" + this.getInput().getRepresentation() + ")"
+        or
+        not exists(this.getInput()) and
+        result = this.getAQlClass() + "(" + this.getSourceVariable().getName() + "??)"
+    }
+}
+
+/** An assignment to a variable `v = val` */
+class AssignmentDefinition extends PyNodeDefinition {
+
+    AssignmentDefinition() {
+        SsaSource::assignment_definition(this.getSourceVariable(), this.getDefiningNode(), _)
+    }
+
+    ControlFlowNode getValue() {
+        SsaSource::assignment_definition(this.getSourceVariable(), this.getDefiningNode(), result)
+    }
+
+    override string getRepresentation() {
+        result = this.getValue().getNode().toString()
+    }
+
+}
+
+/** An assignment to a variable as part of a multiple assignment `..., v, ... = val` */
+class MultiAssignmentDefinition extends PyNodeDefinition {
+
+    MultiAssignmentDefinition() {
+        SsaSource::multi_assignment_definition(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+    override string getRepresentation() {
+        result = "..."
+    }
+
+}
+
+/** A definition of a variable by declaring it as a parameter */
+class ParameterDefinition extends PyNodeDefinition {
+
+    ParameterDefinition() {
+        SsaSource::parameter_definition(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+    predicate isSelf() {
+        this.getDefiningNode().getNode().(Parameter).isSelf()
+    }
+
+    ControlFlowNode getDefault() {
+        result.getNode() = this.getDefiningNode().getNode().(Parameter).getDefault()
+    }
+
+}
+
+/** A definition of a variable in a for loop `for v in ...:` */
+class IterationDefinition extends PyNodeDefinition {
+
+    IterationDefinition() {
+        SsaSource::iteration_defined_variable(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+}
+
+/** A deletion of a variable `del v` */
+class DeletionDefinition extends PyNodeDefinition {
+
+    DeletionDefinition() {
+        SsaSource::deletion_definition(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+
+}
+
+/** Definition of variable at the entry of a scope. Usually this represents the transfer of
+ * a global or non-local variable from one scope to another.
+ */
+class ScopeEntryDefinition extends PyNodeDefinition {
+
+    ScopeEntryDefinition() {
+        SsaSource::scope_entry_definition(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+    Scope getScope() {
+        result.getEntryNode() = this.getDefiningNode()
+    }
+
+}
+
+/** Definition of non-local variable at the entry of an inner function.
+ */
+class ClosureEntryDefinition extends PyNodeDefinition {
+
+    ClosureEntryDefinition() {
+        SsaSource::nonlocal_variable_entry_definition(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+}
+
+/** Possible redefinition of variable via `from ... import *` */
+class ImportStarRefinement extends PyNodeRefinement {
+
+    ImportStarRefinement() {
+        SsaSource::import_star_refinement(this.getSourceVariable(), _, this.getDefiningNode())
+    }
+
+}
+
+/** Assignment of an attribute `obj.attr = val` */
+class AttributeAssignment extends PyNodeRefinement {
+
+    AttributeAssignment() {
+        SsaSource::attribute_assignment_refinement(this.getSourceVariable(), _, this.getDefiningNode())
+    }
+
+    string getName() {
+        result = this.getDefiningNode().(AttrNode).getName()
+    }
+
+    ControlFlowNode getValue() {
+        result = this.getDefiningNode().(DefinitionNode).getValue()
+    }
+
+    override string getRepresentation() {
+        result = this.getAQlClass() + " '" + this.getName() + "'(" + this.getInput().getRepresentation() + ")"
+        or
+        not exists(this.getInput()) and
+        result = this.getAQlClass() + " '" + this.getName() + "'(" + this.getSourceVariable().getName() + "??)"
+    }
+
+}
+
+/** A use of a variable as an argument, `foo(v)`, which might modify the object referred to. */
+class ArgumentRefinement extends PyNodeRefinement {
+
+    ArgumentRefinement() {
+        SsaSource::call_refinement(this.getSourceVariable(), _, this.getDefiningNode())
+    }
+
+}
+
+/** Deletion of an attribute `del obj.attr`. */
+class EssaAttributeDeletion extends PyNodeRefinement {
+
+    EssaAttributeDeletion() {
+        SsaSource::attribute_deletion_refinement(this.getSourceVariable(), _, this.getDefiningNode())
+    }
+
+    string getName() {
+        result = this.getDefiningNode().(AttrNode).getName()
+    }
+
+}
+
+/** A pi-node (guard) with only one successor. */
+class SingleSuccessorGuard extends PyNodeRefinement {
+
+    SingleSuccessorGuard() {
+        SsaSource::test_refinement(this.getSourceVariable(), _, this.getDefiningNode())
+    }
+
+    boolean getSense() {
+        exists(this.getDefiningNode().getAFalseSuccessor()) and result = false
+        or
+        exists(this.getDefiningNode().getATrueSuccessor()) and result = true
+    }
+
+    override string getRepresentation() {
+        result = PyNodeRefinement.super.getRepresentation() + " [" + this.getSense().toString() + "]"
+        or
+        not exists(this.getSense()) and
+        result = PyNodeRefinement.super.getRepresentation() + " [??]"
+    }
+}
+
+/** Implicit definition of the names of sub-modules in a package.
+ * Although the interpreter does not pre-define these names, merely populating them
+ * as they are imported, this is a good approximation for static analysis.
+ */
+class ImplicitSubModuleDefinition extends PyNodeDefinition {
+
+    ImplicitSubModuleDefinition() {
+        SsaSource::init_module_submodule_defn(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+}
+
+/** Implicit definition of __name__ at module entry. See https://www.python.org/dev/peps/pep-0338/ */
+class ImplicitModuleNameDefinition extends PyNodeDefinition {
+
+    ImplicitModuleNameDefinition() {
+        SsaSource::module_name_defn(this.getSourceVariable(), this.getDefiningNode(), _)
+    }
+
+    string getName() {
+        SsaSource::module_name_defn(this.getSourceVariable(), this.getDefiningNode(), result)
+    }
+
+}
+
+/** An implicit (possible) definition of an escaping variable at a call-site */
+class CallsiteRefinement extends PyNodeRefinement {
+
+    CallsiteRefinement() {
+        SsaSource::variable_refined_at_callsite(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+    CallNode getCall() {
+        this.getDefiningNode() = result
+    }
+
+}
+
+/** An implicit (possible) modification of the object referred at a method call */
+class MethodCallsiteRefinement extends PyNodeRefinement {
+
+    MethodCallsiteRefinement() {
+        SsaSource::method_call_refinement(this.getSourceVariable(), _, this.getDefiningNode())
+    }
+
+    CallNode getCall() {
+        this.getDefiningNode() = result
+    }
+
+}
+
+/** An implicit (possible) modification of `self` at a method call */
+class SelfCallsiteRefinement extends MethodCallsiteRefinement {
+
+    SelfCallsiteRefinement() {
+        this.getSourceVariable().(Variable).isSelf()
+    }
+
+}
+
+/** Python specific sub-class of generic EssaEdgeRefinement */
+class PyEdgeRefinement extends EssaEdgeRefinement {
+
+    override string getRepresentation() {
+        /* This is for testing so use capital 'P' to make it sort before 'phi' and
+         * be more visually distinctive. */
+        result = "Pi(" + this.getInput().getRepresentation() + ") [" + this.getSense() + "]"
+        or
+        not exists(this.getInput()) and
+        result = "Pi(" + this.getSourceVariable().getName() + "??) [" + this.getSense() + "]"
+    }
+
+}
+
+/** Hold if outer contains inner, both are contained within a test and inner is a use is a plain use or an attribute lookup */
+predicate contains_interesting_expression_within_test(ControlFlowNode outer, ControlFlowNode inner) {
+    inner.isLoad() and
+    exists(ControlFlowNode test |
+        test_contains(test, outer) and
+        test_contains(test, inner) |
+        inner instanceof NameNode or
+        inner instanceof AttrNode
     )
 }
 
-predicate is_parameter_default(ControlFlowNode def) {
-   exists(Parameter p | p.getDefault().getAFlowNode() = def)
+/** Hold if `expr` is a test (a branch) and `use` is within that test */
+predicate test_contains(ControlFlowNode expr, ControlFlowNode use) {
+    expr.getNode() instanceof Expr and
+    expr.isBranch() and
+    expr.getAChild*() = use
 }
 
-predicate base_defined_in_scope(GlobalVariable g, Scope s) {
-    g.getAStore().getScope() = s
+/** Holds if `testr` is a test (a branch), `use` is within that test and `def` is an edge from that test with `sense` */
+predicate refinement_test(ControlFlowNode test, ControlFlowNode use, boolean sense, PyEdgeRefinement def) {
+    /* Because calls such as `len` may create a new variable, we need to go via the source variable
+     * That is perfectly safe as we are only dealing with calls that do not mutate their arguments.
+     */
+    use = def.getInput().getSourceVariable().(Variable).getAUse() and
+    test = def.getPredecessor().getLastNode() and
+    test_contains(test, use) and
+    sense = def.getSense()
 }
 
-pragma [noinline]
-predicate base_at_scope_exit(Scope s, string name, SsaVariable var) {
-    var.getVariable() instanceof GlobalVariable and
-    var.getAUse() = s.getANormalExit() and
-    var.getId() = name
-}
-
-/** Mark simple cases to avoid unneccessary computation */
-DefinitionNode simple_global_defn(GlobalVariable g) {
-   result = g.getAStore().getAFlowNode()
-   and
-   strictcount(g.getAStore().getAFlowNode()) = 1
-   and
-   not exists(builtin_object(g.getId()))
-   and
-   not exists(NameNode n | n.uses(g) and n.getScope() instanceof Class)
-}
-
-predicate indexed_callsite_for_class(Class cls, BasicBlock b, int i) {
-    exists(ClassDef cdef |
-        cdef.getDefinedClass() = cls and
-        b.getNode(i) = cdef.getValue().getAFlowNode()
+/** Holds if `f` is an import of the form `from .[...] import name` and the enclosing scope is an __init__ module */
+cached
+predicate live_import_from_dot_in_init(ImportMemberNode f, EssaVariable var) {
+    exists(string name |
+        import_from_dot_in_init(f.getModule(name)) and
+        var.getSourceVariable().getName() = name and var.getAUse() = f
     )
 }
 
-
-/** INTERNAL -- Do not use */
-predicate last_simple_attribute_store_in_scope(SsaVariable var, string name, ControlFlowNode stored) {
-    extensional_name(name) and
-    exists(AttrNode fstore |
-        fstore.(DefinitionNode).getValue() = stored |
-        fstore.isStore() and
-        var.getAUse() = fstore.getObject(name)
-        and not exists(AttrNode better |
-            better.isStore() and
-            var.getAUse() = better.getObject(name) and
-            fstore.strictlyDominates(better)
-        )
+/** Holds if `f` is an import of the form `from .[...] import ...` and the enclosing scope is an __init__ module */
+predicate import_from_dot_in_init(ImportExprNode f) {
+    f.getScope() = any(Module m).getInitModule() and
+    (
+        f.getNode().getLevel() = 1 and
+        not exists(f.getNode().getName())
+        or
+        f.getNode().getImportedModuleName() = f.getEnclosingModule().getPackage().getName()
     )
 }
 
-predicate non_module_scope_defines_or_uses_global(Scope s, GlobalVariable v) {
-    exists(NameNode n |
-        n.getScope().getScope*() = s |
-        n.uses(v) or n.defines(v)
+/** Gets the pseudo-object representing the value referred to by an undefined variable */
+cached
+Object undefinedVariable() {
+    py_special_objects(result, "_semmle_undefined_value")
+}
+
+/** Gets the `value, cls, origin` that `f` would refer to if it has not been assigned some other value */
+cached predicate potential_builtin_points_to(NameNode f, Object value, ClassObject cls, ControlFlowNode origin) {
+    f.isGlobal() and f.isLoad() and
+    value = builtin_object(f.getId()) and py_cobjecttypes(value, cls) and origin = f
+}
+
+module BaseFlow {
+    /* Helper for this_scope_entry_value_transfer(...). Transfer of values from earlier scope to later on */
+    pragma [noinline]
+    predicate scope_entry_value_transfer_from_earlier(EssaVariable pred_var, Scope pred_scope, ScopeEntryDefinition succ_def, Scope succ_scope) {
+        pred_var.reachesExit() and
+        pred_var.getScope() = pred_scope and
+        pred_var.getSourceVariable() = succ_def.getSourceVariable() and
+        succ_def.getScope() = succ_scope and
+        pred_scope.precedes(succ_scope)
+    }
+}
+
+/** Points-to for syntactic elements where context is not relevant */
+predicate simple_points_to(ControlFlowNode f, Object value, ClassObject cls, ControlFlowNode origin) {
+    kwargs_points_to(f, cls) and value = f and origin = f
+    or
+    varargs_points_to(f, cls) and value = f and origin = f
+    or
+    BasePointsTo::points_to(f, value, origin) and cls = simple_types(value)
+    or
+    value = f.getNode().(ImmutableLiteral).getLiteralObject() and cls = simple_types(value) and origin = f
+}
+
+/** Holds if `bit` is a binary expression node with a bitwise operator.
+ * Helper for `this_binary_expr_points_to`.
+ */
+predicate bitwise_expression_node(BinaryExprNode bit, ControlFlowNode left, ControlFlowNode right) {
+    exists(Operator op |
+        op = bit.getNode().getOp() |
+        op instanceof BitAnd or
+        op instanceof BitOr or
+        op instanceof BitXor
     ) and
-    not s instanceof Module
+    left = bit.getLeft() and
+    right = bit.getRight()
 }
-
-

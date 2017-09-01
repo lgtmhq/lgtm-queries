@@ -202,7 +202,7 @@ abstract class PathExpr extends Expr {
    * Gets the file or folder that the first `n` components of this path refer to
    * when resolved relative to the root folder of the given `priority`.
    */
-  Container resolveUpTo(int n, int priority) {
+  pragma[nomagic] Container resolveUpTo(int n, int priority) {
     result = getValue().(PathString).resolveUpTo(n, getSearchRoot(priority)).getContainer()
   }
 

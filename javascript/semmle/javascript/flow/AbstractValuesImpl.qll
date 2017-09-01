@@ -65,6 +65,17 @@ newtype TAbstractValue =
   /** An abstract representation of the global object. */
   TAbstractGlobalObject()
   or
+  /** An abstract representation of a CommonJS `module` object. */
+  TAbstractModuleObject(Module m) {
+    // only interesting for modules that are imported somewhere
+    m = any(Require r).getImportedModule()
+  }
+  or
+  /** An abstract representation of a CommonJS `exports` object. */
+  TAbstractExportsObject(Module m) {
+    exists(TAbstractModuleObject(m))
+  }
+  or
   /** An abstract representation of an object not covered by the other abstract values. */
   TAbstractOtherObject()
   or
@@ -85,7 +96,6 @@ newtype TAbstractValue =
    * `cause` recording the cause of the incompleteness.
    */
   TIndefiniteAbstractValue(DataFlowIncompleteness cause)
-
 
 /**
  * Gets a definite abstract value with the given type.

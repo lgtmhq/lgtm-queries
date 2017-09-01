@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/implicit-cast-in-compound-assignment
  * @tags reliability
  *       security
  *       external/cwe/cwe-190

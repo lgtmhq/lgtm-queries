@@ -74,7 +74,7 @@ class SafeYaml extends FlowSource, ClassInstanceExpr {
 class UnsafeSnakeYamlParse extends MethodAccess {
   UnsafeSnakeYamlParse() {
     exists(Method m | m.getDeclaringType() instanceof Yaml and
-      (m.hasName("load") or m.hasName("loadAll") or m.hasName("parse")) and
+      (m.hasName("load") or m.hasName("loadAll") or m.hasName("loadAs") or m.hasName("parse")) and
       m = this.getMethod()
     ) and
     not exists(SafeYaml sy | sy.flowsTo(this.getQualifier()))

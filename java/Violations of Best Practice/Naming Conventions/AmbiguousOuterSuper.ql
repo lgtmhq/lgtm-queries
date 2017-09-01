@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/subtle-inherited-call
  * @tags reliability
  *       readability
  */

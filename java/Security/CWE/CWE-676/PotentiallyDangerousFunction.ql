@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/potentially-dangerous-function
  * @tags reliability
  *       security
  *       external/cwe/cwe-676

@@ -13,33 +13,37 @@
 
 import python
 
-// Helper predicates for mutliple call to __init__/__del__ queries.
+// Helper predicates for multiple call to __init__/__del__ queries.
 
+/** Holds if `self.name` calls `multi` by mutliple paths, and thus calls it more than once */
 predicate multiple_calls_to_superclass_method(ClassObject self, FunctionObject multi, string name) {
-    exists(FunctionObject top_method |
-        super_class_method(self, top_method, multi, name) and
-        strictcount(FunctionObject x | 
-            super_class_method(self, top_method, x, name) and
-            x.getACallee() = multi
-        ) > 1
+    exists(FunctionInvocation top, FunctionInvocation i1, FunctionInvocation i2 |
+        i1 != i2 and
+        top.runtime(self.declaredAttribute(name)) and
+        i1 = top.getACallee+() and
+        i2 = top.getACallee+() and
+        i1.getFunction() = multi and
+        i2.getFunction() = multi and
+        self.getASuperType().declaredAttribute(name) = multi
     )
 }
 
-private predicate super_class_method(ClassObject self, FunctionObject top_method, FunctionObject method, string name) {
-    (name = "__init__" or name = "__del__") and
-    self.lookupAttribute(name) = top_method and
-    top_method.getACallee*() = method and
-    self.getAnImproperSuperType().declaredAttribute(name) = method
-}
-
-predicate missing_call_to_superclass_method(ClassObject self, FunctionObject top_method, FunctionObject missing, string name) {
-    self.lookupAttribute(name) = top_method and
-    missing != top_method and
-    self.getAnImproperSuperType().declaredAttribute(name) = missing and
-    not top_method.getACallee*() = missing and
+/** Holds if `self.name` does not call `missing`, even though it is expected to */
+predicate missing_call_to_superclass_method(ClassObject self, FunctionObject missing, string name) {
+    missing = self.getASuperType().declaredAttribute(name) and
+    exists(FunctionInvocation top |
+        top.runtime(self.lookupAttribute(name)) and
+        /* There is no call to missing originating from top */
+        not exists(FunctionInvocation i |
+            i = top.getACallee*() and
+            i.getFunction() = missing
+        )
+    ) and
     /* Make sure that all 'methods' are objects that we can understand */
-    forall(Object init |
-        init = self.getAnImproperSuperType().declaredAttribute(name) |
-        init instanceof FunctionObject
-    )
+    forall(ClassObject sup |
+        sup = self.getAnImproperSuperType() and
+        sup.declaresAttribute(name) |
+        sup.declaredAttribute(name) instanceof FunctionObject
+    ) and
+    not self.isAbstract()
 }

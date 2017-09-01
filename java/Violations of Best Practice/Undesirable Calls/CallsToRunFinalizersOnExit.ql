@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/run-finalizers-on-exit
  * @tags reliability
  *       maintainability
  */

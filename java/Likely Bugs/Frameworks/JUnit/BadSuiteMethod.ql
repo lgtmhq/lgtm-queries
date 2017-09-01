@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/wrong-junit-suite-signature
  * @tags testability
  *       maintainability
  *       frameworks/junit

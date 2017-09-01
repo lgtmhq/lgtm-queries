@@ -66,6 +66,10 @@ predicate clearlyNotNull(SsaVariable v) {
   ) or
   exists(CatchClause cc |
     cc.getVariable() = v.(SsaExplicitUpdate).getDefiningExpr()
+  ) or
+  exists(SsaVariable captured |
+    v.(SsaImplicitInit).captures(captured) and
+    clearlyNotNull(captured)
   )
 }
 

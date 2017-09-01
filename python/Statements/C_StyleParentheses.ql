@@ -38,5 +38,7 @@ not e instanceof Tuple and
     exists(Assert a | a.getTest() = e and not exists(a.getMsg())) and kind = "assert" and what = "test"
 )
 and
+// These require parentheses
+(not e instanceof Yield and not e instanceof YieldFrom and not e instanceof GeneratorExp) and
 l = e.getLocation() and l.getStartLine() = l.getEndLine()
 select e, "Parenthesised " + what + " in '" + kind + "' statement."
