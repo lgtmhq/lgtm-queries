@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/unused-reference-type
  * @tags maintainability
  *       useless-code
  *       external/cwe/cwe-561

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/concatenated-command-line
  * @tags security
  *       external/cwe/cwe-078
  *       external/cwe/cwe-088

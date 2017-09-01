@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/database-resource-leak
  * @tags correctness
  *       resources
  *       external/cwe/cwe-404

@@ -27,13 +27,14 @@ import Expressions.CallArgs
 
 from Call call, FunctionObject func, FunctionObject overridden, string problem
 where
-overridden_call(overridden, func, call) and
-(
-    exists(int limit | too_many_args(call, func, limit) and problem = "too many arguments" and not too_many_args(call, overridden, limit))
+func.overrides(overridden) and (
+    wrong_args(call, func, _, problem) and correct_args_if_called_as_method(call, overridden)
     or
-    exists(int limit | too_few_args(call, func, limit) and problem = "too few arguments" and not too_few_args(call, overridden, limit))
-    or
-    exists(string name | illegally_named_parameter(call, func, name) and problem = "an argument named '" + name + "'" and not illegally_named_parameter(call, overridden, name))
+    exists(string name | 
+        illegally_named_parameter(call, func, name) and problem = "an argument named '" + name + "'" and
+        overridden.getFunction().getAnArg().(Name).getId() = name
+    )
 )
+
 select func, "Overriding method signature does not match $@, where it is passed " + problem + ". Overridden method $@ is correctly specified.",
 call, "here", overridden, overridden.descriptiveString()

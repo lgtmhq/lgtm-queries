@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/tainted-format-string
  * @tags security
  *       external/cwe/cwe-134
  */

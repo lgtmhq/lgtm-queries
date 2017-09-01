@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/unsafe-get-resource
  * @tags reliability
  *       maintainability
  */

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/relative-path-command
  * @tags security
  *       external/cwe/cwe-078
  *       external/cwe/cwe-088

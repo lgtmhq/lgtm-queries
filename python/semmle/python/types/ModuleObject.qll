@@ -60,8 +60,10 @@ abstract class ModuleObject extends Object {
 
     /** Whether this module "exports" `name`. That is, whether using `import *` on this module
      will result in `name` being added to the namespace. */
-    abstract predicate exports(string name);
-
+    predicate exports(string name) {
+        FinalPointsTo::module_exports(this, name)
+    }
+ 
     /** Whether the complete set of names "exported" by this module can be accurately determined */
     abstract predicate exportsComplete();
 
@@ -75,7 +77,7 @@ abstract class ModuleObject extends Object {
     /** Whether this module is imported by 'import name'. For example on a linux system,
       * the module 'posixpath' is imported as 'os.path' or as 'posixpath' */
     predicate importedAs(string name) {
-        final_module_imported_as(this, name)
+        FinalPointsTo::module_imported_as(this, name)
     }
 
     abstract predicate hasAttribute(string name);
@@ -105,11 +107,6 @@ class BuiltinModuleObject extends ModuleObject {
 
     Object getAttribute(string name) {
         py_cmembers_versioned(this, name, result, major_version().toString())
-    }
-
-    predicate exports(string name) {
-        py_cmembers_versioned(this, name, _, major_version().toString()) and
-        not name.matches("\\_%")
     }
 
     predicate hasAttribute(string name) {
@@ -151,31 +148,34 @@ class PythonModuleObject extends ModuleObject {
         result = this.getModule().getFile()
     }
 
-    cached Object getAttribute(string name) {
-        final_py_module_attributes(this.getModule(), name, result, _, _)
-    }
-
-    predicate exports(string name) {
-        final_module_exports(this.getModule(), name)
+    Object getAttribute(string name) {
+        this.attributeRefersTo(name, result, _, _)
     }
 
     predicate exportsComplete() {
-        module_exports_complete(this.getModule())
+        exists(Module m |
+            m = this.getModule() |
+            not exists(Call modify, Attribute attr, GlobalVariable all | 
+                modify.getScope() = m and modify.getFunc() = attr and 
+                all.getId() = "__all__" |
+                attr.getObject().(Name).uses(all)
+            )
+        )
     }
 
     predicate hasAttribute(string name) {
-        final_module_defines_name(this.getModule(), name)
+        FinalPointsTo::module_defines_name(this.getModule(), name)
         or
         /* The interpreter always adds the __name__ and __package__ attributes */
         name = "__name__" or name = "__package__"
     }
 
     predicate attributeRefersTo(string name, Object value, ControlFlowNode origin) {
-         final_py_module_attributes(this.getModule(), name, value, _, origin)
+         FinalPointsTo::py_module_attributes(this.getModule(), name, value, _, origin)
     }
 
     predicate attributeRefersTo(string name, Object value, ClassObject cls, ControlFlowNode origin) {
-         final_py_module_attributes(this.getModule(), name, value, cls, origin)
+         FinalPointsTo::py_module_attributes(this.getModule(), name, value, cls, origin)
     }
 
 }
@@ -225,15 +225,11 @@ class PackageObject extends ModuleObject {
     }
 
     Object getAttribute(string name) {
-        final_package_attributes(this, name, result, _, _)
+        FinalPointsTo::package_attribute_points_to(this, name, result, _, _)
     }
 
     PythonModuleObject getInitModule() {
         result.getModule() = this.getModule().getInitModule()
-    }
-
-    predicate exports(string name) {
-        final_module_exports(this.getModule(), name)
     }
 
     predicate exportsComplete() {
@@ -249,11 +245,11 @@ class PackageObject extends ModuleObject {
     }
 
     predicate attributeRefersTo(string name, Object value, ControlFlowNode origin) {
-        final_package_attributes(this, name, value, _, origin)
+        FinalPointsTo::package_attribute_points_to(this, name, value, _, origin)
     }
 
     predicate attributeRefersTo(string name, Object value, ClassObject cls, ControlFlowNode origin) {
-        final_package_attributes(this, name, value, cls, origin)
+        FinalPointsTo::package_attribute_points_to(this, name, value, cls, origin)
     }
 
     Location getLocation() {

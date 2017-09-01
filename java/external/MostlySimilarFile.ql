@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/similar-file
  * @tags testability
  *       maintainability
  *       useless-code

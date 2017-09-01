@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/unused-format-argument
  * @tags maintainability
  *       useless-code
  *       external/cwe/cwe-685

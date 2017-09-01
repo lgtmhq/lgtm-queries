@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/unvalidated-url-redirection
  * @tags security
  *       external/cwe/cwe-601
  */

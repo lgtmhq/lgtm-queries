@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/missing-override-annotation
  * @tags maintainability
  */
 import java

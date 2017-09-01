@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/tostring-typo
  * @tags maintainability
  *       readability
  *       naming

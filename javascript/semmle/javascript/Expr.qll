@@ -346,8 +346,8 @@ class Property extends @property, ASTNode {
 
   /** Gets the name of this property. */
   string getName() {
-    result = ((Identifier)getNameExpr()).getName() or
-    result = ((Literal)getNameExpr()).getValue()
+    not isComputed() and result = getNameExpr().(Identifier).getName() or
+    result = getNameExpr().(Literal).getValue()
   }
 
   /** Holds if the name of this property is computed. */

@@ -60,15 +60,31 @@ class Javadoc extends JavadocParent, @javadoc {
   }
 
   string toString() {
-    result = "/*" + toStringPrefix() + " " + getChild(0) + " " + toStringPostfix() + "*/"
+    result = toStringPrefix() + getChild(0) + toStringPostfix()
   }
 
-  /** Helper method for `toString`: return "" for normal comments, "*" for JavaDoc comments. */
-  private string toStringPrefix() { if isNormalComment(this) then result = "" else result = "*" }
+  private string toStringPrefix() {
+    if isEolComment(this) then
+      result = "//"
+    else (
+      if isNormalComment(this) then
+        result = "/* "
+      else
+        result = "/** "
+    )
+  }
 
-  /** Helper method for `toString`: return "" if there is exactly one child, "... " otherwise. */
-  private string toStringPostfix() { if strictcount(getAChild()) = 1 then result = "" else result = "... " }
-  
+  private string toStringPostfix() {
+    if isEolComment(this) then
+      result = ""
+    else (
+      if strictcount(getAChild()) = 1 then
+        result = " */"
+      else
+        result = " ... */"
+    )
+  }
+
   /** The Java code element that is commented by this piece of Javadoc. */
   Documentable getCommentedElement() { result.getJavadoc() = this }
 }

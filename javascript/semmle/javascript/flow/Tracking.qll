@@ -108,11 +108,11 @@ private predicate calls(InvokeExpr invk, Function f) {
  * Holds if `arg` is passed as an argument into parameter `parm`
  * through invocation `invk` of function `f`.
  */
-private predicate argumentPassing(InvokeExpr invk, Expr arg, Function f, SimpleParameter parm) {
+private predicate argumentPassing(CallSite invk, Expr arg, Function f, SimpleParameter parm) {
   exists (int i |
     calls(invk, f) and
     f.getParameter(i) = parm and not parm.isRestParameter() and
-    invk.getArgument(i) = arg and not invk.isSpreadArgument([0..i])
+    arg = invk.getArgumentNode(i)
   )
 }
 

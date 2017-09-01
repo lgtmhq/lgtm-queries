@@ -28,15 +28,21 @@ import Expressions.CallArgs
 
 from Call call, FunctionObject func, FunctionObject overriding, string problem
 where
-// Exclude case where both base and derived are called as that is handled by by "wong name/number of arguments in call" query.
-overridden_call(func, overriding, call) 
-and
+not func.getName() = "__init__" and
+overriding.overrides(func) and
+call = overriding.getAMethodCall().getNode() and
+correct_args_if_called_as_method(call, overriding) and
 (
-    exists(int limit | too_many_args(call, func, limit) and problem = "too many arguments" and not too_many_args(call, overriding, limit))
+    arg_count(call)+1 < func.minParameters() and problem = "too few arguments"
     or
-    exists(int limit | too_few_args(call, func, limit) and problem = "too few arguments" and not too_few_args(call, overriding, limit))
+    arg_count(call) >= func.maxParameters() and problem = "too many arguments"
     or
-    exists(string name | illegally_named_parameter(call, func, name) | problem = "an argument named '" + name + "'" and not illegally_named_parameter(call, overriding, name))
+    exists(string name | call.getAKeyword().getArg() = name and 
+        overriding.getFunction().getAnArg().(Name).getId() = name and
+        not func.getFunction().getAnArg().(Name).getId() = name and
+        problem = "an argument named '" + name + "'"
+    )
 )
+
 select func, "Overridden method signature does not match $@, where it is passed " + problem + ". Overriding method $@ is matches the call.",
 call, "call", overriding, overriding.descriptiveString()

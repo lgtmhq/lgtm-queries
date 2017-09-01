@@ -16,6 +16,8 @@
  */
 
 import python
+private import semmle.python.pointsto.Final
+private import semmle.python.pointsto.Filters
 
 /** An attribute access where the left hand side of the attribute expression 
   * is `self`.
@@ -34,10 +36,9 @@ class SelfAttribute extends Attribute {
 
 /** Whether variable 'self' is the self variable in method 'method' */
 private predicate self_variable(Function method, Variable self) {
-    exists(FunctionObject fobj | 
-        final_self_param(self.getAnAccess().getAFlowNode(), fobj) |
-        fobj.getFunction() = method
-    )
+    self.isParameter() and
+    method.isMethod() and
+    method.getArg(0).asName() = self.getAnAccess()
 }
 
 /** Whether attribute is an access of the form `self.attr` in the body of the class 'cls' */
@@ -66,10 +67,10 @@ class SelfAttributeRead extends SelfAttribute {
     }
 
     predicate guardedByHasattr() {
-        exists(HasAttr hasattr, ControlledVariable var |
+        exists(Variable var, ControlFlowNode n |
             var.getAUse() = this.getObject().getAFlowNode() and
-            hasattr.getAttr() = this.getName() and
-            hasattr.controls(var, this.getAFlowNode().getBasicBlock(), true)
+            hasattr(n, var.getAUse(), this.getName()) and
+            n.strictlyDominates(this.getAFlowNode())
         )
     }
 
@@ -101,11 +102,7 @@ private Object object_getattribute() {
     py_cmembers_versioned(theObjectType(), "__getattribute__", result, major_version().toString())
 }
 
-private Object object_init() {
-    py_cmembers_versioned(theObjectType(), "__init__", result, major_version().toString())
-}
-
-/** Helper class for UndefinedClassAttribute.ql &amp; MaybeUndefinedClassAttribute.ql */
+/** Helper class for UndefinedClassAttribute.ql and MaybeUndefinedClassAttribute.ql */
 class CheckClass extends ClassObject {
 
     private predicate ofInterest() {
@@ -120,12 +117,12 @@ class CheckClass extends ClassObject {
         not this.hasAttribute("__getattr__") and
         not this.selfSetattr() and
         /* If class overrides object.__init__, but we can't resolve it to a Python function then give up */
-        not exists(Object overriding_init |
-                overriding_init = this.lookupAttribute("__init__") and
-                overriding_init != object_init()
-                |
-                not overriding_init instanceof PyFunctionObject
-            )
+        forall(ClassObject sup |
+            sup = this.getAnImproperSuperType() and
+            sup.declaresAttribute("__init__") and
+            not sup = theObjectType() |
+            sup.declaredAttribute("__init__") instanceof PyFunctionObject
+        )
     }
 
     predicate alwaysDefines(string name) {
@@ -164,7 +161,7 @@ class CheckClass extends ClassObject {
     private predicate monkeyPatched(string name) {
         exists(Attribute a |
              a.getCtx() instanceof Store and
-             final_points_to(a.getObject().getAFlowNode(), this, _, _) and a.getName() = name
+             FinalPointsTo::points_to(a.getObject().getAFlowNode(), _, this, _, _) and a.getName() = name
         )
     }
 

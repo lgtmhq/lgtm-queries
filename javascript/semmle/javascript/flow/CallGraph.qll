@@ -62,7 +62,7 @@ class CallSite extends @invokeexpr {
    */
   AnalyzedFlowNode getArgumentNode(int i) {
     result = invk.getArgument(i) and
-    not invk.getArgument([0..i]) instanceof SpreadElement
+    not invk.isSpreadArgument([0..i])
   }
 
   /** Gets a potential callee of this call site. */

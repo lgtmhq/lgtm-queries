@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import python
+private import semmle.python.pointsto.Final
 
 /** An expression */
 class Expr extends Expr_, AstNode {
@@ -83,7 +84,7 @@ class Expr extends Expr_, AstNode {
     predicate refersTo(Object value, ClassObject cls, AstNode origin) {
         not py_special_objects(cls, "_semmle_unknown_type")
         and
-        final_points_to(this.getAFlowNode(), value, cls, origin.getAFlowNode())
+        FinalPointsTo::points_to(this.getAFlowNode(), _, value, cls, origin.getAFlowNode())
     }
 
     /** Whether this expression might "refer-to" to `value` which is from `origin` 
@@ -91,12 +92,12 @@ class Expr extends Expr_, AstNode {
      * where the class cannot be inferred.
      */
     predicate refersTo(Object value, AstNode origin) {
-        final_points_to(this.getAFlowNode(), value, _, origin.getAFlowNode())
+        FinalPointsTo::points_to(this.getAFlowNode(), _, value, _, origin.getAFlowNode())
     }
 
     /** Equivalent to `this.refersTo(value, _)` */
     predicate refersTo(Object value) {
-        final_points_to(this.getAFlowNode(), value, _, _)
+        FinalPointsTo::points_to(this.getAFlowNode(), _, value, _, _)
     }
 
 }
@@ -110,10 +111,13 @@ class Attribute extends Attribute_ {
 
     AttrNode getAFlowNode() { result = super.getAFlowNode() }
 
+
+    /** Gets the name of this attribute. That is the `name` in `obj.name` */
     string getName() {
         result = Attribute_.super.getAttr()
     }
 
+    /** Gets the object of this attribute. That is the `obj` in `obj.name` */
     Expr getObject() {
         result = Attribute_.super.getValue()
     }

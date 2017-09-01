@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/missing-clone-method
  * @tags reliability
  *       maintainability
  */

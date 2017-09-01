@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id java/comparison-of-identical-expressions
  * @tags reliability
  *       correctness
  *       logic

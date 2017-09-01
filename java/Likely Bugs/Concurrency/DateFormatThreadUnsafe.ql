@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/thread-unsafe-dateformat
  * @tags reliability
  *       correctness
  *       concurrency

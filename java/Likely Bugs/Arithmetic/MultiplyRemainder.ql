@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/multiplication-of-remainder
  * @tags maintainability
  *       correctness
  */

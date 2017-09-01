@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/confusing-method-signature
  * @tags maintainability
  *       readability
  *       naming

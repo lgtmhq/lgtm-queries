@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/unreleased-lock
  * @tags reliability
  *       security
  *       external/cwe/cwe-764

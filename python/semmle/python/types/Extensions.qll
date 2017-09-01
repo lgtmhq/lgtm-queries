@@ -20,6 +20,7 @@
 
 import python
 private import semmle.python.pointsto.Penultimate
+private import semmle.python.pointsto.PointsToContext
 
 /* Custom Facts. This extension mechanism allows you to add custom
  * sources of data to the points-to analysis.
@@ -29,7 +30,7 @@ abstract class FinalCustomPointsToFact extends @py_flow_node {
 
     string toString() { none() }
 
-    abstract predicate pointsTo(Object value, ClassObject cls, ControlFlowNode origin);
+    abstract predicate pointsTo(FinalContext context, Object value, ClassObject cls, ControlFlowNode origin);
 
 }
 
@@ -37,7 +38,17 @@ abstract class PenultimateCustomPointsToFact extends @py_flow_node {
 
     string toString() { none() }
 
-    abstract predicate pointsTo(Object value, ClassObject cls, ControlFlowNode origin);
+    abstract predicate pointsTo(PenultimateContext context, Object value, ClassObject cls, ControlFlowNode origin);
+
+}
+
+class Layer0CustomPointsToFact extends @py_flow_node {
+
+    string toString() { none() }
+
+    predicate pointsTo(Layer0Context ctx, Object value, ClassObject cls, ControlFlowNode origin) {
+        none()
+    }
 
 }
 
@@ -51,8 +62,8 @@ abstract class CustomPointsToOriginFact extends FinalCustomPointsToFact {
 
     abstract predicate pointsTo(Object value, ClassObject cls);
 
-    predicate pointsTo(Object value, ClassObject cls, ControlFlowNode origin) {
-        this.pointsTo(value, cls) and origin = this
+    predicate pointsTo(FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+        this.pointsTo(value, cls) and origin = this and context.appliesTo(this)
     }
 
 }
@@ -60,37 +71,23 @@ abstract class CustomPointsToOriginFact extends FinalCustomPointsToFact {
 /* An example */
 
 /** Any variable iterating over range or xrange must be an integer */
-class RangeIterationVariableFact extends PenultimateCustomPointsToFact {
+class RangeIterationVariableFact extends FinalCustomPointsToFact {
 
     RangeIterationVariableFact() {
         exists(For f, ControlFlowNode iterable |
             iterable.getBasicBlock().dominates(this.(ControlFlowNode).getBasicBlock()) and
             f.getIter().getAFlowNode() = iterable and
             f.getTarget().getAFlowNode() = this and
-            penultimate_points_to(iterable, _, theRangeType(), _)
+            PenultimatePointsTo::points_to(iterable, _, theRangeType(), _, _)
         )
     }
 
-    predicate pointsTo(Object value, ClassObject cls, ControlFlowNode origin) {
+    predicate pointsTo(FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
         value = this and 
         origin = this and
-        cls = theIntType()
+        cls = theIntType() and
+        context.appliesTo(this)
     }
-}
-
-/* Custom filters. This allows you to add custom filters to 
- * filter out results.
- * To implement a custom points-to filter you must implement four abstract methods.
- * The first two of those are:
- *    `boolean isTrueFor(ControlledVariable var)` and `boolean isTrueForAttribute(SsaVariable var, string attr_name)`
- * which are defined in ConditionalControlFlowNode, and describes what variable or attribute the test applies to.
- * 
- * The second two of those are:
- *    `
- */
-
-abstract class CustomPointsToFilter extends PenultimatePointsToFilter {
-
 }
 
 

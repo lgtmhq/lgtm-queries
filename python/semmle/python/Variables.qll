@@ -43,20 +43,30 @@ class Variable extends @py_variable {
         result.defines(this)
     }
 
+    /** Gets a use of this variable */
+    NameNode getAUse() {
+        result.uses(this)
+    }
+
     /** Gets the scope of this variable */
     Scope getScope() {
         variable(this, result, _)
     }
 
     /** Whether there is an access to this variable outside
-     * of its own scope. Usually occurs in nested functions.
+     * of its own scope. Usually occurs in nested functions
+     * or for global variables.
      */
     predicate escapes() {
-        none()
+        exists(Name n | n = this.getAnAccess() | n.getScope() != this.getScope())
     }
 
     /** Whether this variable is a parameter */
     predicate isParameter() {
+        none()
+    }
+
+    predicate isSelf() {
         none()
     }
 
@@ -73,13 +83,17 @@ class LocalVariable extends Variable {
         result = "Local Variable " + this.getId()
     }
 
-    predicate escapes() {
-        exists(Name n | n = this.getAnAccess() | n.getScope() != this.getScope())
-    }
-
     /** Whether this variable is a parameter */
     predicate isParameter() {
         exists(Parameter p | this.getAnAccess() = p)
+    }
+
+    /** Holds if this variable is the first parameter of a method. It is not necessarily called "self" */
+    override predicate isSelf() {
+        exists(Function f, Parameter self | 
+            this.getAnAccess() = self and
+            f.isMethod() and f.getArg(0) = self
+        )
     }
 
 }

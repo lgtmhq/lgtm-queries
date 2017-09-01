@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/tainted-permissions-check
  * @tags security
  *       external/cwe/cwe-807
  *       external/cwe/cwe-290

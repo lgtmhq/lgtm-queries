@@ -12,14 +12,17 @@
 // permissions and limitations under the License.
 
 import python
+private import semmle.python.pointsto.Base
 
-private predicate excluded_objects(@py_object obj) {
+private cached predicate is_an_object(@py_object obj) {
     /* CFG nodes for numeric literals, all of which have a @py_cobject for the value of that literal */
-    obj.(ControlFlowNode).getNode() instanceof ImmutableLiteral
-    or
-    /* @py_cobjects for modules which have a corresponding Python module */
-    exists(@py_cobject mod_type | py_special_objects(mod_type, "ModuleType") and py_cobjecttypes(obj, mod_type)) and
-    exists(Module m | py_cobjectnames(obj, m.getName()))
+    not obj.(ControlFlowNode).getNode() instanceof ImmutableLiteral
+    and
+    not (
+        /* @py_cobjects for modules which have a corresponding Python module */
+        exists(@py_cobject mod_type | py_special_objects(mod_type, "ModuleType") and py_cobjecttypes(obj, mod_type)) and
+        exists(Module m | py_cobjectnames(obj, m.getName()))
+    )
 }
 
 /** Instances of this class represent objects in the Python program. However, since
@@ -40,13 +43,13 @@ private predicate excluded_objects(@py_object obj) {
 class Object extends @py_object {
 
     Object() {
-        not excluded_objects(this)
+        is_an_object(this)
     }
 
     /** Gets an inferred type for this object, without using inter-procedural analysis.
      * WARNING: The lack of context makes this less accurate than f.refersTo(this, result, _)
      * for a control flow node 'f' */
-    cached ClassObject getAnInferredType() {
+    ClassObject getAnInferredType() {
         exists(ControlFlowNode somewhere | somewhere.refersTo(this, result, _))
         or
         py_cobjecttypes(this, result)
@@ -82,8 +85,8 @@ class Object extends @py_object {
         not this.hasOrigin() and filepath = "Compiled Code" and bl = 0 and bc = 0 and el = 0 and ec = 0
    }
 
-    string toString() { 
-        this.isC() and
+    string toString() {
+        this.isC() and not this = undefinedVariable() and
             exists(ClassObject type, string typename, string objname |
                 py_cobjecttypes(this, type) and py_cobjectnames(this, objname) and typename = type.getName() |
                 result = typename + " " + objname
@@ -91,7 +94,7 @@ class Object extends @py_object {
         or
             result = this.getOrigin().toString()
     }
-    
+
     /** Gets the class of this object for simple cases, namely constants, functions, 
      * comprehensions and built-in objects.
      *
@@ -234,7 +237,7 @@ class StringObject extends Object {
     }
 
     /** Gets the text for this string */
-    string getText() {
+    cached string getText() {
         exists(string quoted_string |
             py_cobjectnames(this, quoted_string) and
             result = quoted_string.regexpCapture("[bu]'([\\s\\S]*)'", 1)
@@ -433,5 +436,7 @@ private ClassObject string_literal(Expr e) {
     e instanceof Unicode and result = theUnicodeType()
 }
 
-
+Object theUnknownType() {
+    py_special_objects(result, "_semmle_unknown_type")
+}
 

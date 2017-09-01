@@ -34,8 +34,6 @@ import semmle.python.Comment
 import semmle.python.GuardedControlFlow
 import semmle.python.types.ImportTime
 import semmle.python.types.Object
-import semmle.python.pointsto.Final
-import semmle.python.types.Object
 import semmle.python.types.ClassObject
 import semmle.python.types.FunctionObject
 import semmle.python.types.ModuleObject
@@ -46,5 +44,9 @@ import semmle.python.Assigns
 import semmle.python.SelfAttribute
 import semmle.python.types.Properties
 import semmle.python.xml.XML
+import semmle.dataflow.SSA
+import semmle.python.pointsto.Base
+import semmle.python.pointsto.Context
+import semmle.python.pointsto.CallGraph
 
 import site

@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/wrong-readresolve-signature
  * @tags reliability
  *       maintainability
  *       language-features

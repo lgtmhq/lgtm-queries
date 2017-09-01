@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/inefficient-key-set-iterator
  * @tags efficiency
  *       maintainability
  */

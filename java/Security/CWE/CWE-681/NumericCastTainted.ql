@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/tainted-numeric-cast
  * @tags security
  *       external/cwe/cwe-197
  *       external/cwe/cwe-681

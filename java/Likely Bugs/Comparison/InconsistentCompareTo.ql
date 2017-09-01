@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/inconsistent-compareto-and-equals
  * @tags reliability
  *       correctness
  */

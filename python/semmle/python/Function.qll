@@ -247,6 +247,14 @@ class Parameter extends Parameter_ {
         )
     }
 
+    /** Holds if this parameter is the first parameter of a method. It is not necessarily called "self" */
+    predicate isSelf() {
+        exists(Function f |
+            f.getArg(0) = this and
+            f.isMethod()
+        )
+    }
+
 }
 
 /** An expression that generates a callable object, either a function expression or a lambda */

@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/path-injection
  * @tags security
  *       external/cwe/cwe-022
  *       external/cwe/cwe-023

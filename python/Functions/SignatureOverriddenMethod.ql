@@ -30,8 +30,12 @@ import Expressions.CallArgs
 
 from FunctionObject base, PyFunctionObject derived
 where
-  // Exclude case where both base and derived are called as that is handled by by "wong name/number of arguments in call" query.
-  not overridden_call(base, derived, _) and
+  not exists(base.getACall()) and
+  not exists(FunctionObject a_derived |
+      a_derived.overrides(base) and
+      exists(a_derived.getACall())
+  ) and
+  not derived.getFunction().isSpecialMethod() and
   derived.getName() != "__init__" and
   derived.isNormalMethod() and
   not derived.getFunction().isSpecialMethod() and

@@ -210,7 +210,7 @@ class CommentedOutCodeBlock extends @py_comment {
 
     /** Whether this commented-out code block contains the comment c */
     predicate contains(Comment c) {
-        this = c 
+        this = c
         or
         exists(Comment prev |
             non_empty_following(prev) = c and

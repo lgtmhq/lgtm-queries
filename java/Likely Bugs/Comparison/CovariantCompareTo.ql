@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/wrong-compareto-signature
  * @tags reliability
  *       correctness
  */

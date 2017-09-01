@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/iterator-remove-failure
  * @tags reliability
  *       correctness
  *       logic

@@ -51,3 +51,20 @@ class JQueryMethodCall extends CallExpr {
     result = name
   }
 }
+
+/**
+ * A call to `jQuery.parseXML`.
+ */
+private class JQueryParseXmlCall extends XML::ParserInvocation {
+  JQueryParseXmlCall() {
+    this.(JQueryMethodCall).getMethodName() = "parseXML"
+  }
+
+  override DataFlowNode getSourceArgument() {
+    result = getArgument(0)
+  }
+
+  override predicate resolvesEntities(XML::EntityKind kind) {
+    kind = XML::InternalEntity()
+  }
+}

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id java/internal-representation-exposure
  * @tags reliability
  *       maintainability
  *       modularity

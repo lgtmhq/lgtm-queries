@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/iterator-hasnext-calls-next
  * @tags reliability
  *       correctness
  */

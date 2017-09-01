@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/non-overriding-package-private
  * @tags maintainability
  *       readability
  */

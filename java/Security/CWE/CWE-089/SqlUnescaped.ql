@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/concatenated-sql-query
  * @tags security
  *       external/cwe/cwe-089
  */

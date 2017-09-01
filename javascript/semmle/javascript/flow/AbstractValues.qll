@@ -274,6 +274,32 @@ class AbstractGlobalObject extends DefiniteAbstractValue, TAbstractGlobalObject 
 }
 
 /**
+ * An abstract value representing a CommonJS `module` object.
+ */
+class AbstractModuleObject extends DefiniteAbstractValue, TAbstractModuleObject {
+  /** Gets the module whose `module` object this abstract value represents. */
+  Module getModule() { this = TAbstractModuleObject(result) }
+  override boolean getBooleanValue() { result = true }
+  override InferredType getType() { result = TTObject() }
+  override predicate isCoercibleToNumber() { none() }
+  override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
+  override string toString() { result = "module" }
+}
+
+/**
+ * An abstract value representing a CommonJS `exports` object.
+ */
+class AbstractExportsObject extends DefiniteAbstractValue, TAbstractExportsObject {
+  /** Gets the module whose `exports` object this abstract value represents. */
+  Module getModule() { this = TAbstractExportsObject(result) }
+  override boolean getBooleanValue() { result = true }
+  override InferredType getType() { result = TTObject() }
+  override predicate isCoercibleToNumber() { none() }
+  override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
+  override string toString() { result = "exports" }
+}
+
+/**
  * An abstract value representing an object not covered by the other abstract
  * values.
  */

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/index-out-of-bounds
  * @tags reliability
  *       correctness
  *       exceptions

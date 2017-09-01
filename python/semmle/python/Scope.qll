@@ -94,12 +94,12 @@ class Scope extends Scope_ {
         result = this.getReturnNode()
     }
 
-    /** Whether this a top-level (non-nested) class or function */
+    /** Holds if this a top-level (non-nested) class or function */
     predicate isTopLevel() {
         this.getEnclosingModule() = this.getEnclosingScope()
     }
 
-    /** Whether this scope is deemed to be public */
+    /** Holds if this scope is deemed to be public */
     predicate isPublic() {
         /* Not inside a function */
         not this.getEnclosingScope() instanceof Function and
@@ -129,13 +129,41 @@ class Scope extends Scope_ {
         exists(Scope inner | inner.getEnclosingScope() = this | inner.contains(s))
     }
 
-    /** Whether this scope (immediately) precedes the other.
-     * That is, is it impossible for other to execute without
-     * this having executed at least once and of those scopes
-     * which must precede this scope, `other` is the most immediate.
+    /** Holds if this scope can be expected to execute before `other`.
+     * Modules precede functions and methods in those modules
+     * `__init__` precedes other methods. `__enter__` precedes `__exit__`.
+     * NOTE that this is context-insensitive, so a module "precedes" a function 
+     * in that module, even if that function is called from the module scope.
      */
     predicate precedes(Scope other) {
-        final_scope_precedes(this, other, _)
+        exists(Function f, string name |
+            f = other and name = f.getName() |
+            if f.isMethod() then (
+                // The __init__ method is preceded by the enclosing module
+                this = f.getEnclosingModule() and name = "__init__"
+                or
+                exists(Class c, string pred_name |
+                    // __init__ -> __enter__ -> __exit__
+                    // __init__ -> other-methods
+                    f.getScope() = c  and (
+                        pred_name = "__init__" and not name = "__init__" and not name = "__exit__"
+                        or
+                        pred_name = "__enter__" and name = "__exit__"
+                    )
+                    |
+                    this.getScope() = c and
+                    pred_name = this.(Function).getName()
+                    or
+                    not exists(Function pre_func |
+                        pre_func.getName() = pred_name and
+                        pre_func.getScope() = c
+                    ) and this = other.getEnclosingModule()
+                )
+            ) else (
+                // Normal functions are preceded by the enclosing module
+                this = f.getEnclosingModule()
+            )
+        )
     }
 
     /** Gets the evaluation scope for code in this (lexical) scope.
@@ -144,6 +172,13 @@ class Scope extends Scope_ {
      */
     Scope getEvaluatingScope() {
         result = this
+    }
+
+    /** Holds if this scope is in the source archive,
+     * that is it is part of the code specified, not library code
+     */
+    predicate inSource() {
+        exists(this.getEnclosingModule().getFile().getRelativePath())
     }
 
 }

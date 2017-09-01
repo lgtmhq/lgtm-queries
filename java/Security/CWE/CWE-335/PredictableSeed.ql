@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id java/predictable-seed
  * @tags security
  */
 import java

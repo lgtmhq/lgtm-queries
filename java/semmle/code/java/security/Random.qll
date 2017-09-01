@@ -39,7 +39,7 @@ predicate isSeeded(RValue use) {
 predicate safelySeeded(RValue use) {
   exists(Expr arg |
     isSeeding(arg, use)
-    and forall(FlowSource p | p.flowsToReverse(arg) | not p instanceof PredictableSeedExpr)
+    and not exists(PredictableSeedExpr p | p.flowsToReverse(arg) and isSeeding(arg, use))
   )
   or
   exists(GetRandomData da, RValue seeduse |

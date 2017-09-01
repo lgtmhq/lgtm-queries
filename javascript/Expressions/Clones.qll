@@ -62,9 +62,11 @@ abstract class StructurallyCompared extends ASTNode {
    */
   ASTNode candidateInternal() {
     // in order to correspond, nodes need to have the same kind and shape
-    kindOf(this) = kindOf(result) and this.getNumChild() = result.getNumChild() and
-    (result = candidate() or
-     exists (int i | result = getAStructuralUncle(i).getChild(i)))
+    exists(int kind, int numChildren | kind = kindOf(this) and numChildren = this.getNumChild() |
+      result = candidateKind(kind, numChildren) 
+      or 
+      result = uncleKind(kind, numChildren)
+    )
   }
 
   /**
@@ -75,6 +77,14 @@ abstract class StructurallyCompared extends ASTNode {
     exists (StructurallyCompared parent | this = parent.getChild(i) |
       result = parent.candidateInternal()
     )
+  }
+
+  private ASTNode candidateKind(int kind, int numChildren) {
+    result = candidate() and kindOf(result) = kind and result.getNumChild() = numChildren
+  }
+
+  private ASTNode uncleKind(int kind, int numChildren) {
+    exists(int i | result = getAStructuralUncle(i).getChild(i)) and kindOf(result) = kind and result.getNumChild() = numChildren
   }
 
   /**

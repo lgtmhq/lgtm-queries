@@ -82,8 +82,8 @@ class ClassObject extends Object {
     }
 
     /** Gets the nth base class of this class */
-    cached Object getBaseType(int n) {
-        result = final_class_base_type(this, n)
+    Object getBaseType(int n) {
+        result = FinalPointsTo::Types::class_base_type(this, n)
     }
 
     /** Gets a base class of this class */
@@ -100,19 +100,19 @@ class ClassObject extends Object {
     }
 
     /** Gets a super class of this class (includes transitive super classes) */
-    cached ClassObject getASuperType() {
-        result = final_get_a_super_type(this)
+    ClassObject getASuperType() {
+        result = FinalPointsTo::Types::get_a_super_type(this)
     }
 
     /** Gets a super class of this class (includes transitive super classes) or this class */
-    cached ClassObject getAnImproperSuperType() {
-        result = final_get_an_improper_super_type(this)
+    ClassObject getAnImproperSuperType() {
+        result = FinalPointsTo::Types::get_an_improper_super_type(this)
     }
 
     /** Whether this class is a new style class. 
         A new style class is one that implicitly or explicitly inherits from `object`. */
     predicate isNewStyle() {
-        final_is_new_style(this)
+        FinalPointsTo::Types::is_new_style(this)
     }
 
     /** Whether this class is a legal exception class. 
@@ -131,7 +131,7 @@ class ClassObject extends Object {
 
     /** Returns an attribute declared on this class (not on a super-class) */
     Object declaredAttribute(string name) {
-        final_class_declared_attribute(this, name, result, _, _)
+        FinalPointsTo::Types::class_declared_attribute(this, name, result, _, _)
     }
 
     /** Returns an attribute declared on this class (not on a super-class) */
@@ -142,27 +142,27 @@ class ClassObject extends Object {
     /** Returns an attribute as it would be when looked up at runtime on this class.
       Will include attributes of super-classes */
     Object lookupAttribute(string name) {
-        final_class_attribute_lookup(this, name, result, _, _)
+        FinalPointsTo::Types::class_attribute_lookup(this, name, result, _, _)
     }
 
     /** Looks up an attribute by searching this class' MRO starting at `start` */
     Object lookupMro(ClassObject start, string name) {
-        final_class_lookup_in_mro(this, start, name, result)
+        FinalPointsTo::Types::class_lookup_in_mro(this, start, name, result)
     }
 
     /** Whether the named attribute refers to the object and origin */
     predicate attributeRefersTo(string name, Object obj, ControlFlowNode origin) {
-        final_class_attribute_lookup(this, name, obj, _, origin)
+        FinalPointsTo::Types::class_attribute_lookup(this, name, obj, _, origin)
     }
 
     /** Whether the named attribute refers to the object, class and origin */
     predicate attributeRefersTo(string name, Object obj, ClassObject cls, ControlFlowNode origin) {
-        final_class_attribute_lookup(this, name, obj, cls, origin)
+        FinalPointsTo::Types::class_attribute_lookup(this, name, obj, cls, origin)
     }
 
     /** Whether this class has a attribute named `name`, either declared or inherited.*/
     predicate hasAttribute(string name) {
-        final_class_has_attribute(this, name)
+        FinalPointsTo::Types::class_has_attribute(this, name)
     }
 
     /** Whether it is impossible to know all the attributes of this class. Usually because it is
@@ -188,7 +188,7 @@ class ClassObject extends Object {
 
     /** Gets the metaclass for this class */
     ClassObject getMetaClass() {
-        result = final_class_get_meta_class(this)
+        result = FinalPointsTo::Types::class_get_meta_class(this)
         and
         not this.failedInference()
     }
@@ -196,6 +196,11 @@ class ClassObject extends Object {
     /* Whether this class is abstract. */
     predicate isAbstract() {
         this.getMetaClass() = theAbcMetaClassObject()
+        or
+        exists(FunctionObject f |
+            this.lookupAttribute(_) = f and
+            f.isAbstract()
+        )
     }
 
     ControlFlowNode declaredMetaClass() {
@@ -204,7 +209,7 @@ class ClassObject extends Object {
 
     /** Has type inference failed to compute the full class hierarchy for this class for the reason given. */ 
     predicate failedInference(string reason) {
-        final_failed_inference(this, reason)
+        FinalPointsTo::Types::failed_inference(this, reason)
     }
 
     /** Has type inference failed to compute the full class hierarchy for this class */ 
@@ -231,7 +236,7 @@ class ClassObject extends Object {
 
     /** This class is only instantiated at one place in the code */
     private  predicate hasStaticallyUniqueInstance() {
-        strictcount(Object instances | final_points_to(_, instances, this, _)) = 1
+        strictcount(Object instances | FinalPointsTo::points_to(_, _, instances, this, _)) = 1
     }
 
     ImportTimeScope getImportTimeScope() {
@@ -239,8 +244,7 @@ class ClassObject extends Object {
     }
 
     string toString() {
-        /* _semmle_unknown_type should be invisible */
-        this.isC() and not py_special_objects(this, "_semmle_unknown_type") and result = "builtin-class " + this.getName()
+        this.isC() and result = "builtin-class " + this.getName()
         or
         not this.isC() and result = "class " + this.getName()
     }
@@ -249,14 +253,14 @@ class ClassObject extends Object {
 
     /** Returns the next class in the MRO of 'this' after 'sup' */
      ClassObject nextInMro(ClassObject sup) {
-        result = final_next_in_mro(this, sup)
+        result = FinalPointsTo::Types::next_in_mro(this, sup)
     }
 
     /** The MRO for this class. ClassObject `sup` occurs at `index` in the list of classes. 
      * `this` has an index of `1`, the next class in the MRO has an index of `2`, and so on.
      */
     ClassObject getMroItem(int index) {
-        result = final_get_mro_item(this, index)
+        result = FinalPointsTo::Types::get_mro_item(this, index)
     }
 
     /** This class has duplicate base classes */
@@ -373,7 +377,10 @@ class ClassObject extends Object {
     }
 
     FunctionObject getAMethodCalledFromInit() {
-        final_method_called_from_init(result, this)
+        exists(FunctionObject init |
+            init = this.lookupAttribute("__init__") and
+            init.getACallee*() = result
+        )
     }
 
 }
@@ -553,8 +560,13 @@ ClassObject theKeyErrorType() {
 }
 
 /** The builtin class of bound methods */
+cached
 ClassObject theBoundMethodType() {
-     py_special_objects(result, "MethodType")
+    if exists(string v | py_flags_versioned("extractor.version", v, _) | v.toInt() > 110) then
+        py_special_objects(result, "MethodType")
+    else
+        /* For older snapshots use the builtin method descriptor type, which will work for all existing queries */
+        py_special_objects(result, "MethodDescriptorType")
 }
 
 /** The builtin class of builtin properties */

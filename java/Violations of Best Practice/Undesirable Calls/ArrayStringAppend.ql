@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/array-tostring-concatenation
  * @tags reliability
  *       maintainability
  */

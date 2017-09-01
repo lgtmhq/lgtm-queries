@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/cleartext-storage-in-properties
  * @tags security
  *       external/cwe/cwe-313
  */

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id java/dereferenced-value-may-be-null
  * @tags reliability
  *       correctness
  *       exceptions

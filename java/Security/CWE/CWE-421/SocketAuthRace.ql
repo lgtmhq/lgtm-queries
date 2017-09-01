@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/socket-auth-race-condition
  * @tags security
  *       external/cwe/cwe-421
  */

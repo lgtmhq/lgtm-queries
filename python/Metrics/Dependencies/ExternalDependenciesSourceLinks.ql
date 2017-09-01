@@ -13,7 +13,7 @@
 
 /**
  * @name External dependency source links
- * @kind sourceLink
+ * @kind source-link
  * @metricType externalDependency
  */
 

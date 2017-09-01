@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/iterator-implements-iterable
  */
 import java
 import IterableClass

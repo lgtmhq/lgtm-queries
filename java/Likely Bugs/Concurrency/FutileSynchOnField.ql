@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id java/unsafe-sync-on-field
  * @tags reliability
  *       correctness
  *       concurrency

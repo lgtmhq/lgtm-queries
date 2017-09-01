@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/notify-instead-of-notify-all
  * @tags reliability
  *       correctness
  *       concurrency

@@ -13,8 +13,9 @@
 
 import python
 import semmle.python.types.Exceptions
-import semmle.python.pointsto.Final
+private import semmle.python.pointsto.Final
 private import semmle.python.libraries.Zope
+private import semmle.python.pointsto.Base
 
 /** A function object, whether written in Python or builtin */
 abstract class FunctionObject extends Object {
@@ -53,42 +54,47 @@ abstract class FunctionObject extends Object {
 
     /** Gets a call-site from where this function is called as a function */
     CallNode getAFunctionCall() {
-        final_function_call(this, result)
+        FinalPointsTo::function_call(this, _, result)
     }
 
     /** Gets a call-site from where this function is called as a method */
     CallNode getAMethodCall() {
-        final_method_call(this, result)
+        FinalPointsTo::method_call(this, _, result)
     }
 
     /** Gets a call-site from where this function is called */
     ControlFlowNode getACall() {
-        result = final_get_a_call(this)
+        result = FinalPointsTo::get_a_call(this, _)
+    }
+
+    /** Gets a call-site from where this function is called, given the `context` */
+    ControlFlowNode getACall(Context caller_context) {
+        result = FinalPointsTo::get_a_call(this, caller_context)
+    }
+
+    /** Holds if `call` is the call-site from which this function is called and `result` is the callee and `caller_context` is the caller's context */
+    Context getContext(ControlFlowNode call, Context caller_context) {
+        result.fromCall(call, this, caller_context)
     }
 
     /** Gets the `ControlFlowNode` that will be passed as the nth argument to `this` when called at `call`.
         This predicate will correctly handle `x.y()`, treating `x` as the zeroth argument.
     */
     ControlFlowNode getArgumentForCall(CallNode call, int n) {
-        result = final_get_positional_argument_for_call(this, call, n)
+        result = FinalPointsTo::get_positional_argument_for_call(this, _, call, n)
     }
 
     /** Gets the `ControlFlowNode` that will be passed as the named argument to `this` when called at `call`.
         This predicate will correctly handle `x.y()`, treating `x` as the self argument.
     */
     ControlFlowNode getNamedArgumentForCall(CallNode call, string name) {
-        result = final_get_named_argument_for_call(this, call, name)
-    }
-
-    /** Gets a class that this function may return */
-    ClassObject getAnInferredReturnType() {
-        result = final_get_an_inferred_return_type(this)
+        result = FinalPointsTo::get_named_argument_for_call(this, _, call, name)
     }
 
     /** Whether this function never returns. This is an approximation.
      */
     predicate neverReturns() {
-         final_function_never_returns(this)
+         FinalPointsTo::function_never_returns(this)
     }
 
     /** Whether this is a "normal" method, that is, it is exists as a class attribute 
@@ -109,7 +115,10 @@ abstract class FunctionObject extends Object {
 
     /** Gets a function that this function (directly) calls */
     FunctionObject getACallee() {
-        result = final_get_a_callee(this.getFunction())
+        exists(ControlFlowNode node |
+            node.getScope() = this.getFunction() and
+            result.getACall() = node
+        )
     }
 
     /** Gets the qualified name for this function object.
@@ -125,6 +134,15 @@ abstract class FunctionObject extends Object {
         this.getFunction().getAKeywordOnlyArg().getId() = name
         or
         this.getFunction().hasKwArg()
+    }
+
+    /** Gets a class that this function may return */
+    ClassObject getAnInferredReturnType() {
+        result = this.(BuiltinCallable).getAReturnType()
+    }
+
+    predicate isAbstract() {
+        this.getARaisedType() = theNotImplementedErrorType()
     }
 
 }
@@ -194,12 +212,6 @@ class PyFunctionObject extends FunctionObject {
         )
     }
 
-    /** Whether this method unconditionally sets the attribute `self.attrname`.
-     */
-    predicate unconditionallySetsSelfAttribute(string attrname) {
-        final_unconditionally_sets_self_attribute(this, attrname)
-    }
-
     string getQualifiedName() {
         result = this.getFunction().getQualifiedName()
     }
@@ -215,6 +227,32 @@ class PyFunctionObject extends FunctionObject {
                 rval.strictlyDominates(rval.getScope().getANormalExit())
             )
         )
+    }
+
+    /** Factored out to help join ordering */
+    private predicate implicitlyReturns(Object none_, ClassObject noneType) {
+        noneType = theNoneType() and not this.getFunction().isGenerator() and none_ = theNoneObject() and
+        (
+            not exists(this.getAReturnedNode()) and exists(this.getFunction().getANormalExit())
+            or
+            exists(Return ret | ret.getScope() = this.getFunction() and not exists(ret.getValue()))
+        )
+    }
+
+    /** Gets a class that this function may return */
+    ClassObject getAnInferredReturnType() {
+        this.getFunction().isGenerator() and result = theGeneratorType()
+        or
+        not this.neverReturns() and not this.getFunction().isGenerator() and
+        (
+            this.(PyFunctionObject).getAReturnedNode().refersTo( _, result, _)
+            or
+            this.implicitlyReturns(_, result)
+        )
+    }
+
+    ParameterDefinition getParameter(int n) {
+        result.getDefiningNode().getNode() = this.getFunction().getArg(n)
     }
 
 }
@@ -290,7 +328,7 @@ class BuiltinMethodObject extends BuiltinCallable {
     ClassObject getAReturnType() {
         ext_rettype(this, result)
     }
-    
+
 }
 
 class BuiltinFunctionObject extends BuiltinCallable {

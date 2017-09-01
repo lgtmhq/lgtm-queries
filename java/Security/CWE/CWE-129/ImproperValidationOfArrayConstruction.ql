@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/improper-validation-of-array-construction
  * @tags security
  *       external/cwe/cwe-129
  */

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/type-variable-hides-type
  * @tags reliability
  *       readability
  *       types

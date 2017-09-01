@@ -66,7 +66,7 @@ class AnalyzedFlowNode extends @dataflownode {
   }
 
   /** Gets a type inferred for this node. */
-  InferredType getAType() {
+  pragma[nomagic] InferredType getAType() {
     result = getAValue().getType()
   }
 
@@ -803,18 +803,44 @@ private predicate guaranteedToBeInitialized(LocalVariable v) {
 }
 
 /**
- * Holds if `av` represents an initial value of Node.js variable `var`.
+ * Gets the abstract value of the `module` object for `m`, which is either
+ * `TAbstractModuleObject(m)` if exports of `m` are tracked, or `TAbstractOtherObject()`
+ * if not.
+ */
+private AbstractValue getAbstractModuleObject(NodeModule m) {
+  result = TAbstractModuleObject(m)
+  or
+  not exists(TAbstractModuleObject(m)) and result = TAbstractOtherObject()
+}
+
+
+/**
+ * Gets the abstract value of the `exports` object for `m`, which is either
+ * `TAbstractExportsObject(m)` if exports of `m` are tracked, or `TAbstractOtherObject()`
+ * if not.
+ */
+private AbstractValue getAbstractExportsObject(NodeModule m) {
+  result = TAbstractExportsObject(m)
+  or
+  not exists(TAbstractExportsObject(m)) and result = TAbstractOtherObject()
+}
+
+/**
+ * Holds if `av` represents an initial value of CommonJS variable `var`.
  */
 private predicate nodeBuiltins(Variable var, AbstractValue av) {
-  var.getScope() instanceof ModuleScope and
-  exists (string name | name = var.getName() |
-    name = "require" and av = TIndefiniteAbstractValue("heap") or
-
-    (name = "module" or name = "exports" or name = "arguments") and
-    av = TAbstractOtherObject() or
-
+  exists (NodeModule m, string name | var = m.getScope().getVariable(name) |
+    name = "require" and av = TIndefiniteAbstractValue("heap")
+    or
+    name = "module" and av = getAbstractModuleObject(m)
+    or
+    name = "exports" and av = getAbstractExportsObject(m)
+    or
+    name = "arguments" and av = TAbstractOtherObject()
+    or
     (name = "__filename" or name = "__dirname") and
-    (av = TAbstractNumString() or av = TAbstractOtherString())  )
+    (av = TAbstractNumString() or av = TAbstractOtherString())
+  )
 }
 
 /**
@@ -965,13 +991,51 @@ private class JSXEmptyExpressionSource extends AnalyzedFlowNode, @jsxemptyexpr {
   override AbstractValue getAValue() { result = TAbstractUndefined() }
 }
 
+/**
+ * Flow analysis for property reads, either explicitly (`x.p` or `x[e]`) or
+ * implicitly.
+ */
+private abstract class AnalyzedPropertyRead extends AnalyzedFlowNode {
+  /** Gets the name of the read property. */
+  abstract string getPropertyName();
+}
 
 /**
- * Flow analysis for `arguments.callee`.
+ * Flow analysis for `require` calls, interpreted as an implicit read of
+ * the `module.exports` property of the imported module.
  */
-private class ArgumentsCalleeSource extends AnalyzedFlowNode, @propaccess {
-  ArgumentsCalleeSource() {
-    this.(PropAccess).getPropertyName() = "callee"
+class AnalyzedRequireCall extends AnalyzedPropertyRead, @callexpr {
+  Module required;
+
+  AnalyzedRequireCall() {
+    required = this.(Require).getImportedModule()
+  }
+
+  override AbstractValue getAValue() {
+    result = getAPropertyValue(TAbstractModuleObject(required), "exports") or
+    result = TIndefiniteAbstractValue("heap")
+  }
+
+  override string getPropertyName() {
+    result = "exports"
+  }
+}
+
+/**
+ * Flow analysis for (non-numeric) property read accesses.
+ */
+private class AnalyzedPropertyAccess extends AnalyzedPropertyRead, @propaccess {
+  string propName;
+
+  AnalyzedPropertyAccess() {
+    propName = this.(PropAccess).getPropertyName() and
+    not exists(propName.toInt()) and
+    this instanceof RValue
+  }
+
+  override AbstractValue getAValue() {
+    result = getAPropertyValue(getBase().getAValue(), propName) or
+    result = TIndefiniteAbstractValue("heap")
   }
 
   /** Gets the node representing the base of this property access. */
@@ -979,12 +1043,79 @@ private class ArgumentsCalleeSource extends AnalyzedFlowNode, @propaccess {
     result = this.(PropAccess).getBase()
   }
 
-  override AbstractValue getAValue() {
+  override string getPropertyName() {
+    result = propName
+  }
+}
+
+/**
+ * Holds if the result is known to be an initial value of property `propertyName` of one
+ * of the concrete objects represented by `baseVal`.
+ */
+private AbstractValue getAnInitialPropertyValue(DefiniteAbstractValue baseVal, string propertyName) {
+  // initially, `module.exports === exports`
+  exists (Module m |
+    baseVal = TAbstractModuleObject(m) and
+    propertyName = "exports" and
+    result = TAbstractExportsObject(m)
+  )
+}
+
+/** An abstract value whose properties we track. */
+private class AbstractValueWithTrackedProperties extends TAbstractValue {
+  AbstractValueWithTrackedProperties() {
+    this instanceof AbstractModuleObject or
+    this instanceof AbstractExportsObject
+  }
+
+  string toString() { result = this.(AbstractValue).toString() }
+}
+
+/**
+ * Holds if `pwn` is a write of property `p` on receiver `baseVal`, and
+ * `p` is read somewhere.
+ */
+private predicate analyzedPropertyWrite(PropWriteNode pwn,
+                                        AbstractValueWithTrackedProperties baseVal, string p) {
+  baseVal = pwn.getBase().(AnalyzedFlowNode).getAValue() and
+  p = pwn.getPropertyName() and p = any(AnalyzedPropertyRead pacc).getPropertyName()
+}
+
+/**
+ * Holds if the result is the abstract value of the right hand side of an assignment
+ * whose left hand side may refer to property `propertyName` of one of the
+ * concrete objects represented by `baseVal`.
+ */
+private AbstractValue getAnAssignedPropertyValue(AbstractValue baseVal, string propertyName) {
+  exists (PropWriteNode pwn | analyzedPropertyWrite(pwn, baseVal, propertyName) |
+    result = pwn.getRhs().(AnalyzedFlowNode).getAValue()
+  )
+}
+
+/**
+ * Holds if the result is an abstract value of property `propertyName` of one of the
+ * concrete objects represented by `baseVal`.
+ */
+AbstractValue getAPropertyValue(DefiniteAbstractValue baseVal, string propertyName) {
+  result = getAnInitialPropertyValue(baseVal, propertyName) or
+  result = getAnAssignedPropertyValue(baseVal, propertyName)
+}
+
+/**
+ * Flow analysis for `arguments.callee`. We assume it is never redefined,
+ * which is unsound in practice, but pragmatically useful.
+ */
+private class ArgumentsCalleeSource extends AnalyzedPropertyAccess {
+  ArgumentsCalleeSource() {
+    propName = "callee"
+  }
+
+  AbstractValue getAValue() {
     exists (AbstractArguments baseVal | baseVal = getBase().getAValue() |
       result = TAbstractFunction(baseVal.getFunction())
     )
     or
-    hasNonArgumentsBase(this) and result = TIndefiniteAbstractValue("heap")
+    hasNonArgumentsBase(this) and result = super.getAValue()
   }
 }
 

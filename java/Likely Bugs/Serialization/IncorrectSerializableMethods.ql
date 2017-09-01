@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id java/wrong-object-serialization-signature
  * @tags reliability
  *       maintainability
  *       language-features

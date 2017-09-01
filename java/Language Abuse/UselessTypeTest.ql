@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id java/useless-type-test
  * @tags maintainability
  *       language-features
  *       external/cwe/cwe-561
