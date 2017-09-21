@@ -138,10 +138,23 @@ module PenultimatePointsTo {
             )
             or
             not exists(EssaVariable var | var.getAUse() = m.getANormalExit() and var.getSourceVariable().getName() = name) and
-            exists(EssaVariable var, PenultimateContext imp |
-                var.getAUse() = m.getANormalExit() and var.getSourceVariable().getName() = "*" |
-                Flow::ssa_variable_named_attribute_points_to(var, imp, name, obj, cls, origin) and
-                imp.isImport()
+            if version111plus() then (
+                exists(EssaVariable var, PenultimateContext imp |
+                    var.getAUse() = m.getANormalExit() and var.getSourceVariable().getName() = "*" |
+                    Flow::ssa_variable_named_attribute_points_to(var, imp, name, obj, cls, origin) and
+                    imp.isImport()
+                )
+            ) else (
+                /* Backwards compatibility with older databases (dating from before Sept 2017)
+                 * Penultimate can be removed 2018, once the dbscheme has been upgraded from e7f9ea.
+                 */
+                exists(ModuleObject imported, ObjectOrCfg maybe_origin, ImportStar im |
+                    has_import_star(m, im, imported) and
+                    module_attribute_points_to(imported, name, obj, cls, maybe_origin) |
+                    origin = maybe_origin
+                    or
+                    not maybe_origin instanceof ControlFlowNode and origin = im.getAFlowNode()
+                )
             )
         }
 
@@ -315,37 +328,6 @@ module PenultimatePointsTo {
             )
         }
 
-        /** INTERNAL -- Do not use.
-         *
-         * Holds if `f` (in context `context`) always evaluates to `value`.  */
-        
-        predicate boolean_const(ControlFlowNode f, PenultimateContext context, boolean value) {
-            version_const(f, _, value) and context.appliesTo(f)
-            or
-            exists(string os |
-                os_test(f, os, context) |
-                value = true and py_flags_versioned("sys.platform", os, major_version().toString())
-                or
-                value = false and not py_flags_versioned("sys.platform", os, major_version().toString())
-            )
-            or
-            f.getNode() instanceof True and value = true and context.appliesTo(f)
-            or
-            f.getNode() instanceof False and value = false and context.appliesTo(f)
-            or
-            exists(EssaVariable var |
-                var.getASourceUse() = f and
-                ssa_boolean_const(var, context, value)
-            )
-            or
-            exists(ModuleObject mod, string name |
-                points_to(f.(AttrNode).getObject(name), context, mod, _, _) or
-                points_to(f.(ImportMemberNode).getModule(name), context, mod, _, _)
-                |
-                attribute_boolean_const(mod, name, value, context)
-            )
-        }
-
         /** INTERNAL.
          *
          * Holds if `var` refers to `(value, cls, origin)` given the context `context`. */
@@ -358,16 +340,40 @@ module PenultimatePointsTo {
 
     /** INTERNAL -- For testing only
      *
-     * Whether this `ControlFlowNode` is pruned due to version or OS constraints. */
+     * Holds if ControlFlowNode `f` is pruned due to version or OS constraints, given the context `context`. */
     predicate pruned(ControlFlowNode f, PenultimateContext context) {
         exists(ConditionBlock guard |
-            guard.controls(f.getBasicBlock(), true) and boolean_const(guard.getLastNode(), context, false)
+            guard.controls(f.getBasicBlock(), true) and Booleans::const(guard.getLastNode(), context, false)
             or
-            guard.controls(f.getBasicBlock(), false) and boolean_const(guard.getLastNode(), context, true)
+            guard.controls(f.getBasicBlock(), false) and Booleans::const(guard.getLastNode(), context, true)
+        )
+    }
+
+    /** INTERNAL.
+     * 
+     * Holds if the edge `pred` -> `succ` is pruned due to version or OS constraints, given the context `context`.
+     */
+    predicate prunedEdge(BasicBlock pred, BasicBlock succ, PenultimateContext context) {
+        exists(ConditionBlock guard |
+            guard.controlsEdge(pred, succ, true) and Booleans::const(guard.getLastNode(), context, false)
+            or
+            guard.controlsEdge(pred, succ, false) and Booleans::const(guard.getLastNode(), context, true)
         )
     }
 
     import API
+
+    /* Holds if `f` points to a test on the OS that is `value`.
+     * For example, if `f` is `sys.platform == "win32"` then, for Windows, `value` would be `true`. 
+     */
+    private predicate os_const(ControlFlowNode f, PenultimateContext context, boolean value) {
+        exists(string os |
+            os_test(f, os, context) |
+            value = true and py_flags_versioned("sys.platform", os, major_version().toString())
+            or
+            value = false and not py_flags_versioned("sys.platform", os, major_version().toString())
+        )
+    }
 
     /** Points-to before pruning. */
     pragma [nomagic]
@@ -377,11 +383,14 @@ module PenultimatePointsTo {
         f.isClass() and value = f  and origin = f and context.appliesToScope(f.getScope()) and cls = Types::class_get_meta_class(value)
         or
         exists(boolean b |
-            Layer0PointsTo::boolean_const(f, _, b) |
+            version_const(f, context, b)
+            or
+            os_const(f, context, b)
+            |
             value = theTrueObject() and b = true
             or
             value = theFalseObject() and b = false
-        ) and cls = theBoolType() and origin = f and context.appliesToScope(f.getScope())
+        ) and cls = theBoolType() and origin = f
         or
         import_points_to(f, value, origin) and cls = theModuleType() and context.appliesToScope(f.getScope())
         or
@@ -445,10 +454,12 @@ module PenultimatePointsTo {
     }
 
     private predicate name_lookup_points_to_maybe_origin(NameNode f, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin_or_obj) {
-        ssa_variable_points_to(name_local_variable(f), context, value, cls, origin_or_obj)
-        or
-        ssa_variable_points_to(name_local_variable(f), context, undefinedVariable(), _, _) and
-        global_lookup_points_to_maybe_origin(f, context, value, cls, origin_or_obj)
+        exists(EssaVariable var | var = name_local_variable(f) |
+            ssa_variable_points_to(var, context, value, cls, origin_or_obj)
+            or
+            ssa_variable_points_to(var, context, undefinedVariable(), _, _) and
+            global_lookup_points_to_maybe_origin(f, context, value, cls, origin_or_obj)
+        )
     }
 
     private predicate global_lookup_points_to_maybe_origin(NameNode f, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin_or_obj) {
@@ -597,7 +608,7 @@ module PenultimatePointsTo {
         exists(ImportMember im | module_imported_as(mod, im.getImportedModuleName()))
     }
 
-    /** Holds if an import star exists in the module m that imports a module called 'name', such that the flow from the import reaches the module exit. */
+    /** Holds if an import star exists in the module m that imports the module `imported_module`, such that the flow from the import reaches the module exit. */
     private predicate has_import_star(Module m, ImportStar im, ModuleObject imported_module) {
         exists(string name |
             module_imported_as(imported_module, name) and
@@ -736,26 +747,70 @@ module PenultimatePointsTo {
         )
     }
 
-    /** Helper for `boolean_const`.
-     *
-     * Holds if the value held by `var` is always `value` when evaluated as a boolean.  */
-    private predicate ssa_boolean_const(EssaVariable var, PenultimateContext context, boolean value) {
-        boolean_const(var.getDefinition().(AssignmentDefinition).getValue(), context, value)
-        or
-        forex(EssaVariable input |
-            input = var.getDefinition().(PhiFunction).getAnInput() |
-            ssa_boolean_const(input, context, value)
-        )
+    module Booleans {
+
+
+        /** INTERNAL -- Do not use.
+         *
+         * Holds if `f` (in context `context`) always evaluates to `value`.  */
+        
+        predicate const(ControlFlowNode f, PenultimateContext context, boolean value) {
+            version_const(f, _, value) and context.appliesTo(f)
+            or
+            exists(string os |
+                os_test(f, os, context) |
+                value = true and py_flags_versioned("sys.platform", os, major_version().toString())
+                or
+                value = false and not py_flags_versioned("sys.platform", os, major_version().toString())
+            )
+            or
+            f.getNode().(ImmutableLiteral).getLiteralObject().booleanValue() = value and context.appliesTo(f)
+            or
+            exists(EssaVariable var |
+                var.getASourceUse() = f and
+                ssa_const(var, context, value)
+            )
+            or
+            exists(ModuleObject mod, string name |
+                points_to(f.(AttrNode).getObject(name), context, mod, _, _) or
+                points_to(f.(ImportMemberNode).getModule(name), context, mod, _, _)
+                |
+                attribute_const(mod, name, value, context)
+            )
+        }
+
+        /** Helper for `const`.
+         *
+         * Holds if the value held by `var` is always `value` when evaluated as a boolean.  */
+        predicate ssa_const(EssaVariable var, PenultimateContext context, boolean value) {
+            const(var.getDefinition().(AssignmentDefinition).getValue(), context, value)
+            or
+            exists(PhiFunction phi |
+                phi = var.getDefinition() |
+                forex(EssaVariable input |
+                    input = phi.getAnInput() |
+                    ssa_const(input, context, value)
+                )
+            )
+            or
+            /* Filters on constants may make code unreachable, but they cannot alter the value of the constant */
+            ssa_const(var.getDefinition().(PyEdgeRefinement).getInput(), context, value)
+            or
+            ssa_const(var.getDefinition().(SingleSuccessorGuard).getInput(), context, value)
+        }
+
+        /** Holds if `mod.name` (attribute "name" of module `mod`) points to the boolean constant `value` in context. */
+        predicate attribute_const(ModuleObject mod, string name, boolean value, PenultimateContext context) {
+            exists(EssaVariable var, Module m | 
+                m = mod.getModule() or m = mod.(PackageObject).getInitModule().getModule() |
+                var.getAUse() = m.getANormalExit() and 
+                var.getSourceVariable().getName() = name and
+                ssa_const(var, context, value)
+            )
+        }
+
     }
 
-    /** Holds if `mod.name` (attribute "name" of module `mod`) points to the boolean constant `value` in context. */
-    private predicate attribute_boolean_const(ModuleObject mod, string name, boolean value, PenultimateContext context) {
-        exists(EssaVariable var | var.getAUse() = mod.getModule().getANormalExit() and var.getSourceVariable().getName() = name |
-            ssa_boolean_const(var, context, value)
-        )
-    }
-
-    private
     predicate named_attribute_points_to(ControlFlowNode f, PenultimateContext context, string name, Object value, ClassObject cls, ControlFlowNode origin) {
         exists(EssaVariable var |
             var.getAUse() = f |
@@ -1011,7 +1066,10 @@ module PenultimatePointsTo {
 
         /** Holds if the phi-function `phi` refers to `(value, cls, origin)` given the context `context`. */
         private predicate ssa_phi_points_to(PhiFunction phi, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
-            ssa_variable_points_to(phi.getAnInput(), context, value, cls, origin)
+            exists(EssaVariable input, BasicBlock pred |
+                input = phi.getInput(pred) and not Layer0PointsTo::prunedEdge(pred, phi.getBasicBlock(), _) and
+                ssa_variable_points_to(input, context, value, cls, origin)
+                )
         }
 
         /** Holds if the ESSA definition `def`  refers to `(value, cls, origin)` given the context `context`. */
@@ -1027,19 +1085,22 @@ module PenultimatePointsTo {
 
         pragma [noinline]
         private predicate ssa_node_definition_points_to(EssaNodeDefinition def, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
-            assignment_points_to(def, context, value, cls, origin)
-            or
-            parameter_points_to(def, context, value, cls, origin)
-            or
-            self_parameter_points_to(def, context, value, cls, origin)
-            or
-            delete_points_to(def, context, value, cls, origin)
-            or
-            scope_entry_points_to(def, context, value, cls, origin)
-            or
-            implicit_submodule_points_to(def, context, value, cls, origin)
-            or
-            module_name_points_to(def, context, value, cls, origin)
+            not Layer0PointsTo::pruned(def.getDefiningNode(), _) and
+            (
+                assignment_points_to(def, context, value, cls, origin)
+                or
+                parameter_points_to(def, context, value, cls, origin)
+                or
+                self_parameter_points_to(def, context, value, cls, origin)
+                or
+                delete_points_to(def, context, value, cls, origin)
+                or
+                scope_entry_points_to(def, context, value, cls, origin)
+                or
+                implicit_submodule_points_to(def, context, value, cls, origin)
+                or
+                module_name_points_to(def, context, value, cls, origin)
+            )
             /*
              * No points-to for non-local function entry definitions yet.
              */
@@ -1608,14 +1669,14 @@ module PenultimatePointsTo {
             (
                 Types::class_has_attribute(cls, "__call__") and result = true
                 or
-                not Types::class_has_attribute(cls, "__call__") and result = false
+                not Layer0PointsTo::Types::class_has_attribute(cls, "__call__") and result = false
             )
             or
             exists(string name |
                 BaseFilters::hasattr(expr, use, name) |
                 Types::class_has_attribute(cls, name) and result = true
                 or
-                not Types::class_has_attribute(cls, name) and result = false
+                not Layer0PointsTo::Types::class_has_attribute(cls, name) and result = false
             )
             or
             expr = use and val.booleanValue() = result
@@ -1838,7 +1899,7 @@ module PenultimatePointsTo {
          
          predicate class_has_attribute(ClassObject cls, string name) {
              extensional_name(name) and
-             class_declares_attribute(Layer0PointsTo::Types::get_an_improper_super_type(cls), name)
+             class_declares_attribute(Types::get_an_improper_super_type(cls), name)
          }
 
          pragma [nomagic]

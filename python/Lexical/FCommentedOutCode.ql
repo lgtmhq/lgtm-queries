@@ -17,6 +17,7 @@
  * @kind treemap
  * @treemap.warnOn highValues
  * @metricType file
+ * @precision high
  * @tags maintainability
  */
 

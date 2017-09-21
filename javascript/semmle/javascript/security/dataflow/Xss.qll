@@ -32,7 +32,6 @@ import semmle.javascript.frameworks.jQuery
  * or CSS.
  */
 predicate jqueryXss(string name) {
-  name = "$" or
   name = "addClass" or
   name = "after" or
   name = "append" or
@@ -41,7 +40,6 @@ predicate jqueryXss(string name) {
   name = "html" or
   name = "insertAfter" or
   name = "insertBefore" or
-  name = "jQuery" or
   name = "parseHTML" or
   name = "prepend" or
   name = "prependTo" or

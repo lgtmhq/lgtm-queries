@@ -20,7 +20,9 @@ predicate is_import_time(Stmt s) {
 PythonModuleObject module_imported_by(PythonModuleObject m) {
     exists(Stmt imp |
         result = stmt_imports(imp) and
-        imp.getEnclosingModule() = m.getModule()
+        imp.getEnclosingModule() = m.getModule() and
+        // Import must reach exit to be part of a cycle
+        imp.getAFlowNode().getBasicBlock().reachesExit()
     )
 }
 
@@ -59,7 +61,9 @@ predicate import_time_transitive_import(PythonModuleObject base, Stmt imp, Pytho
             import_time_transitive_import(base, imp, mid) and 
             import_time_imported_module(mid, last, _)
         )
-    )
+    ) and
+    // Import must reach exit to be part of a cycle
+    imp.getAFlowNode().getBasicBlock().reachesExit()
 }
 
 /**

@@ -32,6 +32,13 @@ private int kindOf(ASTNode nd) {
 }
 
 /**
+ * Holds if `nd` has the given `kind`, and its number of children is `arity`.
+ */
+private predicate kindAndArity(ASTNode nd, int kind, int arity) {
+  kindOf(nd) = kind and arity = nd.getNumChild()
+}
+
+/**
  * Gets the literal value of AST node `nd`, if any, or the name
  * of `nd` if it is an identifier.
  *
@@ -62,7 +69,7 @@ abstract class StructurallyCompared extends ASTNode {
    */
   ASTNode candidateInternal() {
     // in order to correspond, nodes need to have the same kind and shape
-    exists(int kind, int numChildren | kind = kindOf(this) and numChildren = this.getNumChild() |
+    exists(int kind, int numChildren | kindAndArity(this, kind, numChildren) |
       result = candidateKind(kind, numChildren) 
       or 
       result = uncleKind(kind, numChildren)
@@ -80,11 +87,11 @@ abstract class StructurallyCompared extends ASTNode {
   }
 
   private ASTNode candidateKind(int kind, int numChildren) {
-    result = candidate() and kindOf(result) = kind and result.getNumChild() = numChildren
+    result = candidate() and kindAndArity(result, kind, numChildren)
   }
 
   private ASTNode uncleKind(int kind, int numChildren) {
-    exists(int i | result = getAStructuralUncle(i).getChild(i)) and kindOf(result) = kind and result.getNumChild() = numChildren
+    exists(int i | result = getAStructuralUncle(i).getChild(i)) and kindAndArity(result, kind, numChildren)
   }
 
   /**

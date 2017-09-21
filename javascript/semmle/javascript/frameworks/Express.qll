@@ -138,6 +138,22 @@ module Express {
   }
 
   /**
+   * An access to the HTTP request body.
+   */
+  class RequestBodyAccess extends RemoteFlowSource {
+    RequestBodyAccess() {
+      exists (Expr req |
+        isRequest(req) and
+        this.(PropAccess).accesses(req, "body")
+      )
+    }
+
+    override string getSourceType() {
+      result = "Express request body"
+    }
+  }
+
+  /**
    * An invocation of the `redirect` method of an HTTP response object.
    */
   private class RedirectInvocation extends HTTP::RedirectInvocation, MethodCallExpr {

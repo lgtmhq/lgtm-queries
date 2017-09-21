@@ -17,6 +17,7 @@
  * @kind treemap
  * @treemap.warnOn highValues 
  * @metricType externalDependency
+ * @precision medium
  */
 
 import python

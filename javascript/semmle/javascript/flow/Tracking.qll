@@ -409,6 +409,46 @@ module TaintTracking {
       or
       // comparing a tainted expression against a constant gives a tainted result
       this.(Comparison).hasOperands(result, any(Expr e | exists(e.getStringValue())))
+      or
+      // `array.map(function (elt, i, ary) { ... })`: if `array` is tainted, then so are
+      // `elt` and `ary`; similar for `forEach`
+      exists (MethodCallExpr m, Function f, int i, SimpleParameter p, SsaExplicitDefinition pinit |
+        (m.getMethodName() = "map" or m.getMethodName() = "forEach") and
+        (i = 0 or i = 2) and
+        f = m.getArgument(0).(DataFlowNode).getALocalSource() and
+        p = f.getParameter(i) and
+        pinit.getDef() = p and
+        this = pinit.getVariable().getAUse() and
+        result = m.getReceiver()
+      )
+    }
+  }
+
+  /**
+   * A taint propagating data flow edge for assignments of the form `o[k] = v`, where
+   * `k` is not a constant and `o` refers to some object literal; in this case, we consider
+   * taint to flow from `v` to any variable that refers to the object literal.
+   *
+   * The rationale for this heuristic is that if properties of `o` are accessed by
+   * computed (that is, non-constant) names, then `o` is most likely being treated as
+   * a map, not as a real object. In this case, it makes sense to consider the entire
+   * map to be tainted as soon as one of its entries is.
+   */
+  private class DictionaryFlowTarget extends FlowTarget, @varaccess {
+    DataFlowNode source;
+
+    DictionaryFlowTarget() {
+      exists (AssignExpr assgn, IndexExpr idx, ObjectExpr obj |
+        assgn.getTarget() = idx and
+        idx.getBase().(DataFlowNode).getALocalSource() = obj and
+        not exists(idx.getPropertyName()) and
+        this.(DataFlowNode).getALocalSource() = obj and
+        source = assgn.getRhs()
+      )
+    }
+
+    override DataFlowNode getATaintSource() {
+      result = source
     }
   }
 
@@ -427,7 +467,12 @@ module TaintTracking {
     override DataFlowNode getATaintSource() {
       // addition propagates taint
       this.(AddExpr).getAnOperand() = result or
-      this.(AssignAddExpr).getAChildExpr() = result
+      this.(AssignAddExpr).getAChildExpr() = result or
+      exists (SsaExplicitDefinition ssa |
+        this = ssa.getVariable().getAUse() and
+        result = ssa.getDef() and
+        result instanceof AssignAddExpr
+      )
       or
       // templating propagates taint
       this.(TemplateLiteral).getAnElement() = result

@@ -19,6 +19,7 @@
  * @treemap.warnOn highValues
  * @metricType file
  * @metricAggregate avg sum max
+ * @precision very-high
  * @tags maintainability
  */
 import python

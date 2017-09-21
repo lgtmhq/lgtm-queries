@@ -341,32 +341,44 @@ class PhiFunction extends EssaDefinition, TPhiFunction {
     }
 
     /** Gets an input refinement that exists on one of the incoming edges to this phi node. */
-    private EssaEdgeRefinement inputEdgeRefinement() {
+    private EssaEdgeRefinement inputEdgeRefinement(BasicBlock pred) {
         result.getSourceVariable() = this.getSourceVariable() and
-        result.getSuccessor() = this.getBasicBlock()
+        result.getSuccessor() = this.getBasicBlock() and
+        result.getPredecessor() = pred
     }
 
     private BasicBlock nonPiInput() {
         result = this.getBasicBlock().getAPredecessor() and
-        not this.inputEdgeRefinement().getPredecessor() = result
+        not exists(this.inputEdgeRefinement(result))
     }
 
     /** Gets another definition of the same source variable that reaches this definition. */
-    private EssaDefinition reachingDefinition() {
+    private EssaDefinition reachingDefinition(BasicBlock pred) {
         result.getScope() = this.getScope() and
         result.getSourceVariable() = this.getSourceVariable() and
-        exists(BasicBlock pred |
-            pred = this.nonPiInput() and
-            result.reachesEndOfBlock(pred)
-        )
+        pred = this.nonPiInput() and
+        result.reachesEndOfBlock(pred)
+    }
+
+    /** Gets the input variable for this phi node on the edge `pred` -> `this.getBasicBlock()`, if any. */
+    cached
+    EssaVariable getInput(BasicBlock pred) {
+        result.getDefinition() = this.reachingDefinition(pred)
+        or
+        result.getDefinition() = this.inputEdgeRefinement(pred)
     }
 
     /** Gets an input variable for this phi node. */
-    cached
     EssaVariable getAnInput() {
-        result.getDefinition() = this.reachingDefinition()
-        or
-        result.getDefinition() = this.inputEdgeRefinement()
+        result = this.getInput(_)
+    }
+
+    /** Holds if forall incoming edges in the flow graph, there is an input variable */
+    predicate isComplete() {
+        forall(BasicBlock pred |
+            pred = this.getBasicBlock().getAPredecessor() |
+            exists(this.getInput(pred))
+        )
     }
 
     string toString() {
@@ -475,8 +487,10 @@ private class EssaNode extends EssaDefinition, TEssaNodeDefinition {
 
     predicate definedBy(SsaSourceVariable v, ControlFlowNode def) {
         exists(BasicBlock b, int i |
-            this = TEssaNodeDefinition(v, b, i) and
-            def = b.getNode(i/2)
+            def = b.getNode(i) |
+            this = TEssaNodeDefinition(v, b, i+i)
+            or
+            this = TEssaNodeDefinition(v, b, i+i+1)
         )
     }
 

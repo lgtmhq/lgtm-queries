@@ -523,7 +523,6 @@ predicate import_from_dot_in_init(ImportExprNode f) {
 }
 
 /** Gets the pseudo-object representing the value referred to by an undefined variable */
-cached
 Object undefinedVariable() {
     py_special_objects(result, "_semmle_undefined_value")
 }
@@ -569,4 +568,8 @@ predicate bitwise_expression_node(BinaryExprNode bit, ControlFlowNode left, Cont
     ) and
     left = bit.getLeft() and
     right = bit.getRight()
+}
+
+cached predicate version111plus() {
+    exists(string v | py_flags_versioned("extractor.version", v, _) | v.toInt() > 110)
 }

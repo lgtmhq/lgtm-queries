@@ -18,6 +18,7 @@
  * @treemap.warnOn lowValues
  * @metricType file
  * @metricAggregate avg sum max
+ * @precision very-high
  * @tags maintainability
  *       documentation
  */

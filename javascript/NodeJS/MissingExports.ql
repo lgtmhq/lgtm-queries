@@ -32,16 +32,18 @@ predicate definedInModule(GlobalVariable v, NodeModule m) {
   )
 }
 
-from NodeModule m, GlobalVariable f, InvokeExpr invk, ASTNode export
+from NodeModule m, GlobalVariable f, InvokeExpr invk, ASTNode export, GlobalVarAccess acc
 where m.exports(f.getName(), export) and
-      invk.getCallee() = f.getAnAccess() and invk.getTopLevel() = m and
+      acc = f.getAnAccess() and
+      invk.getCallee() = acc and
+      invk.getTopLevel() = m and
 
       // don't flag if the variable is defined in the same module
       not definedInModule(f, m) and
 
-      // don't flag if there is a JSLint declaration for the variable
-      not exists (JSLintGlobal glob | glob.appliesTo(invk) |
-        glob.declaresGlobal(f.getName(), _)
+      // don't flag if there is a linter directive declaring the variable
+      not exists (Linting::GlobalDeclaration glob |
+        glob.declaresGlobalForAccess(acc)
       ) and
 
       // don't flag if there is an externs declaration for the variable

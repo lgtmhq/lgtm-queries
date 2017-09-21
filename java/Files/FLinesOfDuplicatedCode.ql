@@ -19,6 +19,7 @@
  * @treemap.warnOn highValues
  * @metricType file
  * @metricAggregate avg sum max
+ * @precision high
  * @tags testability
  *       modularity
  */

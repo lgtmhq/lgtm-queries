@@ -28,7 +28,6 @@ import semmle.javascript.Errors
 import semmle.javascript.Regexp
 import semmle.javascript.Tokens
 import semmle.javascript.Externs
-import semmle.javascript.JSLint
 import semmle.javascript.Templates
 import semmle.javascript.JSDoc
 import semmle.javascript.JSON
@@ -48,6 +47,10 @@ import semmle.javascript.SSA
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.frameworks.AngularJS
 import semmle.javascript.frameworks.jQuery
+import semmle.javascript.frameworks.NoSQL
 import semmle.javascript.frameworks.SQL
 import semmle.javascript.frameworks.xUnit
+import semmle.javascript.linters.Linting
+import semmle.javascript.linters.ESLint
+import semmle.javascript.linters.JSLint
 import semmle.javascript.XML

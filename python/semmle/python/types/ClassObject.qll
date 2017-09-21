@@ -562,7 +562,7 @@ ClassObject theKeyErrorType() {
 /** The builtin class of bound methods */
 cached
 ClassObject theBoundMethodType() {
-    if exists(string v | py_flags_versioned("extractor.version", v, _) | v.toInt() > 110) then
+    if version111plus() then
         py_special_objects(result, "MethodType")
     else
         /* For older snapshots use the builtin method descriptor type, which will work for all existing queries */

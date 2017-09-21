@@ -18,7 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
- * @id js/client-side-url-redirect
+ * @id js/client-side-unvalidated-url-redirection
  * @tags security
  *       external/cwe/cwe-079
  *       external/cwe/cwe-116

@@ -18,6 +18,8 @@
  * @treemap.warnOn lowValues
  * @metricType file
  * @metricAggregate avg sum max
+ * @precision medium
+ * @precision very-high
  */
 import python
 import semmle.python.filters.Tests
