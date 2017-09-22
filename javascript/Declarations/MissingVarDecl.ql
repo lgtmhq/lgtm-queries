@@ -30,8 +30,13 @@ import javascript
  * but not declared in the same toplevel as `f`.
  */
 GlobalVariable undeclaredGlobalIn(Function f) {
-  result.getAnAccess().getEnclosingFunction() = f and
-  not result.declaredIn(f.getTopLevel())
+  exists (GlobalVarAccess gva | gva = result.getAnAccess() |
+    gva.getEnclosingFunction() = f and
+    not result.declaredIn(f.getTopLevel()) and
+    not exists (Linting::GlobalDeclaration gd |
+      gd.declaresGlobalForAccess(gva)
+    )
+  )
 }
 
 /**

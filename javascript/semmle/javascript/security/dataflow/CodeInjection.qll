@@ -18,7 +18,6 @@
 import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import DOM
-import semmle.javascript.frameworks.jQuery
 
 
 /**
@@ -114,18 +113,6 @@ class EvalJavaScriptSink extends CodeInjectionSink {
       callName = "setTimeout" and index = 0 or
       callName = "setInterval" and index = 0 or
       callName = "setImmediate" and index = 0
-    )
-  }
-}
-
-/**
- * An expression which may be interpreted as a jQuery selector.
- */
-class JQuerySelectorSink extends CodeInjectionSink {
-  JQuerySelectorSink () {
-    exists(JQueryMethodCall call, string name |
-      name = call.getMethodName() and this = call.getArgument(0) |
-      name = "$" or name = "jQuery"
     )
   }
 }

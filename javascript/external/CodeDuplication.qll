@@ -286,3 +286,91 @@ predicate similarContainers(StmtContainer sc, StmtContainer other, float percent
     percent > 90.0
   )
 }
+
+predicate similarLines(File f, int line) {
+  exists(SimilarBlock b | 
+    b.sourceFile() = f and line in [b.sourceStartLine() .. b.sourceEndLine()]
+  )
+}
+
+private
+predicate similarLinesPerEquivalenceClass(int equivClass, int lines, File f)
+{
+  lines = strictsum(SimilarBlock b, int toSum |
+    (b.sourceFile() = f and b.getEquivalenceClass() = equivClass) and (toSum = b.sourceLines()) | toSum)
+}
+
+private pragma[noopt] 
+predicate similarLinesCovered(File f, int coveredLines, File otherFile) {
+  exists(int numLines | numLines = f.getNumberOfLines() |
+    exists(int coveredApprox |
+      coveredApprox = strictsum(int num | 
+        exists(int equivClass |
+          similarLinesPerEquivalenceClass(equivClass, num, f) and
+          similarLinesPerEquivalenceClass(equivClass, num, otherFile) and
+          f != otherFile
+        )
+      ) and
+      exists(int n, int product |
+        product = coveredApprox * 100 and n = product / numLines |
+        n > 75
+      )
+    ) and
+    exists(int notCovered |
+      notCovered = count(int j | j in [1 .. numLines] and not similarLines(f, j)) and
+      coveredLines = numLines - notCovered
+    )
+  )
+}
+
+predicate duplicateLines(File f, int line) {
+  exists(DuplicateBlock b | 
+    b.sourceFile() = f and line in [b.sourceStartLine() .. b.sourceEndLine()]
+  )
+}
+
+private
+predicate duplicateLinesPerEquivalenceClass(int equivClass, int lines, File f)
+{
+  lines = strictsum(DuplicateBlock b, int toSum |
+    (b.sourceFile() = f and b.getEquivalenceClass() = equivClass) and (toSum = b.sourceLines()) | toSum)
+}
+
+private pragma[noopt] 
+predicate duplicateLinesCovered(File f, int coveredLines, File otherFile) {
+  exists(int numLines | numLines = f.getNumberOfLines() |
+    exists(int coveredApprox |
+      coveredApprox = strictsum(int num | 
+       exists(int equivClass |
+          duplicateLinesPerEquivalenceClass(equivClass, num, f) and
+          duplicateLinesPerEquivalenceClass(equivClass, num, otherFile) and
+          f != otherFile
+        )
+      ) and
+      exists (int n, int product | product = coveredApprox * 100 and n = product / numLines | n > 75)
+    ) and
+    exists(int notCovered |
+      notCovered = count(int j | j in [1 .. numLines] and not duplicateLines(f, j)) and
+      coveredLines = numLines - notCovered
+    )
+  )
+}
+
+predicate similarFiles(File f, File other, int percent) {
+  exists(int covered, int total |
+    similarLinesCovered(f, covered, other) and
+    total = f.getNumberOfLines() and
+    covered * 100 / total = percent and
+    percent > 80
+  ) and
+  not duplicateFiles(f, other, _)
+}
+
+predicate duplicateFiles(File f, File other, int percent) {
+  exists(int covered, int total |
+    duplicateLinesCovered(f, covered, other) and
+    total = f.getNumberOfLines() and
+    covered * 100 / total = percent and
+    percent > 70
+  )
+}

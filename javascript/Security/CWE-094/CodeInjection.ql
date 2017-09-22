@@ -17,7 +17,7 @@
  *              code execution.
  * @kind problem
  * @problem.severity error
- * @precision medium
+ * @precision high
  * @id js/code-injection
  * @tags security
  *       external/cwe/cwe-094

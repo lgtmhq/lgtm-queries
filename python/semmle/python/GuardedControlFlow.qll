@@ -66,4 +66,15 @@ class ConditionBlock extends BasicBlock {
         )
     }
 
+    /** Holds if this condition controls the edge `pred->succ`, i.e. those edges for which the condition is `testIsTrue`. */
+    predicate controlsEdge(BasicBlock pred, BasicBlock succ, boolean testIsTrue) {
+        this.controls(pred, testIsTrue) and succ = pred.getASuccessor()
+        or
+        pred = this and (
+            testIsTrue = true and succ = this.getATrueSuccessor()
+            or
+            testIsTrue = false and succ = this.getAFalseSuccessor()
+        )
+    }
+
 }

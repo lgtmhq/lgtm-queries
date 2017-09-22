@@ -45,18 +45,30 @@ predicate nonConstructible(Function f, string fDesc) {
 }
 
 /**
+ * Holds if call site `cs` may invoke function `callee` as specified by `how`.
+ */
+predicate calls(CallSite cs, Function callee, string how) {
+  callee = cs.getACallee() and
+  (
+    cs instanceof CallExpr and not cs instanceof SuperCall and
+    how = "as a function"
+    or
+    cs instanceof NewExpr and
+    how = "using 'new'"
+  )
+}
+
+/**
  * Holds if call site `cs` may illegally invoke function `callee` as specified by `how`;
  * `calleeDesc` describes what kind of function `callee` is.
  */
 predicate illegalInvocation(CallSite cs, Function callee, string calleeDesc, string how) {
-  callee = cs.getACallee() and
+  calls(cs, callee, how) and
   (
-    cs instanceof CallExpr and not cs instanceof SuperCall and
     how = "as a function" and
     callee instanceof Constructor and
     calleeDesc = "a constructor"
     or
-    cs instanceof NewExpr and
     how = "using 'new'" and
     nonConstructible(callee, calleeDesc)
   )

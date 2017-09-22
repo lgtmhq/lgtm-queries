@@ -48,6 +48,20 @@ URLValuedAttribute getAURLAttribute(NPMPackage pkg) {
 }
 
 /**
+ * Gets the name of a script in the 'scripts' object of `pkg`.
+ * The script makes use of a declared `dependency` of `pkg`.
+ */
+string getPackageScriptNameWithDependency(NPMPackage pkg, string dependency){
+    exists (JSONObject scriptsObject, string scriptName, string script |
+        declaresDependency(pkg, dependency, _) and
+        scriptsObject = pkg.getPackageJSON().getPropValue("scripts") and
+        script = scriptsObject.getPropStringValue(scriptName) and
+        script.regexpMatch(".*\\b\\Q" + dependency + "\\E\\b.*") and
+        result = scriptName
+    )
+}
+
+/**
  * Holds if the NPM package `pkg` declares a dependency on package `name`,
  * and uses it at least once.
  */
@@ -65,6 +79,14 @@ predicate usesDependency(NPMPackage pkg, string name) {
     exists (URLValuedAttribute attr | attr = getAURLAttribute(pkg) |
       // check whether the URL contains `node_modules/name`
       attr.getURL().regexpMatch(".*\\bnode_modules/\\Q" + name + "\\E(/.*)?")
+    )
+    or
+    // there is a reference in a package.json white-listed script
+    exists (string packageScriptName |
+      packageScriptName = getPackageScriptNameWithDependency(pkg, name) |
+      packageScriptName = "preinstall" or
+      packageScriptName = "install" or
+      packageScriptName = "postinstall"
     )
   )
 }

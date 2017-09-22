@@ -21,21 +21,8 @@
 
 import semmle.javascript.GeneratedCode
 import semmle.javascript.frameworks.Testing
+import semmle.javascript.frameworks.Templating
 import semmle.javascript.dependencies.FrameworkLibraries
-
-/**
- * Gets a string that is known to be used as a template delimiter.
- */
-string getATemplateDelimiter() {
-  result = "<%" or result = "%>" or
-  result = "{{" or result = "}}" or
-  result = "{%" or result = "%}" or
-  result = "<@" or result = "@>" or
-  result = "<#" or result = "#>" or
-  result = "{#" or result = "#}" or
-  result = "[%" or result = "%]" or
-  result = "<?" or result = "?>"
-}
 
 /**
  * Holds if `e` may be caused by parsing a template HTML file as plain HTML.
@@ -50,16 +37,15 @@ predicate maybeCausedByTemplate(JSParseError e) {
     // of a template delimiter (to account for the possibility that the parser gives
     // up somewhere half-way through the delimiter), and look for an occurrence of
     // a delimiter inside this string
-    exists (string prefix, string pattern, int errStart, int n |
+    exists (string prefix, int errStart, int n |
       errStart = e.getLocation().getStartColumn() and
       n = min(int nn |
-        nn = errStart + max(getATemplateDelimiter().length()) or
+        nn = errStart + max(Templating::getADelimiter().length()) or
         // take the entire line if it is too short
         nn = e.getLine().length()
       ) and
       prefix = e.getLine().substring(0, n) and
-      pattern = concat("\\Q" + getATemplateDelimiter() + "\\E", "|") |
-      prefix.regexpMatch(".*(" + pattern + ").*")
+      prefix.regexpMatch(Templating::getDelimiterMatchingRegexp())
     )
     or
     f.getAbsolutePath().regexpMatch("(?i).*\\btemplates?\\b.*")

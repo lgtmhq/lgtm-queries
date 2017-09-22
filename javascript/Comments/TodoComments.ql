@@ -26,5 +26,5 @@
 import javascript
 
 from Comment c
-where c.getText().regexpMatch("(?s).*FIXME.*|.*TODO.*|.*XXX.*")
+where c.getText().regexpMatch("(?s).*FIXME.*|.*TODO.*|.*(?<!=)\\s*XXX.*")
 select c, "TODO comments should be addressed."

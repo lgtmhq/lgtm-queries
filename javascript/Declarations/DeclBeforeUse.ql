@@ -32,8 +32,10 @@ where // the first reference to `var` in `tl` is `acc` (that is, an access, not 
       decl = refInTopLevel(var, Decl(), tl) and
       // exclude function declarations
       not exists (FunctionDeclStmt f | f.getVariable() = var) and
-      // exclude globals declared by a JSLint directive
-      not exists(JSLintGlobal jslg | jslg.appliesTo(acc) | jslg.declaresGlobal(acc.getName(), _)) and
+      // exclude globals declared by a linter directive
+      not exists(Linting::GlobalDeclaration glob |
+        glob.declaresGlobalForAccess(acc)
+      ) and
       // exclude declarations in synthetic constructors
       not acc.getEnclosingFunction() instanceof SyntheticConstructor
 select acc, "Variable '" + acc.getName() + "' is used before its $@.", decl, "declaration"

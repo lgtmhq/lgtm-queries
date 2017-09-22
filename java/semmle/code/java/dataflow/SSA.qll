@@ -583,6 +583,13 @@ private cached module SsaImpl {
   private predicate callEdgePlus(PrunedCallable c1, PrunedCallable c2) = fastTC(callEdgePruned/2)(c1, c2)
 
   pragma[noinline]
+  private predicate updatesNamedFieldPrefix(Call call, TrackedField f, Callable c1, Field field) {
+    relevantCall(call, f) and
+    field = f.getField() and
+    c1 = tgt(call)
+  }
+
+  pragma[noinline]
   private predicate generalSetterProj(Callable c, Field f) {
     generalSetter(c, f, _)
   }
@@ -591,14 +598,13 @@ private cached module SsaImpl {
    * Holds if `call` may change the value of `f` on some instance, which may or
    * may not alias with `this`. The actual update occurs in `setter`.
    */
+  pragma[noopt]
   private predicate updatesNamedFieldPart1(Call call, TrackedField f, Callable setter) {
     exists(Callable c1, Callable c2, Field field |
-      relevantCall(call, f) and
-      field = f.getField() and
+      updatesNamedFieldPrefix(call, f, c1, field) and
       generalSetterProj(c2, field) and
-      generalSetter(c2, field, setter) and
-      c1 = tgt(call) and
-      (c1 = c2 or callEdgePlus(c1, c2))
+      (c1 = c2 or callEdgePlus(c1, c2)) and
+      generalSetter(c2, field, setter)
     )
   }
 

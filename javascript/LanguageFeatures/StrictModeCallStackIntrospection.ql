@@ -43,5 +43,5 @@ from PropAccess acc, AnalyzedFlowNode baseNode, string base, string prop
 where acc.accesses(baseNode, prop) and
       acc.getContainer().isStrict() and
       illegalPropAccess(baseNode.getAValue(), base, prop) and
-      forall (AbstractValue av | av = baseNode.getAValue() | illegalPropAccess(av, _, prop))
+      forex (AbstractValue av | av = baseNode.getAValue() | illegalPropAccess(av, _, prop))
 select acc, "Strict mode code cannot use " + base + "." + prop + "."

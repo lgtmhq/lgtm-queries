@@ -75,19 +75,24 @@ predicate passes_open_files(Variable v, ControlFlowNode test, boolean sense) {
     )
 }
 
+/* Helper for `def_is_open` to give better join order */
+private predicate passes_open_files(PyEdgeRefinement refinement) {
+    passes_open_files(refinement.getSourceVariable(), refinement.getPredecessor().getLastNode(), refinement.getSense())
+}
+
 /** Holds if `def` refers to a file opened at `open` */
 predicate def_is_open(EssaDefinition def, ControlFlowNode open) {
     expr_is_open(def.(AssignmentDefinition).getValue(), open)
     or
-    exists(PyEdgeRefinement refinement | 
+    exists(PyEdgeRefinement refinement |
         refinement = def |
         var_is_open(refinement.getInput(), open) and 
-        passes_open_files(refinement.getSourceVariable(), refinement.getPredecessor().getLastNode(), refinement.getSense())
+        passes_open_files(refinement)
     )
     or
     exists(PyNodeRefinement refinement |
         refinement = def |
-        not closes_file(def) and not wraps_file(refinement.getDefiningNode(), refinement.getInput()) and 
+        not closes_file(def) and not wraps_file(refinement.getDefiningNode(), refinement.getInput()) and
         var_is_open(refinement.getInput(), open)
     )
     or

@@ -12,19 +12,22 @@
 // permissions and limitations under the License.
 
 /**
-* @name SQL query built from user-controlled sources
-* @description Building a SQL query from user-controlled sources is vulnerable to insertion of
-*              malicious SQL code by the user.
+* @name Database query built from user-controlled sources
+* @description Building a database query from user-controlled sources is vulnerable to insertion of
+*              malicious code by the user.
 * @kind problem
 * @problem.severity error
 * @precision medium
+* @id js/sql-injection
 * @tags security
 *       external/cwe/cwe-089
 */
 
 import javascript
 import semmle.javascript.security.dataflow.SqlInjection
+import semmle.javascript.security.dataflow.NosqlInjection
 
-from SqlInjectionTrackingConfig cfg, DataFlowNode source, DataFlowNode sink
-where cfg.flowsFrom(sink, source)
+from DataFlowNode source, DataFlowNode sink
+where any(SqlInjectionTrackingConfig cfg).flowsFrom(sink, source) or
+      any(NosqlInjectionTrackingConfig cfg).flowsFrom(sink, source)
 select sink, "This query depends on $@.", source, "a user-provided value"

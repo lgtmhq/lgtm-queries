@@ -17,7 +17,8 @@
  *              a cross-site scripting vulnerability.
  * @kind problem
  * @problem.severity error
- * @precision medium
+ * @precision high
+ * @id js/xss
  * @tags security
  *       external/cwe/cwe-079
  *       external/cwe/cwe-116

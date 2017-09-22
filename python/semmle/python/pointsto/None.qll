@@ -14,7 +14,7 @@
 import python
 import PointsToContext
 
-/* Fake predicates so that PointsToTemplate.qll behaves correctly in Studio */
+/* Fake predicates so that This.qll behaves correctly in Studio */
 
 module NonePointsTo {
 
@@ -23,6 +23,8 @@ module NonePointsTo {
     predicate module_attribute_points_to(ControlFlowNode mod, string name, Object value, ClassObject cls, ObjectOrCfg origin) { none() }
 
     predicate pruned(ControlFlowNode f, int ctx) { none() }
+
+    predicate prunedEdge(BasicBlock pred, BasicBlock succ, int ctx) { none() }
 
     predicate named_attribute_points_to(ControlFlowNode f, int ctx, string name, Object value, ClassObject cls, ControlFlowNode origin) { none() }
 
@@ -35,6 +37,8 @@ module NonePointsTo {
     module Types {
 
         ClassObject get_an_improper_super_type(ClassObject cls) { none() }
+
+        predicate class_has_attribute(ClassObject cls, string name) { none() }
 
         ClassObject class_base_type(ClassObject cls, int index) { none() }
 

@@ -25,12 +25,17 @@
  */
 
 import javascript
+import semmle.javascript.frameworks.Templating
 
 from DOMAttributeDefinition id, string reason
 where id.getName() = "id" and
       exists (string v | v = id.getStringValue() |
-        v = "" and reason = "must contain at least one character" or
-        // we exclude attribute values starting with `{` or `[`, which suggests this is a template
-        v.regexpMatch("[^{\\[].*\\s.*") and reason = "must not contain any space characters"
+        v = "" and
+        reason = "must contain at least one character"
+        or
+        v.regexpMatch(".*\\s.*") and
+        // we exclude attribute values that look like they might be templated
+        not v.regexpMatch(Templating::getDelimiterMatchingRegexp()) and
+        reason = "must not contain any space characters"
       )
 select id, "The value of the id attribute " + reason + "."

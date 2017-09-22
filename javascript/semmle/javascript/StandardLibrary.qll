@@ -57,3 +57,13 @@ class DirectEval extends CallExpr {
     getParent+() = lv.getScope().getScopeElement()
   }
 }
+
+/**
+ * A call to `JSON.parse`.
+ */
+class JsonParseCall extends MethodCallExpr {
+  JsonParseCall() {
+    accessesGlobal(getReceiver(), "JSON") and
+    getMethodName() = "parse"
+  }
+}
