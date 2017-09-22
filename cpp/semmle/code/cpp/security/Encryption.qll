@@ -1,0 +1,70 @@
+// Copyright 2017 Semmle Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software distributed under
+// the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
+// Common predicates relating to encryption in C and C++
+
+import cpp
+
+/** A blacklist of algorithms that are known to be insecure */
+string algorithmBlacklist() {
+  result = "DES" or
+  result = "RC2" or
+  result = "RC4" or 
+  result = "RC5" or
+  result = "ARCFOUR" // a variant of RC4
+}
+
+// these are only bad if they're being used for encryption, and it's
+// hard to know when that's happening
+string hashAlgorithmBlacklist() {
+  result = "SHA1" or
+  result = "MD5"
+}
+
+/** A regex for matching strings that look like they contain a blacklisted algorithm */
+string algorithmBlacklistRegex() {
+  // algorithms usually appear in names surrounded by characters that are not
+  // alphabetical characters in the same case. This handles the upper and lower
+  // case cases
+  result = "(^|.*[^A-Z])" + algorithmBlacklist() + "([^A-Z].*|$)"
+  // for lowercase, we want to be careful to avoid being confused by camelCase
+  // hence we require two preceding uppercase letters to be sure of a case switch,
+  // or a preceding non-alphabetic character
+  or result = "(^|.*[A-Z]{2}|.*[^a-zA-Z])" + algorithmBlacklist().toLowerCase() + "([^a-z].*|$)"
+}
+
+/** A whitelist of algorithms that are known to be secure */
+string algorithmWhitelist() {
+  result = "RSA" or
+  result = "SHA256" or
+  result = "CCM" or
+  result = "GCM" or
+  result = "AES" or
+  result = "Blowfish" or
+  result = "ECIES"
+}
+
+/** A regex for matching strings that look like they contain a whitelisted algorithm */
+string algorithmWhitelistRegex() {
+  // The implementation of this is a duplicate of algorithmBlacklistRegex, as it isn't 
+  // possible to have string -> string functions at the moment
+
+  // algorithms usually appear in names surrounded by characters that are not
+  // alphabetical characters in the same case. This handles the upper and lower
+  // case cases
+  result = "(^|.*[^A-Z])" + algorithmWhitelist() + "([^A-Z].*|$)"
+  // for lowercase, we want to be careful to avoid being confused by camelCase
+  // hence we require two preceding uppercase letters to be sure of a case switch,
+  // or a preceding non-alphabetic character
+  or result = "(^|.*[A-Z]{2}|.*[^a-zA-Z])" + algorithmWhitelist().toLowerCase() + "([^a-z].*|$)"
+}

@@ -1,0 +1,173 @@
+// Copyright 2017 Semmle Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software distributed under
+// the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
+import semmle.code.cpp.exprs.Expr
+
+/**
+ * A C/C++ literal.
+ */
+class Literal extends Expr, @literal {
+  /** Gets a textual representation of this literal. */
+  override string toString() {
+    result = this.getValue() or
+    (
+      not exists(this.getValue()) and
+      result = "Unknown literal"
+    )
+  }
+
+  override predicate mayBeImpure() {
+    none()
+  }
+  override predicate mayBeGloballyImpure() {
+    none()
+  }
+}
+
+/**
+ * A label literal, that is, a use of the '&&' operator to take the address of a
+ * label for use in a computed goto statement.  This is a non-standard C/C++ extension.
+ * 
+ * For example:
+ * ```
+ * void *label_ptr = &&myLabel; // &&myLabel is a LabelLiteral
+ * 
+ * goto *label_ptr; // this is a ComputedGotoStmt
+ * 
+ * myLabel: // this is a LabelStmt
+ * ```
+ */
+class LabelLiteral extends Literal {
+  LabelLiteral() {
+    jumpinfo(this,_,_)
+  }
+
+  /** Gets the corresponding label statement. */
+  LabelStmt getLabel() {
+    jumpinfo(this,_,result)
+  }
+}
+
+/** A character literal or a string literal. */
+abstract class TextLiteral extends Literal {
+  /** Gets a hex escape sequence that appears in the character or string literal (see [lex.ccon] in the C++ Standard). */
+  string getAHexEscapeSequence(int occurrence, int offset) {
+    result = getValueText().regexpFind("(?<!\\\\)\\\\x[0-9a-fA-F]+", occurrence, offset)
+  }
+
+  /** Gets an octal escape sequence that appears in the character or string literal (see [lex.ccon] in the C++ Standard). */
+  string getAnOctalEscapeSequence(int occurrence, int offset) {
+    result = getValueText().regexpFind("(?<!\\\\)\\\\[0-7]{1,3}", occurrence, offset)
+  }
+
+  /**
+   * Gets a non-standard escape sequence that appears in the character or string literal. This is one that has the
+   * form of an escape sequence but is not one of the valid types of escape sequence in the C++ Standard.
+   */
+  string getANonStandardEscapeSequence(int occurrence, int offset) {
+    // Find all single character escape sequences (ignoring the start of octal escape sequences),
+    // together with anything starting like a hex escape sequence but not followed by a hex digit.
+    result = getValueText().regexpFind("\\\\[^x0-7\\s]|\\\\x[^0-9a-fA-F]", occurrence, offset)
+
+    // From these, exclude all standard escape sequences.
+    and not(result = getAStandardEscapeSequence(_,_))
+  }
+
+  /** Gets a simple escape sequence that appears in the char or string literal (see [lex.ccon] in the C++ Standard). */
+  string getASimpleEscapeSequence(int occurrence, int offset) {
+    result = getValueText().regexpFind("\\\\['\"?\\\\abfnrtv]", occurrence, offset)
+  }
+
+  /** Gets a standard escape sequence that appears in the char or string literal (see [lex.ccon] in the C++ Standard). */
+  string getAStandardEscapeSequence(int occurrence, int offset) {
+    result = getASimpleEscapeSequence(occurrence, offset)
+    or result = getAnOctalEscapeSequence(occurrence, offset)
+    or result = getAHexEscapeSequence(occurrence, offset)
+  }
+
+  /**
+   * Gets the length of the string literal (including null) before escape sequences added by the extractor.
+   */
+  int getOriginalLength()
+  {
+    result = getValue().length() + 1
+  }
+}
+
+/**
+ * A character literal, for example `'a'` or `L'a'`.
+ */
+class CharLiteral extends TextLiteral {
+  CharLiteral() {
+    this.getValueText().regexpMatch("(?s)\\s*L?'.*")
+  }
+
+  /**
+   * Gets the character of this literal. For example `L'a'` has character `"a"`.
+   */
+  string getCharacter() {
+    result = this.getValueText().regexpCapture("(?s)\\s*L?'(.*)'", 1)
+  }
+}
+
+/**
+ * A string literal, for example `"abcdef"` or `L"123456"`.
+ */
+class StringLiteral extends TextLiteral
+{
+  StringLiteral() {
+    this.getType() instanceof ArrayType
+    // Note that `AggregateLiteral`s can also have an array type, but they derive from
+    // @aggregateliteral rather than @literal.
+  }
+}
+
+/**
+ * An octal literal.
+ */
+class OctalLiteral extends Literal {
+  OctalLiteral() {
+    super.getValueText().regexpMatch("\\s*0[0-7]+[uUlL]*\\s*")
+  }
+}
+
+/**
+ * A hexadecimal literal.
+ */
+class HexLiteral extends Literal {
+  HexLiteral() {
+    super.getValueText().regexpMatch("\\s*0[xX][0-9a-fA-F]+[uUlL]*\\s*")
+  }
+}
+
+/**
+ * A C/C++ aggregate literal.
+*/
+class AggregateLiteral extends Expr, @aggregateliteral {
+  // if this is turned into a Literal we need to change mayBeImpure
+
+  /**
+   * Gets the expression within the aggregate literal that is used to initialise field `f`,
+   * if this literal is being used to initialise a class/struct instance.
+   */
+  Expr getCorrespondingExpr(Field f) {
+    exists(Class c, int i |
+      c = this.getType().getUnspecifiedType()
+      and f = c.getMember(i)
+      and result = getChild(i)
+    )
+  }
+
+  /** Gets a textual representation of this aggregate literal. */
+  override string toString() { result = "{...}" }
+}
