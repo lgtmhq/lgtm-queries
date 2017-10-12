@@ -18,7 +18,7 @@ import semmle.code.java.frameworks.j2objc.J2ObjC
 /**
  * Guess if the given `JavadocText` is a line of code.
  *
- * Matches comment lines ending with `{`, `}` or `;` that do not start with `>`, but first filters out:
+ * Matches comment lines ending with `{`, `}` or `;` that do not start with `>` or `@`, but first filters out:
  *
  * - Lines containing `//`
  * - Substrings between `{@` and `}` (including the brackets themselves)
@@ -28,16 +28,31 @@ import semmle.code.java.frameworks.j2objc.J2ObjC
  */
 private predicate looksLikeCode(JavadocText line) {
   exists(string trimmed |
-    trimmed = line.getText().regexpReplaceAll("\\s*//.*$", "")
-                            .regexpReplaceAll("\\{@[^}]+\\}", "")
-                            .regexpReplaceAll("(?i)&#?[a-z0-9]{1,31};", "") |
+    trimmed = trimmedCommentText(line) |
     (
       trimmed.matches("%;") or
       trimmed.matches("%{") or
       trimmed.matches("%}")
     ) and
-    not trimmed.matches(">%")
+    not trimmed.matches(">%") and
+    not trimmed.matches("@%")
   )
+}
+
+/**
+ * Remove things from comments that may look like code but are not code:
+ *
+ * - Lines containing `//`
+ * - Substrings between `{@` and `}` (including the brackets themselves)
+ * - HTML entities in common notation (e.g. `&gt;` and `&eacute;`)
+ * - HTML entities in decimal notation (e.g. `&#768;`)
+ * - HTML entities in hexadecimal notation (e.g. `&#x705F;`)
+ */
+private string trimmedCommentText(JavadocText line) {
+  result = line.getText().trim()
+                         .regexpReplaceAll("\\s*//.*$", "")
+                         .regexpReplaceAll("\\{@[^}]+\\}", "")
+                         .regexpReplaceAll("(?i)&#?[a-z0-9]{1,31};", "") 
 }
 
 /**
@@ -81,7 +96,12 @@ private int codeCount(Javadoc first) {
 private int anyCount(Javadoc first) {
   result = sum(Javadoc following |
     following = getNextComment*(first) and not hasCodeTags(following) |
-    count(JavadocText line | line = following.getAChild() and line.getText().trim() != "")
+    count(JavadocText line | line = following.getAChild() and
+      not exists(string trimmed | trimmed = line.getText().trim() |
+        trimmed.regexpMatch("(|/\\*|/\\*\\*|\\*|\\*/)") or
+        trimmed.matches("@%")
+      )
+    )
   )
 }
 

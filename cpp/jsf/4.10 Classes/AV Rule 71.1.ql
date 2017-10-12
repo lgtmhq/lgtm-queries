@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/virtual-call-in-constructor
  * @tags reliability
  *       readability
  *       language-features
@@ -25,13 +26,13 @@ import default
 
 predicate thisCall(FunctionCall c) {
   c.getQualifier() instanceof ThisExpr or
-  ((PointerDereferenceExpr)c.getQualifier()).getChild(0) instanceof ThisExpr
+  c.getQualifier().(PointerDereferenceExpr).getChild(0) instanceof ThisExpr
 }
 
 predicate virtualThisCall(FunctionCall c, Function overridingFunction) {
   c.isVirtual() and
   thisCall(c) and
-  overridingFunction = ((VirtualFunction)c.getTarget()).getAnOverridingFunction()
+  overridingFunction = c.getTarget().(VirtualFunction).getAnOverridingFunction()
 }
 
 // Catch most cases: go into functions in the same class, but only catch direct references to "this"

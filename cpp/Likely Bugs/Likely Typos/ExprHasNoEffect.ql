@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/useless-expression
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-561
@@ -36,15 +37,29 @@ predicate accessInInitOfForStmt(Expr e) {
 }
 
 /**
+ * Holds if the preprocessor branch `pbd` is on line `pbdStartLine` in file `file`.
+ */
+predicate pbdLocation(PreprocessorBranchDirective pbd, string file, int pbdStartLine) {
+  pbd.getLocation().hasLocationInfo(file, pbdStartLine, _, _, _)
+}
+
+/**
+ * Holds if the body of the function `f` is on lines `fBlockStartLine` to `fBlockEndLine` in file `file`.
+ */
+predicate functionLocation(Function f, string file, int fBlockStartLine, int fBlockEndLine) {
+  f.getBlock().getLocation().hasLocationInfo(file, fBlockStartLine, _, fBlockEndLine, _)
+}
+/**
  * Holds if the function `f`, or a function called by it, contains
  * code excluded by the preprocessor.
  */
 predicate containsDisabledCode(Function f) {
   // `f` contains a preprocessor branch that was not taken
-  exists(PreprocessorBranchDirective pbd |
-    f.getBlock().getFile() = pbd.getFile() and
-    pbd.getLocation().getStartLine() >= f.getBlock().getLocation().getStartLine() and
-    pbd.getLocation().getStartLine() <= f.getBlock().getLocation().getEndLine() and
+  exists(PreprocessorBranchDirective pbd, string file, int pbdStartLine, int fBlockStartLine, int fBlockEndLine  |
+    functionLocation(f, file, fBlockStartLine, fBlockEndLine) and
+    pbdLocation(pbd, file, pbdStartLine) and
+    pbdStartLine <= fBlockEndLine and
+    pbdStartLine >= fBlockStartLine and
     (
       pbd.(PreprocessorBranch).wasNotTaken() or
 

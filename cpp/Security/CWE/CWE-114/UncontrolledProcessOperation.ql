@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/uncontrolled-process-operation
  * @tags security
  *       external/cwe/cwe-114
  */

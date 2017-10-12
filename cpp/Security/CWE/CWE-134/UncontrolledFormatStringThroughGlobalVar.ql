@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/tainted-format-string-through-global
  * @tags reliability
  *       security
  *       external/cwe/cwe-134

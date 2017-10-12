@@ -12,11 +12,12 @@
 // permissions and limitations under the License.
 
 /**
- * @name Poor global name
+ * @name Short global name
  * @description Global variables should have descriptive names, to help document their use, avoid namespace pollution and reduce the risk of shadowing with local variables.
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/short-global-name
  * @tags maintainability
  */
 import default

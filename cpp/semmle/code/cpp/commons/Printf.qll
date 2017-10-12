@@ -203,7 +203,7 @@ class FormattingFunctionCall extends Expr {
 
   /** the index at which the format string occurs in the argument list */
   int getFormatParameterIndex() {
-    result = ((FormattingFunction)this.getTarget()).getFormatParameterIndex()
+    result = this.getTarget().(FormattingFunction).getFormatParameterIndex()
   }
 
   /** the format expression used in this call */
@@ -223,7 +223,7 @@ class FormattingFunctionCall extends Expr {
   /** the argument corresponding to the nth conversion specifier */
   Expr getConversionArgument(int n) {
     exists(FormatLiteral fl, int b, int o |
-      fl = (FormatLiteral)this.getFormat() and
+      fl = this.getFormat() and
       b = sum(int i, int toSum | (i < n) and (toSum = fl.getNumArgNeeded(i)) | toSum) and
       o = fl.getNumArgNeeded(n) and
       o > 0 and
@@ -234,7 +234,7 @@ class FormattingFunctionCall extends Expr {
       (fails if that conversion specifier has an explicit minimum field width) */
   Expr getMinFieldWidthArgument(int n) {
     exists(FormatLiteral fl, int b |
-      fl = (FormatLiteral)this.getFormat() and
+      fl = this.getFormat() and
       b = sum(int i, int toSum | (i < n) and (toSum = fl.getNumArgNeeded(i)) | toSum) and
       fl.hasImplicitMinFieldWidth(n) and
       result = this.getFormatArgument(b))
@@ -244,7 +244,7 @@ class FormattingFunctionCall extends Expr {
       (fails if that conversion specifier has an explicit precision) */
   Expr getPrecisionArgument(int n) {
     exists(FormatLiteral fl, int b, int o |
-      fl = (FormatLiteral)this.getFormat() and
+      fl = this.getFormat() and
       b = sum(int i, int toSum | (i < n) and (toSum = fl.getNumArgNeeded(i)) | toSum) and
       (if fl.hasImplicitMinFieldWidth(n) then o=1 else o=0) and
       fl.hasImplicitPrecision(n) and
@@ -272,7 +272,7 @@ class FormatLiteral extends Expr {
   }
 
   predicate isWideCharDefault() {
-    ((FormattingFunction)getUse().getTarget()).isWideCharDefault()
+    getUse().getTarget().(FormattingFunction).isWideCharDefault()
   }
 
   /** the format string, with '%%' replaced by '_'
@@ -392,7 +392,7 @@ class FormatLiteral extends Expr {
   /** whether the nth conversion specifier has an implicitly given minimum field width (either "*" or "*i$" for some number i) */
   predicate hasImplicitMinFieldWidth(int n) { this.getMinFieldWidthOpt(n).regexpMatch("\\*.*") }
 
-  /** the minium field width of the nth conversion specifier */
+  /** the minimum field width of the nth conversion specifier */
   int getMinFieldWidth(int n) { result = this.getMinFieldWidthOpt(n).toInt() }
 
   /** the precision of the nth conversion specifier (empty string if none is given) */
@@ -703,7 +703,7 @@ class FormatLiteral extends Expr {
       or this.getConversionChar(n).toLowerCase()="s" and
          len = min(int v |
            (v = this.getPrecision(n)) or
-           (v = ((AnalysedString)this.getUse().getFormatArgument(n)).getMaxLength() - 1) // (don't count null terminator)
+           (v = this.getUse().getFormatArgument(n).(AnalysedString).getMaxLength() - 1) // (don't count null terminator)
          )
       )
     )

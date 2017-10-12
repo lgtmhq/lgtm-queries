@@ -33,7 +33,8 @@ import javascript
  * Furthermore, the id is required to be non-empty (since empty ids
  * are reported by a different query).
  */
-predicate elementAt(DOMElementDefinition elt, string id, DocumentElement root, int line, int column) {
+predicate elementAt(DOM::ElementDefinition elt, string id, DOM::DocumentElementDefinition root,
+                    int line, int column) {
   id = elt.getAttributeByName("id").getStringValue() and id != "" and
   root = elt.getRoot() and
   elt.getLocation().hasLocationInfo(_, line, column, _, _)
@@ -43,14 +44,14 @@ predicate elementAt(DOMElementDefinition elt, string id, DocumentElement root, i
  * Holds if elements `earlier` and `later` have the same id and belong
  * to the same document, and `earlier` appears textually before `later`.
  */
-predicate sameId(DOMElementDefinition earlier, DOMElementDefinition later) {
-  exists (string id, DocumentElement root, int l1, int c1, int l2, int c2 |
+predicate sameId(DOM::ElementDefinition earlier, DOM::ElementDefinition later) {
+  exists (string id, DOM::DocumentElementDefinition root, int l1, int c1, int l2, int c2 |
     elementAt(earlier, id, root, l1, c1) and elementAt(later, id, root, l2, c2) |
     l1 < l2 or
     l1 = l2 and c1 < c2
   )
 }
 
-from DOMElementDefinition earlier, DOMElementDefinition later
+from DOM::ElementDefinition earlier, DOM::ElementDefinition later
 where sameId(earlier, later) and not sameId(_, earlier)
 select earlier, "This element has the same id as $@.", later, "another element"

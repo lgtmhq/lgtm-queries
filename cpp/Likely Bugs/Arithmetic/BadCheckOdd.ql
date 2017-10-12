@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/incomplete-parity-check
  * @tags reliability
  *       correctness
  *       types

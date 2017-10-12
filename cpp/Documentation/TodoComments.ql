@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision very-high
+ * @id cpp/todo-comment
  * @tags maintainability
  *       documentation
  *       external/cwe/cwe-546

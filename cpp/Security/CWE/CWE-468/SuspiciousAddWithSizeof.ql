@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/suspicious-add-sizeof
  * @tags security
  *       external/cwe/cwe-468
  */

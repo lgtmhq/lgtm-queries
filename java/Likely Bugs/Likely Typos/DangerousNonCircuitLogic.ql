@@ -13,12 +13,12 @@
 
 /**
  * @name Dangerous non-short-circuit logic
- * @description Using a bitwise logical operator on a Boolean where a conditional-and or
- *              conditional-or operator is intended is likely to give the wrong result and may
+ * @description Using a bitwise logical operator on a boolean where a conditional-and or
+ *              conditional-or operator is intended may yield the wrong result or
  *              cause an exception.
  * @kind problem
  * @problem.severity warning
- * @precision very-high
+ * @precision medium
  * @id java/non-short-circuit-evaluation
  * @tags reliability
  *       readability

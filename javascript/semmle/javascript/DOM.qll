@@ -17,14 +17,224 @@
 
 import javascript
 
+module DOM {
+  /**
+   * A definition of a DOM element, for instance by an HTML element in an HTML file
+   * or a JSX element in a JavaScript file.
+   */
+  abstract class ElementDefinition extends Locatable {
+    /**
+     * Gets the name of the DOM element; for example, a `<p>` element has
+     * name `p`.
+     */
+    abstract string getName();
+
+    /**
+     * Gets the `i`th attribute of this DOM element, if it can be determined.
+     *
+     * For example, the 0th (and only) attribute of `<a href="https://semmle.com">Semmle</a>`
+     * is `href="https://semmle.com"`.
+     */
+    AttributeDefinition getAttribute(int i) {
+      none()
+    }
+
+    /**
+     * Gets an attribute of this DOM element with name `name`.
+     *
+     * For example, the DOM element `<a href="https://semmle.com">Semmle</a>`
+     * has a single attribute `href="https://semmle.com"` with the name `href`.
+     */
+    AttributeDefinition getAttributeByName(string name) {
+      result.getElement() = this and
+      result.getName() = name
+    }
+
+    /**
+     * Gets an attribute of this DOM element.
+     */
+    AttributeDefinition getAnAttribute() {
+      result.getElement() = this
+    }
+
+    /**
+     * Gets the document element to which this element belongs, if it can be determined.
+     */
+    DocumentElementDefinition getRoot() { none() }
+  }
+
+  /**
+   * An HTML element, viewed as an `ElementDefinition`.
+   */
+  private class HtmlElementDefinition extends ElementDefinition, @xmlelement {
+    HtmlElementDefinition() { this instanceof HTMLElement }
+
+    override string getName() { result = this.(HTMLElement).getName() }
+
+    override AttributeDefinition getAttribute(int i) {
+      result = this.(HTMLElement).getAttribute(i)
+    }
+
+    override DocumentElementDefinition getRoot() {
+      result = this.(HTMLElement).getParent*()
+    }
+  }
+
+  /**
+   * A JSX element, viewed as an `ElementDefinition`.
+   */
+  private class JsxElementDefinition extends ElementDefinition, @jsxelement {
+    JsxElementDefinition() { this instanceof JSXElement }
+
+    override string getName() { result = this.(JSXElement).getName() }
+
+    override AttributeDefinition getAttribute(int i) {
+      result = this.(JSXElement).getAttribute(i)
+    }
+  }
+
+  /**
+   * A DOM attribute as defined, for instance, by an HTML attribute in an HTML file
+   * or a JSX attribute in a JavaScript file.
+   */
+  abstract class AttributeDefinition extends Locatable {
+    /**
+     * Gets the name of this attribute, if any.
+     *
+     * JSX spread attributes do not have a name.
+     */
+    abstract string getName();
+
+    /**
+     * Gets the data flow node whose value is the value of this attribute,
+     * if any.
+     *
+     * This is undefined for HTML elements, where the attribute value is not
+     * computed but specified directly.
+     */
+    DataFlowNode getValueNode() {
+      none()
+    }
+
+    /**
+     * Gets the value of this attribute, if it can be determined.
+     */
+    string getStringValue() {
+      result = getValueNode().(Expr).getStringValue()
+    }
+
+    /**
+     * Gets the DOM element this attribute belongs to.
+     */
+    ElementDefinition getElement() {
+      this = result.getAttributeByName(_)
+    }
+  }
+
+  /**
+   * An HTML attribute, viewed as an `AttributeDefinition`.
+   */
+  private class HtmlAttributeDefinition extends AttributeDefinition, @xmlattribute {
+    HtmlAttributeDefinition() { this instanceof HTMLAttribute }
+    override string getName() { result = this.(HTMLAttribute).getName() }
+    override string getStringValue() { result = this.(HTMLAttribute).getValue() }
+    override ElementDefinition getElement() { result = this.(HTMLAttribute).getElement() }
+  }
+
+  /**
+   * A JSX attribute, viewed as an `AttributeDefinition`.
+   */
+  private class JsxAttributeDefinition extends AttributeDefinition, @jsx_attribute {
+    JsxAttributeDefinition() { this instanceof JSXAttribute }
+    override string getName() { result = this.(JSXAttribute).getName() }
+    override DataFlowNode getValueNode() { result = this.(JSXAttribute).getValue() }
+    override ElementDefinition getElement() { result = this.(JSXAttribute).getElement() }
+  }
+
+  /**
+   * An HTML `<document>` element.
+   */
+  class DocumentElementDefinition extends ElementDefinition {
+    DocumentElementDefinition() { this.getName() = "html" }
+    override string getName() { none() }
+    override AttributeDefinition getAttribute(int i) { none() }
+    override AttributeDefinition getAttributeByName(string name) { none() }
+  }
+
+  /**
+   * Holds if the value of attribute `attr` is interpreted as a URL.
+   */
+  predicate isUrlValuedAttribute(AttributeDefinition attr) {
+    exists (string eltName, string attrName |
+      eltName = attr.getElement().getName() and
+      attrName = attr.getName() |
+      (eltName = "script" or eltName = "iframe" or eltName = "embed" or
+       eltName = "video" or eltName = "audio" or eltName = "source" or
+       eltName = "track") and
+      attrName = "src"
+      or
+      (eltName = "link" or eltName = "a" or eltName = "base" or
+       eltName = "area") and
+      attrName = "href"
+      or
+      eltName = "form" and
+      attrName = "action"
+      or
+      (eltName = "input" or eltName = "button") and
+      attrName = "formaction"
+    )
+  }
+
+  /**
+   * A data flow node or other program element that may refer to
+   * a DOM element.
+   */
+  abstract class Element extends Locatable {
+    ElementDefinition defn;
+
+    /** Gets the definition of this element. */
+    ElementDefinition getDefinition() {
+      result = defn
+    }
+
+    /** Gets the tag name of this DOM element. */
+    string getName() {
+      result = defn.getName()
+    }
+
+    /** Gets the `i`th attribute of this DOM element, if it can be determined. */
+    AttributeDefinition getAttribute(int i) {
+      result = defn.getAttribute(i)
+    }
+
+    /** Gets an attribute of this DOM element with the given `name`. */
+    AttributeDefinition getAttributeByName(string name) {
+      result = defn.getAttributeByName(name)
+    }
+  }
+
+  /**
+   * The default implementation of `Element`, including both
+   * element definitions and data flow nodes that may refer to them.
+   */
+  private class DefaultElement extends Element {
+    DefaultElement() {
+      defn = this or
+      defn = this.(DataFlowNode).getALocalSource().(Element).getDefinition()
+    }
+  }
+}
+
 /**
+ * DEPRECATED: Use `DOM::ElementDefinition` instead.
+ *
  * A DOM element as defined either by an HTML element in an HTML file
  * or a JSX element in a JavaScript file.
  */
+deprecated
 class DOMElementDefinition extends Locatable {
   DOMElementDefinition() {
-    this instanceof HTMLElement or
-    this instanceof JSXElement
+    this instanceof DOM::ElementDefinition
   }
 
   /**
@@ -32,8 +242,7 @@ class DOMElementDefinition extends Locatable {
    * name `p`.
    */
   string getName() {
-    result = this.(HTMLElement).getName() or
-    result = this.(JSXElement).getName()
+    result = this.(DOM::ElementDefinition).getName()
   }
 
   /**
@@ -43,8 +252,7 @@ class DOMElementDefinition extends Locatable {
    * is `href="https://semmle.com"`.
    */
   DOMAttributeDefinition getAttribute(int i) {
-    result = this.(HTMLElement).getAttribute(i) or
-    result = this.(JSXElement).getAttribute(i)
+    result = this.(DOM::ElementDefinition).getAttribute(i)
   }
 
   /**
@@ -54,26 +262,27 @@ class DOMElementDefinition extends Locatable {
    * has a single attribute `href="https://semmle.com"` with the name `href`.
    */
   DOMAttributeDefinition getAttributeByName(string name) {
-    result = this.(HTMLElement).getAttributeByName(name) or
-    result = this.(JSXElement).getAttributeByName(name)
+    result = this.(DOM::ElementDefinition).getAttributeByName(name)
   }
 
   /**
    * Gets the document element to which this element belongs.
    */
   DocumentElement getRoot() {
-    result = this.(HTMLElement).getParent*()
+    result = this.(DOM::ElementDefinition).getRoot()
   }
 }
 
 /**
+ * DEPRECATED: Use `DOM::AttributeDefinition` instead.
+ *
  * A DOM attribute as defined either by an HTML attribute in an HTML file
  * or a JSX attribute in a JavaScript file.
  */
+deprecated
 class DOMAttributeDefinition extends Locatable {
   DOMAttributeDefinition() {
-    this instanceof HTMLAttribute or
-    this instanceof JSXAttribute
+    this instanceof DOM::AttributeDefinition
   }
 
   /**
@@ -82,8 +291,7 @@ class DOMAttributeDefinition extends Locatable {
    * JSX spread attributes do not have a name.
    */
   string getName() {
-    result = this.(HTMLAttribute).getName() or
-    result = this.(JSXAttribute).getName()
+    result = this.(DOM::AttributeDefinition).getName()
   }
 
   /**
@@ -93,52 +301,36 @@ class DOMAttributeDefinition extends Locatable {
    * and spread attributes.
    */
   string getStringValue() {
-    result = this.(HTMLAttribute).getValue() or
-    result = this.(JSXAttribute).getStringValue()
+    result = this.(DOM::AttributeDefinition).getStringValue()
   }
 
   /**
    * Gets the DOM element this attribute belongs to.
    */
   DOMElementDefinition getElement() {
-    this = result.getAttribute(_)
+    result = this.(DOM::AttributeDefinition).getElement()
   }
 }
 
 /**
+ * DEPRECATED: Use `DOM::DocumentElementDefinition` instead.
+ *
  * An HTML document element.
  */
+deprecated
 class DocumentElement extends DOMElementDefinition {
   DocumentElement() { getName() = "html" }
 }
 
 /**
- * Holds if the value of attribute `attrName` of element `eltName` looks like
- * a URL.
- */
-private predicate urlValued(string eltName, string attrName) {
-  (eltName = "script" or eltName = "iframe" or eltName = "embed" or
-   eltName = "video" or eltName = "audio" or eltName = "source" or
-   eltName = "track") and
-   attrName = "src" or
-
-  (eltName = "link" or eltName = "a" or eltName = "base" or
-   eltName = "area") and
-   attrName = "href" or
-
-  eltName = "form" and
-   attrName = "action" or
-
-  (eltName = "input" or eltName = "button") and
-   attrName = "formaction"
-}
-
-/**
+ * DEPRECATED: Use `DOM::isUrlValuedAttribute` instead.
+ *
  * A DOM attribute whose value is a URL.
  */
+deprecated
 class URLValuedAttribute extends DOMAttributeDefinition {
   URLValuedAttribute() {
-    urlValued(getElement().getName(), getName())
+    DOM::isUrlValuedAttribute(this)
   }
 
   /**
@@ -152,16 +344,12 @@ class URLValuedAttribute extends DOMAttributeDefinition {
 }
 
 /**
+ * DEPRECATED: Use `Expr.accessesGlobal` instead.
+ *
  * Holds if `e` accesses the global variable `g`, either directly
  * or through the `window` object.
  */
+deprecated
 predicate accessesGlobal(Expr e, string g) {
-  // direct global variable access
-  e.(GlobalVarAccess).getName() = g
-  or
-  // property access through 'window'
-  exists (PropAccess pacc | pacc = e |
-    accessesGlobal(pacc.getBase(), "window") and
-    pacc.getPropertyName() = g
-  )
+  e.accessesGlobal(g)
 }

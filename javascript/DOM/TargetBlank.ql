@@ -26,20 +26,13 @@
 
 import javascript
 
-/**
- * A link that opens in a new browsing context (that is, it has `target="_blank"`).
- */
-class ExternalLink extends DOMElementDefinition {
-  ExternalLink() {
-    getName() = "a" and
-    getAttributeByName("target").getStringValue() = "_blank"
-  }
-}
-
-from ExternalLink e
-where // there is no `rel` attribute specifying link type `noopener`/`noreferrer`;
+from DOM::ElementDefinition e
+where // `e` is a link that opens in a new browsing context (that is, it has `target="_blank"`)
+      e.getName() = "a" and
+      e.getAttributeByName("target").getStringValue() = "_blank" and
+      // there is no `rel` attribute specifying link type `noopener`/`noreferrer`;
       // `rel` attributes with non-constant value are handled conservatively
-      forall (DOMAttributeDefinition relAttr | relAttr = e.getAttributeByName("rel") |
+      forall (DOM::AttributeDefinition relAttr | relAttr = e.getAttributeByName("rel") |
         exists (string rel | rel = relAttr.getStringValue() |
           not exists (string linkType | linkType = rel.splitAt(" ") |
             linkType = "noopener" or
@@ -47,6 +40,8 @@ where // there is no `rel` attribute specifying link type `noopener`/`noreferrer
           )
         )
       ) and
-      // exclude elements with spread attributes
-      not e.getAttribute(_) instanceof JSXSpreadAttribute
+      // exclude elements with spread attributes or dynamically computed attribute names
+      not exists (DOM::AttributeDefinition attr | attr = e.getAnAttribute() |
+        not exists(attr.getName())
+      )
 select e, "External links without noopener/noreferrer are a potential security risk."

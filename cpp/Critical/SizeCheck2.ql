@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/suspicious-allocation-size
  * @tags reliability
  *       security
  *       external/cwe/cwe-131

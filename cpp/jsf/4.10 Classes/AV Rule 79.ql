@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/resource-not-released-in-destructor
  * @tags efficiency
  *       readability
  *       external/cwe/cwe-404

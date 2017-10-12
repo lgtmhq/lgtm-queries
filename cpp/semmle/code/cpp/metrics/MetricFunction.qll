@@ -11,64 +11,64 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import semmle.code.cpp.Function
-import semmle.code.cpp.stmts.Stmt
+import cpp
 
 /**
- * A wrapper of metrics for C++ classes
+ * A wrapper that provides metrics for a C/C++ function.
  */
 class MetricFunction extends Function {
 
-  /** the number of parameters */
+  /** Gets the number of parameters. */
   int getNumberOfParameters() {
     result = count(this.getAParameter())
   }
 
-  /** the number of lines in this function */
+  /** Gets the number of lines in this function. */
   int getNumberOfLines() {
     numlines(this,result,_,_)
   }
 
-  /** the number of lines of code in this function */
+  /** Gets the number of lines of code in this function. */
   int getNumberOfLinesOfCode() {
     numlines(this,_,result,_)
   }
 
-  /** the number of lines of comments in this function */
+  /** Gets the number of lines of comments in this function. */
   int getNumberOfLinesOfComments() {
     numlines(this,_,_,result)
   }
 
-  /** The ration of lines of comments to total lines in this function (between 0.0 and 1.0) */
+  /** Gets the ratio of lines of comments to total lines in this function (between 0.0 and 1.0). */
   float getCommentRatio() {
     if this.getNumberOfLines() = 0 then
       result = 0.0
     else
-      result = ((float)this.getNumberOfLinesOfComments()) / ((float)this.getNumberOfLines())
+      result = this.getNumberOfLinesOfComments().(float) / this.getNumberOfLines().(float)
   }
 
-  /** the number of function calls (and, for Objective C, message expressions)
-      in this function */
+  /** Gets the number of function calls in this function. */
   int getNumberOfCalls() {
     // Checking that the name of the target exists is a workaround for a DB inconsistency
     result = count(FunctionCall c | c.getEnclosingFunction() = this and not (c.getTarget() instanceof Operator) and exists(c.getTarget().getName()))
            + count(MessageExpr me | me.getEnclosingFunction() = this)
   }
 
-   /** Cyclomatic complexity:
-       the number of branching statements (if, while, do, for,
-       switch, case, catch) plus the number of branching
-       expressions (?, &amp;&amp; and ||) plus one. */
+   /**
+    * Gets the cyclomatic complexity of this function. This is defined as the
+    * number of branching statements (`if`, `while`, `do`, `for`, and
+    * non-fallthrough `case`) plus the number of branching expressions (`?`,
+    * `&&`, and `||`) plus one.
+    */
    int getCyclomaticComplexity() {
      result = 1 + cyclomaticComplexityBranches(getBlock())
      and not this.isMultiplyDefined()
    }
 
-  /** Branching complexity:
-      this is a measure derived from cyclomatic complexity, but it reflects
-      only the branches that make the code difficult to read (as opposed to
-      cyclomatic complexity, which attempts to evaluate how difficult the code
-      is to test).
+  /**
+   * Gets the branching complexity of this function. This is a measure derived
+   * from cyclomatic complexity, but it reflects only the branches that make
+   * the code difficult to read (as opposed to cyclomatic complexity, which
+   * attempts to evaluate how difficult the code is to test).
    */
   int getBranchingComplexity() {
      result =
@@ -81,6 +81,10 @@ class MetricFunction extends Function {
      and not this.isMultiplyDefined()
   }
 
+  /**
+   * Gets the number of incoming dependencies: functions that call or access
+   * this function.
+   */
   int getAfferentCoupling() {
     result = count(Function f |
       exists(Locatable l |
@@ -90,6 +94,10 @@ class MetricFunction extends Function {
     )
   }
 
+  /**
+   * Gets the number of outgoing dependencies: functions that are called or
+   * accessed by this function.
+   */
   int getEfferentCoupling() {
     result = count(Function f |
       exists(Locatable l |
@@ -104,9 +112,9 @@ class MetricFunction extends Function {
    */
 
    /**
-    *  Gets the Halstead "N1" metric: this is the total number of operators in
-    *  this function. Operators are taken to be all operators in expressions
-    *  (+, *, &amp;, ->, =, ...) as well as most statements
+    * Gets the Halstead "N1" metric: this is the total number of operators in
+    * this function. Operators are taken to be all operators in expressions
+    * (`+`, `*`, `&`, `->`, `=`, ...) as well as most statements.
     */
    int getHalsteadN1() {
      result =
@@ -127,8 +135,8 @@ class MetricFunction extends Function {
    }
 
    /**
-    *  Gets the Halstead "N2" metric: this is the total number of operands in this
-    *  function. An operand is either a variable, constant, type name or function name
+    * Gets the Halstead "N2" metric: this is the total number of operands in this
+    * function. An operand is either a variable, constant, type name, or function name.
     */
    int getHalsteadN2() {
      result =
@@ -190,8 +198,8 @@ class MetricFunction extends Function {
    }
 
    /**
-    *  Gets the Halstead "n2" metric: this is the number of distinct operands in this
-    *  function. An operand is either a variable, constant, type name or function name
+    * Gets the Halstead "n2" metric: this is the number of distinct operands in this
+    * function. An operand is either a variable, constant, type name, or function name.
     */
    int getHalsteadN2Distinct() {
      result =
@@ -203,25 +211,25 @@ class MetricFunction extends Function {
    }
 
    /**
-    *  Gets the Halstead length of this function. This is the sum of the N1 and N2 Halstead metrics
+    * Gets the Halstead length of this function. This is the sum of the N1 and N2 Halstead metrics.
     */
    int getHalsteadLength() {
      result = this.getHalsteadN1() + this.getHalsteadN2()
    }
 
    /**
-    *  Gets the Halstead vocabulary size of this function. This is the sum of the n1 and n2 Halstead metrics
+    * Gets the Halstead vocabulary size of this function. This is the sum of the n1 and n2 Halstead metrics.
     */
    int getHalsteadVocabulary() {
      result = this.getHalsteadN1Distinct() + this.getHalsteadN2Distinct()
    }
 
    /**
-    *  Gets the Halstead volume of this function. This is the Halstead size multiplied by the log of the
-    *  Halstead vocabulary. It represents the information content of the function.
+    * Gets the Halstead volume of this function. This is the Halstead size multiplied by the log of the
+    * Halstead vocabulary. It represents the information content of the function.
     */
    float getHalsteadVolume() {
-     result = ((float)this.getHalsteadLength()) * this.getHalsteadVocabulary().log2()
+     result = this.getHalsteadLength().(float) * this.getHalsteadVocabulary().log2()
    }
 
    /**
@@ -243,7 +251,7 @@ class MetricFunction extends Function {
    }
 
    /**
-    * Gets the Halstead implementation effort for this function. This is the product of the volume and difficulty
+    * Gets the Halstead implementation effort for this function. This is the product of the volume and difficulty.
     */
    float getHalsteadEffort() {
      result = this.getHalsteadVolume() * this.getHalsteadDifficulty()
@@ -258,7 +266,7 @@ class MetricFunction extends Function {
    }
 
    /**
-    * The maximum nesting level of complex statements such as if, while in the function. A nesting depth of
+    * Gets the maximum nesting level of complex statements such as if, while in the function. A nesting depth of
     * 2 would mean that there is, for example, an if statement nested in another if statement.
     */
    int getNestingDepth() {
@@ -284,8 +292,7 @@ predicate defaultFallThrough(SwitchCase sc) {
   defaultFallThrough(sc.getAPredecessor())
 }
 
-/** A branching statement used for the computation of
-    cyclomatic complexity */
+// A branching statement used for the computation of cyclomatic complexity.
 private
 predicate branchingStmt(Stmt stmt) {
   stmt instanceof IfStmt or
@@ -295,8 +302,7 @@ predicate branchingStmt(Stmt stmt) {
   branchingSwitchCase(stmt)
 }
 
-/** A branching expression used for the computation of
-    cyclomatic complexity */
+// A branching expression used for the computation of cyclomatic complexity.
 private
 predicate branchingExpr(Expr expr) {
   expr instanceof NotExpr or
@@ -305,8 +311,10 @@ predicate branchingExpr(Expr expr) {
   expr instanceof ConditionalExpr
 }
 
-/** The number of branching statements and expressions
-    in a block, for computing cyclomatic complexity */
+/**
+ * Gets the number of branching statements and expressions in a block. This is
+ * for computing cyclomatic complexity.
+ */
 int cyclomaticComplexityBranches(Block b) {
   result =
     count(Stmt stmt |
@@ -317,10 +325,13 @@ int cyclomaticComplexityBranches(Block b) {
       and not expr.isInMacroExpansion())
 }
 
-/** The parent of a statement, excluding some common cases that don't really make
-    sense for nesting depth. An example is: "if (...) { } else if (...) { }: we don't
-    consider the second if nested. Blocks are also skipped, as are parents that have
-    the same location as the child (typically they come from macros). */
+/**
+ * Gets the parent of a statement, excluding some common cases that don't really
+ * make sense for nesting depth. An example is:
+ * `if (...) { } else if (...) { }`: we don't consider the second if nested.
+ * Blocks are also skipped, as are parents that have the same location as the
+ * child (typically they come from macros).
+ * */
 private
 predicate realParent(Stmt inner, Stmt outer) {
   if skipParent(inner) then
@@ -355,5 +366,3 @@ private
 predicate nestingDepth(Stmt s, int depth) {
   depth = count(Stmt enclosing | realParent+(s, enclosing))
 }
-
-

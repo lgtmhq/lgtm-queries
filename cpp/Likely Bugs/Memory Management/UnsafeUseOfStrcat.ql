@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/unsafe-strcat
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-676

@@ -11,12 +11,17 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/* Definitions used by the SQL injection queries. */
+/** Definitions used by the queries for database query injection. */
 
 import semmle.code.java.Expr
 import semmle.code.java.security.DataFlow
+import semmle.code.java.frameworks.javaee.Persistence
 
-class SqlInjectionSink extends Expr {
+/** A sink for database query language injection vulnerabilities. */
+abstract class QueryInjectionSink extends Expr {}
+
+/** A sink for SQL injection vulnerabilities. */
+class SqlInjectionSink extends QueryInjectionSink {
   SqlInjectionSink() {
     this instanceof SqlExpr or
     exists(SQLiteRunner s, MethodAccess m | m.getMethod() = s |
@@ -25,10 +30,24 @@ class SqlInjectionSink extends Expr {
   }
 }
 
+/** A sink for Java Persistence Query Language injection vulnerabilities. */
+class PersistenceQueryInjectionSink extends QueryInjectionSink {
+  PersistenceQueryInjectionSink() {
+    // the query (first) argument to a `createQuery` or `createNativeQuery` method on `EntityManager`
+    exists (MethodAccess call, TypeEntityManager em | call.getArgument(0) = this |
+      call.getMethod() = em.getACreateQueryMethod() or
+      call.getMethod() = em.getACreateNativeQueryMethod()
+      // note: `createNamedQuery` is safe, as it takes only the query name,
+      // and named queries can only be constructed using constants as the query text 
+    )
+  }
+}
+
+
 /**
  * Implementation of `SqlTainted.ql`. This is extracted to a QLL so that it
  * can be excluded from `SqlUnescaped.ql` to avoid overlapping results.
  */
-predicate queryTaintedBy(SqlInjectionSink query, UserInput source) {
+predicate queryTaintedBy(QueryInjectionSink query, UserInput source) {
   source.flowsTo(query)
 }

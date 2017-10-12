@@ -12,8 +12,8 @@
 // permissions and limitations under the License.
 
 /**
- * @name Do not synchronize on boxed types or Strings
- * @description Synchronizing on boxed types or Strings may lead to
+ * @name Synchronization on boxed types or strings
+ * @description Synchronizing on boxed types or strings may lead to
  *              deadlock since an instance of that type is likely to
  *              be shared between many parts of the program.
  * @kind problem

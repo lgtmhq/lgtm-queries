@@ -99,7 +99,7 @@ class RedirectSink extends ServerSideUrlRedirectSink {
  */
 class LocationHeaderSink extends ServerSideUrlRedirectSink {
   LocationHeaderSink() {
-    any(HTTP::HeaderDefinition def).defines("Location", this)
+    any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("Location", this)
   }
 }
 

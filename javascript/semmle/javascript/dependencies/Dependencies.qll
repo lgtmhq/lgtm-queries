@@ -196,7 +196,7 @@ private int distance(Folder ancestor, Container descendant) {
  * to the string `g.x.y.z`.
  */
 private predicate propAccessOnGlobal(Expr e, string n) {
-  e.(GlobalVarAccess).getName() = n
+  e.accessesGlobal(n)
   or
   exists (PropAccess pacc, string q |
     pacc = e and propAccessOnGlobal(pacc.getBase(), q) |

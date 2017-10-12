@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id cpp/unbounded-write
  * @tags reliability
  *       security
  *       external/cwe/cwe-120

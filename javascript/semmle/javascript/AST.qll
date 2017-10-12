@@ -85,8 +85,7 @@ class ASTNode extends @ast_node, Locatable {
   ASTNode getChild(int i) {
     result = getChildExpr(i) or
     result = getChildStmt(i) or
-    properties(result, this, i, _, _) or
-    classes(result, this, _) and i = 2
+    properties(result, this, i, _, _)
   }
 
   /** Gets the `i`th child statement of this node. */
@@ -139,19 +138,22 @@ class ASTNode extends @ast_node, Locatable {
     result = this
   }
 
-  /**
-   * DEPRECATED: Use `getFirstControlFlowNode` instead.
-   *
-   * Gets the first control flow node belonging to this syntactic entity.
-   */
-  deprecated
-  ControlFlowNode getFirstCFGNode() {
-    result = getFirstControlFlowNode()
-  }
-
   /** Holds if this syntactic entity belongs to an externs file. */
   predicate inExternsFile() {
     getTopLevel().isExterns()
+  }
+
+  /** 
+   * Holds if this is part of an ambient declaration in a TypeScript file.
+   *
+   * A declaration is ambient if it occurs under a `declare` modifier or is
+   * an interface declaration or type alias.
+   *
+   * The TypeScript compiler emits no code for ambient declarations, but they
+   * can affect name resolution and type checking at compile-time.
+   */
+  predicate isAmbient() {
+    getParent().isAmbient()
   }
 }
 

@@ -743,6 +743,12 @@ class RemoteUserInput extends UserInput {
         and l.getMethod().getName() = "getLocalHost"
       )
     )
+
+    //MessageBodyReader
+    or exists(MessageBodyReaderRead m |
+      m.getParameter(4).getAnAccess() = this or
+      m.getParameter(5).getAnAccess() = this
+    )
   }
 }
 

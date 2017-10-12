@@ -15,7 +15,7 @@ import semmle.code.cpp.commons.Printf
 import external.ExternalArtifact
 
 predicate printfLikeFunction(Function func, int formatArg) {
-  (formatArg = ((FormattingFunction) func).getFormatParameterIndex() and not func instanceof UserDefinedFormattingFunction)
+  (formatArg = func.(FormattingFunction).getFormatParameterIndex() and not func instanceof UserDefinedFormattingFunction)
   or
   primitiveVariadicFormatter(func, formatArg, _)
   or

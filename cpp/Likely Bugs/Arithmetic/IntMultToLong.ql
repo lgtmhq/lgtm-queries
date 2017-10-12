@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/integer-multiplication-cast-to-long
  * @tags reliability
  *       security
  *       correctness

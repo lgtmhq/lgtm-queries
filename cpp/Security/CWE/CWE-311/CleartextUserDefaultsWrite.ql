@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/cleartext-storage-user-defaults
  * @tags security
  *       external/cwe/cwe-312
  */

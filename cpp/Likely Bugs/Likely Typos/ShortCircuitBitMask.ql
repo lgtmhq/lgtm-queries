@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/logical-operator-applied-to-flag
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-480

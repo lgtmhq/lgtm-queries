@@ -109,14 +109,22 @@ class SsaDefinition extends @cfgnode {
 
     /**
      * Gets the expression assigned to the SSA variable `(this, v)`, if any,
-     * when it is not a phi definition.
+     * when it is not a phi definition. The following is an exhaustive list of
+     * expressions that may be the result of this predicate.
      *
-     * This predicate covers only the three cases where it is meaningful to
-     * talk about such an expression: initialization, assignment with
-     * non-overloaded `=`, and `AssignOperation`s such as `+=`. In the latter
-     * case, the result of this predicate is the entire `AssignOperation`. If
-     * the SSA variable is defined in other ways than those three (such as
-     * function parameters, `x++`, or `f(&x)`) there is no result.
+     * - The contained expression of an `Initializer`.
+     * - The right-hand side of an `AssignExpr`.
+     * - An `AssignOperation`.
+     * - A `CrementOperation`.
+     *
+     * In all cases except `PostfixCrementOperation`, the variable `v` will be
+     * equal to the result of this predicate after evaluation of
+     * `this.getDefinition()`.
+     *
+     * If the SSA variable is defined in other ways than those four (such as
+     * function parameters or `f(&x)`) there is no result. These cases are
+     * instead covered via `definedByParameter` and `getDefinition`,
+     * respectively.
      */
     Expr getDefiningValue(LocalScopeVariable v) {
         exists(ControlFlowNode def | def = this.getDefinition() |
@@ -128,6 +136,10 @@ class SsaDefinition extends @cfgnode {
             or
             exists(AssignOperation assign | def = assign and
                 assign.getLValue() = v.getAnAccess() and result = assign
+            )
+            or
+            exists(CrementOperation crement | def = crement and
+                crement.getOperand() = v.getAnAccess() and result = crement
             )
         )
     }

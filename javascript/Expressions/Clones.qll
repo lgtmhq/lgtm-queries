@@ -28,7 +28,7 @@ private int kindOf(ASTNode nd) {
   // other node types get negative kinds
   nd instanceof TopLevel and result = -1 or
   nd instanceof Property and result = -2 or
-  nd instanceof Class    and result = -3
+  nd instanceof ClassDefinition and result = -3
 }
 
 /**

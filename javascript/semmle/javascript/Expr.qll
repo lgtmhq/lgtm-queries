@@ -116,6 +116,17 @@ class Expr extends @expr, ExprOrStmt {
       this = prop.getAChildExpr()
     )
   }
+
+  /**
+   * Holds if this expression accesses the global variable `g`, either directly
+   * or through the `window` object.
+   */
+  predicate accessesGlobal(string g) {
+    // the direct case is handled here, the indirect one in `PropAccess`
+    exists (GlobalVariable gv | gv.getName() = g |
+      this.(DataFlowNode).getALocalSource() = gv.getAnAccess()
+    )
+  }
 }
 
 /** An identifier. */
@@ -727,6 +738,12 @@ class PropAccess extends @propaccess, Expr {
 
   override ControlFlowNode getFirstControlFlowNode() {
     result = getBase().getFirstControlFlowNode()
+  }
+
+  override predicate accessesGlobal(string g) {
+    // indirect access through 'window'
+    getBase().accessesGlobal("window") and
+    getPropertyName() = g
   }
 }
 
@@ -1592,7 +1609,7 @@ class Decorator extends @decorator, Expr {
  */
 class Decoratable extends ASTNode {
   Decoratable() {
-    this instanceof Class or
+    this instanceof ClassDefinition or
     this instanceof Property or
     this instanceof MemberDefinition
   }
@@ -1601,7 +1618,7 @@ class Decoratable extends ASTNode {
    * Gets the `i`th decorator applied to this element.
    */
   Decorator getDecorator(int i) {
-    result = this.(Class).getDecorator(i) or
+    result = this.(ClassDefinition).getDecorator(i) or
     result = this.(Property).getDecorator(i) or
     result = this.(MemberDefinition).getDecorator(i)
   }
@@ -1636,4 +1653,36 @@ class FunctionBindExpr extends @bindexpr, Expr {
     result = getObject().getFirstControlFlowNode() or
     not exists(getObject()) and result = getCallee().getFirstControlFlowNode()
   }
+}
+
+/**
+ * A dynamic import expression of the form `import(source)`.
+ */
+class DynamicImportExpr extends @dynamicimport, Expr, Import {
+  /** Gets the expression specifying the path of the imported module. */
+  Expr getSource() {
+    result = getChildExpr(0)
+  }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getSource().getFirstControlFlowNode()
+  }
+
+  override PathExpr getImportedPath() {
+    result = getSource()
+  }
+
+  override Module getEnclosingModule() {
+    result = getTopLevel()
+  }
+}
+
+
+/** A literal path expression appearing in a dynamic import. */
+private class LiteralDynamicImportPath extends PathExprInModule, @stringliteral {
+  LiteralDynamicImportPath() {
+    exists (DynamicImportExpr di | this.getParentExpr*() = di.getSource())
+  }
+
+  override string getValue() { result = this.(StringLiteral).getValue() }
 }

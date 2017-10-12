@@ -34,5 +34,7 @@ where // `s` is unreachable in the CFG
       // function declarations are special and always reachable
       not s instanceof FunctionDeclStmt and
       // allow a spurious 'break' statement at the end of a switch-case
-      not exists(Case c, int i | i = c.getNumBodyStmt() | (BreakStmt)s = c.getBodyStmt(i-1))
+      not exists(Case c, int i | i = c.getNumBodyStmt() | (BreakStmt)s = c.getBodyStmt(i-1)) and
+      // ignore ambient statements
+      not s.isAmbient()
 select (FirstLineOf)s, "This statement is unreachable."

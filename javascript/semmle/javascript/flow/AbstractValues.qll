@@ -223,7 +223,7 @@ class AbstractClass extends DefiniteAbstractValue, TAbstractClass {
   /**
    * Gets the class represented by this abstract value.
    */
-  Class getClass() {
+  ClassDefinition getClass() {
     this = TAbstractClass(result)
   }
 

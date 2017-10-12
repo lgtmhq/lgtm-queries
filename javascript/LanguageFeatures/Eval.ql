@@ -31,7 +31,7 @@ import javascript
  */
 class NewFunction extends NewExpr {
   NewFunction() {
-    accessesGlobal(this.getCallee(), "Function")
+    this.getCallee().accessesGlobal("Function")
   }
 }
 
@@ -40,7 +40,7 @@ class NewFunction extends NewExpr {
  */
 class EvalCall extends CallExpr {
   EvalCall() {
-    accessesGlobal(this.getCallee(), "eval")
+    this.getCallee().accessesGlobal("eval")
   }
 }
 

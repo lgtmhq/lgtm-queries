@@ -115,7 +115,7 @@ class FunctionalComponent extends ReactComponent, Function {
  * A React component implemented as a class extending `React.Component`
  * or `React.PureComponent`.
  */
-class ES2015Component extends ReactComponent, Class {
+class ES2015Component extends ReactComponent, ClassDefinition {
   ES2015Component() {
     exists (PropAccess sup | sup = this.getSuperClass() |
       sup.getQualifiedName() = "React.Component" or

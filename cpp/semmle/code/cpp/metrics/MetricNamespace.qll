@@ -11,29 +11,29 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import semmle.code.cpp.Element
+import cpp
 
 /**
- * A delegate to compute metrics on an element.
+ * A wrapper that provides metrics for a C/C++ namespace.
  */
 class MetricNamespace extends Namespace {
 
-  /** the number of incoming dependencies */
+  /** Gets the number of incoming dependencies from other namespaces. */
   int getAfferentCoupling() {
     result = count(MetricNamespace that | that.getANamespaceDependency() = this)
   }
 
-  /** the number of outgoing dependencies */
+  /** Gets the number of outgoing dependencies on other namespaces. */
   int getEfferentCoupling() {
     result = count(MetricNamespace that | this.getANamespaceDependency() = that)
   }
 
-  /** Instability
-      Instability is a measure of how likely a package is to be influenced
-      by changes to other packages. If this metric value is high, it is easily
-      influenced, if it is low, the impact is likely to be minimal. Instability
-      is estimated as the number of outgoing dependencies relative to the total
-      number of depencies.
+  /**
+   * Gets the _instability_ of this namespace. Instability is a measure of how
+   * likely a namespace is to be influenced by changes to other namespace. If
+   * this metric value is high, it is easily influenced, if it is low, the
+   * impact is likely to be minimal. Instability is estimated as the number of
+   * outgoing dependencies relative to the total number of dependencies.
    */
   float getInstability() {
       exists(int ecoupling, int sumcoupling |
@@ -43,13 +43,13 @@ class MetricNamespace extends Namespace {
                  result = ecoupling / ((float)sumcoupling))
   }
 
-  /** Abstractness
-      Abstractness measures the proportion of abstract types in
-      a package relative to the total number of types in that package.
-      A highly abstract package (where the metric value is close 1)
-      that is furthermore instable is likely to be useless: the
-      class hierarchy has been over-engineered, and all those
-      abstract types are not heavily used.
+  /**
+   * Gets the _abstractness_ of this namespace. Abstractness measures the
+   * proportion of abstract classes in a namespace relative to the total number
+   * of classes in that namespace. A highly abstract namespace (where the
+   * metric value is close 1) that is furthermore instable is likely to be
+   * useless: the class hierarchy has been over-engineered, and all those
+   * abstract classes are not heavily used.
    */
   float getAbstractness() {
       exists(int i, int j | i = count(Class c | c.getNamespace()=this) and
@@ -58,13 +58,14 @@ class MetricNamespace extends Namespace {
                             result = j / ((float)i) and i > 0)
   }
 
-  /** Distance from Main Sequence
-      This measure intends to capture the tradeoff between abstractness
-      and instability: the ideal situation occurs when the sum of
-      abstractness and instability is one. That is, a package is
-      completely abstract and stable (abstractness=1 and instability=0)
-      or it is concrete and instable (abstractness=0 and instability=1).
-      We thus measure the distance from that ideal situation.
+  /**
+   * Gets the _distance from main sequence_ of this namespace. This measure
+   * intends to capture the tradeoff between abstractness and instability: the
+   * ideal situation occurs when the sum of abstractness and instability is
+   * one. That is, a namespace is completely abstract and stable
+   * (abstractness=1 and instability=0) or it is concrete and instable
+   * (abstractness=0 and instability=1). We thus measure the distance from that
+   * ideal situation.
    */
   float getDistanceFromMain() {
       exists(float r |
@@ -75,7 +76,7 @@ class MetricNamespace extends Namespace {
           (r < 0 and result = -r) ) )
    }
 
-     /** a namespace dependency of this element */
+  /** Gets a namespace dependency of this element. */
   MetricNamespace getANamespaceDependency() {
     exists(MetricClass c | c.getNamespace() = this
       and c.getAClassDependency().getNamespace() = result)
@@ -93,5 +94,3 @@ class MetricNamespace extends Namespace {
       and f.getType().refersTo(t) and t.getNamespace() = result)
   }
 }
-
-

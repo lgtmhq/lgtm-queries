@@ -981,6 +981,12 @@ class LocalVariableDeclExpr extends Expr,@localvariabledeclexpr {
   /** The initializer expression of this local variable declaration expression, if any. */
   Expr getInit() { result.isNthChildOf(this, 0) }
 
+  /** Holds if this variable declaration implicitly initializes the variable. */
+  predicate hasImplicitInit() {
+    exists(CatchClause cc | cc.getVariable() = this) or
+    exists(EnhancedForStmt efs | efs.getVariable() = this)
+  }
+
   /** A printable representation of this expression. */
   string toString() { result = this.getName() }
 }
@@ -1407,5 +1413,68 @@ class FieldWrite extends FieldAccess {
 class FieldRead extends FieldAccess {
   FieldRead() {
     exists(Field f | f = getVariable() and isRValue())
+  }
+}
+
+private predicate hasInstantiation(RefType t) {
+  t instanceof TypeVariable or
+  t instanceof Wildcard or
+  hasInstantiation(t.(Array).getComponentType()) or
+  hasInstantiation(t.(ParameterizedType).getATypeArgument())
+}
+
+/** An argument to a call. */
+class Argument extends Expr {
+  Call call;
+  int pos;
+
+  Argument() {
+    call.getArgument(pos) = this
+  }
+
+  /** Gets the call that has this argument. */
+  Call getCall() { result = call }
+
+  /** Gets the position of this argument. */
+  int getPosition() {
+    result = pos
+  }
+
+  /**
+   * Holds if this argument is an array of the appropriate type passed to a
+   * varargs parameter.
+   */
+  predicate isExplicitVarargsArray() {
+    exists(Array typ, Parameter p, Type ptyp |
+      typ = this.getType() and
+      pos = call.getNumArgument() - 1 and
+      call.getCallee().getParameter(pos) = p and
+      p.isVarargs() and
+      ptyp = p.getType() and
+      (
+        hasSubtype*(ptyp, typ) or
+        // If the types don't match then we'll guess based on whether there are type variables involved.
+        hasInstantiation(ptyp.(Array).getComponentType())
+      )
+    )
+  }
+
+  /** Holds if this argument is part of an implicit varargs array. */
+  predicate isVararg() {
+    isNthVararg(_)
+  }
+
+  /**
+   * Holds if this argument is part of an implicit varargs array at the
+   * given array index.
+   */
+  predicate isNthVararg(int arrayindex) {
+    not isExplicitVarargsArray() and
+    exists(Callable tgt |
+      call.getCallee() = tgt and
+      tgt.isVarargs() and
+      arrayindex = pos - tgt.getNumberOfParameters() + 1 and
+      arrayindex >= 0
+    )
   }
 }

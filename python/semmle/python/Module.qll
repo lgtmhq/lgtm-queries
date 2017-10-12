@@ -55,6 +55,9 @@ class Module extends Module_, Scope, AstNode {
     /** Gets the name of this module */
     string getName() {
         result = Module_.super.getName()
+        or
+        not exists(Module_.super.getName()) and
+        result = moduleNameFromFile(this.getPath())
     }
 
     /** Gets this module */
@@ -103,6 +106,12 @@ class Module extends Module_, Scope, AstNode {
     Module getPackage() {
         this.getName().matches("%.%") and
         result.getName() = getName().regexpReplaceAll("\\.[^.]*$", "")
+    }
+
+    /** Gets the name of the package containing this module */
+    string getPackageName() {
+        this.getName().matches("%.%") and
+        result = getName().regexpReplaceAll("\\.[^.]*$", "")
     }
 
     /** Gets the metrics for this module */
@@ -155,4 +164,15 @@ class Module extends Module_, Scope, AstNode {
         )
     }
 
+}
+
+private predicate hasInit(Folder f) {
+    exists(f.getFile("__init__.py"))
+}
+
+private string moduleNameFromFile(Container file) {
+    result = moduleNameFromFile(file.getParent()) + "." + file.getStem()
+    or
+    hasInit(file) and not hasInit(file.getParent()) and
+    result = file.getStem()
 }

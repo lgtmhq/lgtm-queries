@@ -25,7 +25,10 @@ import python
 private import semmle.python.pointsto.PointsToContext
 
 private newtype TTInvocation = TInvocation(FunctionObject f, Context c) {
-    c = f.getContext(_, _)
+    exists(Context outer, CallNode call |
+        call = f.getACall(outer) and
+        c.fromCall(call, outer)
+    )
     or
     c.appliesToScope(f.getFunction())
 }
@@ -49,7 +52,8 @@ class FunctionInvocation extends TTInvocation {
         exists(FunctionObject callee, Context callee_context, FunctionObject caller, Context caller_context |
             this = TInvocation(caller, caller_context) and
             result = TInvocation(callee, callee_context) and
-            callee_context.fromCall(call, callee, caller_context) and
+            call = callee.getACall(caller_context) and
+            callee_context.fromCall(call, caller_context) and
             call.getScope() = caller.getFunction()
         )
     }
@@ -71,7 +75,7 @@ class FunctionInvocation extends TTInvocation {
 
     /** Gets the call from which this invocation was made. */
     CallNode getCall() {
-        this.getContext().fromCall(result, _, _)
+        this.getContext().fromCall(result, _)
     }
 
     /** Gets the caller invocation of this invocation, if any. */

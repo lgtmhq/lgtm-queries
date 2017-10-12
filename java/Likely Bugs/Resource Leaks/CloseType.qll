@@ -14,6 +14,7 @@
 import java
 import semmle.code.java.frameworks.Jdbc
 import semmle.code.java.frameworks.Servlets
+import semmle.code.java.frameworks.Mockito
 
 /**
  * Expression `e` is assigned to variable `v`.
@@ -61,7 +62,8 @@ class SqlResourceOpeningMethodAccess extends MethodAccess {
       m.getDeclaringType().(RefType).hasQualifiedName("java.sql", _) and
       m.getReturnType().(RefType).hasQualifiedName("java.sql", _) and
       m.getName().regexpMatch("(create|prepare|execute).*") and
-      closeableType(m.getReturnType())
+      closeableType(m.getReturnType()) and
+      not this.getQualifier() instanceof MockitoMockedObject
     )
   }
 }

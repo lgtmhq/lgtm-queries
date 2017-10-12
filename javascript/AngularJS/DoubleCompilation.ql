@@ -27,7 +27,7 @@ import javascript
 
 from AngularJS::InjectedService compile, SimpleParameter elem, CallExpr c
 where compile.getServiceName() = "$compile" and
-      elem = any(AngularJS::DirectiveInstance d).getMethod("link").getParameter(1) and
+      elem = any(AngularJS::CustomDirective d).getALinkFunction().getParameter(1) and
       c.getCallee().(DataFlowNode).getALocalSource() = compile.getAnAccess() and
       c.getArgument(0).(DataFlowNode).getALocalSource() = elem.getVariable().getAnAccess()
 select c, "This call to $compile may cause double compilation of '" + elem + "'."

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/wrong-type-format-argument
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-686

@@ -19,6 +19,7 @@
 import java
 import semmle.code.java.Serializability
 import semmle.code.java.Reflection
+import semmle.code.java.dataflow.DataFlow
 
 class JacksonJSONIgnoreAnnotation extends NonReflectiveAnnotation {
   JacksonJSONIgnoreAnnotation() {
@@ -66,15 +67,34 @@ library class FieldReferencedJacksonSerializableType extends JacksonSerializable
 abstract class JacksonDeserializableType extends Type {
 }
 
+private class TypeLiteralToJacksonDatabindFlowConfiguration extends DataFlow::Configuration {
+  TypeLiteralToJacksonDatabindFlowConfiguration() {
+    this = "TypeLiteralToJacksonDatabindFlowConfiguration"
+  }
+  override predicate isSource(DataFlow::Node source) {
+    source.asExpr() instanceof TypeLiteral
+  }
+  override predicate isSink(DataFlow::Node sink) {
+    exists(MethodAccess ma, Method m, int i |
+      ma.getArgument(i) = sink.asExpr() and
+      m = ma.getMethod() and
+      m.getParameterType(i) instanceof TypeClass and
+      exists (RefType decl | decl = m.getDeclaringType() |
+        decl.hasQualifiedName("com.fasterxml.jackson.databind", "ObjectReader") or
+        decl.hasQualifiedName("com.fasterxml.jackson.databind", "ObjectMapper") or
+        decl.hasQualifiedName("com.fasterxml.jackson.databind.type", "TypeFactory")
+      )
+    )
+  }
+  TypeLiteral getSourceWithFlowToJacksonDatabind() {
+    hasFlow(DataFlow::exprNode(result), _)
+  }
+}
+
 library class ExplicitlyReadJacksonDeserializableType extends JacksonDeserializableType {
   ExplicitlyReadJacksonDeserializableType() {
-    exists( MethodAccess m , TypeLiteral tl |
-      usesType(tl.getTypeName().getType(), this) and
-      m.getAnArgument() = tl and
-      exists (RefType decl | decl = m.getMethod().getDeclaringType() |
-        decl.hasQualifiedName("com.fasterxml.jackson.databind", "ObjectReader") or
-        decl.hasQualifiedName("com.fasterxml.jackson.databind", "ObjectMapper")
-      )
+    exists(TypeLiteralToJacksonDatabindFlowConfiguration conf |
+      usesType(conf.getSourceWithFlowToJacksonDatabind().getTypeName().getType(), this)
     )
   }
 }

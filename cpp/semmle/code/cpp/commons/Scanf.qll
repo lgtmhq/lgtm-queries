@@ -167,7 +167,7 @@ class ScanfFormatLiteral extends Expr {
 
   /** Whether the default meaning of %s is a wchar_t* or a char*. */
   predicate isWideCharDefault() {
-    ((ScanfFunction)getUse().getTarget()).isWideCharDefault()
+    getUse().getTarget().(ScanfFunction).isWideCharDefault()
   }
 
   /** the format string itself; we perform transformations

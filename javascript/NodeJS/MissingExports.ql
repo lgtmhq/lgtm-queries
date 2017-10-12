@@ -27,8 +27,9 @@ import javascript
 
 /** Holds if variable `v` is assigned somewhere in module `m`. */
 predicate definedInModule(GlobalVariable v, NodeModule m) {
-  exists (GlobalVarAccess def | def = v.getAnAccess() |
-    def.getTopLevel() = m and def.isLValue()
+  exists (LValue def |
+    def.getTopLevel() = m and
+    def.(Expr).accessesGlobal(v.getName())
   )
 }
 

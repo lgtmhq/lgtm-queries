@@ -12,20 +12,34 @@
 // permissions and limitations under the License.
 
 /**
- * @name Print an array
+ * @name Implicit conversion from array to string
  * @description Directly printing an array, without first converting the array to a string,
  *              produces unreadable results.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity recommendation
  * @precision very-high
  * @id java/print-array
  * @tags maintainability
  */
 import java
+import semmle.code.java.StringFormat
 
-from Method println, int i, Expr arr
-where arr.getType() instanceof Array and
-      arr = println.getAReference().getArgument(i) and
-      println.hasName("println") and
-      not println.getParameter(i).getType() instanceof Array
+/**
+ * Holds if `e` is an argument of `Arrays.toString(..)`.
+ */
+predicate arraysToStringArgument(Expr e) {
+  exists(MethodAccess ma, Method m |
+    ma.getAnArgument() = e and
+    ma.getMethod() = m and
+    m.getDeclaringType().hasQualifiedName("java.util", "Arrays") and
+    m.hasName("toString")
+  )
+}
+from Expr arr
+where
+  arr.getType() instanceof Array and
+  implicitToStringCall(arr)
+  or
+  arr.getType().(Array).getComponentType() instanceof Array and
+  arraysToStringArgument(arr)
 select arr, "Implicit conversion from Array to String."
