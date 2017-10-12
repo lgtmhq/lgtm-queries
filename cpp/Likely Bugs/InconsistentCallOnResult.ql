@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/inconsistent-call-on-result
  * @tags reliability
  *       correctness
  *       statistical

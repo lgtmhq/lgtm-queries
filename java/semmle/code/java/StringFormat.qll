@@ -84,6 +84,15 @@ class FormattingCall extends Call {
     result = this.getArgument(this.getFormatStringIndex())
   }
 
+  /** Gets an argument to be formatted. */
+  Expr getAnArgumentToBeFormatted() {
+    exists(int i |
+      result = this.getArgument(i) and
+      i > this.getFormatStringIndex() and
+      not hasExplicitVarargsArray()
+    )
+  }
+
   /** Holds if the varargs argument is given as an explicit array. */
   private predicate hasExplicitVarargsArray() {
     this.getNumArgument() = this.getFormatStringIndex() + 2 and
@@ -105,6 +114,39 @@ class FormattingCall extends Call {
   FormatString getAFormatString() {
     result.getAFormattingUse() = this
   }
+}
+
+/** Holds if `m` calls `toString()` on its `i`th argument. */
+private predicate printMethod(Method m, int i) {
+  exists(RefType t |
+    t = m.getDeclaringType() and
+    m.getParameterType(i) instanceof TypeObject
+    |
+    (t.hasQualifiedName("java.io", "PrintWriter") or t.hasQualifiedName("java.io", "PrintStream")) and
+    (m.hasName("print") or m.hasName("println"))
+    or
+    (t.hasQualifiedName("java.lang", "StringBuilder") or t.hasQualifiedName("java.lang", "StringBuffer")) and
+    (m.hasName("append") or m.hasName("insert"))
+    or
+    t instanceof TypeString and m.hasName("valueOf")
+  )
+}
+
+/**
+ * Holds if `e` occurs in a position where it may be converted to a string by
+ * an implicit call to `toString()`.
+ */
+predicate implicitToStringCall(Expr e) {
+  not e.getType() instanceof TypeString and
+  (
+    exists(FormattingCall fmtcall | fmtcall.getAnArgumentToBeFormatted() = e) or
+    exists(AddExpr add | add.getType() instanceof TypeString and add.getAnOperand() = e) or
+    exists(MethodAccess ma, Method m, int i |
+      ma.getMethod() = m and
+      ma.getArgument(i) = e and
+      printMethod(m, i)
+    )
+  )
 }
 
 /**

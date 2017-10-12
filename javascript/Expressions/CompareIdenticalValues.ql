@@ -43,7 +43,7 @@ predicate accessWithConversions(Expr e, Variable v) {
     ue = e and accessWithConversions(ue.getOperand(), v)
   ) or
   exists (CallExpr ce | ce = e |
-    ce.getCallee().(GlobalVarAccess).getName() = "Number" and
+    ce.getCallee().accessesGlobal("Number") and
     ce.getNumArgument() = 1 and
     accessWithConversions(ce.getArgument(0), v)
   )

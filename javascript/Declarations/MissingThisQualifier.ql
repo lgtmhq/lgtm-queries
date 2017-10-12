@@ -25,22 +25,28 @@
 
 import javascript
 
-from CallExpr call, MethodDefinition intendedCalleeDef, GlobalVariable gv
-where gv.getAnAccess() = call.getCallee() // global call
-    and
-    not exists (WithStmt with | with.mayAffect(call.getCallee())) // unaffected by `with`
-    and
-    exists(MethodDefinition mCallerDef |
-        call.getCalleeName() = intendedCalleeDef.getName() // using a function name
-        and
-        intendedCalleeDef.getDeclaringClass() = mCallerDef.getDeclaringClass() // of a method in same class
-        and
-        call.getEnclosingFunction() = mCallerDef.getBody() // as the enclosing method of the call
-    )
-    and
-    // exceptions:
-    not (
-        // locally defined, so not really global
+/**
+ * Holds if `call` is a call to global function `gv` which has the same name as method
+ * `intendedTarget` in the same class as `call`.
+ */
+predicate maybeMissingThis(CallExpr call, MethodDefinition intendedTarget, GlobalVariable gv) {
+  call.getCallee() = gv.getAnAccess() and
+  call.getCalleeName() = intendedTarget.getName() and
+  exists(MethodDefinition caller |
+    caller.getBody() = call.getContainer() and
+    intendedTarget.getDeclaringClass() = caller.getDeclaringClass()
+  )
+}
+
+from CallExpr call, MethodDefinition intendedTarget, GlobalVariable gv
+where maybeMissingThis(call, intendedTarget, gv)
+      and
+      // exceptions:
+      not (
+        // affected by `with`
+        exists (WithStmt with | with.mayAffect(call.getCallee()))
+        or
+        // locally declared, so probably intentional
         gv.getADeclaration().getTopLevel() = call.getTopLevel()
         or
         // linter declaration for the variable
@@ -49,7 +55,6 @@ where gv.getAnAccess() = call.getCallee() // global call
         )
         or
         // externs declaration for the variable
-        exists (ExternalGlobalDecl egd | egd.getName() = call.getCalleeName()
-        )
-    )
-select call, "This call refers to a global function, and not the local method $@.", intendedCalleeDef, intendedCalleeDef.getName()
+        exists (ExternalGlobalDecl egd | egd.getName() = call.getCalleeName())
+      )
+select call, "This call refers to a global function, and not the local method $@.", intendedTarget, intendedTarget.getName()

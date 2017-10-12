@@ -17,7 +17,7 @@
  *              attacker.
  * @kind problem
  * @problem.severity error
- * @precision medium
+ * @precision high
  * @id js/clear-text-storage-of-sensitive-data
  * @tags security
  *       external/cwe/cwe-312

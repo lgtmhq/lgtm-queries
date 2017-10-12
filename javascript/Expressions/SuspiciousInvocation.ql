@@ -29,6 +29,5 @@ private import semmle.javascript.flow.InferredTypes
 
 from InvokeExpr invk, AnalyzedFlowNode callee
 where callee = invk.getCallee() and
-      callee.hasFlow() and
-      forall (InferredType tp | tp = callee.getAType() | tp != TTFunction() and tp != TTClass())
+      forex (InferredType tp | tp = callee.getAType() | tp != TTFunction() and tp != TTClass())
 select invk, "Callee is not a function: it has type " + callee.ppTypes() + "."

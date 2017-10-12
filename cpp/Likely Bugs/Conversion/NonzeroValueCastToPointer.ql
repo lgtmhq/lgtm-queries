@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision very-high
+ * @id cpp/cast-to-pointer
  * @tags reliability
  *       correctness
  *       types

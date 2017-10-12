@@ -207,3 +207,31 @@ class JaxRsBeanParamConstructor extends Constructor {
     )
   }
 }
+
+/**
+ * The class `javax.ws.rs.ext.MessageBodyReader`.
+ */
+class MessageBodyReader extends GenericInterface {
+  MessageBodyReader() {
+    this.hasQualifiedName("javax.ws.rs.ext", "MessageBodyReader")
+  }
+}
+
+/**
+ * The method `readFrom` in `MessageBodyReader`.
+ */
+class MessageBodyReaderReadFrom extends Method {
+  MessageBodyReaderReadFrom() {
+    this.getDeclaringType() instanceof MessageBodyReader and
+    this.hasName("readFrom")
+  }
+}
+
+/**
+ * A method that overrides `readFrom` in `MessageBodyReader`.
+ */
+class MessageBodyReaderRead extends Method {
+  MessageBodyReaderRead() {
+    exists(Method m | m.getSourceDeclaration() instanceof MessageBodyReaderReadFrom | this.overrides*(m))
+  }
+}

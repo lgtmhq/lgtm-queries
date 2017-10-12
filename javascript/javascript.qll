@@ -54,3 +54,4 @@ import semmle.javascript.linters.Linting
 import semmle.javascript.linters.ESLint
 import semmle.javascript.linters.JSLint
 import semmle.javascript.XML
+import semmle.javascript.TypeScript

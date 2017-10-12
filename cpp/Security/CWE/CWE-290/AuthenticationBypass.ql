@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/user-controlled-bypass
  * @tags security
  *       external/cwe/cwe-290
  */

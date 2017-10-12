@@ -27,6 +27,6 @@
 import javascript
 
 from CallExpr ce
-where accessesGlobal(ce.getCallee(), "parseInt") and
+where ce.getCallee().accessesGlobal("parseInt") and
       ce.getNumArgument() = 1
 select ce, "Missing radix parameter."

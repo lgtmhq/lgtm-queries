@@ -120,7 +120,7 @@ class CommentBlock extends Comment {
 
     predicate isCommentedOutCode() {
         not this.isDocumentation() and
-        ((float)this.numCodeLines()) / ((float)this.numLines()) > 0.5
+        this.numCodeLines().(float) / this.numLines().(float) > 0.5
     }
 
     /**

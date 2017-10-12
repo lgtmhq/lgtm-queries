@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/dangerous-cin
  * @tags reliability
  *       security
  *       external/cwe/cwe-676

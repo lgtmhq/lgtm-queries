@@ -20,6 +20,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id cpp/inconsistent-null-check
  * @tags reliability
  *       correctness
  *       statistical

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id cpp/weak-cryptographic-algorithm
  * @tags security
  *       external/cwe/cwe-327
  */

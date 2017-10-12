@@ -36,7 +36,7 @@ predicate isProto(AnalyzedFlowNode e) {
   e = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
   or
   exists (MethodCallExpr me, Expr recv, string n | me.calls(recv, n) |
-    exists (GlobalVarAccess obj | obj = recv.stripParens() and obj.getName() = "Object" |
+    recv.accessesGlobal("Object") and (
       // Object.create(e)
       n = "create" and e = me.getArgument(0) or
       // Object.setPrototypeOf(o, e)
@@ -49,8 +49,7 @@ predicate isProto(AnalyzedFlowNode e) {
 
 from AnalyzedFlowNode proto
 where isProto(proto) and
-      proto.hasFlow() and
-      forall (InferredType tp | tp = proto.getAType() |
+      forex (InferredType tp | tp = proto.getAType() |
         tp instanceof PrimitiveType and tp != TTNull()
       )
 select proto, "Values of type " + proto.ppTypes() + " cannot be used as prototypes."

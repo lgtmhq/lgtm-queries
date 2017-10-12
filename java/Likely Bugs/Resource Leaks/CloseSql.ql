@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Close database resource
+ * @name Potential database resource leak
  * @description A database resource that is opened but not closed may cause a resource leak.
  * @kind problem
  * @problem.severity error

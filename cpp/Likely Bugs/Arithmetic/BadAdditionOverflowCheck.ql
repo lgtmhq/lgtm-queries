@@ -20,6 +20,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id cpp/bad-addition-overflow-check
  * @tags reliability
  *       correctness
  */

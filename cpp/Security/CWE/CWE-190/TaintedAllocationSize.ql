@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/uncontrolled-allocation-size
  * @tags reliability
  *       security
  *       external/cwe/cwe-190

@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/redefined-default-parameter
  * @tags maintainability
  *       readability
  */

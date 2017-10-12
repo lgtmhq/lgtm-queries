@@ -23,7 +23,8 @@
  */
 import java
 import semmle.code.java.security.Encryption
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.TaintTracking
+import DataFlow
 
 private class ShortStringLiteral extends StringLiteral {
   ShortStringLiteral() {
@@ -31,7 +32,7 @@ private class ShortStringLiteral extends StringLiteral {
   }
 }
 
-class InsecureAlgoLiteral extends FlowSource, ShortStringLiteral {
+class InsecureAlgoLiteral extends ShortStringLiteral {
   InsecureAlgoLiteral() {
     exists(string s | s = getLiteral() |
       not s.regexpMatch(algorithmWhitelistRegex())
@@ -41,9 +42,19 @@ class InsecureAlgoLiteral extends FlowSource, ShortStringLiteral {
   }
 }
 
-from CryptoAlgoSpec c, Expr a, InsecureAlgoLiteral s
-where a = c.getAlgoSpec() and
-      // Trace flow backwards in this case.
-      s.flowsToReverse(a)
+class InsecureCryptoConfiguration extends TaintTracking::Configuration {
+  InsecureCryptoConfiguration() { this = "InsecureCryptoConfiguration" }
+  override predicate isSource(Node n) {
+    n.asExpr() instanceof InsecureAlgoLiteral
+  }
+  override predicate isSink(Node n) {
+    exists(CryptoAlgoSpec c | n.asExpr() = c.getAlgoSpec())
+  }
+}
+
+from CryptoAlgoSpec c, Expr a, InsecureAlgoLiteral s, InsecureCryptoConfiguration conf
+where
+  a = c.getAlgoSpec() and
+  conf.hasFlow(exprNode(s), exprNode(a))
 select c, "Cryptographic algorithm $@ may not be secure, consider using a different algorithm.",
-  s, s.(StringLiteral).getLiteral()
+  s, s.getLiteral()

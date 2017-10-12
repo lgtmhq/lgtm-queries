@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/static-buffer-overflow
  * @tags reliability
  *       security
  *       external/cwe/cwe-119
@@ -31,7 +32,9 @@ predicate staticBuffer(Variable v, int size)
   exists(ArrayType t |
     v.getType() = t and
     t.getArraySize() = size and
-    t.getBaseType() instanceof CharType)
+    t.getBaseType() instanceof CharType and
+    not memberMayBeVarSize(_, v)
+  )
 }
 
 class BufferAccess extends ArrayExpr

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/unused-static-variable
  * @tags efficiency
  *       useless-code
  *       external/cwe/cwe-563

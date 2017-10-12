@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id cpp/non-member-const-no-effect
  * @tags maintainability
  *       readability
  *       language-features

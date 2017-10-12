@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/suspicious-pointer-scaling
  * @tags security
  *       external/cwe/cwe-468
  */

@@ -33,10 +33,14 @@ private predicate valid_module_name(string name) {
 /** An artificial expression representing an import */
 class ImportExpr extends ImportExpr_ {
 
-    private Module basePackage(int n) {
-        n = 1 and result = this.getEnclosingModule().getPackage()
-        or
-        exists(int nm1 | n = nm1 + 1 | result = this.basePackage(nm1).getPackage())
+
+    private string basePackageName(int n) {
+        n = 1 and result = this.getEnclosingModule().getPackageName()
+         or
+        exists(string bpnm1  | bpnm1 = this.basePackageName(n-1) and
+            bpnm1.matches("%.%") and
+            result = bpnm1.regexpReplaceAll("\\.[^.]*$", "")
+        )
     }
 
     private predicate implicitRelativeImportsAllowed() {
@@ -68,7 +72,7 @@ class ImportExpr extends ImportExpr_ {
      */
     private string relativeTopName() {
         getLevel() = -1 and
-        result = basePackage(1).getName() + "." + this.getTopName() and
+        result = basePackageName(1) + "." + this.getTopName() and
         valid_module_name(result)
     }
 
@@ -76,7 +80,7 @@ class ImportExpr extends ImportExpr_ {
         if (this.getLevel() <= 0) then (
             result = this.getTopName()
         ) else (
-            result = basePackage(this.getLevel()).getName() and
+            result = basePackageName(this.getLevel()) and
             valid_module_name(result)
         )
     }
@@ -104,7 +108,7 @@ class ImportExpr extends ImportExpr_ {
     }
 
     /** Gets the full name of the module resulting from evaluating this import.
-     *  NOTE: This is the name that used to import the module, 
+     *  NOTE: This is the name that used to import the module,
      *  which may not be the name of the module. */
     string getImportedModuleName() {
         exists(string bottomName | bottomName = this.bottomModuleName() |

@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/empty-if
  * @tags reliability
  *       readability
  */

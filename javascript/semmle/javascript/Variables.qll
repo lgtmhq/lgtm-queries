@@ -154,6 +154,19 @@ class ComprehensionBlockScope extends Scope, @comprehensionblockscope {
   }
 }
 
+/** 
+ * The lexical scope induced by a TypeScript namespace declaration.
+ * 
+ * This scope is specific to a single syntactic declaration of a namespace,
+ * and currently does not include variables exported from other declarations
+ * of the same namespace.
+ */
+class NamespaceScope extends Scope, @namespacescope {
+  override string toString() {
+    result = "namespace scope"
+  }
+}
+
 /** A variable declared in a scope. */
 class Variable extends @variable {
   /** Gets the name of this variable. */
@@ -169,6 +182,16 @@ class Variable extends @variable {
   /** Holds if this is a global variable. */
   predicate isGlobal() {
     getScope() instanceof GlobalScope
+  }
+
+  /**
+   * Holds if this is a variable exported from a TypeScript namespace.
+   *
+   * Note that such variables are also considered local for the time being.
+   */
+  predicate isNamespaceExport() {
+    getScope() instanceof NamespaceScope and
+    exists (ExportNamedDeclaration decl | decl.getADecl().getVariable() = this)
   }
 
   /**
@@ -250,13 +273,6 @@ class ArgumentsVariable extends Variable {
   }
 }
 
-/**
- * DEPRECATED: Use `ArgumentsVariable` instead.
- *
- * An `arguments` variable of a function.
- */
-deprecated class ArgumentsObject extends ArgumentsVariable {}
-
 /** An identifier that refers to a variable, either in a declaration or in a variable access. */
 abstract class VarRef extends @varref, Identifier, BindingPattern {
   /** Gets the variable this identifier refers to. */
@@ -267,6 +283,12 @@ abstract class VarRef extends @varref, Identifier, BindingPattern {
 
 /** An identifier that refers to a variable in a non-declaring position. */
 class VarAccess extends @varaccess, VarRef {
+  /**
+   * Gets the variable this identifier refers to.
+   * 
+   * When analyzing TypeScript code, a variable may spuriously be resolved as a
+   * global due to incomplete modeling of exported variables in namespaces.
+   */
   override Variable getVariable() {
     bind(this, result)
   }
@@ -277,7 +299,7 @@ class VarAccess extends @varaccess, VarRef {
     exists (EnhancedForLoop efl | efl.getIterator() = this) or
     exists (BindingPattern p | this = p.getABindingVarRef() and p.isLValue())
   }
-
+  
   override Variable getAVariable() {
     result = getVariable()
   }

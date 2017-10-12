@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Close output resource
+ * @name Potential output resource leak
  * @description A resource that is opened for writing but not closed may cause a resource
  *              leak.
  * @kind problem

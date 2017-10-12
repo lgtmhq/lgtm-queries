@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/badly-bounded-write
  * @tags reliability
  *       security
  *       external/cwe/cwe-120

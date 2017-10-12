@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/constructor-used-as-copy-constructor
  * @tags reliability
  *       readability
  *       language-features

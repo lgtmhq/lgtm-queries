@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/uncontrolled-arithmetic
  * @tags security
  *       external/cwe/cwe-190
  *       external/cwe/cwe-191

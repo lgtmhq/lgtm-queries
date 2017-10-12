@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id cpp/openssl-heartbleed
  * @tags security
  *       external/cwe/cwe-327
  *       external/cwe/cwe-788

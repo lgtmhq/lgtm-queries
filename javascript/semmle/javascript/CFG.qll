@@ -50,7 +50,6 @@
  *   - `Stmt`: the CFG node represents the execution of the statement;
  *   - `Property`: the CFG node represents the assignment of the property;
  *   - `PropertyPattern`: the CFG node represents the matching of the property;
- *   - `Class`: the CFG node represents the evaluation of the body of the class;
  *   - `MemberDefinition`: the CFG node represents the definition of the member
  *     method or field.
  *
@@ -355,7 +354,7 @@ class ControlFlowNode extends @cfg_node, Locatable {
     result = this.(Stmt).getContainer() or
     result = this.(Property).getContainer() or
     result = this.(PropertyPattern).getContainer() or
-    result = this.(Class).getDefinition().getContainer() or
+    result = this.(ClassDefinition).getContainer() or
     result = this.(MemberDefinition).getContainer()
   }
 
@@ -455,28 +454,3 @@ class ConcreteControlFlowNode extends ControlFlowNode {
     not this instanceof SyntheticControlFlowNode
   }
 }
-
-/**
- * DEPRECATED: Use `ControlFlowNode` instead.
- */
-deprecated class CFGNode extends ControlFlowNode {}
-
-/**
- * DEPRECATED: Use `SyntheticControlFlowNode` instead.
- */
-deprecated class SyntheticCFGNode extends SyntheticControlFlowNode {}
-
-/**
- * DEPRECATED: Use `ConcreteControlFlowNode` instead.
- */
-deprecated class ConcreteCFGNode extends ConcreteControlFlowNode {}
-
-/**
- * DEPRECATED: Use `ControlFlowEntryNode` instead.
- */
-deprecated class EntryCFGNode extends ControlFlowEntryNode {}
-
-/**
- * DEPRECATED: Use `ControlFlowExitNode` instead.
- */
-deprecated class ExitCFGNode extends ControlFlowExitNode {}

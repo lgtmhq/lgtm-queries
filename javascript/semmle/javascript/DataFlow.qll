@@ -142,7 +142,8 @@ class DataFlowIncompleteness extends string {
     this = "import" or // lack of module import/export modeling
     this = "global" or // incomplete modeling of global object
     this = "yield" or  // lack of yield/async/await modeling
-    this = "eval"      // lack of reflection modeling
+    this = "eval" or   // lack of reflection modeling
+    this = "namespace" // lack of exported variable modeling
   }
 }
 
@@ -185,6 +186,7 @@ private class VarAccessFlow extends DataFlowNode, @varaccess {
     exists (Variable v | this = v.getAnAccess() |
       v.isGlobal() and cause = "global" or
       globalIsIncomplete(v, cause) or
+      v.isNamespaceExport() and cause = "namespace" or
       v instanceof ArgumentsVariable and cause = "call" or
       any(DirectEval e).mayAffect(v) and cause = "eval"
     )
@@ -305,6 +307,11 @@ private class InterProcFlow extends DataFlowNode, @expr {
   override predicate isIncomplete(DataFlowIncompleteness cause) { cause = "call" }
 }
 
+/** An external module reference, viewed as a data flow node. */
+private class ExternalModuleFlow extends DataFlowNode, @externalmodulereference {
+  override predicate isIncomplete(DataFlowIncompleteness cause) { cause = "import" }
+}
+
 /**
  * An immediately invoked function expression, viewed as a data flow node.
  *
@@ -341,7 +348,8 @@ private class IteratorFlow extends DataFlowNode, @expr {
   IteratorFlow() {
     this instanceof YieldExpr or
     this instanceof AwaitExpr or
-    this instanceof FunctionSentExpr
+    this instanceof FunctionSentExpr or
+    this instanceof DynamicImportExpr
   }
 
   override predicate isIncomplete(DataFlowIncompleteness cause) { cause = "yield" }
@@ -433,7 +441,7 @@ private class StaticMemberAsWrite extends PropWriteNode, @expr {
   }
   /** Gets the member definition that this node wraps. */
   private MemberDefinition getMember() { this = result.getNameExpr() }
-  override DataFlowNode getBase() { result = getMember().getDeclaringClass().getDefinition() }
+  override DataFlowNode getBase() { result = getMember().getDeclaringClass() }
   override string getPropertyName() { result = getMember().getName() }
   override DataFlowNode getRhs() { result = getMember().getInit() }
 }

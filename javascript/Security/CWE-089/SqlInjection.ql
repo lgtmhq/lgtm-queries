@@ -17,7 +17,7 @@
 *              malicious code by the user.
 * @kind problem
 * @problem.severity error
-* @precision medium
+* @precision high
 * @id js/sql-injection
 * @tags security
 *       external/cwe/cwe-089

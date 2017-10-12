@@ -63,7 +63,7 @@ class DirectEval extends CallExpr {
  */
 class JsonParseCall extends MethodCallExpr {
   JsonParseCall() {
-    accessesGlobal(getReceiver(), "JSON") and
+    getReceiver().accessesGlobal("JSON") and
     getMethodName() = "parse"
   }
 }

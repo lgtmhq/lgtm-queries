@@ -30,10 +30,16 @@ class Zero extends NullValue
   Zero() { this.(Literal).getValue() = "0" }
 }
 
+/**
+ * Holds if `var` is null when `checkExpr` evaluates to a true value.
+ */
 cached
 predicate nullCheckExpr(Expr checkExpr, Variable var)
 {
-  exists(LocalScopeVariable v, AnalysedExpr expr | var = v and checkExpr = expr and (
+  exists(LocalScopeVariable v, AnalysedExpr expr |
+    var = v and
+    checkExpr = expr
+  |
     exists(NotExpr notexpr, AnalysedExpr child |
       expr = notexpr and notexpr.getOperand() = child and validCheckExpr(child, v))
     or
@@ -57,13 +63,19 @@ predicate nullCheckExpr(Expr checkExpr, Variable var)
       expr = fc and
       fc.getTarget().hasQualifiedName("__builtin_expect") and
       fc.getArgument(0) = child and nullCheckExpr(child, v))
-  ))
+  )
 }
 
+/**
+ * Holds if `var` is non-null when `checkExpr` evaluates to a true value.
+ */
 cached
 predicate validCheckExpr(Expr checkExpr, Variable var)
 {
-  exists(AnalysedExpr expr, LocalScopeVariable v | expr = checkExpr and v = var and (
+  exists(AnalysedExpr expr, LocalScopeVariable v |
+    v = var and
+    expr = checkExpr
+  |
     expr.isUse(v)
     or
     expr.isDef(v)
@@ -91,19 +103,34 @@ predicate validCheckExpr(Expr checkExpr, Variable var)
       expr = fc and
       fc.getTarget().hasQualifiedName("__builtin_expect") and
       fc.getArgument(0) = child and validCheckExpr(child, v))
-  ))
+  )
 }
 
+/**
+ * An expression that has been extended with member predicates that provide
+ * information about the role of this expression in nullness checks.
+ */
 class AnalysedExpr extends Expr {
 
+  /**
+   * Holds if `v` is null when this expression evaluates to a true value.
+   */
   predicate isNullCheck(LocalScopeVariable v) {
     nullCheckExpr(this, v)
   }
 
+  /**
+   * Holds if `v` is non-null when this expression evaluates to a true value.
+   */
   predicate isValidCheck(LocalScopeVariable v) {
     validCheckExpr(this, v)
   }
 
+  /**
+   * Gets a successor of `this` in the control flow graph, where that successor
+   * is among the nodes to which control may flow when `this` tests `v` to be
+   * _null_.
+   */
   ControlFlowNode getNullSuccessor(LocalScopeVariable v)
   {
     (this.isNullCheck(v) and result = this.getATrueSuccessor())
@@ -111,6 +138,11 @@ class AnalysedExpr extends Expr {
     (this.isValidCheck(v) and result = this.getAFalseSuccessor())
   }
 
+  /**
+   * Gets a successor of `this` in the control flow graph, where that successor
+   * is among the nodes to which control may flow when `this` tests `v` to be
+   * _not null_.
+   */
   ControlFlowNode getNonNullSuccessor(LocalScopeVariable v)
   {
     (this.isNullCheck(v) and result = this.getAFalseSuccessor())
@@ -118,6 +150,10 @@ class AnalysedExpr extends Expr {
     (this.isValidCheck(v) and result = this.getATrueSuccessor())
   }
 
+  /**
+   * DEPRECATED: Use `getNonNullSuccessor` instead, which does the same.
+   */
+  deprecated
   ControlFlowNode getValidSuccessor(LocalScopeVariable v)
   {
     (this.isValidCheck(v) and result = this.getATrueSuccessor())
@@ -125,51 +161,77 @@ class AnalysedExpr extends Expr {
     (this.isNullCheck(v) and result = this.getAFalseSuccessor())
   }
 
+  /**
+   * Holds if this is a `VariableAccess` of `v` nested inside a condition.
+   */
   predicate isUse(LocalScopeVariable v)
   {
     this.inCondition() and
     this = v.getAnAccess()
   }
 
+  /**
+   * Holds if this is an `Assignment` to `v` nested inside a condition.
+   */
   predicate isDef(LocalScopeVariable v)
   {
     this.inCondition() and
-    ((Assignment) this).getLValue() = v.getAnAccess()
+    this.(Assignment).getLValue() = v.getAnAccess()
   }
 
+  /**
+   * Holds if `this` occurs at or below the controlling expression of an `if`,
+   * `while`, `?:`, or similar.
+   */
   predicate inCondition()
   {
     this.isCondition() or
-    ((AnalysedExpr) this.getParent()).inCondition()
+    this.getParent().(AnalysedExpr).inCondition()
   }
 }
 
+/**
+ * Holds if `var` is likely to be null at `node`.
+ */
 cached
 predicate checkedNull(Variable var, ControlFlowNode node)
 {
-  exists(LocalScopeVariable v, ControlFlowNode n | v = var and n = node and (
+  exists(LocalScopeVariable v | v = var |
     exists(AnalysedExpr e |
-      e.getNullSuccessor(v) = n)
+      e.getNullSuccessor(v) = node
+    )
     or
     exists(ControlFlowNode pred |
-      pred = n.getAPredecessor() and
-      not(((AnalysedExpr) pred).isDef(v)) and
-      checkedNull(v, pred))))
+      pred = node.getAPredecessor() and
+      not pred.(AnalysedExpr).isDef(v) and
+      checkedNull(v, pred)
+    )
+  )
 }
 
+/**
+ * Holds if `var` is likely to be non-null at `node`.
+ */
 cached
 predicate checkedValid(Variable var, ControlFlowNode node)
 {
-  exists(LocalScopeVariable v, ControlFlowNode n | v = var and n = node and (
+  exists(LocalScopeVariable v | v = var |
     exists(AnalysedExpr e |
-      e.getValidSuccessor(v) = n)
+      e.getNonNullSuccessor(v) = node
+    )
     or
     exists(ControlFlowNode pred |
-      pred = n.getAPredecessor() and
-      not(((AnalysedExpr) pred).isDef(v)) and
-      checkedValid(v, pred))))
+      pred = node.getAPredecessor() and
+      not pred.(AnalysedExpr).isDef(v) and
+      checkedValid(v, pred)
+    )
+  )
 }
 
+/**
+ * Holds if `val` is a null literal or a call to a function that may return a
+ * null literal.
+ */
 predicate nullValue(Expr val)
 {
   val instanceof NullValue
@@ -179,6 +241,10 @@ predicate nullValue(Expr val)
   nullValue(val.(Assignment).getRValue())
 }
 
+/**
+ * Holds if the evaluation of `n` may have the effect of, directly or
+ * indirectly, assigning a null literal to `var`.
+ */
 predicate nullInit(Variable v, ControlFlowNode n)
 {
   exists(Initializer init |
@@ -190,14 +256,20 @@ predicate nullInit(Variable v, ControlFlowNode n)
     assign.getLValue() = v.getAnAccess())
 }
 
-predicate callMayReturnNull(Call c)
+/**
+ * Holds if `call` may, directly or indirectly, evaluate to a null literal.
+ */
+predicate callMayReturnNull(Call call)
 {
-  if overrideReturnsNull(c) then
-    returnsNull(c)
+  if overrideReturnsNull(call) then
+    returnsNull(call)
   else
-    mayReturnNull(((FunctionCall) c).getTarget())
+    mayReturnNull(call.(FunctionCall).getTarget())
 }
 
+/**
+ * Holds if `f` may, directly or indirectly, return a null literal.
+ */
 predicate mayReturnNull(Function f)
 {
   f.getQualifiedName() = "malloc"

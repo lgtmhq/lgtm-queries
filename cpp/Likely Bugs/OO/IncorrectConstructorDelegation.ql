@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/constructor-delegation
  * @tags maintainability
  *       readability
  *       language-features

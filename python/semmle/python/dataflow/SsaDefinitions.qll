@@ -18,8 +18,10 @@
 import python
 private import semmle.python.pointsto.Base
 
-private predicate variable_defined_out_of_scope(Variable v) {
+private predicate variable_or_attribute_defined_out_of_scope(Variable v) {
     exists(NameNode n | n.defines(v) and not n.getScope() = v.getScope())
+    or
+    exists(AttrNode a | a.isStore() and a.getObject() = v.getAUse() and not a.getScope() = v.getScope())
 }
 
 /** Holds if the the global variable `v` may be used in the call `call`. */
@@ -72,7 +74,7 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
             result = s.getANormalExit() |
             exists(NameNode n | n.defines(this) and n.getScope() = s)
             or
-            variable_defined_out_of_scope(this) and
+            variable_or_attribute_defined_out_of_scope(this) and
             s.getScope*() = this.(Variable).getScope()
             or
             this.(Variable).isSelf() and s = this.(Variable).getScope()
@@ -81,11 +83,13 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
             exists(NameNode n | n.defines(this) and n.getScope() = s) and
             s.getScope*() = this.(Variable).getScope()
             or
-            s instanceof ImportTimeScope and this.(Variable).getScope() = s and
-            (this.getName() = "*" or exists(ImportStar is | is.getScope() = s))
-            or
             s instanceof Module and this.(Variable).getScope() = s and
             (this.getName() = "__name__" or this.getName() = "__package__")
+        )
+        or
+        exists(ImportTimeScope s |
+            result = s.getANormalExit() and this.(Variable).getScope() = s and
+            implicit_definition(this)
         )
     }
 
@@ -142,6 +146,13 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
 
 }
 
+/** Holds if this variable is implicitly defined */
+private predicate implicit_definition(Variable v) {
+    v.getId() = "*"
+    or
+    exists(ImportStar is | is.getScope() = v.getScope())
+}
+
 cached module SsaSource {
 
     /** Holds if `v` is used as the receiver in a method call. */
@@ -165,7 +176,7 @@ cached module SsaSource {
     /** Holds if `v` is defined outside its scope and thus *may* be redefined by `call`. */
     cached predicate variable_refined_at_callsite(Variable v, CallNode call) {
         not v.isSelf() and
-        variable_defined_out_of_scope(v) and
+        variable_or_attribute_defined_out_of_scope(v) and
         call.getScope().getScope*() = v.getScope()
     }
 
@@ -272,10 +283,12 @@ cached module SsaSource {
     }
 
     /** Holds if a `v` is used as an argument to `call`, which *may* modify the object referred to by `v` */
-    cached predicate call_refinement(Variable v, ControlFlowNode use, CallNode call) {
+    cached predicate argument_refinement(Variable v, ControlFlowNode use, CallNode call) {
         use.(NameNode).uses(v) and
         call.getArg(0) = use and
-        not method_call_refinement(v, _, call)
+        not method_call_refinement(v, _, call) and
+        not variable_refined_at_callsite(v, call) and
+        not test_refinement(v, _, call)
     }
 
     /** Holds if an attribute is deleted  at `def` and `use` is the use of `v` for that deletion */
@@ -300,7 +313,7 @@ private predicate refinement(Variable v, ControlFlowNode use, ControlFlowNode de
     or
     SsaSource::attribute_assignment_refinement(v, use, def)
     or
-    SsaSource::call_refinement(v, use, def)
+    SsaSource::argument_refinement(v, use, def)
     or
     SsaSource::attribute_deletion_refinement(v, use, def)
     or

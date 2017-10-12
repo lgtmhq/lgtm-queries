@@ -17,6 +17,7 @@
 
 import java
 private import frameworks.jackson.JacksonSerializability
+private import frameworks.google.GoogleHttpClientApi
 
 /**
  * A serializable field may be read without code referencing it,

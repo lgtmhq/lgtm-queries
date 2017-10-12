@@ -12,9 +12,9 @@
 // permissions and limitations under the License.
 
 /**
- * @name SQL query built without neutralizing special characters
- * @description Building a SQL query without escaping or otherwise neutralizing any special
- *              characters is vulnerable to insertion of malicious SQL code.
+ * @name Query built without neutralizing special characters
+ * @description Building a SQL or Java Persistence query without escaping or otherwise neutralizing any special
+ *              characters is vulnerable to insertion of malicious code.
  * @kind problem
  * @problem.severity error
  * @precision high
@@ -35,7 +35,7 @@ class UncontrolledStringBuilderSource extends FlowSource {
   }
 }
 
-from SqlInjectionSink query, Expr uncontrolled
+from QueryInjectionSink query, Expr uncontrolled
 where
   (
     builtFromUncontrolledConcat(query, uncontrolled) or

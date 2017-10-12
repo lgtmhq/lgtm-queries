@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/no-space-for-terminator
  * @tags reliability
  *       security
  *       external/cwe/cwe-131

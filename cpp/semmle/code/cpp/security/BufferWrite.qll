@@ -22,52 +22,6 @@ import semmle.code.cpp.commons.Alloc
 import semmle.code.cpp.commons.Scanf
 import semmle.code.cpp.commons.Strcat
 
-// --- utility ---
-
-/**
- * Holds if `sizeof(s)` occurs as part of the parameter of a dynamic
- * memory allocation (`malloc`, `realloc`, etc.), except if `sizeof(s)`
- * only ever occurs as the immediate parameter to allocations.
- *
- * For example, holds for `s` if it occurs as
- * ```
- * malloc(sizeof(s) + 100 * sizeof(char))
- * ```
- * but not if it only ever occurs as
- * ```
- * malloc(sizeof(s))
- * ```
-*/
-predicate isDynamicallyAllocatedWithDifferentSize(Class s) {
-  exists(SizeofTypeOperator sof |
-    sof.getTypeOperand().getUnspecifiedType() = s |
-    // Check all ancestor nodes except the immediate parent for
-    // allocations.
-    isStdLibAllocationExpr(sof.getParent().(Expr).getParent+())
-  )
-}
-
-/**
- * Holds if `v` is a member variable of `c` that looks like it might be variable sized in practice.  For
- * example:
- * ```
- * struct myStruct { // c
- *   int amount;
- *   char data[1]; // v
- * };
- * ```
- * This requires that `v` is an array of size 0 or 1, and `v` is the last member of `c`.  In addition,
- * there must be at least one instance where a `c` pointer is allocated with additional space. 
- */
-predicate maybeVarSize(Class c, MemberVariable v) {
-  exists(int i |
-    i = max(int j | exists(c.getMember(j)) | j) and
-    v = c.getMember(i) and
-    v.getType().getUnspecifiedType().(ArrayType).getSize() <= 1
-  ) and
-  isDynamicallyAllocatedWithDifferentSize(c)
-}
-
 /**
  * returns the size in bytes of the buffer pointed to by an expression (if this can be determined) 
  */
@@ -77,7 +31,7 @@ int getBufferSize(Expr bufferExpr, Element why) {
       // buffer is a fixed size array
       result = bufferVar.getType().(ArrayType).getSize() and
       why = bufferVar and
-      not maybeVarSize(_, bufferVar)
+      not memberMayBeVarSize(_, bufferVar)
     ) or (
       // buffer is an initialized array
       //  e.g. int buffer[] = {1, 2, 3};
@@ -86,7 +40,7 @@ int getBufferSize(Expr bufferExpr, Element why) {
       not exists(bufferVar.getType().(ArrayType).getSize())
     ) or exists(Class parentClass, VariableAccess parentPtr |
       // buffer is the parentPtr->bufferVar of a 'variable size struct'
-      maybeVarSize(parentClass, bufferVar) and
+      memberMayBeVarSize(parentClass, bufferVar) and
       why = bufferVar and
       parentPtr = bufferExpr.(VariableAccess).getQualifier() and
       parentPtr.getTarget().getType().getUnspecifiedType().(PointerType).getBaseType() = parentClass and
