@@ -43,8 +43,9 @@ PathExpr getAPathExpr(NPMPackage pkg) {
 /**
  * Gets a URL-valued attribute in a module or HTML file belonging to `pkg`.
  */
-URLValuedAttribute getAURLAttribute(NPMPackage pkg) {
-  result.getFile() = pkg.getAFile()
+DOM::AttributeDefinition getAURLAttribute(NPMPackage pkg) {
+  result.getFile() = pkg.getAFile() and
+  DOM::isUrlValuedAttribute(result)
 }
 
 /**
@@ -76,9 +77,9 @@ predicate usesDependency(NPMPackage pkg, string name) {
     )
     or
     // there is an HTML URL attribute that may reference `pkg`
-    exists (URLValuedAttribute attr | attr = getAURLAttribute(pkg) |
+    exists (DOM::AttributeDefinition attr | attr = getAURLAttribute(pkg) |
       // check whether the URL contains `node_modules/name`
-      attr.getURL().regexpMatch(".*\\bnode_modules/\\Q" + name + "\\E(/.*)?")
+      attr.getStringValue().regexpMatch(".*\\bnode_modules/\\Q" + name + "\\E(/.*)?")
     )
     or
     // there is a reference in a package.json white-listed script

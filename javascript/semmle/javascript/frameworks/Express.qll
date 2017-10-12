@@ -17,6 +17,7 @@
 
 import javascript
 import semmle.javascript.frameworks.HTTP
+import semmle.javascript.frameworks.ExpressModules
 
 module Express {
   /**
@@ -90,6 +91,55 @@ module Express {
     RouteHandler() {
       this = any(RouteSetup s).getAnArgument().(DataFlowNode).getALocalSource()
     }
+
+    /**
+     * Gets the variable that contains the request object.
+     */
+    Variable getRequestVariable() {
+      result = getParameter(0).(SimpleParameter).getVariable()
+    }
+
+    /**
+     * Gets the variable that contains the response object.
+     */
+    Variable getResponseVariable() {
+      result = getParameter(1).(SimpleParameter).getVariable()
+    }
+  }
+
+  /**
+   * An Express route handler, viewed as an HTTP route handler.
+   */
+  private class ServerRouteHandler extends HTTP::RouteHandler {
+
+    RouteHandler handler;
+
+    ServerRouteHandler() {
+      handler = this
+    }
+
+    override HTTP::HeaderDefinition getAResponseHeader(string name) {
+      exists(ExplicitHeader h |
+        h.getResponse().(DataFlowNode).getALocalSource() = handler.getResponseVariable().getAnAccess() and
+        h.getAHeaderName() = name and
+        result = h
+      )
+    }
+  }
+
+  /**
+   * HTTP headers created by Express calls
+   */
+  private abstract class ExplicitHeader extends HTTP::ExplicitHeaderDefinition {
+
+    DataFlowNode response;
+
+    /**
+     * Gets the response object that this header is set on.
+     */
+    DataFlowNode getResponse() {
+      result = response
+    }
   }
 
   /**
@@ -107,7 +157,7 @@ module Express {
    */
   predicate isResponse(DataFlowNode nd) {
     exists (Variable res |
-      res.getADeclaration() = any(RouteHandler h).getParameter(1) and
+      res = any(RouteHandler h).getResponseVariable() and
       nd.getALocalSource() = res.getAnAccess()
     )
   }
@@ -171,31 +221,32 @@ module Express {
    * An invocation of the `set` or `header` method on an HTTP response object that
    * sets a single header.
    */
-  private class SetOneHeader extends HTTP::HeaderDefinition, MethodCallExpr {
+  private class SetOneHeader extends ExplicitHeader, MethodCallExpr {
     SetOneHeader() {
-      isResponse(getReceiver()) and
+      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = any(string n | n = "set" or n = "header") and
       getNumArgument() = 2
     }
 
-    override predicate defines(string headerName, Expr headerValue) {
+    override predicate definesExplicitly(string headerName, Expr headerValue) {
       headerName = getArgument(0).getStringValue() and
       headerValue = getArgument(1)
     }
+
   }
 
   /**
    * An invocation of the `set` or `header` method on an HTTP response object that
    * sets multiple headers.
    */
-  private class SetMultipleHeaders extends HTTP::HeaderDefinition, MethodCallExpr {
+  private class SetMultipleHeaders extends ExplicitHeader, MethodCallExpr {
     SetMultipleHeaders() {
-      isResponse(getReceiver()) and
+      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = any(string n | n = "set" or n = "header") and
       getNumArgument() = 1
     }
 
-    override predicate defines(string headerName, Expr headerValue) {
+    override predicate definesExplicitly(string headerName, Expr headerValue) {
       exists (DataFlowNode headers, PropWriteNode pwn |
         headers = getArgument(0).(DataFlowNode).getALocalSource() and
         pwn.getBase() = headers and
@@ -208,13 +259,13 @@ module Express {
   /**
    * An invocation of the `append` method on an HTTP response object.
    */
-  private class AppendHeader extends HTTP::HeaderDefinition, MethodCallExpr {
+  private class AppendHeader extends ExplicitHeader, MethodCallExpr {
     AppendHeader() {
-      isResponse(getReceiver()) and
+      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = "append"
     }
 
-    override predicate defines(string headerName, Expr headerValue) {
+    override predicate definesExplicitly(string headerName, Expr headerValue) {
       headerName = getArgument(0).getStringValue() and
       headerValue = getArgument(1)
     }
@@ -261,4 +312,58 @@ module Express {
       )
     }
   }
+
+  /**
+   * An Express server application.
+   */
+  private class Application extends HTTP::Server {
+
+    Application() {
+      isAppCreation(this)
+    }
+
+    /**
+     * Gets a route handler of the application, regardless of nesting.
+     */
+    HTTP::RouteHandler getARouteHandler() {
+      result = this.(Router).getASubRouter*().getARouteHandler()
+    }
+
+  }
+
+  /**
+   * An Express router.
+   */
+  private class Router extends InvokeExpr {
+
+    Router() {
+      isRouterCreation(this)
+    }
+
+    /**
+     * Gets a `RouteSetup` that was used for setting up a route on this router.
+     */
+    private RouteSetup getARouteSetup() {
+      this = result.getReceiver().(DataFlowNode).getALocalSource()
+    }
+
+    /**
+     * Gets a sub-router registered on this router.
+     *
+     * Example: `router2` for `router1.use(router2)` or `router1.use("/route2", router2)`
+     */
+    Router getASubRouter() {
+      result = getARouteSetup().getAnArgument().(DataFlowNode).getALocalSource()
+    }
+
+    /**
+     * Gets a route handler registered on this router.
+     *
+     * Example: `fun` for `router1.use(fun)` or `router.use("/route", fun)`
+     */
+    HTTP::RouteHandler getARouteHandler() {
+      result = getARouteSetup().getAnArgument().(DataFlowNode).getALocalSource()
+    }
+  }
+
 }

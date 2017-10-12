@@ -26,6 +26,8 @@ import javascript
  * <tr><td><code>var a = b</code><td><code>var a = b</code><td><code>a</code><td><code>b</code></tr>
  * <tr><td><code>function f { ... }</code><td><code>f</code><td><code>f</code><td><code>function f { ... }</code></tr>
  * <tr><td><code>class C { ... }</code><td><code>C</code><td><code>C</code><td><code>class C { ... }</code></tr>
+ * <tr><td><code>namespace N { ... }</code><td><code>N</code><td><code>N</code><td><code>namespace N { ... }</code></tr>
+ * <tr><td><code>import x = y</code><td><code>x</code><td><code>x</code><td><code>y</code></tr>
  * </table>
  *
  * Note that `def` and `lhs` are not in general the same: the latter
@@ -43,8 +45,14 @@ private predicate defn(ControlFlowNode def, Expr lhs, DataFlowNode rhs) {
   exists (Function f | def = f.getId() |
     lhs = def and rhs = f
   ) or
-  exists (ClassDefinition c | def = c.getIdentifier() |
-    lhs = def and rhs = c
+  exists (ClassDefinition c | lhs = c.getIdentifier() |
+    def = c and rhs = c and not c.isAmbient()
+  ) or
+  exists (NamespaceDeclaration n | def = n.getId() |
+    lhs = def and rhs = n
+  ) or
+  exists (ImportEqualsDeclaration i | def = i.getId() |
+    lhs = def and rhs = i.getImportedEntity()
   )
 }
 

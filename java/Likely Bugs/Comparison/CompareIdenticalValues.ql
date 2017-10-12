@@ -43,12 +43,16 @@ predicate toCompare(Expr left, Expr right) {
   toCompare(left.getParent(), right.getParent())
 }
 
+pragma[noinline]
+predicate varsToCompare(VarAccess left, VarAccess right, Variable v1, Variable v2) {
+  toCompare(left, right) and
+  left.getVariable() = v1 and
+  right.getVariable() = v2
+}
 
 /** Are `left` and `right` accesses to `v` on the same object? */
 predicate sameVariable(VarAccess left, VarAccess right, Variable v) {
-  toCompare(left, right) and
-  left.getVariable() = v and
-  right.getVariable() = v and
+  varsToCompare(left, right, v, v) and
   (
     sameVariable(left.getQualifier(), right.getQualifier(), _) or
     left.isLocal() and right.isLocal()

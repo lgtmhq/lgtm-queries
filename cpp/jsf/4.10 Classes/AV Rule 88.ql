@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/undisciplined-multiple-inheritance
  * @tags changeability
  *       readability
  */

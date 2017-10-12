@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/equality-on-floats
  * @tags reliability
  *       correctness
  */

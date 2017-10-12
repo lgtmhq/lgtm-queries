@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/missing-header-guard
  * @tags efficiency
  *       maintainability
  *       modularity
@@ -28,9 +29,20 @@ string possibleGuard(HeaderFile hf, string body) {
   exists(Macro m | m.getFile() = hf and m.getBody() = body | result = m.getHead())
 }
 
+bindingset[s, e]
+string mkLink(string s, Element e) {
+  exists(string path, int sl, int sc, int el, int ec, string url |
+    e.getLocation().hasLocationInfo(path, sl, sc, el, ec) and
+    toUrl(path, sl, sc, el, ec, url) and
+    result = "[[\"" + s + "\"|\"" + url + "\"]]"
+  )
+}
+
 string extraDetail(HeaderFile hf) {
-  exists(string s, PreprocessorDirective ifndef, PreprocessorEndif endif | startsWithIfndef(hf, ifndef, s) and endsWithEndif(hf, endif) and endif.getIf() = ifndef |
-    if exists(Macro m | m.getFile() = hf and m.getHead() = s) then
+  exists(string s, PreprocessorDirective ifndef, PreprocessorEndif endif | startsWithIfndef(hf, ifndef, s) and endif.getIf() = ifndef |
+    if not endsWithEndif(hf, endif) then
+      result = " (" + mkLink("#endif", endif) + " matching " + mkLink(s, ifndef) + " occurs before the end of the file)."
+    else if exists(Macro m | m.getFile() = hf and m.getHead() = s) then
       result = " (#define " + s + " needs to appear immediately after #ifndef " + s + ")."
     else if strictcount(possibleGuard(hf, _)) = 1 then
       result = " (" + possibleGuard(hf, _) + " should appear in the #ifndef rather than " + s + ")."

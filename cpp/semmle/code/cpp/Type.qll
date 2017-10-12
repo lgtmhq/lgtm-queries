@@ -204,7 +204,7 @@ class Type extends Locatable, @type {
     // Qualifying an expression with a type that refers to T uses T. We exclude qualifiers
     // within instantiations, since they do not appear directly in the source.
     or exists(NameQualifier nq |
-      ((Type)nq.getQualifyingElement()).refersTo(this)
+      nq.getQualifyingElement().(Type).refersTo(this)
       and result = nq
       and not function_instantiation(nq.getExpr().getEnclosingFunction(),_)
     )
@@ -219,7 +219,7 @@ class Type extends Locatable, @type {
 
     // A typedef of a type that refers to T uses T.
     or exists(TypeDeclarationEntry tde |
-      ((TypedefType)tde.getDeclaration()).getBaseType().refersTo(this)
+      tde.getDeclaration().(TypedefType).getBaseType().refersTo(this)
       and result = tde
     )
 
@@ -974,7 +974,7 @@ class FunctionPointerType extends FunctionPointerIshType {
 
   /** Descriptive string for a type (debug - expensive). Overridden
       method. See Type.explain() */
-  string explain() { result = "pointer to {" + ((RoutineType)this.getBaseType()).explain() + "}" }
+  string explain() { result = "pointer to {" + this.getBaseType().(RoutineType).explain() + "}" }
 }
 
 /**
@@ -992,7 +992,7 @@ class FunctionReferenceType extends FunctionPointerIshType {
 
   /** Descriptive string for a type (debug - expensive). Overridden
       method. See Type.explain() */
-  string explain() { result = "reference to {" + ((RoutineType)this.getBaseType()).explain() + "}" }
+  string explain() { result = "reference to {" + this.getBaseType().(RoutineType).explain() + "}" }
 }
 
 /**
@@ -1013,7 +1013,7 @@ class BlockType extends FunctionPointerIshType {
 
   /** Descriptive string for a type (debug - expensive). Overridden
       method. See Type.explain() */
-  string explain() { result = "block of {" + ((RoutineType)this.getBaseType()).explain() + "}" }
+  string explain() { result = "block of {" + this.getBaseType().(RoutineType).explain() + "}" }
 }
 
 /**

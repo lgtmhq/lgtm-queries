@@ -228,7 +228,7 @@ private class ArrayComprehensionExprSource extends AnalyzedFlowNode, @arraycompr
 }
 
 /**
- * Flow analysis for function expressions.
+ * Flow analysis for functions.
  */
 private class FunctionSource extends AnalyzedFlowNode, @function {
   override AbstractValue getAValue() { result = TAbstractFunction(this) }
@@ -239,8 +239,15 @@ private class FunctionSource extends AnalyzedFlowNode, @function {
  */
 private class ClassExprSource extends AnalyzedFlowNode, @classdecl {
   override AbstractValue getAValue() {
-    result = TAbstractClass(this.(ClassDefinition).getDefinedClass())
+    result = TAbstractClass(this.(ClassDefinition))
   }
+}
+
+/**
+ * Flow analysis for namespace objects.
+ */
+private class NamespaceSource extends AnalyzedFlowNode, @namespacedeclaration {
+  override AbstractValue getAValue() { result = TAbstractOtherObject() }
 }
 
 /**
@@ -971,6 +978,20 @@ private class ReflectiveVarFlow extends AnalyzedFlowNode, @varaccess {
 }
 
 /**
+ * Flow analysis for variables exported from a TypeScript namespace.
+ *
+ * These are translated to property accesses by the TypeScript compiler and
+ * can thus be mutated indirectly through the heap.
+ */
+private class NamespaceExportVarFlow extends AnalyzedFlowNode, @varaccess {
+  NamespaceExportVarFlow() {
+    this.(VarAccess).getVariable().isNamespaceExport()
+  }
+
+  override AbstractValue getAValue() { result = TIndefiniteAbstractValue("namespace") }
+}
+
+/**
  * Flow analysis for JSX elements.
  */
 private class JSXElementSource extends AnalyzedFlowNode, @jsxelement {
@@ -1192,10 +1213,4 @@ private AbstractValue getDefaultReturnValue(ImmediatelyInvokedFunctionExpr f) {
     result = TAbstractOtherObject()
   else
     result = TAbstractUndefined()
-}
-
-/**
- * DEPRECATED: Use `AnalyzedFlowNode` instead.
- */
-deprecated class AnalysedFlowNode extends AnalyzedFlowNode {
 }

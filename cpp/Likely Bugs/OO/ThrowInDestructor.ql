@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id cpp/throw-in-destructor
  * @tags reliability
  *       readability
  *       language-features

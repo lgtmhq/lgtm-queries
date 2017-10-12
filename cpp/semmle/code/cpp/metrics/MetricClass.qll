@@ -11,73 +11,80 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import semmle.code.cpp.Class
-import semmle.code.cpp.Member
-import semmle.code.cpp.Function
-import semmle.code.cpp.Field
-
+import cpp
 
 /**
- * A wrapper of metrics for C++ classes
+ * A wrapper that provides metrics for a C++ class.
  */
 class MetricClass extends Class  {
 
-  /** the nesting level of this class */
+  /**
+   * Gets the nesting level of this class. A class that is _not_ nested
+   * directly inside another class has nesting level 0.
+   */
   int getNestingLevel() {
     if not this instanceof NestedClass then
-      result = 0 else
+      result = 0
+    else
       result = this.(NestedClass).getDeclaringType().(MetricClass).getNestingLevel() + 1
   }
 
-  /** find the length of *some* path to the root of the hierarchy */
+  /**
+   * Gets the length of *some* path to a root of the hierarchy. A class with no
+   * base class has depth 0.
+   */
   int getADepth() {
     not this.getABaseClass+() = this and
     if not exists(this.getABaseClass()) then
-      result = 0 else
+      result = 0
+    else
       result = this.getABaseClass().(MetricClass).getADepth() + 1
   }
 
-  /** the depth of inheritance of this class */
+  /**
+   * Gets the maximum depth of inheritance of this class. A class with no base
+   * class has depth 0.
+   */
   int getInheritanceDepth() {
-      result = max(this.getADepth())
+    result = max(this.getADepth())
   }
 
-  /** the number of functions defined in this class */
+  /** Gets the number of member functions in this class. */
   int getNumberOfMemberFunctions() {
     result = count(MemberFunction mf | mf.getDeclaringType() = this)
   }
 
-  /** the number of classes defined in this class */
+  /** Gets the number of nested classes defined in this class. */
   int getNumberOfNestedClasses() {
     result = count(NestedClass nc | nc.getDeclaringType() = this)
   }
 
-  /** the number of fields defined in this class */
+  /** Gets the number of non-static data members defined in this class. */
   int getNumberOfFields() {
     result = count(Field f | f.getDeclaringType() = this)
   }
 
-  /** the total number of members defined in this class */
+  /** Gets the total number of members defined in this class. */
   int getNumberOfMembers() {
     result = count(Declaration m | m.getDeclaringType() = this)
   }
 
-  /** the number of incoming dependencies */
+  /** Gets the number of incoming class dependencies. */
   int getAfferentCoupling() {
     result = count(MetricClass that | that.getAClassDependency() = this)
   }
 
-  /** the number of outgoing source dependencies */
+  /** Gets the number of outgoing class dependencies. */
   int getEfferentCoupling() {
     result = count(MetricClass that | this.getAClassDependency() = that)
   }
 
-  /** the number of outgoing source dependencies */
+  /** Gets the number of outgoing source class dependencies. */
   int getEfferentSourceCoupling() {
     result = count(MetricClass that | this.getAClassDependency() = that and that.fromSource())
   }
 
-  /** a class dependency of this element */
+  /** Gets a class dependency of this element. */
   Class getAClassDependency() {
     dependsOnClassSimple(this, result)
   }
@@ -113,24 +120,24 @@ class MetricClass extends Class  {
             select t, loc order by loc desc
   */
 
-  /** does func access field f defined in the same type? */
-  predicate accessesLocalField(Function func,Field f) {
+  /** Holds if `func` accesses field `f` defined in the same type. */
+  predicate accessesLocalField(Function func, Field f) {
     func.accesses(f) and
     this.getAMemberFunction() = func and
     f.getDeclaringType() = this
   }
 
-  /** returns any method that accesses some local field */
+  /** Gets any method that accesses some local field. */
   Function getAccessingMethod() {
      exists(Field f | this.accessesLocalField(result,f))
   }
 
-  /** returns any field that is accessed by a local method */
+  /** Gets any field that is accessed by a local method. */
   Field getAccessedField() {
      exists(Function func | this.accessesLocalField(func,result))
   }
 
-  /** compute Henderson-Sellers lack of cohesion metric */
+  /** Gets the Henderson-Sellers lack-of-cohesion metric. */
   float getLackOfCohesionHS()  {
      exists(int m, float r |
         // m = number of methods that access some field
@@ -167,19 +174,22 @@ class MetricClass extends Class  {
 
   */
 
-  /** should callable c be excluded from the CK cohesion computation? */
+  /** Holds if `f` should be excluded from the CK cohesion computation. */
   predicate ignoreLackOfCohesionCK(Function f) {
     none()  // by default, nothing is ignored
   }
 
-  /** test for distinct functions */
+  /** Holds if `m1` and `m2` are distinct member functions of this class. */
   predicate distinctMembers(MemberFunction m1, MemberFunction m2) {
      m1.getDeclaringType() = this and
      m2.getDeclaringType() = this and
      m1 != m2
   }
 
-  /** do m1 and m2 access a common field? */
+  /**
+   * Holds if `m1` and `m2` are distinct member functions of this class that
+   * both access a common field.
+   */
   predicate shareField(MemberFunction m1, MemberFunction m2) {
     exists(Field f |
       m1.accesses(f) and
@@ -189,7 +199,7 @@ class MetricClass extends Class  {
     m1 != m2
   }
 
-  /** return Chidamber and Kemerer lack of cohesion metric */
+  /** Gets the Chidamber and Kemerer lack-of-cohesion metric. */
   float getLackOfCohesionCK() {
      exists(int n1, int n2, float n |
          n1 = count(MemberFunction m1, MemberFunction m2 |
@@ -211,29 +221,26 @@ class MetricClass extends Class  {
 
    /* ----------------- RESPONSE FOR A CLASS --------------------------------- */
 
-   /* This estimates the number of different callables that can be executed when
-      a callable is invoked on this class.
+   /**
+    * Gets the _response_ for this class. This estimates the number of
+    * different functions that can be executed when a function is invoked on
+    * this class.
     */
    int getResponse() {
-      result = sum(MemberFunction c | c.getDeclaringType()=this | count(Call call | call.getEnclosingFunction() = c))
+      result = sum(MemberFunction f | f.getDeclaringType()=this | count(Call call | call.getEnclosingFunction() = f))
    }
 
    /* ----------------- SPECIALIZATION INDEX -------------------------------- */
 
-   /* The specialization index metric measures the extent to which subclasses
-      override (replace) the behaviour of their ancestor classes. If they
-      override many methods, it is an indication that the original abstraction
-      in the superclasses may have been inappropriate. On the whole, subclasses
-      should add behaviour to their superclasses, but not alter that
-      behaviour dramatically.
-   */
-
-   /** exclusions from the number of overriding methods */
+   /**
+    * Gets a function that should be excluded when reporting the number of
+    * overriding methods. By default, no functions are excluded.
+    */
    predicate ignoreOverride(MemberFunction m) {
        none()
    }
 
-   /** get some method that overrides a non-abstract method in a super type */
+   /** Gets some method that overrides a non-abstract method in a base class. */
    MemberFunction getOverrides() {
       this.getAMemberFunction() = result and
       exists(MemberFunction c | result.overrides(c) and
@@ -241,18 +248,27 @@ class MetricClass extends Class  {
       not this.ignoreOverride(result)
    }
 
-   /** the number of methods that are overridden by this class (NORM) */
+   /** Gets the number of methods that are overridden by this class (NORM). */
    int getNumberOverridden() {
      result = count(this.getOverrides())
    }
 
-   /** specialisation index */
+   /**
+    * Gets the _specialization index_ of this class.
+    *
+    * The specialization index metric measures the extent to which derived
+    * classes override (replace) the behavior of their base classes. If they
+    * override many methods, it is an indication that the original abstraction
+    * in the base classes may have been inappropriate. On the whole, derived
+    * classes should add behavior to their base classes, but not alter that
+    * behavior dramatically.
+    */
    float getSpecialisationIndex() {
      this.getNumberOfMemberFunctions() != 0
      and
      result = (this.getNumberOverridden() * this.getInheritanceDepth())
               /
-              ((float)this.getNumberOfMemberFunctions())
+              this.getNumberOfMemberFunctions().(float)
    }
 
    /*
@@ -260,9 +276,9 @@ class MetricClass extends Class  {
     */
 
    /**
-    * Gets the Halstead "N1" metric for this file. This is the total number of operators
-    * in the file. Operators are taken to be all operators in expressions (+, *, &amp;, ->, =, ...) as well
-    * as most statements.
+    * Gets the Halstead "N1" metric for this class. This is the total number of
+    * operators in the class. Operators are taken to be all operators in
+    * expressions (`+`, `*`, `&`, `->`, `=`, ...) as well as most statements.
     */
    int getHalsteadN1() {
      result =
@@ -275,8 +291,8 @@ class MetricClass extends Class  {
    }
 
    /**
-    *  Gets the Halstead "N2" metric for this class: this is the total number of operands.
-    *  An operand is either a variable, constant, type name, class name or function name
+    * Gets the Halstead "N2" metric for this class: this is the total number of operands.
+    * An operand is either a variable, constant, type name, class name, or function name.
     */
    int getHalsteadN2() {
      result =
@@ -297,9 +313,7 @@ class MetricClass extends Class  {
         mv.getInitializer().getExpr().getAChild*() = result)
     }
 
-    /**
-     * Gets a statement somewhere in this class, ie in a member function
-     */
+    /** Gets a statement in a member function of this class. */
     Stmt getAnEnclosedStmt() {
       result.getEnclosingFunction().(MemberFunction).getDeclaringType() = this
     }
@@ -332,7 +346,7 @@ class MetricClass extends Class  {
 
    /**
     * Gets the Halstead "n1" metric: this is the total number of distinct operators
-    * in this class. Operators are defined as in the "N1" metric (getHalsteadN1).
+    * in this class. Operators are defined as in the "N1" metric (`getHalsteadN1`).
     */
    int getHalsteadN1Distinct() {
      result =
@@ -342,8 +356,8 @@ class MetricClass extends Class  {
    }
 
    /**
-    *  Gets the Halstead "n2" metric: this is the number of distinct operands in this
-    *  class. An operand is either a variable, constant, type name or function name
+    * Gets the Halstead "n2" metric: this is the number of distinct operands in this
+    * class. An operand is either a variable, constant, type name, or function name.
     */
    int getHalsteadN2Distinct() {
      result =
@@ -355,29 +369,29 @@ class MetricClass extends Class  {
    }
 
    /**
-    *  Gets the Halstead length of this file. This is the sum of the N1 and N2 Halstead metrics
+    * Gets the Halstead length of this class. This is the sum of the N1 and N2 Halstead metrics.
     */
    int getHalsteadLength() {
      result = this.getHalsteadN1() + this.getHalsteadN2()
    }
 
    /**
-    *  Gets the Halstead vocabulary size of this file. This is the sum of the n1 and n2 Halstead metrics
+    * Gets the Halstead vocabulary size of this class. This is the sum of the n1 and n2 Halstead metrics.
     */
    int getHalsteadVocabulary() {
      result = this.getHalsteadN1Distinct() + this.getHalsteadN2Distinct()
    }
 
    /**
-    *  Gets the Halstead volume of this file. This is the Halstead size multiplied by the log of the
-    *  Halstead vocabulary. It represents the information content of the function.
+    * Gets the Halstead volume of this class. This is the Halstead size multiplied by the log of the
+    * Halstead vocabulary. It represents the information content of the class.
     */
    float getHalsteadVolume() {
-     result = ((float)this.getHalsteadLength()) * this.getHalsteadVocabulary().log2()
+     result = this.getHalsteadLength().(float) * this.getHalsteadVocabulary().log2()
    }
 
    /**
-    * Gets the Halstead difficulty value of this file. This is proportional to the number of unique
+    * Gets the Halstead difficulty value of this class. This is proportional to the number of unique
     * operators, and further proportional to the ratio of total operands to unique operands.
     */
    float getHalsteadDifficulty() {
@@ -385,32 +399,35 @@ class MetricClass extends Class  {
    }
 
    /**
-    * Gets the Halstead level of this file. This is the inverse of the difficulty of the function.
+    * Gets the Halstead level of this class. This is the inverse of the _difficulty_ of the class.
     */
    float getHalsteadLevel() {
      exists(float difficulty |
        difficulty = this.getHalsteadDifficulty() and
-       if difficulty != 0.0 then result = 1.0 / difficulty else result = 0.0
+       if difficulty != 0.0 then
+         result = 1.0 / difficulty
+       else
+         result = 0.0
      )
    }
 
    /**
-    * Gets the Halstead implementation effort for this file. This is the product of the volume and difficulty
+    * Gets the Halstead implementation effort for this class. This is the product of the volume and difficulty.
     */
    float getHalsteadEffort() {
      result = this.getHalsteadVolume() * this.getHalsteadDifficulty()
    }
 
    /**
-    * Gets the Halstead 'delivered bugs' metric for this file. This metric correlates with the complexity of
-    * the software, but is known to be an underestimate of bug counts.
+    * Gets the Halstead _delivered bugs_ metric for this class. This metric correlates with the complexity of
+    * the software but is known to be an underestimate of bug counts.
     */
    float getHalsteadDeliveredBugs() {
      result = this.getHalsteadEffort().pow(2.0/3.0) / 3000.0
    }
 }
 
-pragma[noopt]
+private pragma[noopt]
 predicate dependsOnClassSimple(Class source, Class dest) {
     (
     // a class depends on the classes it inherits from

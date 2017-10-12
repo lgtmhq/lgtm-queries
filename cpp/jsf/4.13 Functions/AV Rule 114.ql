@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision very-high
+ * @id cpp/missing-return
  * @tags reliability
  *       readability
  *       language-features

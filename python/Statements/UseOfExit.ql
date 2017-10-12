@@ -19,6 +19,7 @@
  * @problem.severity warning
  * @sub-severity low
  * @precision very-high
+ * @id py/use-of-exit-or-quit
  */
 
 import python

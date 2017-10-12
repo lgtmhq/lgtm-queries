@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/loop-variable-changed
  * @tags reliability
  *       readability
  */

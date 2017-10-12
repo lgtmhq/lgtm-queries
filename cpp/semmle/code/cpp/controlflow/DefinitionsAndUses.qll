@@ -101,6 +101,12 @@ class DefOrUse extends @cfgnode {
    */
   abstract LocalScopeVariable getVariable(boolean isDef);
 
+  pragma[noinline]
+  private predicate reaches_helper(boolean isDef, LocalScopeVariable v, BasicBlock bb, int i) {
+    getVariable(isDef) = v and
+    bb.getNode(i) = this
+  }
+
   /**
    * Holds if the value of `v` in this control-flow node reaches
    * `defOrUse` along some control-flow path without crossing a
@@ -116,8 +122,7 @@ class DefOrUse extends @cfgnode {
      * predicates are duplicated for now.
      */
     exists(BasicBlock bb, int i |
-      getVariable(isDef) = v and
-      bb.getNode(i) = this |
+      reaches_helper(isDef, v, bb, i) |
       exists(int j |
         j > i
         and
@@ -302,11 +307,11 @@ predicate exprDefinition(LocalScopeVariable v, ControlFlowNode def, Expr e) {
  * Holds if `def` is a variable passed by reference (as `va`) where the callee
  * (potentially) assigns the relevant parameter.
  *
- * All library functions are assumed to assign call-by-reference parameters,
- * and source code functions are assumed to assign call-by-reference
- * parameters that are accessed somewhere within the function. The latter
- * is an over-approximation, but avoids having to take aliasing of the
- * parameter into account.
+ * All library functions except `std::move` are assumed to assign
+ * call-by-reference parameters, and source code functions are assumed to
+ * assign call-by-reference parameters that are accessed somewhere within the
+ * function. The latter is an over-approximation, but avoids having to take
+ * aliasing of the parameter into account.
  */
 predicate definitionByReference(VariableAccess va, Expr def) {
   exists(Call c, int i |
@@ -324,7 +329,11 @@ predicate definitionByReference(VariableAccess va, Expr def) {
       // be conservative and assume that the parameter can be
       // modified.
       exists(AsmStmt stmt | stmt.getEnclosingFunction() = f)
-      )
+    ) and
+    not (
+      c.getTarget().getNamespace().getName() = "std" and
+      c.getTarget().getName() = "move"
+    )
   )
   or
   // Extractor artifact when using templates; an expression call where the

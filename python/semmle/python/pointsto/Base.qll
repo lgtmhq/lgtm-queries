@@ -360,7 +360,7 @@ class AttributeAssignment extends PyNodeRefinement {
 class ArgumentRefinement extends PyNodeRefinement {
 
     ArgumentRefinement() {
-        SsaSource::call_refinement(this.getSourceVariable(), _, this.getDefiningNode())
+        SsaSource::argument_refinement(this.getSourceVariable(), _, this.getDefiningNode())
     }
 
 }
@@ -427,8 +427,15 @@ class ImplicitModuleNameDefinition extends PyNodeDefinition {
 /** An implicit (possible) definition of an escaping variable at a call-site */
 class CallsiteRefinement extends PyNodeRefinement {
 
+    string toString() {
+        result = "CallsiteRefinement"
+    }
+
     CallsiteRefinement() {
-        SsaSource::variable_refined_at_callsite(this.getSourceVariable(), this.getDefiningNode())
+        exists(SsaSourceVariable var, ControlFlowNode defn |
+            this.definedBy(var, defn) and
+            SsaSource::variable_refined_at_callsite(var, defn)
+        )
     }
 
     CallNode getCall() {
@@ -469,6 +476,10 @@ class PyEdgeRefinement extends EssaEdgeRefinement {
         or
         not exists(this.getInput()) and
         result = "Pi(" + this.getSourceVariable().getName() + "??) [" + this.getSense() + "]"
+    }
+
+    ControlFlowNode getTest() {
+        result = this.getPredecessor().getLastNode()
     }
 
 }

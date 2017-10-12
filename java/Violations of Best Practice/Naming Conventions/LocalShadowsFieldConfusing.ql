@@ -16,7 +16,7 @@
  * @description A method in which a variable is declared with the same name as a field is difficult
  *              to understand.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity recommendation
  * @precision very-high
  * @id java/local-shadows-field
  * @tags maintainability

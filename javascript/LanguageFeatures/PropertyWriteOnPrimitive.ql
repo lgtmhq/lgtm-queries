@@ -37,8 +37,7 @@ string describeProp(PropWriteNode pwn) {
 
 from PropWriteNode pwn, AnalyzedFlowNode base
 where base = pwn.getBase() and
-      base.hasFlow() and
-      forall (InferredType tp | tp = base.getAType() |
+      forex (InferredType tp | tp = base.getAType() |
         tp instanceof PrimitiveType and
         // assignments on `null` and `undefined` are covered by
         // the query 'Property access on null or undefined'

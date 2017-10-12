@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/assignment-does-not-return-this
  * @tags reliability
  *       readability
  *       language-features

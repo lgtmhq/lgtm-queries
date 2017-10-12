@@ -44,12 +44,12 @@ predicate isLocation(DataFlowNode location) {
     isDomValue(pacc.getBase()) and pacc.getPropertyName() = "location"
   )
   or
-  accessesGlobal(location, "location")
+  location.(Expr).accessesGlobal("location")
 }
 
 /** Holds if `nd` could refer to the `document` object. */
 predicate isDocument(DataFlowNode nd) {
-  accessesGlobal(nd.getALocalSource(), "document")
+  nd.getALocalSource().(Expr).accessesGlobal("document")
 }
 
 /** Holds if `nd` could refer to the document URL. */
@@ -65,7 +65,7 @@ predicate isDocumentURL(DataFlowNode nd) {
     isDomValue(base) and propName = "baseUri"
   )
   or
-  accessesGlobal(nd, "location")
+  nd.(Expr).accessesGlobal("location")
 }
 
 /**

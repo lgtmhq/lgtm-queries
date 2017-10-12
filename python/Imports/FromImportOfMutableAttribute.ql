@@ -21,6 +21,7 @@
  * @problem.severity warning
  * @sub-severity high
  * @precision medium
+ * @id py/import-of-mutable-attribute
  */
 import python
 import semmle.python.filters.Tests

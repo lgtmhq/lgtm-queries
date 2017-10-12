@@ -42,7 +42,7 @@ predicate needsGuard(Expr e, string kind) {
  * a `super` call.
  */
 predicate unguardedBB(BasicBlock bb, Function ctor) {
-  exists (Class c | exists(c.getSuperClass()) |
+  exists (ClassDefinition c | exists(c.getSuperClass()) |
     ctor = c.getConstructor().getBody() and
     bb = ctor.getStartBB()
   )

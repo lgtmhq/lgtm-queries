@@ -46,7 +46,9 @@ GlobalVariable undeclaredGlobalIn(Function f) {
  */
 GlobalVariable accidentalGlobalIn(Function f) {
   result = undeclaredGlobalIn(f) and
-  not f.getStartBB().isLiveAtEntry(result)
+  exists (BasicBlock startBB | startBB = f.getStartBB() |
+    not startBB.isLiveAtEntry(result)
+  )
 }
 
 /**

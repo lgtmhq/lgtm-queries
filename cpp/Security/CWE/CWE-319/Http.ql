@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/use-of-http
  * @tags security
  *       external/cwe/cwe-319
  */

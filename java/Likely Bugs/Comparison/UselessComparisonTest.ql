@@ -144,17 +144,27 @@ predicate overFlowTest(ComparisonExpr comp) {
   comp.getGreaterOperand().(IntegerLiteral).getIntValue() = 0
 }
 
+
+/**
+ * Holds if `test` and `guard` are equality tests of the same integral variable v with constants `c1` and `c2`.
+ */
+predicate guardedTest(EqualityTest test, EqualityTest guard, CompileTimeConstantExpr c1, CompileTimeConstantExpr c2) {
+  exists(SsaVariable v | 
+    guard.hasOperands(v.getAUse(), c1) and
+    test.hasOperands(v.getAUse(), c2) and
+    v.getSourceVariable().getType() instanceof IntegralType
+  )
+}
+
 /**
  * Holds if `guard` implies that `test` always has the value `testIsTrue`.
  */
 predicate uselessEqTest(EqualityTest test, boolean testIsTrue, EqualityTest guard) {
-  exists(ConditionBlock cb, SsaVariable v, boolean guardIsTrue, CompileTimeConstantExpr c1, CompileTimeConstantExpr c2 |
-    guard.hasOperands(v.getAUse(), c1) and
-    test.hasOperands(v.getAUse(), c2) and
+  exists(ConditionBlock cb, boolean guardIsTrue, CompileTimeConstantExpr c1, CompileTimeConstantExpr c2 |
+    guardedTest(test, guard, c1, c2) and
     c1.getIntValue() = c2.getIntValue() and
     cb.getCondition() = guard and
     cb.controls(test.getBasicBlock(), guardIsTrue) and
-    v.getSourceVariable().getType() instanceof IntegralType and
     testIsTrue = guardIsTrue.booleanXor(guard.polarity().booleanXor(test.polarity()))
   )
 }

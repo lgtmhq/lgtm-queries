@@ -26,32 +26,34 @@ abstract class IncludeGuardedHeader extends HeaderFile {
 }
 
 /**
- * A header file that uses an inappropriate mechanisms to prevent multiple inclusion
+ * A header file that uses a non-portable mechanism to prevent multiple
+ * inclusion.
  */
 abstract class BadIncludeGuard extends IncludeGuardedHeader {
 
-  /** the element to blame for this bad include guard pattern */
+  /** Gets the element to blame for this bad include guard pattern. */
   abstract Element blame();
 
 }
 
 /**
- * A header file with the correct include guard: IFNDEF, DEFINE and ENDIF
+ * A header file with the correct include guard: `#ifndef` (or equivalent),
+ * `#define`, and `#endif`.
  */
 class CorrectIncludeGuard extends IncludeGuardedHeader {
 
   CorrectIncludeGuard() { correctIncludeGuard(this,_,_,_,_) }
 
-  /** the name of the preprocessor define used to prevent multiple inclusion of this file */
+  /** Gets the name of the preprocessor define used to prevent multiple inclusion of this file. */
   string getIncludeGuardName() { correctIncludeGuard(this, _, _, _, result) }
 
-  /** the preprocessor define used to prevent multiple inclusion of this file */
+  /** Gets the preprocessor macro used to prevent multiple inclusion of this file. */
   Macro getDefine() { correctIncludeGuard(this, _, result, _, _) }
 
-  /** the #ifndef directive used to prevent multiple inclusion of this file */
+  /** Gets the `#ifndef` or `#if` directive used to prevent multiple inclusion of this file. */
   PreprocessorDirective getIfndef() { correctIncludeGuard(this, result, _, _, _) }
 
-  /** The #endif directive closing this file */
+  /** Gets the `#endif` directive closing this file. */
   PreprocessorEndif getEndif() { correctIncludeGuard(this, _, _, result, _) }
 
 }
@@ -65,13 +67,16 @@ class NotIncludedGuard extends IncludeGuardedHeader {
     none()
   }
 
-  /** the #ifndef directive used to prevent multiple inclusion of this file */
+  /** Gets the `#ifndef` directive used to prevent multiple inclusion of this file. */
   PreprocessorIfndef getIfndef() { result.getFile() = this }
 
-  /** The #endif directive closing this file */
+  /** Gets the `#endif` directive closing this file. */
   PreprocessorEndif getEndif() { result.getFile() = this }
 }
 
+/**
+ * A file with no code in it.
+ */
 class EmptyFile extends IncludeGuardedHeader {
   EmptyFile() {
     this.(MetricFile).getNumberOfLinesOfCode() = 0
@@ -83,7 +88,8 @@ private predicate hasMacro(HeaderFile hf, string head, Macro define) {
 }
 
 /**
- * A file that begins with #ifndef MACRO and ends with the corresponding #endif
+ * Holds if `hf` begins with an `#ifndef` or `#if` directive `ifndef`, to test
+ * the macro named `includeGuard`, and ends with the matching `endif`.
  */
 predicate hasIncludeGuard(HeaderFile hf, PreprocessorDirective ifndef, PreprocessorEndif endif, string includeGuard) {
   startsWithIfndef(hf, ifndef, includeGuard) and
@@ -91,7 +97,12 @@ predicate hasIncludeGuard(HeaderFile hf, PreprocessorDirective ifndef, Preproces
   endif.getIf() = ifndef
 }
 
-// The implementation of the correct include guard pattern
+/**
+ * Holds if `hf` uses a valid include guard with the macro named `includeGuard`
+ * and the preprocessor directives `ifndef`, `define`, and `endif`. This
+ * analysis is also exposed in an object-oriented style through the class
+ * `CorrectIncludeGuard`.
+ */
 pragma[noopt] predicate correctIncludeGuard(HeaderFile hf, PreprocessorDirective ifndef, Macro define, PreprocessorEndif endif, string includeGuard) {
   hasIncludeGuard(hf, ifndef, endif, includeGuard) and
   hasMacro(hf, includeGuard, define) and
@@ -110,6 +121,10 @@ pragma[noopt] predicate correctIncludeGuard(HeaderFile hf, PreprocessorDirective
   )
 }
 
+/**
+ * Holds if `hf` begins with an `#ifndef` or `#if` directive `ifndef`, to test
+ * the macro named `macroName`.
+ */
 predicate startsWithIfndef(HeaderFile hf, PreprocessorDirective ifndef, string macroName) {
   ifndefDirective(ifndef, macroName) and
   ifndef.getFile() = hf and
@@ -126,6 +141,9 @@ private predicate lastEndifLocation(PreprocessorEndif endif, File f, int line) {
   line = max(int line2 | endifLocation(_, f, line2))
 }
 
+/**
+ * Holds if `hf` ends with `endif`.
+ */
 predicate endsWithEndif(HeaderFile hf, PreprocessorEndif endif) {
   exists(int line | lastEndifLocation(endif, hf, line) |
     line = max(int l | includeGuardRelevantLine(hf, l) | l)
@@ -139,6 +157,10 @@ private predicate includeGuardRelevantLine(HeaderFile hf, int line) {
   )
 }
 
+/**
+ * Holds if `ppd` is effectively an `#ifndef` directive that tests `macro`.
+ * This includes `#if !defined(macro)`.
+ */
 predicate ifndefDirective(PreprocessorDirective ppd, string macro) {
   (ppd instanceof PreprocessorIfndef and macro = ppd.getHead())
   or
@@ -149,7 +171,7 @@ predicate ifndefDirective(PreprocessorDirective ppd, string macro) {
 }
 
 /**
- * A header file with the 'pragma once' include guard
+ * A header file with the `#pragma once` include guard.
  */
 class PragmaOnceIncludeGuard extends BadIncludeGuard {
   PragmaOnceIncludeGuard() { exists(PreprocessorPragma p | p.getFile() = this and p.getHead() = "once") }

@@ -51,7 +51,7 @@ newtype TAbstractValue =
   TAbstractFunction(Function f)
   or
   /** An abstract representation of a class object corresponding to class `c`. */
-  TAbstractClass(Class c)
+  TAbstractClass(ClassDefinition c)
   or
   /** An abstract representation of a Date object. */
   TAbstractDate()

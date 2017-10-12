@@ -184,8 +184,8 @@ class SecurityOptions extends string {
     or exists (AssignExpr assign, Variable adminPrivileges |
       assign = expr
       and adminPrivileges.hasName("adminPrivileges")
-      and ((Access) assign.getLValue()).getTarget() = adminPrivileges
-      and not (((Literal) assign.getRValue()).getValue() = "0"))
+      and assign.getLValue().(Access).getTarget() = adminPrivileges
+      and not (assign.getRValue().(Literal).getValue() = "0"))
   }
 }
 

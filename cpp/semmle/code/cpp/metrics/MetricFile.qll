@@ -11,52 +11,49 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import semmle.code.cpp.File
-import semmle.code.cpp.Element
-import semmle.code.cpp.Function
-import semmle.code.cpp.Declaration
+import cpp
 
 /**
- * A wrapper of metrics for C/C++ files.
+ * A wrapper that provides metrics for a C/C++ file.
  */
 class MetricFile extends File {
 
-  /** the number of functions defined in this file */
+  /** Gets the number of functions defined in this file. */
   int getNumberOfTopLevelFunctions() {
     result = count(Function f | f.isTopLevel() and f.getFile() = this)
   }
 
-  /** the number of classes defined in this file */
+  /** Gets the number of classes defined in this file. */
   int getNumberOfClasses() {
     result = count(Class c | c.getFile() = this)
   }
 
-  /** the number of user-defined types defined in this file */
+  /** Gets the number of user-defined types defined in this file. */
   int getNumberOfUserTypes() {
     result = count(UserType t | t.getFile() = this)
   }
 
-  /** the number of lines in this file */
+  /** Gets the number of lines in this file. */
   int getNumberOfLines() {
     numlines(this,result,_,_)
   }
 
-  /** the number of lines of code in this file */
+  /** Gets the number of lines of code in this file. */
   int getNumberOfLinesOfCode() {
     numlines(this,_,result,_)
   }
 
-  /** the number of lines of comments in this file */
+  /** Gets the number of lines of comments in this file. */
   int getNumberOfLinesOfComments() {
     numlines(this,_,_,result)
   }
 
-  /** the number of incoming dependencies */
+  /** Gets the number of incoming file dependencies. */
   int getAfferentCoupling() {
     result = count(MetricFile that | that.getAFileDependency() = this)
   }
 
-  /** the number of outgoing source dependencies */
+  /** Gets the number of outgoing file dependencies. */
   int getEfferentCoupling() {
     result = count(MetricFile that | this.getAFileDependency() = that)
   }
@@ -66,9 +63,9 @@ class MetricFile extends File {
    */
 
    /**
-    * Gets the Halstead "N1" metric for this file. This is the total number of operators
-    * in the file. Operators are taken to be all operators in expressions (+, *, &amp;, ->, =, ...) as well
-    * as most statements.
+    * Gets the Halstead "N1" metric for this file. This is the total number of
+    * operators in the file. Operators are taken to be all operators in
+    * expressions (`+`, `*`, `&`, `->`, `=`, ...) as well as most statements.
     */
    int getHalsteadN1() {
      result =
@@ -84,8 +81,8 @@ class MetricFile extends File {
    }
 
    /**
-    *  Gets the Halstead "N2" metric for this file: this is the total number of operands.
-    *  An operand is either a variable, constant, type name, class name or function name
+    * Gets the Halstead "N2" metric for this file: this is the total number of operands.
+    * An operand is either a variable, constant, type name, class name, or function name.
     */
    int getHalsteadN2() {
      result =
@@ -130,19 +127,18 @@ class MetricFile extends File {
 
    /**
     * Gets the Halstead "n1" metric: this is the total number of distinct operators
-    * in this file. Operators are defined as in the "N1" metric (getHalsteadN1).
+    * in this file. Operators are defined as in the "N1" metric (`getHalsteadN1`).
     */
    int getHalsteadN1Distinct() {
      result =
        1 + // avoid 0 values
        count(string s | exists(Operation op | op.getFile() = this and s = op.getOperator())) +
        count(string s | s = getAUsedHalsteadN1Operator())
-
    }
 
    /**
-    *  Gets the Halstead "n2" metric: this is the number of distinct operands in this
-    *  file. An operand is either a variable, constant, type name or function name
+    * Gets the Halstead "n2" metric: this is the number of distinct operands in this
+    * file. An operand is either a variable, constant, type name, or function name.
     */
    int getHalsteadN2Distinct() {
      result =
@@ -154,25 +150,25 @@ class MetricFile extends File {
    }
 
    /**
-    *  Gets the Halstead length of this file. This is the sum of the N1 and N2 Halstead metrics
+    * Gets the Halstead length of this file. This is the sum of the N1 and N2 Halstead metrics.
     */
    int getHalsteadLength() {
      result = this.getHalsteadN1() + this.getHalsteadN2()
    }
 
    /**
-    *  Gets the Halstead vocabulary size of this file. This is the sum of the n1 and n2 Halstead metrics
+    * Gets the Halstead vocabulary size of this file. This is the sum of the n1 and n2 Halstead metrics.
     */
    int getHalsteadVocabulary() {
      result = this.getHalsteadN1Distinct() + this.getHalsteadN2Distinct()
    }
 
    /**
-    *  Gets the Halstead volume of this file. This is the Halstead size multiplied by the log of the
-    *  Halstead vocabulary. It represents the information content of the function.
+    * Gets the Halstead volume of this file. This is the Halstead size multiplied by the log of the
+    * Halstead vocabulary. It represents the information content of the file.
     */
    float getHalsteadVolume() {
-     result = ((float)this.getHalsteadLength()) * this.getHalsteadVocabulary().log2()
+     result = this.getHalsteadLength().(float) * this.getHalsteadVocabulary().log2()
    }
 
    /**
@@ -184,7 +180,7 @@ class MetricFile extends File {
    }
 
    /**
-    * Gets the Halstead level of this file. This is the inverse of the difficulty of the function.
+    * Gets the Halstead level of this file. This is the inverse of the difficulty of the file.
     */
    float getHalsteadLevel() {
      exists(float difficulty |
@@ -194,7 +190,7 @@ class MetricFile extends File {
    }
 
    /**
-    * Gets the Halstead implementation effort for this file. This is the product of the volume and difficulty
+    * Gets the Halstead implementation effort for this file. This is the product of the volume and difficulty.
     */
    float getHalsteadEffort() {
      result = this.getHalsteadVolume() * this.getHalsteadDifficulty()
@@ -209,7 +205,7 @@ class MetricFile extends File {
    }
 
 
-  /** a file dependency of this element */
+  /** Gets a file dependency of this file. */
   File getAFileDependency() {
     dependsOnFileSimple(this, result.getMetrics())
   }
@@ -221,7 +217,7 @@ private predicate aClassFile(Class c, File file)
   c.getDefinitionLocation().getFile() = file
 }
 
-pragma[noopt]
+private pragma[noopt]
 predicate dependsOnFileSimple(MetricFile source, MetricFile dest) {
      // class derives from classs
      exists(Class fromClass, Class toClass |

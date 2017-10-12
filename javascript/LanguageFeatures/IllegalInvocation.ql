@@ -74,8 +74,19 @@ predicate illegalInvocation(CallSite cs, Function callee, string calleeDesc, str
   )
 }
 
+/**
+ * Holds if `ce` has at least one call target that isn't a constructor.
+ */
+predicate isCallToFunction(CallExpr ce) {
+  exists (Function f | f = ce.(CallSite).getACallee() |
+    not f instanceof Constructor
+  )
+}
+
 from CallSite cs, Function callee, string calleeDesc, string how
 where illegalInvocation(cs, callee, calleeDesc, how) and
+      // filter out some easy cases
+      not isCallToFunction(cs) and
       // conservatively only flag call sites where _all_ callees are illegal
       forall (Function otherCallee | otherCallee = cs.getACallee() |
         illegalInvocation(cs, otherCallee, _, _)

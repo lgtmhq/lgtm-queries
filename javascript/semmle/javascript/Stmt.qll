@@ -20,7 +20,7 @@ import Tokens
 
 /** A statement. */
 class Stmt extends @stmt, ExprOrStmt {
-  /** Gets the statement container (toplevel or function) to which this statement belongs. */
+  /** Gets the statement container (toplevel, function or namespace) to which this statement belongs. */
   override StmtContainer getContainer() {
     stmtContainers(this, result)
   }
@@ -69,6 +69,10 @@ class Stmt extends @stmt, ExprOrStmt {
   predicate nestedIn(Stmt outer) {
     outer = getParentStmt+() or
     getContainer().(Expr).getEnclosingStmt().nestedIn(outer)
+  }
+
+  override predicate isAmbient() {
+    hasDeclareKeyword(this) or getParent().isAmbient()
   }
 }
 

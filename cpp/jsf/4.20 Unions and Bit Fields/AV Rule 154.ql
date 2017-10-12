@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/signed-bit-field
  * @tags reliability
  *       readability
  *       language-features
@@ -25,7 +26,7 @@
 import default
 
 from BitField bf
-where not ((IntegralType)bf.getType().getUnspecifiedType()).isUnsigned()
+where not bf.getType().getUnspecifiedType().(IntegralType).isUnsigned()
   and not bf.getUnderlyingType() instanceof Enum
   and not bf.getUnderlyingType().getUnspecifiedType() instanceof BoolType
   and not bf.getType().hasName("BOOL") // At least for C programs on Windows, BOOL is a common typedef for a type representing BoolType.

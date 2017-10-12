@@ -16,7 +16,7 @@
  * @description Storing unencrypted passwords in configuration files is unsafe.
  * @kind problem
  * @problem.severity warning
- * @precision medium
+ * @precision high
  * @id js/password-in-configuration-file
  * @tags security
  *       external/cwe/cwe-256

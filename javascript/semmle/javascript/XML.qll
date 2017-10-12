@@ -147,7 +147,7 @@ module XML {
   private class DOMParserXmlParserInvocation extends XML::ParserInvocation {
     DOMParserXmlParserInvocation() {
       exists (js::NewExpr newDOMParser, js::DataFlowNode recv |
-        js::accessesGlobal(newDOMParser.getCallee(), "DOMParser") and
+        newDOMParser.getCallee().accessesGlobal("DOMParser") and
         recv.getALocalSource() = newDOMParser and
         this.(js::MethodCallExpr).calls(recv, "parseFromString") and
         // type contains the string `xml`, that is, it's not `text/html`
@@ -170,7 +170,7 @@ module XML {
   private class IELegacyXmlParserInvocation extends XML::ParserInvocation {
     IELegacyXmlParserInvocation() {
       exists (js::NewExpr activeXObject, string activeXType, js::DataFlowNode recv |
-        js::accessesGlobal(activeXObject.getCallee(), "ActiveXObject") and
+        activeXObject.getCallee().accessesGlobal("ActiveXObject") and
         activeXType = activeXObject.getArgument(0).(js::StringLiteral).getValue() and
         activeXType.regexpMatch("Microsoft\\.XMLDOM|Msxml.*\\.DOMDocument.*") and
         recv.getALocalSource() = activeXObject and

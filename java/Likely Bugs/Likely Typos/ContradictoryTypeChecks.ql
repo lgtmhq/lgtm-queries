@@ -17,7 +17,7 @@
  *              and casts may cause dead code or even runtime errors, and usually
  *              indicate a logic error.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity error
  * @precision very-high
  * @id java/contradictory-type-checks
  * @tags correctness

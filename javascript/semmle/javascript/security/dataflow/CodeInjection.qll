@@ -17,8 +17,6 @@
 
 import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
-import DOM
-
 
 /**
  * A data flow source for code injection vulnerabilities.
@@ -83,8 +81,8 @@ class LocationSource extends CodeInjectionSource {
 class AngularJSExpressionSink extends CodeInjectionSink {
   AngularJSExpressionSink() {
     // AngularJS expression arguments
-    exists(MethodCallExpr mce, string methodName |
-      this = mce.getArgument(0) and methodName = mce.getMethodName() |
+    exists(CallExpr ce, string methodName |
+      this = ce.getArgument(0) and methodName = ce.getCalleeName() |
       methodName = "$watch" or
       methodName = "$watchGroup" or
       methodName = "$watchCollection" or

@@ -399,3 +399,21 @@ class MockitoSettableField extends Field {
     result.getParameterType(0) = this.getType()
   }
 }
+
+class MockitoMockMethod extends Method {
+  MockitoMockMethod() {
+    this.getDeclaringType().hasQualifiedName("org.mockito", "Mockito") and
+    this.hasName("mock")
+  }
+}
+
+class MockitoMockedObject extends Expr {
+  MockitoMockedObject() {
+    this.(MethodAccess).getMethod() instanceof MockitoMockMethod or
+    this.(VarAccess).getVariable().getAnAssignedValue() instanceof MockitoMockedObject or
+    exists(ReturnStmt ret |
+      this.(MethodAccess).getMethod() = ret.getEnclosingCallable() and
+      ret.getResult() instanceof MockitoMockedObject
+    )
+  }
+}

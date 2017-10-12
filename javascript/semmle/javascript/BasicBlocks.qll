@@ -297,29 +297,6 @@ class ReachableBasicBlock extends BasicBlock {
     bb = this or
     strictlyDominates(bb)
   }
-
-  /**
-   * DEPRECATED: Use `df.inDominanceFrontierOf(b)` instead of `b.inDominanceFrontier(df)`.
-   *
-   * Holds if `df` is in the dominance frontier of this basic block, that is,
-   * this basic block dominates a predecessor of `df`, but not `df` itself.
-   */
-  deprecated
-  predicate inDominanceFrontier(ReachableJoinBlock df) {
-    dominatesPredecessor(df) and
-    not strictlyDominates(df)
-  }
-
-  /**
-   * Holds if this basic block dominates a predecessor of `df`.
-   */
-  private
-  predicate dominatesPredecessor(ReachableJoinBlock df) {
-    exists (BasicBlock pred | pred = df.getAPredecessor() |
-      this = pred or
-      strictlyDominates(pred)
-    )
-  }
 }
 
 /**

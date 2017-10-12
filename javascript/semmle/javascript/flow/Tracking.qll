@@ -121,9 +121,22 @@ private predicate argumentPassing(CallSite invk, Expr arg, Function f, SimplePar
  * passed in from the caller.
  */
 private DataFlowNode getInitialUseOfParameter(SimpleParameter parm) {
-  exists (SsaExplicitDefinition parmDef |
-    parmDef.getDef() = parm and
+  exists (SsaDefinition parmDef |
+    parmDef.getAContributingVarDef() = parm and
+    parmDef.getContainer() = parm.getParent() and
     result = parmDef.getVariable().getAUse()
+  )
+}
+
+/**
+ * Holds if `p` is a parameter of `f` that may be reached by
+ * forward flow under `configuration`.
+ */
+private predicate hasForwardFlow(Function f, SimpleParameter p,
+                                 FlowTrackingConfiguration configuration) {
+  exists (Expr arg | argumentPassing(_, arg, f, p) |
+    forwardParameterFlow(_, _, arg, configuration) or
+    flowsTo(_, arg, configuration, _)
   )
 }
 
@@ -131,26 +144,70 @@ private DataFlowNode getInitialUseOfParameter(SimpleParameter parm) {
  * Holds if `p` is a parameter of `f` whose value flows into `sink`
  * under `configuration`, possibly through callees.
  */
-private predicate parameterFlow(Function f, SimpleParameter p,
+private predicate forwardParameterFlow(Function f, SimpleParameter p,
                                 DataFlowNode sink, FlowTrackingConfiguration configuration) {
+  hasForwardFlow(f, p, configuration) and
   (
     p = f.getAParameter() and sink = getInitialUseOfParameter(p)
     or
-    exists (DataFlowNode mid | parameterFlow(f, p, mid, configuration) |
+    exists (DataFlowNode mid | forwardParameterFlow(f, p, mid, configuration) |
       mid = sink.localFlowPred()
       or
-      flowThroughCall(mid, sink, configuration)
+      configuration.isAdditionalFlowStep(mid, sink)
+      or
+      forwardFlowThroughCall(mid, sink, configuration)
     )
   ) and
   not configuration.isBarrier(sink)
 }
 
 /**
+ * Holds if the return value of `f` may be reached by
+ * backward flow under `configuration`.
+ */
+private predicate hasBackwardFlow(Function f, FlowTrackingConfiguration configuration) {
+  exists (InvokeExpr invk | argumentPassing(invk, _, f, _) |
+    backwardParameterFlow(_, invk, _, configuration) or
+    flowsFrom(invk, _, configuration, _)
+  )
+}
+
+/**
+ * Holds if the value of `source` may flow into `sink` (which is
+ * an expression that may be returned from `f`), under `configuration`,
+ * possibly through callees.
+ */
+private predicate backwardParameterFlow(Function f, DataFlowNode source,
+                                DataFlowNode sink, FlowTrackingConfiguration configuration) {
+  hasBackwardFlow(f, configuration) and
+  (
+    sink = f.getAReturnedExpr() and source = sink
+    or
+    exists (DataFlowNode mid | backwardParameterFlow(f, mid, sink, configuration) |
+      source = mid.localFlowPred()
+      or
+      configuration.isAdditionalFlowStep(source, mid)
+      or
+      backwardFlowThroughCall(source, mid, configuration)
+    )
+  ) and
+  not configuration.isBarrier(source)
+}
+
+/**
  * Holds if function `f` returns an expression into which its parameter `p` flows
  * under `configuration`, possibly through callees.
  */
-private predicate parameterReturn(Function f, SimpleParameter p, FlowTrackingConfiguration configuration) {
-  parameterFlow(f, p, f.getAReturnedExpr(), configuration)
+private predicate forwardParameterReturn(Function f, SimpleParameter p, FlowTrackingConfiguration configuration) {
+  forwardParameterFlow(f, p, f.getAReturnedExpr(), configuration)
+}
+
+/**
+ * Holds if function `f` returns an expression into which its parameter `p` flows
+ * under `configuration`, possibly through callees.
+ */
+private predicate backwardParameterReturn(Function f, SimpleParameter p, FlowTrackingConfiguration configuration) {
+  backwardParameterFlow(f, getInitialUseOfParameter(p), f.getAReturnedExpr(), configuration)
 }
 
 /**
@@ -158,9 +215,20 @@ private predicate parameterReturn(Function f, SimpleParameter p, FlowTrackingCon
  * a function such that the argument may flow into the function's
  * return value under `configuration`.
  */
-private predicate flowThroughCall(Expr arg, InvokeExpr invk, FlowTrackingConfiguration configuration) {
+private predicate forwardFlowThroughCall(Expr arg, InvokeExpr invk, FlowTrackingConfiguration configuration) {
   exists (Function g, SimpleParameter q |
-    argumentPassing(invk, arg, g, q) and parameterReturn(g, q, configuration)
+    argumentPassing(invk, arg, g, q) and forwardParameterReturn(g, q, configuration)
+  )
+}
+
+/**
+ * Holds if `arg` is passed as an argument by invocation `invk` to
+ * a function such that the argument may flow into the function's
+ * return value under `configuration`.
+ */
+private predicate backwardFlowThroughCall(Expr arg, InvokeExpr invk, FlowTrackingConfiguration configuration) {
+  exists (Function g, SimpleParameter q |
+    argumentPassing(invk, arg, g, q) and backwardParameterReturn(g, q, configuration)
   )
 }
 
@@ -195,7 +263,7 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     // Flow through a function that returns a value that depends on one of its arguments
     exists(Expr arg |
       flowsTo(source, arg, configuration, stepIn) and
-      flowThroughCall(arg, sink, configuration)
+      forwardFlowThroughCall(arg, sink, configuration)
     )
     or
     // Flow out of function
@@ -244,17 +312,16 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
     // Flow into function
     // This path is only enabled if the flow so far did not involve
     // any interprocedural steps from a `return` statement to the invocation site.
-    exists (SimpleParameter parm, SsaExplicitDefinition parmDef |
-      parmDef.getDef() = parm and
-      flowsFrom(parmDef.getVariable().getAUse(), sink, configuration, stepOut) and
+    exists (SimpleParameter p |
+      flowsFrom(getInitialUseOfParameter(p), sink, configuration, stepOut) and
       stepOut = false and
-      argumentPassing(_, source, _, parm)
+      argumentPassing(_, source, _, p)
     )
     or
     // Flow through a function that returns a value that depends on one of its arguments
     exists(InvokeExpr invk |
       flowsFrom(invk, sink, configuration, stepOut) and
-      flowThroughCall(source, invk, configuration)
+      backwardFlowThroughCall(source, invk, configuration)
     )
     or
     // Flow out of function
@@ -400,9 +467,8 @@ module TaintTracking {
         result = prop.getInit()
       )
       or
-      // reading from a tainted object or with a tainted index yields a tainted result
-      this.(IndexExpr).getAChildExpr() = result or
-      this.(DotExpr).getBase() = result
+      // reading from a tainted object yields a tainted result
+      this.(PropAccess).getBase() = result
       or
       // awaiting a tainted expression gives a tainted result
       this.(AwaitExpr).getOperand() = result
@@ -412,13 +478,12 @@ module TaintTracking {
       or
       // `array.map(function (elt, i, ary) { ... })`: if `array` is tainted, then so are
       // `elt` and `ary`; similar for `forEach`
-      exists (MethodCallExpr m, Function f, int i, SimpleParameter p, SsaExplicitDefinition pinit |
+      exists (MethodCallExpr m, Function f, int i, SimpleParameter p |
         (m.getMethodName() = "map" or m.getMethodName() = "forEach") and
         (i = 0 or i = 2) and
         f = m.getArgument(0).(DataFlowNode).getALocalSource() and
         p = f.getParameter(i) and
-        pinit.getDef() = p and
-        this = pinit.getVariable().getAUse() and
+        this = getInitialUseOfParameter(p) and
         result = m.getReceiver()
       )
     }
@@ -480,12 +545,40 @@ module TaintTracking {
       // other string operations that propagate taint
       exists (string name | name = this.(MethodCallExpr).getMethodName() |
         result = this.(MethodCallExpr).getReceiver() and
-        (name = "concat" or name = "match" or name = "replace" or name = "slice" or
-         name = "split" or name = "substr" or name = "substring" or
-         name = "toLocaleLowerCase" or name = "toLocaleUpperCase" or
-         name = "toLowerCase" or name = "toString" or name = "toUpperCase" or
-         name = "trim" or name = "valueOf")
-        or
+        ( // sorted, interesting, properties of String.prototype
+          name = "anchor" or
+          name = "big" or
+          name = "blink" or
+          name = "bold" or
+          name = "concat" or
+          name = "fixed" or
+          name = "fontcolor" or
+          name = "fontsize" or
+          name = "italics" or
+          name = "link" or
+          name = "match" or
+          name = "padEnd" or
+          name = "padStart" or
+          name = "repeat" or
+          name = "replace" or
+          name = "slice" or
+          name = "small" or
+          name = "split" or
+          name = "strike" or
+          name = "sub" or
+          name = "substr" or
+          name = "substring" or
+          name = "sup" or
+          name = "toLocaleLowerCase" or
+          name = "toLocaleUpperCase" or
+          name = "toLowerCase" or
+          name = "toString" or
+          name = "toUpperCase" or
+          name = "trim" or
+          name = "trimLeft" or
+          name = "trimRight" or
+          name = "valueOf"
+        ) or
         exists (int i | result = this.(MethodCallExpr).getArgument(i) |
           name = "concat" or
           name = "replace" and i = 1
@@ -493,9 +586,9 @@ module TaintTracking {
       )
       or
       // standard library constructors that propagate taint: `RegExp` and `String`
-      exists (InvokeExpr invk, GlobalVarAccess gv |
-        invk = this and gv = invk.getCallee() and result = invk.getArgument(0) |
-        gv.getName() = "RegExp" or gv.getName() = "String"
+      exists (InvokeExpr invk, string gv |
+        invk = this and invk.getCallee().accessesGlobal(gv) and result = invk.getArgument(0) |
+        gv = "RegExp" or gv = "String"
       )
       or
       // regular expression operations that propagate taint
@@ -506,9 +599,16 @@ module TaintTracking {
         result = mce.getArgument(0)
       )
       or
-      // `(encode|decode)URI(Component)?` propagate taint
+      // String.fromCharCode and String.fromCodePoint
+      exists (int i, MethodCallExpr mce |
+        mce = this and
+        result = mce.getArgument(i) and
+        (mce.getMethodName() = "fromCharCode" or mce.getMethodName() = "fromCodePoint")
+      )
+      or
+      // `(encode|decode)URI(Component)?` and `escape` propagate taint
       exists (CallExpr c, string name |
-        c = this and accessesGlobal(c.getCallee(), name) and result = c.getArgument(0) |
+        c = this and c.getCallee().accessesGlobal(name) and result = c.getArgument(0) |
         name = "encodeURI" or name = "decodeURI" or
         name = "encodeURIComponent" or name = "decodeURIComponent"
       )
@@ -522,7 +622,7 @@ module TaintTracking {
     JsonManipulationFlowTarget() {
       exists (MethodCallExpr mce, string methodName |
         mce = this and methodName = mce.getMethodName() |
-        accessesGlobal(mce.getReceiver(), "JSON") and
+        mce.getReceiver().accessesGlobal("JSON") and
         (methodName = "parse" or methodName = "stringify")
       )
     }
@@ -538,14 +638,14 @@ module TaintTracking {
    */
   predicate isUrlSearchParams(DataFlowNode params, DataFlowNode input) {
     exists (NewExpr urlSearchParams | urlSearchParams = params |
-      accessesGlobal(urlSearchParams.getCallee(), "URLSearchParams") and
+      urlSearchParams.getCallee().accessesGlobal("URLSearchParams") and
       input = urlSearchParams.getArgument(0)
     )
     or
     exists (NewExpr url, DataFlowNode recv |
       params.(PropAccess).accesses(recv, "searchParams") and
       recv.getALocalSource() = url and
-      accessesGlobal(url.getCallee(), "URL") and
+      url.getCallee().accessesGlobal("URL") and
       input = url.getArgument(0)
     )
   }

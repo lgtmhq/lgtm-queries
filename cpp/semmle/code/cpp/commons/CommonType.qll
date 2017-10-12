@@ -82,3 +82,67 @@ class Uintmax_t extends IntegralType {
 class Wchar_t extends IntegralType {
   Wchar_t() { this.hasName("wchar_t") }
 }
+
+/**
+ * The type that the Microsoft C/C++ `__int8` type specifier is a
+ * synonym for.  Note that since `__int8` is not a distinct type,
+ * `MicrosoftInt8Type` corresponds to an existing `IntegralType` as
+ * well.
+ * 
+ * This class is meaningless if a Microsoft compiler was not used.
+ */
+class MicrosoftInt8Type extends IntegralType {
+  MicrosoftInt8Type() {
+    this instanceof CharType and
+    not isExplicitlyUnsigned() and
+    not isExplicitlySigned()
+  }
+}
+
+/**
+ * The type that the Microsoft C/C++ `__int16` type specifier is a
+ * synonym for.  Note that since `__int16` is not a distinct type,
+ * `MicrosoftInt16Type` corresponds to an existing `IntegralType` as
+ * well.
+ * 
+ * This class is meaningless if a Microsoft compiler was not used.
+ */
+class MicrosoftInt16Type extends IntegralType {
+  MicrosoftInt16Type() {
+    this instanceof ShortType and
+    not isExplicitlyUnsigned() and
+    not isExplicitlySigned()
+  }
+}
+
+/**
+ * The type that the Microsoft C/C++ `__int32` type specifier is a
+ * synonym for.  Note that since `__int32` is not a distinct type,
+ * `MicrosoftInt32Type` corresponds to an existing `IntegralType` as
+ * well.
+ * 
+ * This class is meaningless if a Microsoft compiler was not used.
+ */
+class MicrosoftInt32Type extends IntegralType {
+  MicrosoftInt32Type() {
+    this instanceof IntType and
+    not isExplicitlyUnsigned() and
+    not isExplicitlySigned()
+  }
+}
+
+/**
+ * The type that the Microsoft C/C++ `__int64` type specifier is a
+ * synonym for.  Note that since `__int64` is not a distinct type,
+ * `MicrosoftInt64Type` corresponds to an existing `IntegralType` as
+ * well.
+ * 
+ * This class is meaningless if a Microsoft compiler was not used.
+ */
+class MicrosoftInt64Type extends IntegralType {
+  MicrosoftInt64Type() {
+    this instanceof LongLongType and
+    not isExplicitlyUnsigned() and
+    not isExplicitlySigned()
+  }
+}

@@ -195,12 +195,7 @@ class ClassObject extends Object {
 
     /* Whether this class is abstract. */
     predicate isAbstract() {
-        this.getMetaClass() = theAbcMetaClassObject()
-        or
-        exists(FunctionObject f |
-            this.lookupAttribute(_) = f and
-            f.isAbstract()
-        )
+        FinalPointsTo::Types::abstract_class(this)
     }
 
     ControlFlowNode declaredMetaClass() {

@@ -459,6 +459,11 @@ class SsaDefinition extends TSsaDefinition {
    */
   abstract predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                                      int endline, int endcolumn);
+
+  /** Gets the function or toplevel to which this definition belongs. */
+  StmtContainer getContainer() {
+    result = getBasicBlock().getContainer()
+  }
 }
 
 /**

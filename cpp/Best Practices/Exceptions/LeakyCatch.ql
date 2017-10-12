@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/catch-missing-free
  * @tags efficiency
  *       correctness
  *       exceptions

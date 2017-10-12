@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/class-many-fields
  * @tags maintainability
  */
 import default

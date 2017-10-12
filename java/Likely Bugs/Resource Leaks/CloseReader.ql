@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Close input resource
+ * @name Potential input resource leak
  * @description A resource that is opened for reading but not closed may cause a resource
  *              leak.
  * @kind problem

@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/array-in-interface
  * @tags reliability
  *       readability
  *       language-features

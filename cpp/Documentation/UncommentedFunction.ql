@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/poorly-documented-function
  * @tags maintainability
  *       documentation
  */

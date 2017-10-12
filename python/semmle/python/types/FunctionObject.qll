@@ -72,11 +72,6 @@ abstract class FunctionObject extends Object {
         result = FinalPointsTo::get_a_call(this, caller_context)
     }
 
-    /** Holds if `call` is the call-site from which this function is called and `result` is the callee and `caller_context` is the caller's context */
-    Context getContext(ControlFlowNode call, Context caller_context) {
-        result.fromCall(call, this, caller_context)
-    }
-
     /** Gets the `ControlFlowNode` that will be passed as the nth argument to `this` when called at `call`.
         This predicate will correctly handle `x.y()`, treating `x` as the zeroth argument.
     */

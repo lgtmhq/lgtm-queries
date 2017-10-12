@@ -181,7 +181,7 @@ class MacroInvocation extends MacroAccess {
   }
 
   Function getEnclosingFunction() {
-    result = ((Expr)this.getAnAffectedElement()).getEnclosingFunction()
+    result = this.getAnAffectedElement().(Expr).getEnclosingFunction()
   }
 
   /**

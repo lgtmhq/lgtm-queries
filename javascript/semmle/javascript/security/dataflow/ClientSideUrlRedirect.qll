@@ -18,7 +18,6 @@
 
 import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
-import DOM
 import UrlConcatenation
 
 /**
@@ -122,7 +121,7 @@ class LocationSink extends ClientSideUrlRedirectSink {
   LocationSink() {
     // A call to a `window.navigate` or `window.open`
     exists (CallExpr windowCall, string name |
-      accessesGlobal(windowCall.getCallee(), name) and
+      windowCall.getCallee().accessesGlobal(name) and
       this = windowCall.getArgument(0) |
       name = "navigate" or name = "open" or
       name = "openDialog" or name = "showModalDialog"
@@ -146,6 +145,13 @@ class LocationSink extends ClientSideUrlRedirectSink {
       this = pw.getRhs() |
       propName = "href" or propName = "protocol" or propName = "hostname"
     )
+    or
+    // A redirection using the AngularJS `$location` service
+    exists (AngularJS::InjectedService location, MethodCallExpr mce |
+      location.getServiceName() = "$location" and
+      mce.calls(location.getAnAccess(), "url") and
+      this = mce.getArgument(0)
+    )
   }
 }
 
@@ -157,5 +163,38 @@ class LocationSink extends ClientSideUrlRedirectSink {
 class ConcatenationSanitizer extends ClientSideUrlRedirectSanitizer {
   ConcatenationSanitizer() {
     this instanceof UrlQueryStringConcat
+  }
+}
+
+/**
+ * An expression that may be interpreted as the URL of a script.
+ */
+abstract class ScriptUrlSink extends ClientSideUrlRedirectSink {
+}
+
+/**
+ * An argument expression to `new Worker(...)`, viewed as
+ * a `ScriptUrlSink`.
+ */
+class WebWorkerScriptUrlSink extends ScriptUrlSink {
+  WebWorkerScriptUrlSink() {
+    exists (NewExpr new |
+      new.getCallee().accessesGlobal("Worker") and
+      this = new.getArgument(0)
+    )
+  }
+}
+
+/**
+ * A script or iframe `src` attribute, viewed as a `ScriptUrlSink`.
+ */
+class SrcAttributeUrlSink extends ScriptUrlSink {
+  SrcAttributeUrlSink() {
+    exists (DOM::AttributeDefinition attr, string eltName |
+      attr.getElement().getName() = eltName and
+      (eltName = "script" or eltName = "iframe") and
+      attr.getName() = "src" and
+      this = attr.getValueNode()
+    )
   }
 }
