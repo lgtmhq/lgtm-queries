@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/rethrow-no-exception
  * @tags reliability
  *       correctness
  *       exceptions

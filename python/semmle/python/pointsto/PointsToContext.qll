@@ -41,21 +41,14 @@ private int context_cost(TFinalContext ctx) {
     or
     ctx = TImportContext() and result = 0
     or
-    ctx = TCallContext(_, _, _, result)
+    ctx = TCallContext(_, _, result)
 }
 
-private int function_cost(Function f) {
-    if f.isMethod() then (
-        if f.getName() = "__init__" then
-            result = 0
-        else
-            result = 1
-    ) else (
-        if f.isProcedure() then
-            result = 2
-        else
-            result = 1
-    )
+private int function_cost(CallNode f) {
+    if f.getFunction().(AttrNode).getName() = "__init__" then
+        result = 0
+    else
+        result = 1
 }
 
 private int call_cost(CallNode call) {
@@ -72,13 +65,10 @@ private newtype TFinalContext =
     or
     TImportContext()
     or
-    TCallContext(ControlFlowNode call, TFinalContext outerContext, Function callee, int cost) {
+    TCallContext(ControlFlowNode call, FinalContext outerContext, int cost) {
+        outerContext.appliesTo(call) and
         cost <= max_context_cost() and
-        exists(PyFunctionObject f |
-            callee = f.getFunction() |
-            call = FinalPointsTo::get_a_call(f, outerContext)
-        ) and
-        cost = call_cost(call) + function_cost(callee) + context_cost(outerContext)
+        cost = call_cost(call) + function_cost(call) + context_cost(outerContext)
     }
 
 /** Points-to context. Context can be one of:
@@ -97,19 +87,26 @@ class FinalContext extends TFinalContext {
         this = TImportContext() and result = "import"
         or
         exists(CallNode callsite, FinalContext outerContext |
-            this = TCallContext(callsite, outerContext, _, _) and
+            this = TCallContext(callsite, outerContext, _) and
             result = callsite.getLocation() + " from " + outerContext.toString()
         )
     }
 
     /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context. */
+    predicate fromCall(CallNode call, FinalContext caller) {
+        caller.appliesTo(call) and
+        this = TCallContext(call, caller, _)
+    }
+
+    /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context. */
     predicate fromCall(CallNode call, FunctionObject callee, FinalContext caller) {
-        this = TCallContext(call, caller, callee.getFunction(), _)
+        call = FinalPointsTo::get_a_call(callee, caller) and
+        this = TCallContext(call, caller, _)
     }
 
      /** Gets the caller context for this callee context. */
     FinalContext getOuter() {
-        this = TCallContext(_, result, _, _)
+        this = TCallContext(_, result, _)
     }
 
     /** Holds if this context is relevant to the given scope. */
@@ -123,7 +120,11 @@ class FinalContext extends TFinalContext {
         this = TRuntimeContext() and executes_in_runtime_context(s)
         or
         /* Called functions, regardless of their name */
-        this = TCallContext(_, _, s, _)
+        exists(FunctionObject func, ControlFlowNode call, TFinalContext outerContext |
+            call = FinalPointsTo::get_a_call(func, outerContext) and
+            this = TCallContext(call, outerContext, _) and
+            s = func.getFunction()
+        )
     }
 
     /** Holds if this context can apply to the CFG node `n`. */
@@ -134,7 +135,7 @@ class FinalContext extends TFinalContext {
 
     /** Holds if this context is a call context. */
     predicate isCall() {
-        this = TCallContext(_, _, _, _)
+        this = TCallContext(_, _, _)
     }
 
     /** Holds if this is the "main" context. */
@@ -215,6 +216,11 @@ class ThisContext extends int {
     }
 
     /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context */
+    predicate fromCall(CallNode call, ThisContext caller) {
+        none()
+    }
+
+    /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context */
     predicate fromCall(CallNode call, FunctionObject callee, ThisContext caller) {
         none()
     }
@@ -259,6 +265,11 @@ class Layer0Context extends int {
         s instanceof ImportTimeScope
     }
 
+    predicate fromCall(CallNode call, Layer0Context caller) {
+        none()
+    }
+
+    /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context */
     predicate fromCall(CallNode call, FunctionObject callee, Layer0Context caller) {
         none()
     }
@@ -286,7 +297,7 @@ class Layer0Context extends int {
 
     predicate isFinal() { none() }
 
-    predicate predecessor(EssaDefinition def, Layer0Context pred_context, EssaVariable pred_var) {
+    predicate predecessor(EssaDefinition def, EssaVariable pred_var) {
         none()
     }
 
@@ -299,7 +310,12 @@ class PenultimateContext extends int {
         any()
     }
 
-    predicate fromCall(CallNode call, FunctionObject func, PenultimateContext caller) {
+    predicate fromCall(CallNode call, PenultimateContext caller) {
+        none()
+    }
+
+    /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context */
+    predicate fromCall(CallNode call, FunctionObject callee, PenultimateContext caller) {
         none()
     }
 

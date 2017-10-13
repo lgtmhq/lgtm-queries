@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/sizeof-side-effect
  * @tags reliability
  *       correctness
  */

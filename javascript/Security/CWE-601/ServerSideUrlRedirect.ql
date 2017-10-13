@@ -20,7 +20,7 @@
  * @id js/server-side-unvalidated-url-redirection
  * @tags security
  *       external/cwe/cwe-601
- * @precision medium
+ * @precision high
  */
 
 import javascript

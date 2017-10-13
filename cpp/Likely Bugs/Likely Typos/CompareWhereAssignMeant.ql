@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/compare-where-assign-meant
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-482

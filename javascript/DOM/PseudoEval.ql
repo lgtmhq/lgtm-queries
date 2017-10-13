@@ -32,8 +32,8 @@ import javascript
 class EvilTwin extends CallExpr {
   EvilTwin() {
     exists (Expr callee | callee = this.getCallee() |
-      accessesGlobal(callee, "setTimeout") or
-      accessesGlobal(callee, "setInterval")
+      callee.accessesGlobal("setTimeout") or
+      callee.accessesGlobal("setInterval")
     ) and
     getArgument(0) instanceof StringLiteral
   }
@@ -43,7 +43,7 @@ class EvilTwin extends CallExpr {
 class DocumentWrite extends CallExpr {
   DocumentWrite() {
     exists (DotExpr callee | callee = this.getCallee() |
-      accessesGlobal(callee.getBase(), "document") and
+      callee.getBase().accessesGlobal("document") and
       callee.getPropertyName().regexpMatch("write(ln)?")
     )
   }
@@ -52,7 +52,7 @@ class DocumentWrite extends CallExpr {
 /** A call to `window.execScript`. */
 class ExecScript extends CallExpr {
   ExecScript() {
-    accessesGlobal(this.getCallee(), "execScript")
+    this.getCallee().accessesGlobal("execScript")
   }
 }
 

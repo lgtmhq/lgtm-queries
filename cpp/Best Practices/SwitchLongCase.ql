@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/long-switch
  * @tags maintainability
  *       readability
  */

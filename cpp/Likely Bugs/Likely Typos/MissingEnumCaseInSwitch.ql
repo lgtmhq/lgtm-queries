@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/missing-case-in-switch
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-478

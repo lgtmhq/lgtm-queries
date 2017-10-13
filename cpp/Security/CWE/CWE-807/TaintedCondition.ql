@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/tainted-permissions-check
  * @tags security
  *       external/cwe/cwe-807
  */

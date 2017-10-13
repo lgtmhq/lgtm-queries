@@ -252,6 +252,10 @@ abstract class EssaDefinition extends TEssaDefinition {
 
     abstract Scope getScope();
 
+    EssaVariable getVariable() {
+        result.getDefinition() = this
+    }
+
 }
 
 /** An ESSA definition corresponding to an edge refinement of the underlying variable. 

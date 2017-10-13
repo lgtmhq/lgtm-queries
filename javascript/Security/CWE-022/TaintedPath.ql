@@ -17,7 +17,7 @@
  *              unexpected resources.
  * @kind problem
  * @problem.severity error
- * @precision medium
+ * @precision high
  * @id js/path-injection
  * @tags security
  *       external/cwe/cwe-022

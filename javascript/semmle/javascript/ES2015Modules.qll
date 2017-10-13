@@ -297,7 +297,8 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
     exists (ExprOrStmt op | op = getOperand() |
       result = op.(DeclStmt).getADecl().getBindingPattern().getABindingVarRef() or
       result = op.(FunctionDeclStmt).getId() or
-      result = op.(ClassDeclStmt).getIdentifier()
+      result = op.(ClassDeclStmt).getIdentifier() or
+      result = op.(NamespaceDeclaration).getId()
     )
   }
 
@@ -337,6 +338,11 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
   /** Gets an export specifier of this declaration. */
   ExportSpecifier getASpecifier() {
     result = getSpecifier(_)
+  }
+  
+  override predicate isAmbient() {
+    // An export such as `export declare function f()` should be seen as ambient.
+    hasDeclareKeyword(getOperand()) or getParent().isAmbient()
   }
 }
 

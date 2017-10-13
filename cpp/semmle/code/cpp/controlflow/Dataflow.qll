@@ -11,10 +11,19 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+/**
+ * Provides a simple data flow analysis to find expressions that are definitely
+ * null or that may be null.
+ */
 import default
 import Nullness
 import Dereferenced
 
+/**
+ * INTERNAL: Do not use.
+ * A string that identifies a data flow analysis along with a set of member
+ * predicates that implement this analysis.
+ */
 abstract class DataflowAnnotation extends string {
   DataflowAnnotation() { this = "pointer-null" or this = "pointer-valid" }
 
@@ -75,6 +84,12 @@ abstract class DataflowAnnotation extends string {
   }
 }
 
+/**
+ * INTERNAL: Do not use.
+ * Two analyses relating to nullness: `"pointer-null"` and `"pointer-valid"`.
+ * These analyses mark expressions that are possibly null or possibly non-null,
+ * respectively.
+ */
 class NullnessAnnotation extends DataflowAnnotation {
   NullnessAnnotation() { this = "pointer-null" or this = "pointer-valid" }
 
@@ -92,15 +107,13 @@ class NullnessAnnotation extends DataflowAnnotation {
   }
 
   predicate killedBy(LocalScopeVariable v, ControlFlowNode src, ControlFlowNode dest) {
-    (((AnalysedExpr) src).getNullSuccessor(v) = dest and this = "pointer-valid")
+    src.(AnalysedExpr).getNullSuccessor(v) = dest and this = "pointer-valid"
     or
-    (((AnalysedExpr) src).getNonNullSuccessor(v) = dest and this = "pointer-null")
+    src.(AnalysedExpr).getNonNullSuccessor(v) = dest and this = "pointer-null"
     or
-    (dest = src.getASuccessor() and callByReference(src, v) and not this.isDefault())
+    dest = src.getASuccessor() and callByReference(src, v) and not this.isDefault()
     or
-    (dest = src.getASuccessor()
-      and deref(v, src)
-      and this = "pointer-null")
+    dest = src.getASuccessor() and deref(v, src) and this = "pointer-null"
   }
 
   predicate generatedBy(LocalScopeVariable v, ControlFlowNode src, ControlFlowNode dest) {
@@ -110,27 +123,41 @@ class NullnessAnnotation extends DataflowAnnotation {
   }
 }
 
+/**
+ * Holds if evaluation of `op` dereferences `v`.
+ */
 predicate deref(Variable v, Expr op) {
   dereferencedByOperation(op, v.getAnAccess())
 }
 
+/**
+ * Holds if `call` passes `v` by reference, either with an explicit address-of
+ * operator or implicitly as a C++ reference. Both const and non-const
+ * references are included.
+ */
 predicate callByReference(Call call, Variable v) {
   exists(Expr arg |
     call.getAnArgument() = arg and
     (
-      ((AddressOfExpr) arg).getAChild() = v.getAnAccess()
+      arg.(AddressOfExpr).getAChild() = v.getAnAccess()
       or
       (v.getAnAccess() = arg and arg.getConversion*() instanceof ReferenceToExpr)
     )
   )
 }
 
+/**
+ * Holds if a simple data-flow analysis determines that `e` is definitely null.
+ */
 predicate definitelyNull(Expr e) {
-  ((NullnessAnnotation) "pointer-null").marks(e)
+  "pointer-null".(NullnessAnnotation).marks(e)
   and
-  not ((NullnessAnnotation) "pointer-valid").marks(e)
+  not "pointer-valid".(NullnessAnnotation).marks(e)
 }
 
+/**
+ * Holds if a simple data-flow analysis determines that `e` may be null.
+ */
 predicate maybeNull(Expr e) {
-  ((NullnessAnnotation) "pointer-null").marks(e)
+  "pointer-null".(NullnessAnnotation).marks(e)
 }

@@ -15,8 +15,9 @@
  * @name FIXME comment
  * @description Comments containing 'FIXME' indicate that the code has known bugs.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity recommendation
  * @precision very-high
+ * @id cpp/fixme-comment
  * @tags maintainability
  *       documentation
  *       external/cwe/cwe-546

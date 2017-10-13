@@ -14,6 +14,9 @@
 import default
 import Nullness
 
+/**
+ * Holds if the call `fc` will dereference argument `i`.
+ */
 predicate callDereferences(FunctionCall fc, int i)
 {
   exists(string name |
@@ -39,8 +42,9 @@ predicate callDereferences(FunctionCall fc, int i)
   )
 }
 
-// e is an expression thats value is dereferenced
-// op is the dereference operation itself (could be a function call)
+/**
+ * Holds if evaluation of `op` dereferences `e`.
+ */
 predicate dereferencedByOperation(Expr op, Expr e)
 {
   exists(PointerDereferenceExpr deref |
@@ -88,6 +92,9 @@ private predicate isClassPointerType(Type t) {
   t.getUnderlyingType().(PointerType).getBaseType().getUnderlyingType() instanceof Class
 }
 
+/**
+ * Holds if `e` will be dereferenced after being evaluated.
+ */
 predicate dereferenced(Expr e)
 {
   dereferencedByOperation(_, e)
@@ -99,6 +106,10 @@ private predicate functionCallDereferences(FunctionCall fc, int i)
   functionDereferences(fc.getTarget(), i)
 }
 
+/**
+ * Holds if the body of a function `f` is likely to dereference its `i`th
+ * parameter unconditionally. This analysis does not account for reassignment.
+ */
 predicate functionDereferences(Function f, int i)
 {
   exists(VariableAccess access, Parameter p |

@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/sql-injection
  * @tags security
  *       external/cwe/cwe-089
  */

@@ -16,35 +16,17 @@
  * @description Calling the default implementation of 'toString' returns a value that is unlikely to
  *              be what you expect.
  * @kind problem
- * @problem.severity warning
- * @precision medium
+ * @problem.severity recommendation
+ * @precision high
  * @id java/call-to-object-tostring
  * @tags reliability
  *       maintainability
  */
 import java
-
-predicate printMethod(Method m) {
-  (m.hasName("print") or m.hasName("println"))
-  and m.getNumberOfParameters() = 1
-  and exists(RefType t | t = m.getDeclaringType() |
-    t.hasName("PrintWriter") or t.hasName("PrintStream")
-  )
-}
-
-predicate implicitToStringCall(Expr e) {
-  exists(AddExpr add | 
-    add.getAnOperand() = e and
-    add.getType() instanceof TypeString
-  )
-  or exists(MethodAccess ma |
-    ma.getAnArgument() = e and
-    printMethod(ma.getMethod())
-  )
-}
+import semmle.code.java.StringFormat
 
 predicate explicitToStringCall(Expr e) {
-  exists(MethodAccess ma, Method toString | toString = ma.getMethod() | 
+  exists(MethodAccess ma, Method toString | toString = ma.getMethod() |
     e = ma.getQualifier() and
     toString.getName() = "toString" and
     toString.getNumberOfParameters() = 0 and
@@ -83,25 +65,11 @@ predicate bad(RefType t) {
   and not t instanceof BoundedType
 }
 
-predicate logContext(Expr e) {
-  exists(ClassInstanceExpr cie |
-    cie.getConstructor().getDeclaringType().getASupertype*().hasName("Throwable") |
-    e = cie.getAnArgument()
-  ) or
-  exists(MethodAccess ma | 
-    ma.getMethod().getName().toLowerCase().matches("%log%") or
-    ma.getMethod().getDeclaringType().getName().toLowerCase().matches("%log%") | 
-    e = ma.getAnArgument()
-  )
-}
-
 from Expr e, RefType sourceType
 where (implicitToStringCall(e) or explicitToStringCall(e))
   and sourceType = e.getType().(RefType).getSourceDeclaration()
   and bad(sourceType)
   and not sourceType.isAbstract()
   and sourceType.fromSource()
-  and not exists(Expr log | logContext(log) | e = log.getAChildExpr*())
-  and sourceType != e.getEnclosingCallable().getDeclaringType()
 select e, "Default toString(): " + e.getType().getName() +
   " inherits toString() from Object, and so is not suitable for printing."

@@ -12,9 +12,9 @@
 // permissions and limitations under the License.
 
 /**
- * @name SQL query built from user-controlled sources
- * @description Building a SQL query from user-controlled sources is vulnerable to insertion of
- *              malicious SQL code by the user.
+ * @name Query built from user-controlled sources
+ * @description Building a SQL or Java Persistence query from user-controlled sources is vulnerable to insertion of
+ *              malicious code by the user.
  * @kind problem
  * @problem.severity error
  * @precision high
@@ -28,7 +28,7 @@ import semmle.code.java.security.DataFlow
 import SqlInjectionLib
 
 
-from SqlInjectionSink query, RemoteUserInput source
+from QueryInjectionSink query, RemoteUserInput source
 where queryTaintedBy(query, source)
 select query, "Query might include code from $@.",
   source, "this user input"

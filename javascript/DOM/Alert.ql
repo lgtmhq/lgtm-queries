@@ -25,21 +25,6 @@
 
 import javascript
 
-/** A call to `alert`. */
-class AlertCall extends CallExpr {
-  AlertCall() {
-    exists (GlobalVarAccess va |
-      va = this.getCallee() and
-      va.getName() = "alert"
-    ) or
-    exists (DotExpr dot, GlobalVarAccess va |
-      dot = this.getCallee() and
-      va = dot.getBase() and
-      va.getName() = "window" and
-      dot.getPropertyName() = "alert"
-    )
-  }
-}
-
-from AlertCall alert
+from CallExpr alert
+where alert.getCallee().accessesGlobal("alert")
 select alert, "Avoid calling alert."

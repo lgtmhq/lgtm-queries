@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/path-injection
  * @tags security
  *       external/cwe/cwe-022
  *       external/cwe/cwe-023

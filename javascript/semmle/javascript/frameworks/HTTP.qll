@@ -33,9 +33,47 @@ module HTTP {
    */
   abstract class HeaderDefinition extends Expr {
     /**
-     * Holds if the header named `headerName` is set to the result of `headerValue`.
+     * Gets the name of a header set by this definition.
      */
-    abstract predicate defines(string headerName, Expr headerValue);
+    abstract string getAHeaderName();
+
+    /**
+     * Holds if the header named `headerName` is set to `headerValue`.
+     */
+    abstract predicate defines(string headerName, string headerValue);
+  }
+
+
+  /**
+   * An expression that sets HTTP response headers implicitly.
+   */
+  abstract class ImplicitHeaderDefinition extends HeaderDefinition {
+
+    override string getAHeaderName() {
+      defines(result, _)
+    }
+  }
+
+  /**
+   * An expression that sets HTTP response headers explicitly.
+   */
+  abstract class ExplicitHeaderDefinition extends HeaderDefinition {
+
+    override string getAHeaderName() {
+      definesExplicitly(result, _)
+    }
+
+    override predicate defines(string headerName, string headerValue) {
+      exists(Expr e |
+        definesExplicitly(headerName, e) and
+        headerValue = e.getStringValue()
+      )
+    }
+
+    /**
+     * Holds if the header named `headerName` is set to the value of `headerValue`.
+     */
+    abstract predicate definesExplicitly(string headerName, Expr headerValue);
   }
 
   /**
@@ -100,11 +138,32 @@ module HTTP {
    */
   class SetCookieHeader extends CookieDefinition {
     SetCookieHeader() {
-      this.(HeaderDefinition).defines("Set-Cookie", _)
+      this.(HeaderDefinition).getAHeaderName() = "Set-Cookie"
     }
 
     override Expr getHeaderArgument() {
-      this.(HeaderDefinition).defines("Set-Cookie", result)
+      this.(ExplicitHeaderDefinition).definesExplicitly("Set-Cookie", result)
     }
   }
+
+  /**
+   * A server, identified by its creation site.
+   */
+  abstract class Server extends Expr {
+    /**
+     * Gets a route handlers of the server.
+     */
+    abstract RouteHandler getARouteHandler();
+  }
+
+  /**
+   * A callback for handling a request on some route on a server.
+   */
+  abstract class RouteHandler extends DataFlowNode {
+    /**
+     * Gets a header this handler sets.
+     */
+    abstract HeaderDefinition getAResponseHeader(string name);
+  }
+
 }

@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/nested-loops-with-same-variable
  * @tags maintainability
  *       correctness
  */

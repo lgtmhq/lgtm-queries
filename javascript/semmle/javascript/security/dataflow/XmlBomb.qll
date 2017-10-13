@@ -17,7 +17,7 @@
  */
 
 import javascript
-import DOM
+import semmle.javascript.security.dataflow.DOM
 
 /**
  * A data flow source for XML-bomb vulnerabilities.

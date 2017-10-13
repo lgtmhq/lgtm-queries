@@ -54,7 +54,7 @@ private
 predicate isPointer(Type type)
 {
   type instanceof PointerType
-  or isPointer(((ReferenceType) type).getBaseType())
+  or isPointer(type.(ReferenceType).getBaseType())
 }
 
 /**
@@ -242,7 +242,7 @@ predicate insideFunctionValueMoveTo(Element src, Element dest)
           and format.getConversionChar(sourceArg - ffc.getTarget().getNumberOfParameters()) = argFormat
           and (argFormat = "s" or argFormat = "S")
         )
-        or not exists(FormatLiteral fl | fl = ((FormattingFunctionCall) c).getFormat())
+        or not exists(FormatLiteral fl | fl = c.(FormattingFunctionCall).getFormat())
         or not c instanceof FormattingFunctionCall
       )
       and src = c.getArgument(sourceArg)

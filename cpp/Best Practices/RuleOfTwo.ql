@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/rule-of-two
  * @tags reliability
  *       readability
  *       language-features

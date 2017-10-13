@@ -16,7 +16,6 @@
  *
  * Class declarations and class expressions are modeled by (QL) classes `ClassDeclaration`
  * and `ClassExpression`, respectively, which are both subclasses of `ClassDefinition`.
- * Each `ClassDefinition` has an associated `Class`, which models the class being defined.
  */
 
 import Stmt
@@ -25,7 +24,7 @@ import Stmt
  * A class definition, that is, either a class declaration statement or a
  * class expression.
  */
-abstract class ClassDefinition extends @classdecl, ASTNode {
+class ClassDefinition extends @classdecl, ASTNode {
   /** Gets the identifier naming the defined class, if any. */
   VarDecl getIdentifier() {
     result = getChildExpr(0)
@@ -41,42 +40,11 @@ abstract class ClassDefinition extends @classdecl, ASTNode {
     result = getChildExpr(1)
   }
 
-  /** Gets the class defined by this class definition. */
-  Class getDefinedClass() {
-    this = result.getDefinition()
-  }
-
   /** Gets the nearest enclosing function or toplevel in which this class definition occurs. */
-  abstract StmtContainer getContainer();
-}
-
-/**
- * A class declaration statement.
- */
-class ClassDeclStmt extends @classdeclstmt, ClassDefinition, Stmt {
-  /** Gets the nearest enclosing function or toplevel in which this class declaration occurs. */
-  override StmtContainer getContainer() { result = Stmt.super.getContainer() }
-}
-
-/**
- * A class expression.
- */
-class ClassExpr extends @classexpr, ClassDefinition, Expr {
-  override predicate isImpure() {
-    none()
-  }
-
-  /** Gets the nearest enclosing function or toplevel in which this class expression occurs. */
-  override StmtContainer getContainer() { result = Expr.super.getContainer() }
-}
-
-/**
- * A class defined by a class declaration.
- */
-class Class extends @class, ASTNode {
-  /** Gets the definition defining this class. */
-  ClassDefinition getDefinition() {
-    classes(this, result, _)
+  StmtContainer getContainer() {
+    result = this.(Stmt).getContainer()
+    or
+    result = this.(Expr).getContainer()
   }
 
   /** Gets a member declared in this class. */
@@ -127,7 +95,7 @@ class Class extends @class, ASTNode {
    * `@A` as its 0th decorator, and `@B` as its first decorator.
    */
   Decorator getDecorator(int i) {
-    result = getDefinition().getChildExpr(-(i+1))
+    result = getChildExpr(-(i+1))
   }
 
   /**
@@ -138,11 +106,6 @@ class Class extends @class, ASTNode {
    */
   Decorator getADecorator() {
     result = getDecorator(_)
-  }
-
-  /** Gets the expression denoting the super class of this class, if any. */
-  Expr getSuperClass() {
-    result = getDefinition().getSuperClass()
   }
 
   /**
@@ -164,18 +127,88 @@ class Class extends @class, ASTNode {
    * of the variable it is assigned to, if any.
    */
   private string inferNameFromVarDef() {
-    exists (ClassDefinition cd | cd = getDefinition() |
-      // in ambiguous cases like `let C = class D {}`, prefer `D` to `C`
-      if exists(cd.getName()) then
-        result = "class " + cd.getName()
-      else exists (VarDef vd | getDefinition() = vd.getSource() |
-        result = "class " + vd.getTarget().(VarRef).getName()
-      )
+    // in ambiguous cases like `let C = class D {}`, prefer `D` to `C`
+    if exists(getName()) then
+      result = "class " + getName()
+    else exists (VarDef vd | this = vd.getSource() |
+      result = "class " + vd.getTarget().(VarRef).getName()
     )
   }
 
-  override string toString() {
-    classes(this, _, result)
+  /**
+   * Deprecated, since a class and its definition are now the same value.
+   *
+   * Calls of form `cl.getDefinedClass()` should be replaced with just `cl`.
+   */
+  deprecated
+  Class getDefinedClass() { result = this }
+
+  /**
+   * Deprecated, since a class and its definition are now the same value.
+   *
+   * Calls of form `cl.getDefinition()` should be replaced with just `cl`.
+   */
+  deprecated
+  ClassDefinition getDefinition() { result = this }
+}
+
+/**
+ * Deprecated alias for `ClassDefinition`.
+ *
+ * Classes and their definitions are now the same value, and `ClassDefinition` should be used
+ * over the old `Class` type.
+ */
+deprecated
+class Class extends ClassDefinition {}
+
+/**
+ * A class declaration statement.
+ */
+class ClassDeclStmt extends @classdeclstmt, ClassDefinition, Stmt {
+  /** Gets the nearest enclosing function or toplevel in which this class declaration occurs. */
+  override StmtContainer getContainer() { result = Stmt.super.getContainer() }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    if hasDeclareKeyword(this)
+    then result = this
+    else result = getIdentifier()
+  }
+}
+
+/**
+ * A class expression.
+ */
+class ClassExpr extends @classexpr, ClassDefinition, Expr {
+  override predicate isImpure() {
+    none()
+  }
+
+  /** Gets the nearest enclosing function or toplevel in which this class expression occurs. */
+  override StmtContainer getContainer() { result = Expr.super.getContainer() }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    if exists(getIdentifier())
+    then result = getIdentifier()
+    else if exists(getSuperClass())
+    then result = getSuperClass().getFirstControlFlowNode()
+    else if exists(getClassInitializedMember())
+    then result = min(ClassInitializedMember m | m = getClassInitializedMember() | m order by m.getIndex())
+    else result = this
+  }
+
+  /** Returns a member that is initialized during the creation of this class. */
+  private ClassInitializedMember getClassInitializedMember() {
+    result = getAMember()
+  }
+}
+
+/** Members that are initialized at class creation time (as opposed to instance creation time). */
+private class ClassInitializedMember extends MemberDefinition {
+  ClassInitializedMember() {
+    this instanceof MethodDefinition or this.isStatic()
+  }
+  int getIndex() {
+    properties(this, _, result, _, _)
   }
 }
 
@@ -252,7 +285,7 @@ class ClassExprScope extends @classexprscope, Scope {
 class MemberDefinition extends @property, ASTNode {
   MemberDefinition() {
     // filter out property patterns and object properties
-    exists (Class cl | properties(this, cl, _, _, _))
+    exists (ClassDefinition cl | properties(this, cl, _, _, _))
   }
 
   /**
@@ -260,6 +293,15 @@ class MemberDefinition extends @property, ASTNode {
    */
   predicate isStatic() {
     isStatic(this)
+  }
+
+  /**
+   * Holds if this member is abstract.
+   *
+   * Abstract members occur only in TypeScript.
+   */
+  predicate isAbstract() {
+    isAbstractMember(this)
   }
 
   /**
@@ -290,7 +332,7 @@ class MemberDefinition extends @property, ASTNode {
   }
 
   /** Gets the class this member belongs to. */
-  Class getDeclaringClass() {
+  ClassDefinition getDeclaringClass() {
     properties(this, result, _, _, _)
   }
 
@@ -301,7 +343,7 @@ class MemberDefinition extends @property, ASTNode {
 
   /** Gets the nearest enclosing function or toplevel in which this member occurs. */
   StmtContainer getContainer() {
-    result = getDeclaringClass().getDefinition().getContainer()
+    result = getDeclaringClass().getContainer()
   }
 
   /** Holds if the name of this member is computed by an impure expression. */

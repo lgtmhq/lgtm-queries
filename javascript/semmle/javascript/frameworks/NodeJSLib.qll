@@ -29,19 +29,67 @@ module NodeJSLib {
     )
   }
 
+  private class RouteHandler extends HTTP::RouteHandler {
+
+    RequestListener function;
+
+    RouteHandler() {
+      function = this
+    }
+
+    override HTTP::HeaderDefinition getAResponseHeader(string name){
+      exists(SetHeader h |
+        h.getResponse().(DataFlowNode).getALocalSource() = this.getResponseVariable().getAnAccess() and
+        name = h.getAHeaderName() and
+        result = h)
+    }
+
+    /**
+    * Gets the variable that contains the request object.
+    */
+    Variable getRequestVariable(){
+      result = function.getParameter(0).(SimpleParameter).getVariable()
+    }
+
+    /**
+    * Gets the variable that contains the request object.
+    */
+    Variable getResponseVariable(){
+      result = function.
+      getParameter(1).(SimpleParameter).getVariable()
+    }
+
+    /**
+     * Gets a server this handler is registered on.
+     */
+    Server getAServer() {
+      result = function.getAServer()
+    }
+  }
+
   /**
    * An HTTP request listener.
    */
   class RequestListener extends Function {
+
+    Server server;
+
     RequestListener() {
       exists (MethodCallExpr mce |
-       this = mce.getLastArgument().(DataFlowNode).getALocalSource() |
-       isCreateServer(mce)
-       or
-       isCreateServer(mce.getReceiver().(DataFlowNode).getALocalSource()) and
-       mce.getMethodName().regexpMatch("on(ce)?") and
-       mce.getArgument(0).getStringValue() = "request"
+        this = mce.getLastArgument().(DataFlowNode).getALocalSource() |
+        server = mce // registration during server creation
+        or
+        server = mce.getReceiver().(DataFlowNode).getALocalSource() and
+        mce.getMethodName().regexpMatch("on(ce)?") and
+        mce.getArgument(0).getStringValue() = "request"
       )
+    }
+
+    /**
+     * Gets a server this listener is registered on.
+    */
+    Server getAServer() {
+      result = server
     }
   }
 
@@ -80,15 +128,27 @@ module NodeJSLib {
     }
   }
 
+  private abstract class HeaderDefinition extends HTTP::ExplicitHeaderDefinition {
+    Expr response;
+
+    /**
+     * Gets the response object this set is set on.
+     */
+    Expr getResponse() {
+      result = response
+    }
+  }
+
   /**
    * A call to the `setHeader` method of an HTTP response.
    */
-  private class SetHeader extends HTTP::HeaderDefinition, MethodCallExpr {
+  private class SetHeader extends HeaderDefinition, MethodCallExpr {
     SetHeader() {
-      isResponse(getReceiver()) and getMethodName() = "setHeader"
+      isResponse(getReceiver()) and response = getReceiver() and
+      getMethodName() = "setHeader"
     }
 
-    override predicate defines(string headerName, Expr headerValue) {
+    override predicate definesExplicitly(string headerName, Expr headerValue) {
       headerName = getArgument(0).getStringValue() and
       headerValue = getArgument(1)
     }
@@ -97,14 +157,14 @@ module NodeJSLib {
   /**
    * A call to the `writeHead` method of an HTTP response.
    */
-  private class WriteHead extends HTTP::HeaderDefinition, MethodCallExpr {
+  private class WriteHead extends HeaderDefinition, MethodCallExpr {
     WriteHead() {
-      isResponse(getReceiver()) and
+      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = "writeHead" and
       getNumArgument() > 1
     }
 
-    override predicate defines(string headerName, Expr headerValue) {
+    override predicate definesExplicitly(string headerName, Expr headerValue) {
       exists (DataFlowNode headers, PropWriteNode pwn |
         headers = getLastArgument().(DataFlowNode).getALocalSource() and
         pwn.getBase() = headers and
@@ -141,4 +201,18 @@ module NodeJSLib {
       )
     }
   }
+
+  /**
+   * A Node.js server application.
+   */
+  class Server extends HTTP::Server {
+    Server() {
+      isCreateServer(this)
+    }
+
+    override RouteHandler getARouteHandler() {
+      result.getAServer() = this
+    }
+  }
+
  }

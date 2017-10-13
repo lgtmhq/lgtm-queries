@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id cpp/dubious-null-check
  * @tags reliability
  *       readability
  */

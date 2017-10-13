@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/irregular-enum-init
  * @tags reliability
  *       readability
  *       language-features

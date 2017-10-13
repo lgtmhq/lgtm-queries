@@ -13,7 +13,24 @@
 
 import cpp
 
-/** A reachability analysis for control-flow nodes involving stack variables. */
+/**
+ * A reachability analysis for control-flow nodes involving stack variables.
+ * This defines sources, sinks, and any other configurable aspect of the
+ * analysis. Multiple analyses can coexist. To create an analysis, extend this
+ * class with a subclass whose characteristic predicate is a unique singleton
+ * string. For example, write
+ *
+ * ```
+ * class MyAnalysisConfiguration extends LocalScopeVariableReachability {
+ *   MyAnalysisConfiguration() { this = "MyAnalysisConfiguration" }
+ *   // Override `isSource` and `isSink`.
+ *   // Override `isBarrier`.
+ * }
+ * ```
+ *
+ * Then, to query whether there is flow between some source and sink, call the
+ * `reaches` predicate on an instance of `MyAnalysisConfiguration`.
+ */
 abstract class LocalScopeVariableReachability extends string {
   bindingset[this]
   LocalScopeVariableReachability() { length() >= 0 }
@@ -178,6 +195,11 @@ predicate bbSuccessorEntryReachesLoopInvariant(BasicBlock pred, BasicBlock succ,
  * Reachability analysis for control-flow nodes involving stack variables.
  * Unlike `LocalScopeVariableReachability`, this analysis takes variable
  * reassignments into account.
+ *
+ * This class is used like `LocalScopeVariableReachability`, except that
+ * subclasses should override `isSourceActual` and `isSinkActual` instead of
+ * `isSource` and `isSink`, and that there is a `reachesTo` predicate in
+ * addition to `reaches`.
  */
 abstract class LocalScopeVariableReachabilityWithReassignment extends LocalScopeVariableReachability {
   bindingset[this]
@@ -272,7 +294,8 @@ abstract class LocalScopeVariableReachabilityWithReassignment extends LocalScope
 /**
  * Same as `LocalScopeVariableReachability`, but `isBarrier` works on control-flow
  * edges rather than nodes and is therefore parameterized by the original
- * source node as well.
+ * source node as well. Otherwise, this class is used like
+ * `LocalScopeVariableReachability`.
  */
 abstract class LocalScopeVariableReachabilityExt extends string {
   bindingset[this]

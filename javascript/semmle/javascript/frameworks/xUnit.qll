@@ -22,7 +22,7 @@ private predicate xUnitDetected() {
   // look for `Function.RegisterNamespace("xUnit.js");`
   exists (MethodCallExpr mc |
     mc.getParent() instanceof ExprStmt and
-    mc.getReceiver().(GlobalVarAccess).getName() = "Function" and
+    mc.getReceiver().accessesGlobal("Function") and
     mc.getMethodName() = "RegisterNamespace" and
     mc.getNumArgument() = 1 and
     mc.getArgument(0).(StringLiteral).getValue() = "xUnit.js"
@@ -239,7 +239,7 @@ private class XUnitAnnotatedFunction extends Function {
  */
 class XUnitFixtureAnnotation extends XUnitAnnotation {
   XUnitFixtureAnnotation() {
-    getAnAttribute().(GlobalVarAccess).getName() = "Fixture"
+    getAnAttribute().accessesGlobal("Fixture")
   }
 }
 
@@ -257,7 +257,7 @@ class XUnitFixture extends XUnitAnnotatedFunction {
  */
 class XUnitFactAnnotation extends XUnitAnnotation {
   XUnitFactAnnotation() {
-    getAnAttribute().(GlobalVarAccess).getName() = "Fact"
+    getAnAttribute().accessesGlobal("Fact")
   }
 }
 

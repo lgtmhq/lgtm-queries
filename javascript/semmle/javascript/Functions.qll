@@ -57,29 +57,9 @@ class Function extends @function, Parameterized, StmtContainer {
     result.getFunction() = this
   }
 
-  /**
-   * DEPRECATED: Use `getArgumentsVariable`.
-   *
-   * Gets the `arguments` variable of this function, if any.
-   */
-  deprecated
-  ArgumentsObject getArgumentsObject() {
-    result = getArgumentsVariable()
-  }
-
   /** Holds if the body of this function refers to the function's `arguments` variable. */
   predicate usesArgumentsObject() {
     exists (getArgumentsVariable().getAnAccess())
-  }
-
-  /**
-   * DEPRECATED: Use `declaresArguments` instead.
-   *
-   * Holds if this function declares a parameter or local variable named `arguments`.
-   */
-  deprecated
-  predicate shadowsArgumentsObject() {
-    declaresArguments()
   }
 
   /**
@@ -285,7 +265,7 @@ class Function extends @function, Parameterized, StmtContainer {
    * member it is assigned to, if any.
    */
   private string inferNameFromMemberDef() {
-    exists (Class c, string n, MemberDefinition m, string classpp |
+    exists (ClassDefinition c, string n, MemberDefinition m, string classpp |
       m = c.getMember(n) and this = m.getInit() and classpp = c.describe() |
       if m instanceof ConstructorDefinition then
         if m.(ConstructorDefinition).isSynthetic() then
@@ -300,6 +280,24 @@ class Function extends @function, Parameterized, StmtContainer {
         else
           result = "method " + n + " of " + classpp
     )
+  }
+
+  /**
+   * Holds if this function has a body.
+   *
+   * A TypeScript function has no body if it is ambient, abstract, or an overload signature.
+   * 
+   * A JavaScript function always has a body.
+   */
+  predicate hasBody() {
+    exists (getBody())
+  }
+
+  /**
+   * Holds if this function is part of an abstract class member.
+   */
+  predicate isAbstract() {
+      exists (MethodDefinition md | this = md.getBody() | md.isAbstract())
   }
 }
 

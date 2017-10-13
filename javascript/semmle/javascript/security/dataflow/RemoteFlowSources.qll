@@ -17,7 +17,7 @@
 
 import semmle.javascript.flow.Tracking
 import semmle.javascript.frameworks.HTTP
-import DOM
+import semmle.javascript.security.dataflow.DOM
 
 /** A data flow source of remote user input. */
 abstract class RemoteFlowSource extends DataFlowNode {

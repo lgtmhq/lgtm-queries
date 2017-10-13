@@ -29,8 +29,8 @@ import javascript
  * Holds if `earlier` and `later` are attribute definitions with the same name
  * and the same value, where `earlier` appears textually before `later`.
  */
-predicate duplicate(DOMAttributeDefinition earlier, DOMAttributeDefinition later) {
-  exists (DOMElementDefinition elt, int i, int j |
+predicate duplicate(DOM::AttributeDefinition earlier, DOM::AttributeDefinition later) {
+  exists (DOM::ElementDefinition elt, int i, int j |
     earlier = elt.getAttribute(i) and later = elt.getAttribute(j) |
     i < j and
     earlier.getName() = later.getName() and
@@ -38,6 +38,6 @@ predicate duplicate(DOMAttributeDefinition earlier, DOMAttributeDefinition later
   )
 }
 
-from DOMAttributeDefinition earlier, DOMAttributeDefinition later
+from DOM::AttributeDefinition earlier, DOM::AttributeDefinition later
 where duplicate(earlier, later) and not duplicate(_, earlier)
 select earlier, "This attribute is duplicated $@.", later, "here"

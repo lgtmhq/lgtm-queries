@@ -226,21 +226,29 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    */
   MetricFunction getMetrics() { result = this }
 
-  /** Holds if this function calls the callable `c`. */
-  predicate calls(Function c) {
-    exists(Locatable l | this.calls(c, l))
+  /** Holds if this function calls the function `f`. */
+  predicate calls(Function f) {
+    exists(Locatable l | this.calls(f, l))
   }
 
-  /** Gets a function that is called from this function. */
-  predicate calls(Function c, Locatable l) {
-    exists(FunctionCall call | call.getEnclosingFunction() = this and call.getTarget() = c and call = l)
-    or exists(DestructorCall call | call.getEnclosingFunction() = this and call.getTarget() = c and call = l)
+  /**
+   * Holds if this function calls the function `f` in the `FunctionCall`
+   * expression `l`.
+   */
+  predicate calls(Function f, Locatable l) {
+    exists(FunctionCall call | call.getEnclosingFunction() = this and call.getTarget() = f and call = l)
+    or exists(DestructorCall call | call.getEnclosingFunction() = this and call.getTarget() = f and call = l)
   }
 
   /** Holds if this function accesses a function or variable or enumerator `a`. */
   predicate accesses(Declaration a) {
     exists(Locatable l | this.accesses(a, l))
   }
+
+  /**
+   * Holds if this function accesses a function or variable or enumerator `a`
+   * in the `Access` expression `l`.
+   */
   predicate accesses(Declaration a, Locatable l) {
     exists(Access access | access.getEnclosingFunction() = this and
       a = access.getTarget() and access = l)
@@ -281,12 +289,12 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
   }
 
   /**
-   * Holds if this function is constructed from another function as a result
+   * Holds if this function is constructed from `f` as a result
    * of template instantiation. If so, it originates either from a template
    * function or from a function nested in a template class.
    */
-  predicate isConstructedFrom(Function c) {
-    function_instantiation(this, c)
+  predicate isConstructedFrom(Function f) {
+    function_instantiation(this, f)
   }
 
   /**
@@ -647,7 +655,8 @@ class TopLevelFunction extends Function {
 }
 
 /**
- * A C++ function declared as a member of a class [N4140 9.3].
+ * A C++ function declared as a member of a class [N4140 9.3]. This includes
+ * static member functions.
  */
 class MemberFunction extends Function {
   MemberFunction() { member(_,_,this) }

@@ -27,7 +27,7 @@
 import javascript
 import semmle.javascript.frameworks.Templating
 
-from DOMAttributeDefinition id, string reason
+from DOM::AttributeDefinition id, string reason
 where id.getName() = "id" and
       exists (string v | v = id.getStringValue() |
         v = "" and

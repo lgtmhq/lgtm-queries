@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity error
  * @precision high
+ * @id cpp/virtual-destructor
  * @tags reliability
  *       readability
  *       language-features

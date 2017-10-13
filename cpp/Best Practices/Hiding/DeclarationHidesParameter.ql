@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision very-high
+ * @id cpp/declaration-hides-parameter
  * @tags maintainability
  *       readability
  */

@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/unterminated-variadic-call
  * @tags reliability
  *       security
  *       external/cwe/cwe-121

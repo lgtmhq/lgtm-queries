@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/sensitive-information-in-url
  * @tags security
  *       external/cwe/cwe-319
  */

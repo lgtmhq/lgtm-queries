@@ -18,7 +18,6 @@
 
 import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
-import DOM
 import semmle.javascript.frameworks.jQuery
 
 /*
@@ -48,13 +47,6 @@ predicate jqueryXss(string name) {
   name = "wrap" or
   name = "wrapAll" or
   name = "wrapInner"
-}
-
-/**
- * Holds if `nd` is an access to `window.localStorage` or `window.sessionStorage`.
- */
-predicate isWebStorage(DataFlowNode nd) {
-  accessesGlobal(nd, any(string name | name = "localStorage" or name = "sessionStorage"))
 }
 
 /**
@@ -140,20 +132,13 @@ class LocationSource extends XssSource {
 }
 
 /**
- * An expression that gets written to WebStorage.
+ * A React `dangerouslySetInnerHTML` attribute, viewed as an XSS sink.
  */
-class WebStorageSink extends XssSink {
-  WebStorageSink() {
-    exists (DataFlowNode webStorage | isWebStorage(webStorage) |
-      // an assignment to `window.localStorage[someProp]`
-      this.(PropAccess).getBase() = webStorage and this instanceof LValue
-      or
-      // an invocation of `window.localStorage.setItem`
-      exists (MethodCallExpr setItem |
-        setItem.getReceiver() = webStorage and
-        setItem.getMethodName() = "setItem" and
-        this = setItem.getArgument(1)
-      )
+class DangerouslySetInnerHtmlSink extends XssSink {
+  DangerouslySetInnerHtmlSink() {
+    exists (JSXAttribute attr |
+      attr.getName() = "dangerouslySetInnerHTML" and
+      this = attr.getValue()
     )
   }
 }

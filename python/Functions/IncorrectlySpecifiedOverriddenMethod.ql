@@ -44,5 +44,5 @@ correct_args_if_called_as_method(call, overriding) and
     )
 )
 
-select func, "Overridden method signature does not match $@, where it is passed " + problem + ". Overriding method $@ is matches the call.",
+select func, "Overridden method signature does not match $@, where it is passed " + problem + ". Overriding method $@ matches the call.",
 call, "call", overriding, overriding.descriptiveString()

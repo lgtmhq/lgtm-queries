@@ -18,6 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision medium
+ * @id cpp/bad-strncpy-size
  * @tags reliability
  *       correctness
  *       external/cwe/cwe-676

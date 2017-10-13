@@ -16,7 +16,7 @@
  * @description Methods in the same class whose names differ only in capitalization are
  *              confusing.
  * @kind problem
- * @problem.severity warning
+ * @problem.severity recommendation
  * @precision very-high
  * @id java/confusing-method-name
  * @tags maintainability

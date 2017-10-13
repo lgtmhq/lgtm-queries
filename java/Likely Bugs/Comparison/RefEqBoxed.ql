@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Suspicious reference equality test of boxed types
+ * @name Reference equality test of boxed types
  * @description Comparing two boxed primitive values using the == or != operator
  *              compares object identity, which may not be intended.
  * @kind problem

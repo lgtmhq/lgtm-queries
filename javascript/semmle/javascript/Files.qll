@@ -177,18 +177,6 @@ abstract class Container extends @container {
   string toString() {
     result = getAbsolutePath()
   }
-
-  /** DEPRECATED: Use `getParentContainer` instead. */
-  deprecated Container getParent() { result = getParentContainer() }
-
-  /** DEPRECATED: Use `getAChildContainer` instead. */
-  deprecated Container getAChild() { result = getAChildContainer() }
-
-  /** DEPRECATED: Use `getAbsolutePath` instead. */
-  deprecated string getPath() { result = getAbsolutePath() }
-
-  /** DEPRECATED: Use `getBaseName` instead. */
-  deprecated string getName() { result = getBaseName() }
 }
 
 /** A folder. */
@@ -219,11 +207,6 @@ class Folder extends Container, @folder {
   string getURL() {
     result = "folder://" + getAbsolutePath()
   }
-
-  /** DEPRECATED: Use `getChildContainer` instead. */
-  deprecated Container getChild(string name) {
-    result = getChildContainer(name)
-  }
 }
 
 /** A file. */
@@ -234,11 +217,6 @@ class File extends Container, @file, Locatable {
 
   override string getAbsolutePath() {
     files(this, result, _, _, _)
-  }
-
-  /** DEPRECATED: Use `getStem` instead. */
-  deprecated string getShortName() {
-    result = getStem()
   }
 
   /** Gets the number of lines in this file. */

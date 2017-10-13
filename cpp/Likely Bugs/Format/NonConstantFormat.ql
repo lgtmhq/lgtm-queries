@@ -20,6 +20,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @precision high
+ * @id cpp/non-constant-format
  * @tags maintainability
  *       correctness
  *       external/cwe/cwe-134

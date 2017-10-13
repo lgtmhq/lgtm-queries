@@ -19,6 +19,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id cpp/comparison-precedence
  * @tags maintainability
  *       readability
  */

@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision high
+ * @id cpp/lossy-pointer-cast
  * @tags reliability
  *       correctness
  *       types

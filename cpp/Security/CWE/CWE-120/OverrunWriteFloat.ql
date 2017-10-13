@@ -12,13 +12,14 @@
 // permissions and limitations under the License.
 
 /**
- * @name Overrunning write with float to string conversion
+ * @name Potentially overrunning write with float to string conversion
  * @description Buffer write operations that do not control the length
  *              of data written may overflow when floating point inputs
  *              take extreme values.
  * @kind problem
  * @problem.severity error
  * @precision medium
+ * @id cpp/overrunning-write-with-float
  * @tags reliability
  *       security
  *       external/cwe/cwe-120

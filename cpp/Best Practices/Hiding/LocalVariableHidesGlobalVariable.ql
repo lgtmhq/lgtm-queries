@@ -17,6 +17,7 @@
  * @kind problem
  * @problem.severity warning
  * @precision very-high
+ * @id cpp/local-variable-hides-global-variable
  * @tags maintainability
  *       readability
  */
