@@ -48,15 +48,24 @@ private predicate is_version(string text) {
     text.regexpMatch("\\d+\\.\\d+(\\.\\d+)?([ab]\\d+)?")
 }
 
+bindingset[v]
+private string version_format(float v) {
+    exists(int i, int f |
+        i = (v+0.05).floor() and f = ((v+0.05-i)*10).floor() |
+        result = i + "." + f
+    )
+}
 
 class DistPackage extends ExternalPackage {
 
     DistPackage() {
-        exists(string path |
-            path = this.(ModuleObject).getModule().getPath().getName() |
-            path.regexpMatch(".*/dist-packages/[^/]+")
-            or
-            path.regexpMatch(".*/site-packages/[^/]+")
+        exists(Folder parent |
+            parent = this.(ModuleObject).getPath().getParent() and
+            parent.isImportRoot() and
+            /* Not in standard library */
+            not parent.isStdLibRoot(_, _) and
+            /* Not in the source */
+            not exists(parent.getRelativePath())
         )
     }
 
@@ -64,8 +73,14 @@ class DistPackage extends ExternalPackage {
      * https://www.python.org/dev/peps/pep-0396/ 
      */
     private predicate possibleVersion(string version, int priority) {
-        version = this.getAttribute("__version__").(StringObject).getText() and
-        is_version(version) and priority = 3
+        exists(Object v |
+            v = this.getAttribute("__version__") and priority = 3 |
+            version = v.(StringObject).getText() and is_version(version)
+            or
+            version = version_format(v.(NumericObject).floatValue())
+            or
+            version = version_format(v.(NumericObject).intValue())
+        )
         or
         exists(SequenceObject tuple, NumericObject major, NumericObject minor, string base_version |
             this.getAttribute("version_info") = tuple and

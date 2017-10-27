@@ -154,9 +154,9 @@ class ComprehensionBlockScope extends Scope, @comprehensionblockscope {
   }
 }
 
-/** 
+/**
  * The lexical scope induced by a TypeScript namespace declaration.
- * 
+ *
  * This scope is specific to a single syntactic declaration of a namespace,
  * and currently does not include variables exported from other declarations
  * of the same namespace.
@@ -279,13 +279,15 @@ abstract class VarRef extends @varref, Identifier, BindingPattern {
   abstract Variable getVariable();
 
   override VarRef getABindingVarRef() { result = this }
+
+  override predicate isImpure() { none() }
 }
 
 /** An identifier that refers to a variable in a non-declaring position. */
 class VarAccess extends @varaccess, VarRef {
   /**
    * Gets the variable this identifier refers to.
-   * 
+   *
    * When analyzing TypeScript code, a variable may spuriously be resolved as a
    * global due to incomplete modeling of exported variables in namespaces.
    */
@@ -299,7 +301,7 @@ class VarAccess extends @varaccess, VarRef {
     exists (EnhancedForLoop efl | efl.getIterator() = this) or
     exists (BindingPattern p | this = p.getABindingVarRef() and p.isLValue())
   }
-  
+
   override Variable getAVariable() {
     result = getVariable()
   }
@@ -373,6 +375,22 @@ class BindingPattern extends @pattern, Expr {
   /** Holds if this pattern appears in an l-value position. */
   predicate isLValue() {
     any()
+  }
+
+  /**
+   * Returns the TypeScript type annotation for this variable or pattern, if any.
+   *
+   * Only the outermost part of a binding pattern can have a type annotation.
+   * For instance, in the declaration,
+   * <pre>
+   * var {x}: Point
+   * </pre>
+   * the variable `x` has no type annotation, whereas the pattern `{x}` has the type
+   * annotation `Point`.
+   */
+  TypeExpr getTypeAnnotation() {
+    exists (VariableDeclarator decl | decl.getBindingPattern() = this | result = decl.getTypeAnnotation())
+    // note: Parameter overrides this to handle the parameter case
   }
 }
 
@@ -575,6 +593,11 @@ class VariableDeclarator extends Expr, @vardeclarator {
     result = this.getChildExpr(1)
   }
 
+  /** Gets the TypeScript type annotation for the declared variable or binding pattern. */
+  TypeExpr getTypeAnnotation() {
+    result = this.getChildTypeExpr(2)
+  }
+
   /** Gets the declaration statement this declarator belongs to, if any. */
   DeclStmt getDeclStmt() {
     this = result.getADecl()
@@ -634,7 +657,12 @@ class Parameter extends BindingPattern {
 
   /** Gets the default expression for this parameter, if any. */
   Expr getDefault() {
-    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(n+3)))
+    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(2*n + 4)))
+  }
+
+  /** Gets the type annotation for this parameter, if any. */
+  override TypeExpr getTypeAnnotation() {
+    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildTypeExpr(-(2*n + 5)))
   }
 
   /** Holds if this parameter is a rest parameter. */

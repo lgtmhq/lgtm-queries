@@ -172,6 +172,9 @@ class Type extends Element, @type {
    * The JVM descriptor for this type, as used in bytecode.
    */
   string getTypeDescriptor() { none() }
+
+  /** Gets the erasure of this type. */
+  Type getErasure() { result = erase(this) }
 }
 
 /**
@@ -802,7 +805,7 @@ private cached Type erase(Type t) {
   result = t.(Class).getSourceDeclaration() or
   result = t.(Interface).getSourceDeclaration() or
   result.(Array).getComponentType() = erase(t.(Array).getComponentType()) or
-  result = erase(t.(BoundedType).getUpperBoundType()) or
+  result = erase(t.(BoundedType).getFirstUpperBoundType()) or
   result = (NullType)t or
   result = (VoidType)t or
   result = (PrimitiveType)t

@@ -62,7 +62,13 @@ class CallSite extends @invokeexpr {
    */
   AnalyzedFlowNode getArgumentNode(int i) {
     result = invk.getArgument(i) and
-    not invk.isSpreadArgument([0..i])
+    not earlierSpreadArgument(i)
+  }
+
+  /** Holds if `invk` has a spread argument at index `i` or earlier. */
+  private predicate earlierSpreadArgument(int i) {
+    invk.isSpreadArgument(i) or
+    (earlierSpreadArgument(i-1) and i < invk.getNumArgument())
   }
 
   /** Gets a potential callee of this call site. */

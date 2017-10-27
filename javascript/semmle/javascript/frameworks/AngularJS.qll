@@ -414,7 +414,7 @@ module AngularJS {
       kind = "post" and
       result = getMember("link")
       or
-      // { link: { pre: function preLink() { ... }, post: function postLink() { ... } }
+      // { link: { pre: function preLink() { ... }, post: function postLink() { ... } } }
       exists (PropWriteNode pwn |
         pwn.getBase() = getMember("link") and
         (kind = "pre" or kind = "post") and
@@ -593,36 +593,137 @@ module AngularJS {
   /**
    * Gets the argument position at which the method called `methodName`
    * from the Module API expects an injectable function.
+   *
+   * This method excludes the method names that are also present on the AngularJS '$provide' object.
    */
   private int injectableArgPos(string methodName) {
-    (methodName = "factory" or methodName = "directive" or
-     methodName = "filter" or methodName = "controller") and result = 1
+    (methodName = "directive" or
+      methodName = "filter" or methodName = "controller" or
+      methodName = "animation") and result = 1
     or
     (methodName = "config" or methodName = "run") and result = 0
   }
 
   /**
-   * An injectable function, that is, a function that has its dependency
+   * Holds if `nd` is an `angular.injector()` value
+   */
+  private predicate isAngularInjector(DataFlowNode nd) {
+    exists(MethodCallExpr mce |
+      nd.getALocalSource() = mce and
+      isAngularRef(mce.getReceiver()) and
+      mce.getMethodName() = "injector"
+    )
+  }
+
+  /**
+   * A call to `$angular.injector().invoke(...)`
+   */
+  class InjectorInvokeCall extends MethodCallExpr {
+    InjectorInvokeCall() {
+      isAngularInjector(this.getReceiver()) and
+      this.getMethodName() = "invoke"
+    }
+
+    Expr getInjectedArgument() {
+      result = getArgument(0)
+    }
+  }
+  /**
+   * Holds if `n` is an argument to a function that will dependency inject `n`.
+   */
+  private predicate isDependencyInjected(DataFlowNode n) {
+    exists (ModuleApiCall m |
+      n = m.getArgument(injectableArgPos(m.(MethodCallExpr).getMethodName())).(DataFlowNode).getALocalSource()
+    ) or
+    exists (InjectorInvokeCall invk |
+      n = invk.getInjectedArgument().(DataFlowNode).getALocalSource()
+    ) or
+    exists (DependencyInjectionServiceDefinitions::RecipeDefinition d |
+      d.getMethodName() != "value" and
+      d.getMethodName() != "constant" and
+      n = d.getAServiceConstructor()
+    ) or
+    exists (DependencyInjectionServiceDefinitions::ProviderRecipeDefinition d |
+      n = d.getAService()
+    )
+  }
+
+  /**
+   * Holds if `n` may be dependency injected (an over-approximation of `isDependencyInjected`).
+   */
+  private predicate dependencyInjectionCandidate(DataFlowNode n) {
+    isDependencyInjected(n) or
+    // other cases
+    exists (ValueProperty controller |
+      controller.getName() = "controller" and
+      n = controller.getInit().(DataFlowNode).getALocalSource()
+    )
+  }
+
+  /**
+   * An injectable function, that is, a function that could have its dependency
    * parameters automatically provided by the AngularJS `$inject` service.
    */
   abstract class InjectableFunction extends DataFlowNode {
-    InjectableFunction() {
-      exists (MethodCallExpr m |
-        isModuleRef(m.getReceiver(), _) and
-        this = m.getArgument(injectableArgPos(m.getMethodName())).(DataFlowNode).getALocalSource()
-      )
-      or
-      exists (ValueProperty controller |
-        controller.getName() = "controller" and
-        this = controller.getInit().(DataFlowNode).getALocalSource()
-      )
-    }
 
     /** Gets the parameter corresponding to dependency `name`. */
     abstract SimpleParameter getDependencyParameter(string name);
 
+    /**
+     * Gets the `i`th dependency declaration, which is also named `name`.
+     */
+    abstract ASTNode getDependencyDeclaration(int i, string name);
+
+    /**
+     * Gets an ASTNode for the `name` dependency declaration.
+     */
+    ASTNode getADependencyDeclaration(string name) {
+      result = getDependencyDeclaration(_, name)
+    }
+
+    /**
+     * Gets the ASTNode for the `i`th dependency declaration.
+     */
+    ASTNode getDependencyDeclaration(int i) {
+      result = getDependencyDeclaration(i, _)
+    }
+
+
     /** Gets the function underlying this injectable function. */
     abstract Function asFunction();
+
+    /** Gets a location where this function is explicitly dependency injected. */
+    abstract ASTNode getAnExplicitDependencyInjection();
+
+    /**
+     * Holds if this is an argument to a function that will dependency inject it.
+     */
+    predicate isDependencyInjected(){
+      isDependencyInjected(this)
+    }
+
+    /**
+     * Gets a service corresponding to the dependency-injected `parameter`.
+     */
+    DependencyInjectionServiceDefinitions::ServiceIdentity getAResolvedDependency(SimpleParameter parameter) {
+      exists(string name, DependencyInjectionServiceDefinitions::InjectableFunctionServiceRequest request |
+        this = request.getAnInjectedFunction() and
+        parameter = getDependencyParameter(name) and
+        result = request.getAServiceDefinition(name)
+      )
+    }
+
+    /**
+     * Gets a Custom service corresponding to the dependency-injected `parameter`.
+     * (this is a convenience variant of `getAResolvedDependency`)
+     */
+    DataFlowNode getCustomServiceDependency(SimpleParameter parameter) {
+      exists(DependencyInjectionServiceDefinitions::CustomServiceDefinition custom |
+        custom.getServiceIdentity() = getAResolvedDependency(parameter) and
+        result = custom.getAService()
+      )
+    }
+
   }
 
   /**
@@ -631,27 +732,44 @@ module AngularJS {
    */
   private class FunctionWithImplicitDependencyAnnotation extends InjectableFunction, @function {
     FunctionWithImplicitDependencyAnnotation() {
-      not this = any(FunctionWithExplicitDependencyAnnotation fwid).asFunction()
+      dependencyInjectionCandidate(this) and
+      not exists(getAPropertyDependencyInjection(this))
     }
 
     override SimpleParameter getDependencyParameter(string name) {
       result = asFunction().getParameterByName(name)
     }
 
+    override SimpleParameter getDependencyDeclaration(int i, string name) {
+      result.getName() = name and
+      result = asFunction().getParameter(i)
+    }
+
     override Function asFunction() { result = this }
+
+    override ASTNode getAnExplicitDependencyInjection() {
+      none()
+    }
+  }
+
+  private PropWriteNode getAPropertyDependencyInjection(Function function){
+    result.getBase().getALocalSource() = function and
+    result.getPropertyName() = "$inject"
   }
 
   /**
    * An injectable function with an `$inject` property that lists its
    * dependencies.
    */
-  private class FunctionWithInjectProperty extends FunctionWithImplicitDependencyAnnotation {
+  private class FunctionWithInjectProperty extends InjectableFunction, @function {
     ArrayExpr dependencies;
 
     FunctionWithInjectProperty() {
+      (dependencyInjectionCandidate(this) or
+        exists(FunctionWithExplicitDependencyAnnotation f | f.asFunction() = this)
+      ) and
       exists (PropWriteNode pwn |
-        pwn.getBase().getALocalSource() = this and
-        pwn.getPropertyName() = "$inject" and
+        pwn = getAPropertyDependencyInjection(this) and
         pwn.getRhs().getALocalSource() = dependencies
       )
     }
@@ -660,6 +778,17 @@ module AngularJS {
       exists (int i | getStringValue(dependencies.getElement(i)) = name |
         result = asFunction().getParameter(i)
       )
+    }
+
+    override ASTNode getDependencyDeclaration(int i, string name) {
+      result = dependencies.getElement(i) and
+      getStringValue(result) = name
+    }
+
+    override Function asFunction() { result = this }
+
+    override ASTNode getAnExplicitDependencyInjection() {
+      result = getAPropertyDependencyInjection(this)
     }
   }
 
@@ -670,6 +799,7 @@ module AngularJS {
     Function function;
 
     FunctionWithExplicitDependencyAnnotation() {
+      dependencyInjectionCandidate(this) and
       exists (ArrayExpr ae | ae = this |
         function = ae.getElement(ae.getSize()-1).(DataFlowNode).getALocalSource()
       )
@@ -681,7 +811,16 @@ module AngularJS {
       )
     }
 
+    override ASTNode getDependencyDeclaration(int i, string name) {
+      result = this.(ArrayExpr).getElement(i) and
+      getStringValue(result) = name
+    }
+
     override Function asFunction() { result = function }
+
+    override ASTNode getAnExplicitDependencyInjection() {
+      result = this or result = asFunction().(InjectableFunction).getAnExplicitDependencyInjection()
+    }
   }
 
   newtype TDirectiveTargetType = E() or A() or C() or M()
@@ -865,4 +1004,432 @@ module AngularJS {
       result = "$routeParams"
     }
   }
+
+  /**
+   * Provides classes for working with the AngularJS `$provide` methods: `service`, `factory`, etc..
+   *
+   * Supports registration and lookup of dependency injection services.
+   */
+  module DependencyInjectionServiceDefinitions {
+
+    /**
+     * Service types.
+     */
+    private newtype TServiceIdentity =
+    MkBuiltinService(string name) { exists (getBuiltinKind(name)) } or
+    MkCustomService(CustomServiceDefinition service)
+
+    abstract class ServiceIdentity extends TServiceIdentity {
+      abstract string toString();
+    }
+
+    class BuiltinServiceIdentity extends ServiceIdentity, MkBuiltinService {
+      string toString() {
+        this = MkBuiltinService(result)
+      }
+    }
+
+    class CustomServiceIdentity extends ServiceIdentity, MkCustomService {
+      string toString() {
+        exists(CustomServiceDefinition def |
+          this = MkCustomService(def) and
+          result = def.toString()
+        )
+      }
+    }
+
+    /**
+     * Gets the kind of the builtin "service" named `name`.
+     *
+     * The possible kinds are:
+     * - controller-only: services that are only available to controllers.
+     * - provider: a provider for a service.
+     * - service: a service.
+     * - type: a special builtin service that is usable everywhere.
+     */
+    private string getBuiltinKind(string name) {
+      // according to https://docs.angularjs.org/api
+      result = "controller-only" and  name = "$scope"
+      or (
+        result = "service" and (
+          // ng
+          name = "$anchorScroll" or
+          name = "$animate" or
+          name = "$animateCss" or
+          name = "$cacheFactory" or
+          name = "$controller" or
+          name = "$document" or
+          name = "$exceptionHandler" or
+          name = "$filter" or
+          name = "$http" or
+          name = "$httpBackend" or
+          name = "$httpParamSerializer" or
+          name = "$httpParamSerializerJQLike" or
+          name = "$interpolate" or
+          name = "$interval" or
+          name = "$jsonpCallbacks" or
+          name = "$locale" or
+          name = "$location" or
+          name = "$log" or
+          name = "$parse" or
+          name = "$q" or
+          name = "$rootElement" or
+          name = "$rootScope" or
+          name = "$sce" or
+          name = "$sceDelegate" or
+          name = "$templateCache" or
+          name = "$templateRequest" or
+          name = "$timeout" or
+          name = "$window" or
+          name = "$xhrFactory" or
+          // auto
+          name = "$injector" or
+          name = "$provide" or
+          // ngAnimate
+          name = "$animate" or
+          name = "$animateCss" or
+          // ngAria
+          name = "$aria" or
+          // ngComponentRouter
+          name = "$rootRouter" or
+          name = "$routerRootComponent" or
+          // ngCookies
+          name = "$cookieStore" or
+          name = "$cookies" or
+          //ngMock
+          name = "$animate" or
+          name = "$componentController" or
+          name = "$controller" or
+          name = "$exceptionHandler" or
+          name = "$httpBackend" or
+          name = "$interval" or
+          name = "$log" or
+          name = "$timeout" or
+          //ngMockE2E
+          name = "$httpBackend" or
+          // ngResource
+          name = "$resource" or
+          // ngRoute
+          name = "$route" or
+          name = "$routeParams" or
+          // ngSanitize
+          name = "$sanitize" or
+          // ngTouch
+          name = "$swipe"
+        )
+      ) or (
+        result = "provider" and (
+          // ng
+          name = "$anchorScrollProvider" or
+          name = "$animateProvider" or
+          name = "$compileProvider" or
+          name = "$controllerProvider" or
+          name = "$filterProvider" or
+          name = "$httpProvider" or
+          name = "$interpolateProvider" or
+          name = "$locationProvider" or
+          name = "$logProvider" or
+          name = "$parseProvider" or
+          name = "$provider" or
+          name = "$qProvider" or
+          name = "$rootScopeProvider" or
+          name = "$sceDelegateProvider" or
+          name = "$sceProvider" or
+          name = "$templateRequestProvider" or
+          // ngAria
+          name = "$ariaProvider" or
+          // ngCookies
+          name = "$cookiesProvider" or
+          // ngmock
+          name = "$exceptionHandlerProvider" or
+          // ngResource
+          name = "$resourceProvider" or
+          // ngRoute
+          name = "$routeProvider" or
+          // ngSanitize
+          name = "$sanitizeProvider"
+        )
+      ) or (
+        result = "type" and (
+          // ng
+          name = "$cacheFactory" or
+          name = "$compile" or
+          name = "$rootScope" or
+          // ngMock
+          name = "$rootScope"
+        )
+      )
+    }
+
+    /**
+     * A definition of a custom AngularJS dependency injection service.
+     */
+    abstract class RecipeDefinition extends MethodCallExpr {
+
+      string methodName;
+
+      string name;
+
+      RecipeDefinition() {
+        (isModuleRef(getReceiver(), _) or
+          exists(AngularJS::InjectableFunction f |
+            f.getDependencyParameter("$provide").getAVariable().getAnAccess() = getReceiver()
+          )) and
+        methodName = getMethodName() and
+        name = getStringValue(getArgument(0))
+      }
+
+      /** Gets the name of the defined service. */
+      string getName() { result = name }
+
+      /** Gets a value used for creating the service provided by this definition. */
+      DataFlowNode getAServiceConstructor() {
+        result = getArgument(1).(DataFlowNode).getALocalSource()
+      }
+
+      /** Gets a service created by `getAServiceConstructor`*/
+      abstract DataFlowNode getAService();
+    }
+
+    /**
+     * A custom AngularJS service, either defined through `$provide.service` or `module.service` or a similar method.
+     */
+    class CustomServiceDefinition extends Expr {
+
+      RecipeDefinition def;
+
+      CustomServiceDefinition() {
+        def = this
+      }
+
+      string getName() {
+        result = def.getName()
+      }
+
+      /** Gets a service defined by this definition. */
+      DataFlowNode getAService() {
+        result = def.getAService()
+      }
+
+      /** Gets the identity of the defined service. */
+      ServiceIdentity getServiceIdentity() {
+        result = MkCustomService(this)
+      }
+    }
+
+    /**
+     * Gets a service with the name `name`.
+     */
+    private ServiceIdentity getAGlobalServiceDefinition(string name) {
+      result = MkBuiltinService(name) or
+      exists(CustomServiceDefinition custom |
+        name = custom.getName() and
+        result = MkCustomService(custom))
+    }
+
+    /**
+     * Gets a builtin service with a specific kind.
+     */
+    ServiceIdentity getBuiltinServiceOfKind(string kind) {
+      exists(string name |
+        kind = getBuiltinKind(name) and
+        result = MkBuiltinService(name)
+      )
+    }
+
+    /**
+     * A request for a service, in the form of a dependency-injected function.
+     */
+    class InjectableFunctionServiceRequest extends Expr {
+
+      AngularJS::InjectableFunction injectedFunction;
+
+      InjectableFunctionServiceRequest() {
+        if(exists(injectedFunction.getAnExplicitDependencyInjection())) then
+        this = injectedFunction.getAnExplicitDependencyInjection()
+        else
+        this = injectedFunction
+      }
+
+      AngularJS::InjectableFunction getAnInjectedFunction() {
+        result = injectedFunction
+      }
+
+      /**
+       * Gets a name of a requested service.
+       */
+      string getAServiceName() {
+        exists(getAnInjectedFunction().getADependencyDeclaration(result))
+      }
+
+      /**
+       * Gets a service with the specified name, relative to this request.
+       * (implementation detail: all services are in the global namespace)
+       */
+      ServiceIdentity getAServiceDefinition(string name) {
+        result = getAGlobalServiceDefinition(name)
+      }
+    }
+
+    private DataFlowNode getFactoryFunctionResult(RecipeDefinition def) {
+      exists(Function factoryFunction |
+        factoryFunction = def.getAServiceConstructor().(AngularJS::InjectableFunction).asFunction() and
+        result = factoryFunction.getAReturnedExpr().(DataFlowNode).getALocalSource()
+      )
+    }
+
+    /**
+     * An AngularJS factory recipe definition, that is, a method call of the form
+     * `module.factory("name", f)`.
+     */
+    class FactoryRecipeDefinition extends RecipeDefinition {
+      FactoryRecipeDefinition() {
+        methodName = "factory"
+      }
+
+      override DataFlowNode getAService() {
+
+        /* The Factory recipe constructs a new service using a function
+        with zero or more arguments (these are dependencies on other
+          services). The return value of this function is the service
+        instance created by this recipe.  */
+        result = getFactoryFunctionResult(this)
+      }
+    }
+
+    /**
+     * An AngularJS decorator recipe definition, that is, a method call of the form
+     * `module.decorator("name", f)`.
+     */
+    class DecoratorRecipeDefinition extends RecipeDefinition {
+      DecoratorRecipeDefinition() {
+        methodName = "decorator"
+      }
+
+      override DataFlowNode getAService() {
+
+        /* The return value of the function provided to the decorator
+        will take place of the service, directive, or filter being
+        decorated.*/
+        result = getFactoryFunctionResult(this)
+      }
+    }
+
+
+    /**
+     * An AngularJS service recipe definition, that is, a method call of the form
+     * `module.service("name", f)`.
+     */
+    class ServiceRecipeDefinition extends RecipeDefinition {
+      ServiceRecipeDefinition() {
+        methodName = "service"
+      }
+
+      override DataFlowNode getAService() {
+
+        /* The service recipe produces a service just like the Value or
+        Factory recipes, but it does so by invoking a constructor with
+        the new operator. The constructor can take zero or more
+        arguments, which represent dependencies needed by the instance
+        of this type. */
+
+        result = getAServiceConstructor().(AngularJS::InjectableFunction).asFunction()
+      }
+    }
+
+    /**
+     * An AngularJS value recipe definition, that is, a method call of the form
+     * `module.value("name", value)`.
+     */
+    class ValueRecipeDefinition extends RecipeDefinition {
+      ValueRecipeDefinition() {
+        methodName = "value"
+      }
+
+      override DataFlowNode getAService() {
+        result = getAServiceConstructor()
+      }
+    }
+
+    /**
+     * An AngularJS constant recipe definition, that is, a method call of the form
+     * `module.constant("name", "constant value")`.
+     */
+    class ConstantRecipeDefinition extends RecipeDefinition {
+      ConstantRecipeDefinition() {
+        methodName = "constant"
+      }
+
+      override DataFlowNode getAService() {
+        result = getAServiceConstructor()
+      }
+    }
+
+    /**
+     * An AngularJS provider recipe definition, that is, a method call of the form
+     * `module.provider("name", fun)`.
+     */
+    class ProviderRecipeDefinition extends RecipeDefinition {
+      ProviderRecipeDefinition() {
+        methodName = "provider"
+      }
+
+      override string getName(){
+        result = name or result = name + "Provider"
+      }
+
+      override DataFlowNode getAService() {
+
+        /* The Provider recipe is syntactically defined as a custom type
+        that implements a $get method. This method is a factory function
+        just like the one we use in the Factory recipe. In fact, if you
+        define a Factory recipe, an empty Provider type with the $get
+        method set to your factory function is automatically created
+        under the hood.  */
+
+        exists(Function enclosing, PropWriteNode prop |
+          enclosing = getAServiceConstructor().(AngularJS::InjectableFunction).asFunction() and
+          enclosing = prop.(Expr).getEnclosingFunction() and
+          prop.getBase() instanceof ThisExpr and
+          prop.getPropertyName() = "$get" and
+          result = prop.getRhs().(DataFlowNode).getALocalSource()
+        )
+      }
+    }
+
+    /**
+     * An AngularJS config method definition, that is, a method call of the form
+     * `module.config(fun)`.
+     */
+    class ConfigMethodDefinition extends ModuleApiCall  {
+      ConfigMethodDefinition() {
+        methodName = "config"
+      }
+
+      /**
+       * Gets a provided configuration method.
+       */
+      InjectableFunction getConfigMethod() {
+        result = getArgument(0).(DataFlowNode).getALocalSource()
+      }
+    }
+
+    /**
+     * An AngularJS run method definition, that is, a method call of the form
+     * `module.run(fun)`.
+     */
+    class RunMethodDefinition extends ModuleApiCall  {
+      RunMethodDefinition() {
+        methodName = "run"
+      }
+
+      /**
+       * Gets a provided run method.
+       */
+      InjectableFunction getRunMethod() {
+        result = getArgument(0).(DataFlowNode).getALocalSource()
+      }
+    }
+  }
+
 }

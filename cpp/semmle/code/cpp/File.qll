@@ -97,6 +97,14 @@ class File extends @file {
     fileannotations(this,1,"compiled as obj c++","1")
   }
 
+  /** Holds if this file was compiled by a Microsoft compiler (at any point). */
+  predicate compiledAsMicrosoft() {
+    exists(Compilation c |
+      c.getAFileCompiled() = this and
+      c.getAnArgument() = "--microsoft"
+    )
+  }
+
   /** Gets a top-level element declared in this file. */
   Declaration getATopLevelDeclaration() {
     result.getAFile() = this and result.isTopLevel()

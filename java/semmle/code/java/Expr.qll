@@ -1192,6 +1192,23 @@ class MethodAccess extends Expr, Call, @methodaccess {
     result = getQualifier().getType() or
     not hasQualifier() and result = getEnclosingCallable().getDeclaringType()
   }
+
+  /**
+   * Holds if this is a method access to an instance method of `this`. That is,
+   * the qualifier is either an explicit or implicit unqualified `this` or `super`.
+   */
+  predicate isOwnMethodAccess() {
+    Qualifier::ownMemberAccess(this)
+  }
+
+  /**
+   * Holds if this is a method access to an instance method of the enclosing
+   * class `t`. That is, the qualifier is either an explicit or implicit
+   * `t`-qualified `this` or `super`.
+   */
+  predicate isEnclosingMethodAccess(RefType t) {
+    Qualifier::enclosingMemberAccess(this, t)
+  }
 }
 
 /** A type access is a (possibly qualified) reference to a type. */
@@ -1399,6 +1416,114 @@ class FieldAccess extends VarAccess {
   /** The immediately enclosing callable that contains this field access expression. */
   Callable getSite() {
     this.getEnclosingCallable() = result
+  }
+
+  /**
+   * Holds if this is a field access to an instance field of `this`. That is,
+   * the qualifier is either an explicit or implicit unqualified `this` or `super`.
+   */
+  predicate isOwnFieldAccess() {
+    Qualifier::ownMemberAccess(this)
+  }
+
+  /**
+   * Holds if this is a field access to an instance field of the enclosing
+   * class `t`. That is, the qualifier is either an explicit or implicit
+   * `t`-qualified `this` or `super`.
+   */
+  predicate isEnclosingFieldAccess(RefType t) {
+    Qualifier::enclosingMemberAccess(this, t)
+  }
+}
+
+private module Qualifier {
+  /** A type qualifier for a `ThisAccess` or `SuperAccess`. */
+  private newtype TThisQualifier = TThis() or TEnclosing(RefType t)
+
+  /** An expression that accesses a member. That is, either a `FieldAccess` or a `MethodAccess`. */
+  class MemberAccess extends Expr {
+    MemberAccess() {
+      this instanceof FieldAccess or
+      this instanceof MethodAccess
+    }
+    /** The member accessed by this member access. */
+    Member getMember() {
+      result = this.(FieldAccess).getField() or
+      result = this.(MethodAccess).getMethod()
+    }
+    /** The qualifier of this member access, if any. */
+    Expr getQualifier() {
+      result = this.(FieldAccess).getQualifier() or
+      result = this.(MethodAccess).getQualifier()
+    }
+  }
+
+  /**
+   * Gets the implicit type qualifier of the implicit `ThisAccess` qualifier of
+   * an access to `m` from within `ic`, which does not itself inherit `m`.
+   */
+  private RefType getImplicitEnclosingQualifier(InnerClass ic, Member m) {
+    exists(RefType enclosing | enclosing = ic.getEnclosingType() |
+      if enclosing.inherits(m) then
+        result = enclosing
+      else
+        result = getImplicitEnclosingQualifier(enclosing, m)
+    )
+  }
+
+  /**
+   * Gets the implicit type qualifier of the implicit `ThisAccess` qualifier of `ma`.
+   */
+  private TThisQualifier getImplicitQualifier(MemberAccess ma) {
+    exists(Member m | m = ma.getMember() |
+      not m.isStatic() and
+      not exists(ma.getQualifier()) and
+      exists(RefType t | t = ma.getEnclosingCallable().getDeclaringType() |
+        not t instanceof InnerClass and result = TThis() or
+        exists(InnerClass ic | ic = t |
+          if ic.inherits(m) then
+            result = TThis()
+          else
+            result = TEnclosing(getImplicitEnclosingQualifier(ic, m))
+        )
+      )
+    )
+  }
+
+  /**
+   * Gets the type qualifier of the `ThisAccess` or `SuperAccess` qualifier of `ma`.
+   */
+  private TThisQualifier getThisQualifier(MemberAccess ma) {
+    result = getImplicitQualifier(ma) or
+    exists(RefType t, Expr q |
+      not ma.getMember().isStatic() and
+      t = ma.getEnclosingCallable().getDeclaringType() and
+      q = ma.getQualifier()
+      |
+      exists(ThisAccess ta | ta = q and not exists(ta.getQualifier()) and result = TThis()) or
+      exists(SuperAccess sa | sa = q and not exists(sa.getQualifier()) and result = TThis()) or
+      exists(Expr qq, RefType qt | qq = q.(ThisAccess).getQualifier() or qq = q.(SuperAccess).getQualifier() |
+        qt = qq.getType().(RefType).getSourceDeclaration() and
+        if qt = t then result = TThis() else result = TEnclosing(qt)
+      )
+    )
+  }
+
+  /**
+   * Holds if `ma` is a member access to an instance field of `this`. That is,
+   * the qualifier is either an explicit or implicit unqualified `this` or `super`.
+   */
+  predicate ownMemberAccess(MemberAccess ma) {
+    TThis() = getThisQualifier(ma)
+  }
+
+  /**
+   * Holds if `ma` is a member access to an instance field of the enclosing
+   * class `t`. That is, the qualifier is either an explicit or implicit
+   * `t`-qualified `this` or `super`.
+   */
+  predicate enclosingMemberAccess(MemberAccess ma, RefType t) {
+    TEnclosing(t) = getThisQualifier(ma)
   }
 }
 

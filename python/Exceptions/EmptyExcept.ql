@@ -39,7 +39,7 @@ predicate no_comment(ExceptStmt ex) {
    not exists(Comment c |
       c.getLocation().getFile() = ex.getLocation().getFile() and
       c.getLocation().getStartLine() >= ex.getLocation().getStartLine() and
-      c.getLocation().getEndLine() <= ex.getLocation().getEndLine()
+      c.getLocation().getEndLine() <= ex.getBody().getLastItem().getLocation().getEndLine()
    )
 }
 

@@ -25,8 +25,15 @@ module DataFlow {
 
   private newtype TNode =
     TExprNode(Expr e) or
-    TParameterNode(Parameter p) { exists(p.getCallable().getBody()) } or
-    TImplicitVarargsArray(Call c) { c.getCallee().isVarargs() and not exists(Argument arg | arg.getCall() = c and arg.isExplicitVarargsArray()) }
+    TExplicitParameterNode(Parameter p) { exists(p.getCallable().getBody()) } or
+    TImplicitVarargsArray(Call c) { c.getCallee().isVarargs() and not exists(Argument arg | arg.getCall() = c and arg.isExplicitVarargsArray()) } or
+    TInstanceParameterNode(Callable c) { exists(c.getBody()) and not c.isStatic() } or
+    TImplicitThisQualifier(FieldAccess fa) { fa.isOwnFieldAccess() and not exists(fa.getQualifier()) } or
+    TImplicitThisArgument(Call c) {
+      c instanceof ThisConstructorInvocationStmt or
+      c instanceof SuperConstructorInvocationStmt or
+      c.(MethodAccess).isOwnMethodAccess() and not exists(c.getQualifier())
+    }
 
   /**
    * An element, viewed as a node in a data flow graph. Either an expression,
@@ -43,20 +50,26 @@ module DataFlow {
     Expr asExpr() { result = this.(ExprNode).getExpr() }
 
     /** Gets the parameter corresponding to this node, if any. */
-    Parameter asParameter() { result = this.(ParameterNode).getParameter() }
+    Parameter asParameter() { result = this.(ExplicitParameterNode).getParameter() }
 
     /** Gets the type of this node. */
     Type getType() {
       result = this.asExpr().getType() or
       result = this.asParameter().getType() or
-      exists(Parameter p | result = p.getType() and p.isVarargs() and p = this.(ImplicitVarargsArray).getCall().getCallee().getAParameter())
+      exists(Parameter p | result = p.getType() and p.isVarargs() and p = this.(ImplicitVarargsArray).getCall().getCallee().getAParameter()) or
+      result = this.(InstanceParameterNode).getCallable().getDeclaringType() or
+      result = this.(ImplicitThisQualifier).getFieldAccess().getEnclosingCallable().getDeclaringType() or
+      result = this.(ImplicitThisArgument).getCall().getEnclosingCallable().getDeclaringType()
     }
 
     /** Gets the callable in which this node occurs. */
     Callable getEnclosingCallable() {
       result = this.asExpr().getEnclosingCallable() or
       result = this.asParameter().getCallable() or
-      result = this.(ImplicitVarargsArray).getCall().getEnclosingCallable()
+      result = this.(ImplicitVarargsArray).getCall().getEnclosingCallable() or
+      result = this.(InstanceParameterNode).getCallable() or
+      result = this.(ImplicitThisQualifier).getFieldAccess().getEnclosingCallable() or
+      result = this.(ImplicitThisArgument).getCall().getEnclosingCallable()
     }
   }
 
@@ -75,20 +88,32 @@ module DataFlow {
   /** Gets the node corresponding to `e`. */
   ExprNode exprNode(Expr e) { result.getExpr() = e }
 
+  /** An explicit or implicit parameter. */
+  abstract class ParameterNode extends Node {
+    /**
+     * Holds if this node is the parameter of `c` at the specified (zero-based)
+     * position. The implicit `this` parameter is considered to have index `-1`.
+     */
+    abstract predicate isParameterOf(Callable c, int pos);
+  }
+
   /**
    * A parameter, viewed as a node in a data flow graph.
    */
-  class ParameterNode extends Node, TParameterNode {
+  class ExplicitParameterNode extends ParameterNode, TExplicitParameterNode {
     Parameter param;
-    ParameterNode() { this = TParameterNode(param) }
+    ExplicitParameterNode() { this = TExplicitParameterNode(param) }
     override string toString() { result = param.toString() }
     override Location getLocation() { result = param.getLocation() }
     /** Gets the parameter corresponding to this node. */
     Parameter getParameter() { result = param }
+    override predicate isParameterOf(Callable c, int pos) {
+      c.getParameter(pos) = param
+    }
   }
 
   /** Gets the node corresponding to `p`. */
-  ParameterNode parameterNode(Parameter p) { result.getParameter() = p }
+  ExplicitParameterNode parameterNode(Parameter p) { result.getParameter() = p }
 
   /**
    * An implicit varargs array creation expression.
@@ -106,20 +131,135 @@ module DataFlow {
   }
 
   /**
+   * An instance parameter for an instance method or constructor.
+   */
+  class InstanceParameterNode extends ParameterNode, TInstanceParameterNode {
+    Callable callable;
+    InstanceParameterNode() { this = TInstanceParameterNode(callable) }
+    override string toString() { result = "parameter this" }
+    override Location getLocation() { result = callable.getLocation() }
+    /** Gets the callable containing this `this` parameter. */
+    Callable getCallable() { result = callable }
+    override predicate isParameterOf(Callable c, int pos) {
+      callable = c and pos = -1
+    }
+  }
+
+  /**
+   * An implicit read of an unqualified `this` that is used as the implicit
+   * qualifier of an instance field access.
+   */
+  class ImplicitThisQualifier extends Node, TImplicitThisQualifier {
+    FieldAccess fa;
+    ImplicitThisQualifier() { this = TImplicitThisQualifier(fa) }
+    override string toString() { result = "field qualifier this" }
+    override Location getLocation() { result = fa.getLocation() }
+    /** Gets the field access that refers to this implicit `this`. */
+    FieldAccess getFieldAccess() { result = fa }
+  }
+
+  /**
+   * An implicit read of an unqualified `this` that is passed as the instance
+   * parameter of a call.
+   */
+  class ImplicitThisArgument extends Node, TImplicitThisArgument {
+    Call call;
+    ImplicitThisArgument() { this = TImplicitThisArgument(call) }
+    override string toString() { result = "argument this" }
+    override Location getLocation() { result = call.getLocation() }
+    /** Gets the call to which this implicit `this` is passed. */
+    Call getCall() { result = call }
+  }
+
+  /** Holds if `n` is an access to an unqualified `this` at `cfgnode`. */
+  private predicate thisAccess(Node n, ControlFlowNode cfgnode) {
+    n.(InstanceParameterNode).getCallable().getBody() = cfgnode or
+    exists(ThisAccess ta | ta = n.asExpr() and ta = cfgnode and not exists(ta.getQualifier())) or
+    exists(FieldAccess fa | fa = n.(ImplicitThisQualifier).getFieldAccess() |
+      if fa instanceof RValue then fa = cfgnode
+      else cfgnode.(AssignExpr).getDest() = fa
+    ) or
+    n.(ImplicitThisArgument).getCall() = cfgnode
+  }
+
+  /** Calculation of the relative order in which `this` references are read. */
+  private module ThisFlow {
+    private predicate thisAccess(Node n, BasicBlock b, int i) {
+      thisAccess(n, b.getNode(i))
+    }
+
+    private predicate thisRank(Node n, BasicBlock b, int rankix) {
+      exists(int i |
+        i = rank[rankix](int j | thisAccess(_, b, j)) and
+        thisAccess(n, b, i)
+      )
+    }
+
+    private int lastRank(BasicBlock b) {
+      result = max(int rankix | thisRank(_, b, rankix))
+    }
+
+    private predicate blockPrecedesThisAccess(BasicBlock b) {
+      thisAccess(_, b.getABBSuccessor*(), _)
+    }
+
+    private predicate thisAccessBlockReaches(BasicBlock b1, BasicBlock b2) {
+      thisAccess(_, b1, _) and b2 = b1.getABBSuccessor() or
+      exists(BasicBlock mid |
+        thisAccessBlockReaches(b1, mid) and
+        b2 = mid.getABBSuccessor() and
+        not thisAccess(_, mid, _) and
+        blockPrecedesThisAccess(b2)
+      )
+    }
+
+    private predicate thisAccessBlockStep(BasicBlock b1, BasicBlock b2) {
+      thisAccessBlockReaches(b1, b2) and
+      thisAccess(_, b2, _)
+    }
+
+    /** Holds if `n1` and `n2` are control-flow adjacent references to `this`. */
+    predicate adjacentThisRefs(Node n1, Node n2) {
+      exists(int rankix, BasicBlock b |
+        thisRank(n1, b, rankix) and
+        thisRank(n2, b, rankix+1)
+      ) or
+      exists(BasicBlock b1, BasicBlock b2 |
+        thisRank(n1, b1, lastRank(b1)) and
+        thisAccessBlockStep(b1, b2) and
+        thisRank(n2, b2, 1)
+      )
+    }
+  }
+
+  /** Gets the instance argument of a non-static call. */
+  private Node getInstanceArgument(Call call) {
+    call instanceof ClassInstanceExpr and result.asExpr() = call or
+    call = result.(ImplicitThisArgument).getCall() or
+    call instanceof MethodAccess and result.asExpr() = call.getQualifier() and not call.getCallee().isStatic()
+  }
+
+  /**
    * A data flow node that occurs as the argument of a call and is passed as-is
    * to the callable. Arguments that are wrapped in an implicit varargs array
    * creation are not included, but the implicitly created array is.
+   * Instance arguments are also included.
    */
   private class ArgumentNode extends Node {
     ArgumentNode() {
       exists(Argument arg | this.asExpr() = arg | not arg.isVararg()) or
-      this instanceof ImplicitVarargsArray
+      this instanceof ImplicitVarargsArray or
+      this = getInstanceArgument(_)
     }
 
-    /** Holds if this argument occurs at the given position in the given call. */
+    /**
+     * Holds if this argument occurs at the given position in the given call.
+     * The instance argument is considered to have index `-1`.
+     */
     predicate argumentOf(Call call, int pos) {
       exists(Argument arg | this.asExpr() = arg | call = arg.getCall() and pos = arg.getPosition()) or
-      call = this.(ImplicitVarargsArray).getCall() and pos = call.getCallee().getNumberOfParameters() - 1
+      call = this.(ImplicitVarargsArray).getCall() and pos = call.getCallee().getNumberOfParameters() - 1 or
+      pos = -1 and this = getInstanceArgument(call)
     }
   }
 
@@ -197,6 +337,7 @@ module DataFlow {
       node2.asExpr() = init.getAFirstUse()
     ) or
     adjacentUseUse(node1.asExpr(), node2.asExpr()) or
+    ThisFlow::adjacentThisRefs(node1, node2) or
     node2.asExpr().(ParExpr).getExpr() = node1.asExpr() or
     node2.asExpr().(CastExpr).getExpr() = node1.asExpr() or
     node2.asExpr().(ConditionalExpr).getTrueExpr() = node1.asExpr() or
@@ -270,12 +411,13 @@ module DataFlow {
 
   /**
    * Holds if `p` is the `i`th parameter of a viable dispatch target of `call`.
+   * The instance parameter is considered to have index `-1`.
    */
   pragma[nomagic]
   private predicate viableParam(Call call, int i, ParameterNode p) {
     exists(Callable callable |
       callable = viableCallable(call) and
-      callable.getParameter(i) = p.getParameter()
+      p.isParameterOf(callable, i)
     )
   }
 
@@ -293,30 +435,30 @@ module DataFlow {
    * Holds if `node` is reachable from a source in the given configuration
    * ignoring call contexts.
    */
-  private predicate nodeCandFwd(Node node, Configuration config) {
+  private predicate nodeCandFwd1(Node node, Configuration config) {
     not config.isBarrier(node) and
     (
       config.isSource(node)
       or
       exists(Node mid |
-        nodeCandFwd(mid, config) and
+        nodeCandFwd1(mid, config) and
         localFlowStep(mid, node, config)
       )
       or
       exists(Node mid |
-        nodeCandFwd(mid, config) and
+        nodeCandFwd1(mid, config) and
         jumpStep(mid, node)
       )
       or
       // flow into a callable
       exists(Node arg |
-        nodeCandFwd(arg, config) and
+        nodeCandFwd1(arg, config) and
         viableParamArg(node, arg)
       )
       or
       // flow out of a callable
       exists(Method m, MethodAccess ma, ReturnNode ret |
-        nodeCandFwd(ret, config) and
+        nodeCandFwd1(ret, config) and
         m = ret.getEnclosingCallable() and
         m = viableImpl(ma) and
         node.asExpr() = ma
@@ -328,34 +470,163 @@ module DataFlow {
    * Holds if `node` is part of a path from a source to a sink in the given
    * configuration ignoring call contexts.
    */
-  private predicate nodeCand(Node node, Configuration config) {
-    nodeCandFwd(node, config) and
+  private predicate nodeCand1(Node node, Configuration config) {
+    nodeCandFwd1(node, config) and
     (
       config.isSink(node)
       or
       exists(Node mid |
         localFlowStep(node, mid, config) and
-        nodeCand(mid, config)
+        nodeCand1(mid, config)
       )
       or
       exists(Node mid |
         jumpStep(node, mid) and
-        nodeCand(mid, config)
+        nodeCand1(mid, config)
       )
       or
       // flow into a callable
       exists(Node param |
         viableParamArg(param, node) and
-        nodeCand(param, config)
+        nodeCand1(param, config)
       )
       or
       // flow out of a callable
       exists(Method m, ExprNode ma |
-        nodeCand(ma, config) and
+        nodeCand1(ma, config) and
         m = node.(ReturnNode).getEnclosingCallable() and
         m = viableImpl(ma.getExpr())
       )
     )
+  }
+
+  /**
+   * Holds if there is a path from `p` to `node` in the same callable that is
+   * part of a path from a source to a sink taking simple call contexts into
+   * consideration.
+   */
+  private predicate simpleParameterFlow(ParameterNode p, Node node, Configuration config) {
+    nodeCand1(node, config) and
+    (
+      p = node
+      or
+      exists(Node mid |
+        simpleParameterFlow(p, mid, config) and
+        localFlowStep(mid, node, config)
+      )
+      or
+      // flow through a callable
+      exists(Node arg |
+        simpleParameterFlow(p, arg, config) and
+        simpleArgumentFlowsThrough(arg, node, config)
+      )
+    )
+  }
+
+  /**
+   * Holds if data can flow from `arg` through the `call` taking simple call
+   * contexts into consideration and that this is part of a path from a source
+   * to a sink.
+   */
+  private predicate simpleArgumentFlowsThrough(ArgumentNode arg, ExprNode call, Configuration config) {
+    exists(ParameterNode param, ReturnNode ret |
+      nodeCand1(arg, config) and
+      nodeCand1(call, config) and
+      viableParamArg(param, arg) and
+      simpleParameterFlow(param, ret, config) and
+      arg.argumentOf(call.getExpr(), _)
+    )
+  }
+
+  /**
+   * Holds if `node` is part of a path from a source to a sink in the given
+   * configuration taking simple call contexts into consideration.
+   */
+  private predicate nodeCandFwd2(Node node, boolean fromArg, Configuration config) {
+    nodeCand1(node, config) and
+    (
+      config.isSource(node) and fromArg = false
+      or
+      exists(Node mid |
+        nodeCandFwd2(mid, fromArg,config) and
+        localFlowStep(mid, node, config)
+      )
+      or
+      exists(Node mid |
+        nodeCandFwd2(mid, _, config) and
+        jumpStep(mid, node) and
+        fromArg = false
+      )
+      or
+      // flow into a callable
+      exists(Node arg |
+        nodeCandFwd2(arg, _, config) and
+        viableParamArg(node, arg) and
+        fromArg = true
+      )
+      or
+      // flow out of a callable
+      exists(Method m, MethodAccess ma, ReturnNode ret |
+        nodeCandFwd2(ret, false, config) and
+        m = ret.getEnclosingCallable() and
+        m = viableImpl(ma) and
+        node.asExpr() = ma and
+        fromArg = false
+      )
+      or
+      // flow through a callable
+      exists(ArgumentNode arg |
+        nodeCandFwd2(arg, fromArg, config) and
+        simpleArgumentFlowsThrough(arg, node, config)
+      )
+    )
+  }
+
+  /**
+   * Holds if `node` is part of a path from a source to a sink in the given
+   * configuration taking simple call contexts into consideration.
+   */
+  private predicate nodeCand2(Node node, boolean toReturn, Configuration config) {
+    nodeCandFwd2(node, _, config) and
+    (
+      config.isSink(node) and toReturn = false
+      or
+      exists(Node mid |
+        localFlowStep(node, mid, config) and
+        nodeCand2(mid, toReturn, config)
+      )
+      or
+      exists(Node mid |
+        jumpStep(node, mid) and
+        nodeCand2(mid, _, config) and
+        toReturn = false
+      )
+      or
+      // flow into a callable
+      exists(Node param |
+        viableParamArg(param, node) and
+        nodeCand2(param, false, config) and
+        toReturn = false
+      )
+      or
+      // flow out of a callable
+      exists(Method m, ExprNode ma |
+        nodeCand2(ma, _, config) and
+        toReturn = true and
+        m = node.(ReturnNode).getEnclosingCallable() and
+        m = viableImpl(ma.getExpr())
+      )
+      or
+      // flow through a callable
+      exists(Node call |
+        simpleArgumentFlowsThrough(node, call, config) and
+        nodeCand2(call, toReturn, config)
+      )
+    )
+  }
+
+  private predicate nodeCand(Node node, Configuration config) {
+    nodeCand2(node, _, config)
   }
 
   /**
@@ -376,13 +647,10 @@ module DataFlow {
    * Holds if `node` can be the last node in a maximal subsequence of local
    * flow steps in a dataflow path.
    */
-  private predicate localFlowExit(Node node, Configuration config) {
-    nodeCand(node, config) and
-    (
-      jumpStep(node, _) or
-      node instanceof ArgumentNode or
-      node instanceof ReturnNode
-    )
+  predicate localFlowExit(Node node) {
+    jumpStep(node, _) or
+    node instanceof ArgumentNode or
+    node instanceof ReturnNode
   }
 
   /**
@@ -410,7 +678,7 @@ module DataFlow {
   pragma[noinline]
   private predicate localFlowBigStep(Node node1, Node node2, Configuration config) {
     localFlowStepPlus(node1, node2, config) and
-    localFlowExit(node2, config)
+    localFlowExit(node2)
   }
 
   private module FlowDispatch {
@@ -602,8 +870,8 @@ module DataFlow {
 
   private newtype TCallContext =
     TAnyCallContext() or
-    TSpecificCall(Call call, int i) { reducedViableImplInCallContext(_, _, call) and exists(call.getArgument(i)) } or
-    TSomeCall(Parameter p) or
+    TSpecificCall(Call call, int i) { reducedViableImplInCallContext(_, _, call) and (exists(call.getArgument(i)) or i = -1 and not call.getCallee().isStatic()) } or
+    TSomeCall(ParameterNode p) or
     TReturn(Method m, MethodAccess ma) { reducedViableImplInReturn(m, ma) }
 
   /**
@@ -615,7 +883,7 @@ module DataFlow {
    * - `TSpecificCall(Call call, int i)` : Flow entered through the `i`th
    *    parameter at the given `call`. This call improves the set of viable
    *    dispatch targets for at least one method call in the current callable.
-   * - `TSomeCall(Parameter p)` : Flow entered through parameter `p`. The
+   * - `TSomeCall(ParameterNode p)` : Flow entered through parameter `p`. The
    *    originating call does not improve the set of dispatch targets for any
    *    method call in the current callable and was therefore not recorded.
    * - `TReturn(Method m, MethodAccess ma)` : Flow reached `ma` from `m` and
@@ -677,7 +945,7 @@ module DataFlow {
         cc instanceof CallContextAny
       )
       or
-      flowIntoCallable(source, node.asParameter(), _, cc, _, config)
+      flowIntoCallable(source, node, _, cc, _, config)
       or
       flowOutOfMethod(source, node.asExpr(), cc, config)
       or
@@ -733,23 +1001,23 @@ module DataFlow {
    * before and after entering the callable are `outercc` and `innercc`,
    * respectively.
    */
-  private predicate flowIntoCallable(Node source, Parameter p, CallContext outercc, CallContextCall innercc, Call call, Configuration config) {
+  private predicate flowIntoCallable(Node source, ParameterNode p, CallContext outercc, CallContextCall innercc, Call call, Configuration config) {
     exists(int i, Callable callable |
       flowIntoCallable0(source, callable, i, outercc, call, config) and
-      callable.getParameter(i) = p
+      p.isParameterOf(callable, i)
       |
       if reducedViableImplInCallContext(_, callable, call) then innercc = TSpecificCall(call, i) else innercc = TSomeCall(p)
     )
   }
 
   /** Holds if data may flow from `p` to a return statement in the callable. */
-  private predicate paramFlowsThrough(Parameter p, CallContextCall cc, Configuration config) {
+  private predicate paramFlowsThrough(ParameterNode p, CallContextCall cc, Configuration config) {
     exists(ReturnNode ret |
       flowsTo(_, ret, cc, config)
       |
       cc = TSomeCall(p) or
       exists(int i | cc = TSpecificCall(_, i) |
-        p = ret.getEnclosingCallable().getParameter(i)
+        p.isParameterOf(ret.getEnclosingCallable(), i)
       )
     )
   }
@@ -761,7 +1029,7 @@ module DataFlow {
    */
   pragma[noinline]
   private predicate flowThroughMethod(Node source, Call methodcall, CallContext cc, Configuration config) {
-    exists(Parameter p, CallContext innercc |
+    exists(ParameterNode p, CallContext innercc |
       flowIntoCallable(source, p, cc, innercc, methodcall, config) and
       paramFlowsThrough(p, innercc, config)
     )

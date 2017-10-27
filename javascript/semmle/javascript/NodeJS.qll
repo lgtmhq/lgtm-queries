@@ -308,17 +308,26 @@ private File tryExtensions(Folder dir, string basename, int priority) {
   )
 }
 
+/**
+ * An expression that evaluates to a constant string.
+ */
+class ConstantString extends Expr {
+  ConstantString() {
+    exists(getStringValue())
+  }
+}
+
 /** A literal path expression appearing in a `require` import. */
-private class LiteralRequiredPath extends PathExprInModule, @stringliteral {
+private class LiteralRequiredPath extends PathExprInModule, ConstantString {
   LiteralRequiredPath() {
     exists (Require req | this.getParentExpr*() = req.getArgument(0))
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.getStringValue() }
 }
 
 /** A literal path expression appearing in a call to `require.resolve`. */
-private class LiteralRequireResolvePath extends PathExprInModule, @stringliteral {
+private class LiteralRequireResolvePath extends PathExprInModule, ConstantString {
   LiteralRequireResolvePath() {
     exists (RequireVariable req, MethodCallExpr reqres |
       reqres.getReceiver() = req.getAnAccess() and
@@ -327,7 +336,7 @@ private class LiteralRequireResolvePath extends PathExprInModule, @stringliteral
     )
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.getStringValue() }
 }
 
 /** A `__dirname` path expression. */
@@ -365,15 +374,15 @@ private class JoinedPath extends PathExprInModule, @callexpr {
       call.getMethodName() = "join" and
       call.getNumArgument() = 2 and
       call.getArgument(0) instanceof PathExpr and
-      call.getArgument(1) instanceof StringLiteral
+      call.getArgument(1) instanceof ConstantString
     )
   }
 
   override string getValue() {
-    exists (CallExpr call, PathExpr left, StringLiteral right |
+    exists (CallExpr call, PathExpr left, ConstantString right |
       call = this and
       left = call.getArgument(0) and right = call.getArgument(1) |
-      result = left.getValue() + "/" + right.getValue()
+      result = left.getValue() + "/" + right.getStringValue()
     )
   }
 }

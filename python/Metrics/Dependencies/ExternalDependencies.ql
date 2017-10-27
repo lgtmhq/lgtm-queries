@@ -47,7 +47,7 @@ predicate src_package_count(File sourceFile, ExternalPackage package, int total)
         src.getLocation().getFile() = sourceFile
     )
 }
- 
+
 from File sourceFile, int total, string entity, ExternalPackage package
 where 
 src_package_count(sourceFile, package, total) and

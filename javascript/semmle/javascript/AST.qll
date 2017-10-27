@@ -85,7 +85,8 @@ class ASTNode extends @ast_node, Locatable {
   ASTNode getChild(int i) {
     result = getChildExpr(i) or
     result = getChildStmt(i) or
-    properties(result, this, i, _, _)
+    properties(result, this, i, _, _) or
+    result = getChildTypeExpr(i)
   }
 
   /** Gets the `i`th child statement of this node. */
@@ -96,6 +97,11 @@ class ASTNode extends @ast_node, Locatable {
   /** Gets the `i`th child expression of this node. */
   Expr getChildExpr(int i) {
     exprs(result, _, this, i, _)
+  }
+
+  /** Gets the `i`th child type expression of this node. */
+  TypeExpr getChildTypeExpr(int i) {
+    typeexprs(result, _, this, i, _)
   }
 
   /** Gets a child node of this node. */
@@ -143,7 +149,7 @@ class ASTNode extends @ast_node, Locatable {
     getTopLevel().isExterns()
   }
 
-  /** 
+  /**
    * Holds if this is part of an ambient declaration in a TypeScript file.
    *
    * A declaration is ambient if it occurs under a `declare` modifier or is

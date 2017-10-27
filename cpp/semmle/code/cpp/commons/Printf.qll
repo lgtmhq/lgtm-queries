@@ -55,10 +55,24 @@ class Fprintf extends FormattingFunction {
 }
 
 /**
- * The standard function sprintf and its glib variants.
+ * The standard function sprintf and its Microsoft and glib variants.
  */
 class Sprintf extends FormattingFunction {
-  Sprintf() { this instanceof TopLevelFunction and (hasGlobalName("sprintf") or hasGlobalName("g_strdup_printf") or hasGlobalName("g_sprintf")) }
+  Sprintf() {
+    this instanceof TopLevelFunction and
+    (
+      hasGlobalName("sprintf") or
+      hasGlobalName("_sprintf_l") or
+      hasGlobalName("__swprintf_l") or
+      hasGlobalName("wsprintf") or
+      hasGlobalName("g_strdup_printf") or
+      hasGlobalName("g_sprintf")
+    )
+  }
+
+  predicate isWideCharDefault() {
+    getParameter(getFormatParameterIndex()).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() > 1
+  }
 
   /** the position at which the format parameter occurs */
   int getFormatParameterIndex() {
@@ -79,13 +93,17 @@ class Snprintf extends FormattingFunction {
       hasGlobalName("snprintf") // C99 defines snprintf
       or hasGlobalName("swprintf") // The s version of wide-char printf is also always the n version
       // Microsoft has _snprintf as well as several other variations
+      or hasGlobalName("sprintf_s")
+      or hasGlobalName("swprintf_s")
       or hasGlobalName("_snprintf")
       or hasGlobalName("_snprintf_l")
       or hasGlobalName("_snwprintf")
       or hasGlobalName("_snwprintf_l")
       or hasGlobalName("_sprintf_s_l")
+      or hasGlobalName("_swprintf_l")
       or hasGlobalName("_swprintf_s_l")
       or hasGlobalName("g_snprintf")
+      or hasGlobalName("wnsprintf")
     )
   }
 
@@ -95,8 +113,42 @@ class Snprintf extends FormattingFunction {
       else result = getNumberOfParameters() - 1
   }
 
-  predicate isWideCharDefault() { getName().matches("%w%") }
+  predicate isWideCharDefault() {
+    getParameter(getFormatParameterIndex()).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() > 1
+  }
   int getOutputParameterIndex() { result=0 }
+}
+
+/**
+ * The Microsoft `StringCchPrintf` function and variants.
+ */
+class StringCchPrintf extends FormattingFunction {
+  StringCchPrintf() {
+    this instanceof TopLevelFunction and (
+      hasGlobalName("StringCchPrintf")
+      or hasGlobalName("StringCchPrintfEx")
+      or hasGlobalName("StringCchPrintf_l")
+      or hasGlobalName("StringCchPrintf_lEx")
+      or hasGlobalName("StringCbPrintf")
+      or hasGlobalName("StringCbPrintfEx")
+      or hasGlobalName("StringCbPrintf_l")
+      or hasGlobalName("StringCbPrintf_lEx")
+    )
+  }
+
+  int getFormatParameterIndex() {
+    if getName().matches("%Ex")
+      then result = 5
+      else result = 2
+  }
+
+  predicate isWideCharDefault() {
+    getParameter(getFormatParameterIndex()).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() > 1
+  }
+
+  int getOutputParameterIndex() {
+    result = 0
+  }
 }
 
 /**
@@ -275,6 +327,14 @@ class FormatLiteral extends Expr {
     getUse().getTarget().(FormattingFunction).isWideCharDefault()
   }
 
+  /**
+   * Holds if this FormatLiteral is in a context that supports
+   * Microsoft rules and extensions.
+   */
+  predicate isMicrosoft() {
+    getFile().compiledAsMicrosoft()
+  }
+
   /** the format string, with '%%' replaced by '_'
       (to avoid processing '%%' as a format specifier)
   */
@@ -294,11 +354,33 @@ class FormatLiteral extends Expr {
   }
 
   /** regular expressions to match the individual parts of a conversion specifier */
-  string getFlagRegexp() { result = "[-+ #0'I]*" }
-  string getFieldWidthRegexp() { result = "(?:[1-9][0-9]*|\\*|\\*[0-9]+\\$)?" }
-  string getPrecRegexp() { result = "(?:\\.(?:[0-9]*|\\*|\\*[0-9]+\\$))?" }
-  string getLengthRegexp() { result = "(?:hh?|ll?|L|q|j|z|t)?" }
-  string getConvCharRegexp() { result = "[aAcCdeEfFgGimnopsSuxX@]" }
+  string getFlagRegexp() {
+    if isMicrosoft() then (
+      result = "[-+ #0']*"
+    ) else (
+      result = "[-+ #0'I]*"
+    )
+  }
+  string getFieldWidthRegexp() {
+    result = "(?:[1-9][0-9]*|\\*|\\*[0-9]+\\$)?"
+  }
+  string getPrecRegexp() {
+    result = "(?:\\.(?:[0-9]*|\\*|\\*[0-9]+\\$))?"
+  }
+  string getLengthRegexp() {
+    if isMicrosoft() then (
+      result = "(?:hh?|ll?|L|q|j|z|t|w|I32|I64|I)?"
+    ) else (
+      result = "(?:hh?|ll?|L|q|j|z|Z|t)?"
+    )
+  }
+  string getConvCharRegexp() {
+    if isMicrosoft() then (
+      result = "[aAcCdeEfFgGimnopsSuxXZ@]"
+    ) else (
+      result = "[aAcCdeEfFgGimnopsSuxX@]"
+    )
+  }
 
   /** the regular expression used for matching a whole conversion specifier */
   string getConvSpecRegexp() {
@@ -429,6 +511,10 @@ class FormatLiteral extends Expr {
     else any()
   }
 
+  Wchar_t getWchar_t() {
+    result.getSize() = min(Wchar_t t | | t.getSize())
+  }
+
   Intmax_t getIntmax_t() {
          if this.targetBitSize() = 4 then result.getSize() = min(Intmax_t l | | l.getSize())
     else if this.targetBitSize() = 8 then result.getSize() = max(Intmax_t l | | l.getSize())
@@ -448,7 +534,7 @@ class FormatLiteral extends Expr {
   }
 
   /** the family of integral types required by the nth conversion specifier's length flag */
-  IntegralType getIntegralConversion(int n) {
+  Type getIntegralConversion(int n) {
     exists(string len | len = this.getLength(n) and
         ((len="hh" and result instanceof IntType)
       or (len="h" and result instanceof IntType)
@@ -460,7 +546,15 @@ class FormatLiteral extends Expr {
       or ((len="z" or len="Z")
                   and result = this.getSize_t())
       or (len="t" and result = this.getPtrdiff_t())
-      or (len=""  and result instanceof IntType)))
+      or (len="I" and result instanceof IntType)
+      or (len="I32" and exists(MicrosoftInt32Type t |
+        t.getUnsigned() = result.(IntegralType).getUnsigned() 
+      ))
+      or (len="I64" and exists(MicrosoftInt64Type t |
+        t.getUnsigned() = result.(IntegralType).getUnsigned() 
+      ))
+      or (len=""  and result instanceof IntType)
+    ))
   }
 
   /** the family of integral types output / displayed by the nth conversion specifier's length flag */
@@ -476,6 +570,13 @@ class FormatLiteral extends Expr {
       or ((len="z" or len="Z")
                   and result = this.getSize_t())
       or (len="t" and result = this.getPtrdiff_t())
+      or (len="I" and result instanceof IntType)
+      or (len="I32" and exists(MicrosoftInt32Type t |
+        t.getUnsigned() = result.getUnsigned()
+      ))
+      or (len="I64" and exists(MicrosoftInt64Type t |
+        t.getUnsigned() = result.getUnsigned()
+      ))
       or (len=""  and result instanceof IntType)))
   }
 
@@ -505,20 +606,59 @@ class FormatLiteral extends Expr {
   /** the argument type required by the nth conversion specifier */
   Type getConversionType(int n) {
     result = getConversionType1(n) or
+    result = getConversionType1b(n) or
     result = getConversionType2(n) or
     result = getConversionType3(n) or
     result = getConversionType4(n) or
     result = getConversionType5(n) or
     result = getConversionType6(n) or
     result = getConversionType7(n) or
-    result = getConversionType8(n)
+    result = getConversionType8(n) or
+    result = getConversionType9(n) or
+    result = getConversionType10(n)
   }
 
   private Type getConversionType1(int n) {
     exists(string cnv | cnv = this.getConversionChar(n) |
-      cnv.regexpMatch("c|C|d|i") and result = this.getIntegralConversion(n)
+      cnv.regexpMatch("d|i") and result = this.getIntegralConversion(n)
       and not result.(IntegralType).isExplicitlySigned()
       and not result.(IntegralType).isExplicitlyUnsigned()
+    )
+  }
+
+  /**
+   * Gets the 'effective' char type character, that is, 'c' (meaning a `char`) or
+   * 'C' (meaning a `wchar_t`).
+   *  - in the base case this is the same as the format type character.
+   *  - for a `wprintf` or similar function call, the meanings are reversed.
+   *  - the size prefixes 'l'/'w' (long) and 'h' (short) override the
+   *    type character to effectively 'C' or 'c' respectively.
+   */
+  private string getEffectiveCharConversionChar(int n) {
+    exists(string len, string conv | this.parseConvSpec(n, _, _, _, _, len, conv) and (conv = "c" or conv = "C") |
+      (len = "l" and result = "C") or
+      (len = "w" and result = "C") or
+      (len = "h" and result = "c") or
+      (len != "l" and len != "w" and len != "h" and (result = "c" or result = "C") and (if isWideCharDefault() then result != conv else result = conv))
+    )
+  }
+
+  private Type getConversionType1b(int n) {
+    exists(string cnv | cnv = this.getEffectiveCharConversionChar(n) |
+      (
+        cnv = "c" and
+        result instanceof CharType and
+        not result.(CharType).isExplicitlySigned() and
+        not result.(CharType).isExplicitlyUnsigned()
+      ) or (
+        cnv = "C" and
+        isMicrosoft() and
+        result = this.getWchar_t()
+      ) or (
+        cnv = "C" and
+        not isMicrosoft() and
+        result.hasName("wint_t")
+      )
     )
   }
 
@@ -534,11 +674,20 @@ class FormatLiteral extends Expr {
     )
   }
 
+  /**
+   * Gets the 'effective' string type character, that is, 's' (meaning a char string) or
+   * 'S' (meaning a wide string).
+   *  - in the base case this is the same as the format type character.
+   *  - for a `wprintf` or similar function call, the meanings are reversed.
+   *  - the size prefixes 'l'/'w' (long) and 'h' (short) override the
+   *    type character to effectively 'S' or 's' respectively.
+   */
   private string getEffectiveStringConversionChar(int n) {
     exists(string len, string conv | this.parseConvSpec(n, _, _, _, _, len, conv) and (conv = "s" or conv = "S") |
       (len = "l" and result = "S") or
+      (len = "w" and result = "S") or
       (len = "h" and result = "s") or
-      (len != "l" and len != "h" and (result = "s" or result = "S") and (if isWideCharDefault() then result != conv else result = conv))
+      (len != "l" and len != "w" and len != "h" and (result = "s" or result = "S") and (if isWideCharDefault() then result != conv else result = conv))
     )
   }
 
@@ -552,7 +701,7 @@ class FormatLiteral extends Expr {
 
   private Type getConversionType5(int n) {
     exists(string cnv | cnv = this.getEffectiveStringConversionChar(n) |
-      cnv="S" and exists(Wchar_t wch | wch = result.(PointerType).getBaseType() and wch.isConst())
+      cnv="S" and result.(PointerType).getBaseType() = this.getWchar_t() 
     )
   }
 
@@ -571,6 +720,27 @@ class FormatLiteral extends Expr {
   private Type getConversionType8(int n) {
     exists(string cnv | cnv = this.getConversionChar(n) |
       cnv="n" and not exists(this.getStorePointerConversion(n)) and result instanceof IntPointerType
+    )
+  }
+  
+  private Type getConversionType9(int n) {
+    this.getConversionChar(n) = "Z" and
+    (
+      this.getLength(n) = "l" or
+      this.getLength(n) = "w"
+    ) and exists(Type t |
+      t.getName() = "UNICODE_STRING" and
+      result.(PointerType).getBaseType() = t
+    )
+  }
+  
+  private Type getConversionType10(int n) {
+    this.getConversionChar(n) = "Z" and
+    not this.getLength(n) = "l" and
+    not this.getLength(n) = "w" and
+    exists(Type t |
+      t.getName() = "ANSI_STRING" and
+      result.(PointerType).getBaseType() = t
     )
   }
 
@@ -604,9 +774,18 @@ class FormatLiteral extends Expr {
       and
       (this.getConversionChar(n)="%" and
          len = 1
-      or this.getConversionChar(n).toLowerCase()="c" and
-         this.getLength(n)="" and len = 1 // e.g. 'a'
-      or this.getConversionChar(n).toLowerCase()="f" and
+      or (
+        this.getConversionChar(n).toLowerCase()="c" and
+        if (this.getEffectiveCharConversionChar(n)="C" and
+            not isMicrosoft() and
+            not isWideCharDefault()) then (
+          len = 6 // MB_LEN_MAX
+            // the wint_t (wide character) argument is converted
+            // to a multibyte sequence by a call to the wcrtomb(3) 
+        ) else (
+          len = 1 // e.g. 'a'
+        )
+      ) or this.getConversionChar(n).toLowerCase()="f" and
          exists(int dot, int afterdot |
            (if this.getPrecision(n) = 0 then dot = 0 else dot = 1)
            and
@@ -709,7 +888,7 @@ class FormatLiteral extends Expr {
     )
   }
 
-  /** as getMaxConvertedLength, except that float to string conversions are assumed to be 8 bytes.  This is helpful
+  /** as getMaxConvertedLength, except that float to string conversions are assumed to be 8 characters.  This is helpful
       for determining whether a buffer overflow is caused by long float to string conversions. */
   int getMaxConvertedLengthLimited(int n) {
     if this.getConversionChar(n).toLowerCase() = "f" then (

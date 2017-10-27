@@ -29,87 +29,18 @@ private import DefUse
 private import semmle.code.java.dispatch.VirtualDispatch
 private import semmle.code.java.dispatch.WrappedInvocation
 
-private module SsaSourceVariableImpl {
-
-  /** A type qualifier for a `ThisAccess` or `SuperAccess`. */
-  private newtype TThisQualifier = TThis() or TEnclosing(RefType t)
-
-  /**
-   * Gets the implicit type qualifier of the implicit `ThisAccess` qualifier of
-   * an access to `f` from within `ic`, which does not itself inherit `f`.
-   */
-  private RefType getImplicitEnclosingQualifier(InnerClass ic, Field f) {
-    exists(RefType enclosing | enclosing = ic.getEnclosingType() |
-      if enclosing.inherits(f) then
-        result = enclosing
-      else
-        result = getImplicitEnclosingQualifier(enclosing, f)
-    )
-  }
-
-  /**
-   * Gets the implicit type qualifier of the implicit `ThisAccess` qualifier of `fa`.
-   */
-  private TThisQualifier getImplicitQualifier(FieldAccess fa) {
-    exists(Field f | f = fa.getField() |
-      not f.isStatic() and
-      not exists(fa.getQualifier()) and
-      exists(RefType t | t = fa.getEnclosingCallable().getDeclaringType() |
-        not t instanceof InnerClass and result = TThis() or
-        exists(InnerClass ic | ic = t |
-          if ic.inherits(f) then
-            result = TThis()
-          else
-            result = TEnclosing(getImplicitEnclosingQualifier(ic, f))
-        )
-      )
-    )
-  }
-
-  /**
-   * Gets the type qualifier of the `ThisAccess` or `SuperAccess` qualifier of `fa`.
-   */
-  private TThisQualifier getThisQualifier(FieldAccess fa) {
-    result = getImplicitQualifier(fa) or
-    exists(RefType t, Expr q |
-      not fa.getField().isStatic() and
-      t = fa.getEnclosingCallable().getDeclaringType() and
-      q = fa.getQualifier()
-      |
-      exists(ThisAccess ta | ta = q and not exists(ta.getQualifier()) and result = TThis()) or
-      exists(SuperAccess sa | sa = q and not exists(sa.getQualifier()) and result = TThis()) or
-      exists(Expr qq, RefType qt | qq = q.(ThisAccess).getQualifier() or qq = q.(SuperAccess).getQualifier() |
-        qt = qq.getType().(RefType).getSourceDeclaration() and
-        if qt = t then result = TThis() else result = TEnclosing(qt)
-      )
-    )
-  }
-
-  /** Holds if `fa` is a field access to an instance field of `this`. */
-  predicate ownFieldAccess(FieldAccess fa) {
-    TThis() = getThisQualifier(fa)
-  }
-
-  /** Holds if `fa` is a field access to an instance field of the enclosing class `t`. */
-  predicate enclosingFieldAccess(FieldAccess fa, RefType t) {
-    TEnclosing(t) = getThisQualifier(fa)
-  }
-
-  predicate fieldAccessInCallable(FieldAccess fa, Field f, Callable c) {
-    f = fa.getField() and
-    c = fa.getEnclosingCallable()
-  }
-
+private predicate fieldAccessInCallable(FieldAccess fa, Field f, Callable c) {
+  f = fa.getField() and
+  c = fa.getEnclosingCallable()
 }
-private import SsaSourceVariableImpl
 
 private newtype TSsaSourceVariable =
   TLocalVar(Callable c, LocalScopeVariable v) { c = v.getCallable() or c = v.getAnAccess().getEnclosingCallable() } or
   TPlainField(Callable c, Field f) {
-    exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and (ownFieldAccess(fr) or f.isStatic()))
+    exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and (fr.isOwnFieldAccess() or f.isStatic()))
   } or
   TEnclosingField(Callable c, Field f, RefType t) {
-    exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and enclosingFieldAccess(fr, t))
+    exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and fr.isEnclosingFieldAccess(t))
   } or
   TQualifiedField(Callable c, SsaSourceVariable q, InstanceField f) {
     exists(FieldRead fr | fieldAccessInCallable(fr, f, c) and fr.getQualifier() = q.getAnAccess())
@@ -140,9 +71,9 @@ class SsaSourceVariable extends TSsaSourceVariable {
   VarAccess getAnAccess() {
     exists(LocalScopeVariable v, Callable c | this = TLocalVar(c, v) and result = v.getAnAccess() and result.getEnclosingCallable() = c) or
     exists(Field f, Callable c | fieldAccessInCallable(result, f, c) |
-      (ownFieldAccess(result) or f.isStatic()) and this = TPlainField(c, f)
+      (result.(FieldAccess).isOwnFieldAccess() or f.isStatic()) and this = TPlainField(c, f)
       or
-      exists(RefType t | this = TEnclosingField(c, f, t) and enclosingFieldAccess(result, t))
+      exists(RefType t | this = TEnclosingField(c, f, t) and result.(FieldAccess).isEnclosingFieldAccess(t))
       or
       exists(SsaSourceVariable q | result.getQualifier() = q.getAnAccess() and this = TQualifiedField(c, q, f))
     )
@@ -397,7 +328,7 @@ private cached module SsaImpl {
    */
   private predicate init(FieldWrite fw) {
     fw.getEnclosingCallable() instanceof InitializerMethod or
-    fw.getEnclosingCallable() instanceof Constructor and ownFieldAccess(fw) or
+    fw.getEnclosingCallable() instanceof Constructor and fw.isOwnFieldAccess() or
     exists(LocalVariableDecl v |
       v.getAnAccess() = fw.getQualifier() and
       forex(VariableAssign va | va.getDestVar() = v and exists(va.getSource()) |
@@ -419,7 +350,7 @@ private cached module SsaImpl {
 
   /** Holds if `c` can change the value of `this.f` and is relevant for SSA construction. */
   private predicate setsOwnField(Method c, Field f) {
-    exists(FieldWrite fw | relevantFieldUpdate(c, f, fw) and ownFieldAccess(fw))
+    exists(FieldWrite fw | relevantFieldUpdate(c, f, fw) and fw.isOwnFieldAccess())
   }
 
   /**
@@ -427,7 +358,7 @@ private cached module SsaImpl {
    * construction excluding those cases covered by `setsOwnField`.
    */
   private predicate setsOtherField(Callable c, Field f) {
-    exists(FieldWrite fw | relevantFieldUpdate(c, f, fw) and not ownFieldAccess(fw))
+    exists(FieldWrite fw | relevantFieldUpdate(c, f, fw) and not fw.isOwnFieldAccess())
   }
 
   pragma[nomagic]

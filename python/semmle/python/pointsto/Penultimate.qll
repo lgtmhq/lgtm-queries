@@ -333,6 +333,21 @@ module PenultimatePointsTo {
             not Calls::callToClassMayNotReturnInstance(cls)
         }
 
+         /** Holds if f is of the form `obj.meth` where `obj` refers to an instance of `super` and
+          * `function` is the method `T.meth` that is bound.
+          */
+        
+        predicate super_bound_method(AttrNode f, PenultimateContext context, EssaVariable self, Object function) {
+             exists(CallNode super_call, ControlFlowNode super_use, ClassObject mro_type, ClassObject start_type, ClassObject self_type, string name |
+                 super_call(super_call, context, self, mro_type) and
+                 points_to(super_use, context, super_call, _, _) and
+                 Layer::ssa_variable_points_to(self, context, _, self_type, _) and
+                 start_type = Types::next_in_mro(self_type, mro_type) and
+                 super_use = f.getObject(name) and
+                 Types::class_lookup_in_mro(self_type, start_type, name, function)
+             )
+         }
+
     }
 
     /** Predicates in this layer need to visible to the next layer, but not otherwise */
@@ -383,6 +398,8 @@ module PenultimatePointsTo {
         }
 
         predicate has_explicit_metaclass(ClassObject cls) {
+            exists(EssaVariable var | var.getName() = "__metaclass__" and var.getAUse() = cls.getPyClass().getANormalExit())
+            or
             exists(cls.declaredMetaClass())
             or
             exists(ClassObject cmeta | py_cobjecttypes(cls, cmeta) and is_c_metaclass(cmeta))
@@ -391,6 +408,11 @@ module PenultimatePointsTo {
         }
 
         ClassObject class_explicit_metaclass(ClassObject cls) {
+            exists(EssaVariable var | 
+                var.getName() = "__metaclass__" and var.getAUse() = cls.getPyClass().getANormalExit() and
+                ssa_variable_points_to(var, _, result, _, _)
+            )
+            or
             points_to(cls.declaredMetaClass(), _, result, _, _)
             or
             py_cobjecttypes(cls, result) and is_c_metaclass(result)
@@ -460,7 +482,7 @@ module PenultimatePointsTo {
         or
         Calls::call_points_to(f, context, value, cls, origin)
         or
-        Calls::super_bound_method(f, context, _, _) and value = f and origin = f and cls = theBoundMethodType()
+        super_bound_method(f, context, _, _) and value = f and origin = f and cls = theBoundMethodType()
         or
         sys_version_info_slice(f, context, cls) and value = f and origin = f
         or
@@ -997,20 +1019,6 @@ module PenultimatePointsTo {
              or
              /* Case 5c */
              call_to_procedure_points_to(f, context, value, cls, origin)
-         }
-
-         /** Holds if f is of the form `obj.meth` where `obj` refers to an instance of `super` and
-          * `function` is the method `T.meth` that is bound.
-          */
-         predicate super_bound_method(AttrNode f, PenultimateContext context, EssaVariable self, Object function) {
-             exists(CallNode super_call, ControlFlowNode super_use, ClassObject mro_type, ClassObject start_type, ClassObject self_type, string name |
-                 super_call(super_call, context, self, mro_type) and
-                 points_to(super_use, context, super_call, _, _) and
-                 Layer::ssa_variable_points_to(self, context, _, self_type, _) and
-                 start_type = Types::next_in_mro(self_type, mro_type) and
-                 super_use = f.getObject(name) and
-                 Types::class_lookup_in_mro(self_type, start_type, name, function)
-             )
          }
 
          /** INTERNAL -- Public for testing only.
@@ -1880,7 +1888,7 @@ module PenultimatePointsTo {
              or
              major_version() = 3
              or
-             exists(cls.declaredMetaClass())
+             exists(Layer::class_explicit_metaclass(cls))
              or
              is_new_style(class_base_type(cls, _))
          }

@@ -33,6 +33,11 @@ private predicate global_variable_maybe_used_in_call(GlobalVariable v, CallNode 
     )
 }
 
+private predicate class_with_global_metaclass(Class cls, GlobalVariable metaclass) {
+    metaclass.getId() = "__metaclass__" and major_version() = 2 and
+    cls.getEnclosingModule() = metaclass.getScope()
+}
+
 /** Python specific version of `SsaSourceVariable`. */
 private class PythonSsaSourceVariable extends SsaSourceVariable {
 
@@ -67,6 +72,12 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
         SsaSource::import_star_refinement(this, result, _)
         or
         SsaSource::variable_refined_at_callsite(this, result)
+        or
+        /* For implicit use of __metaclass__ when constructing class */
+        exists(Class c |
+            class_with_global_metaclass(c, this) and
+            c.(ImportTimeScope).entryEdge(result, _)
+        )
     }
 
     private ControlFlowNode implicitUseAtScopeExit() {
@@ -85,6 +96,8 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
             or
             s instanceof Module and this.(Variable).getScope() = s and
             (this.getName() = "__name__" or this.getName() = "__package__")
+            or
+            class_with_global_metaclass(s, this)
         )
         or
         exists(ImportTimeScope s |
@@ -213,6 +226,9 @@ cached module SsaSource {
                 refinement(v, use, _) and
                 use.getScope().getEntryNode() = entry
             )
+            or
+            /* For implicit use of __metaclass__ when constructing class */
+            class_with_global_metaclass(s, v)
         )
     }
 
@@ -234,8 +250,8 @@ cached module SsaSource {
     }
 
     /** Holds if `v` is deleted at `del`. */
-    cached predicate deletion_definition(Variable v, ControlFlowNode del) {
-        del.(NameNode).deletes(v)
+    cached predicate deletion_definition(Variable v, DeletionNode del) {
+        del.getTarget().(NameNode).deletes(v)
     }
 
     /** Holds if the name of `var` refers to a submodule of a package and `f` is the entry point
@@ -292,9 +308,9 @@ cached module SsaSource {
     }
 
     /** Holds if an attribute is deleted  at `def` and `use` is the use of `v` for that deletion */
-    cached predicate attribute_deletion_refinement(Variable v, ControlFlowNode use, ControlFlowNode def) {
-        use.(NameNode).uses(v) and
-        def.isDelete() and def.(AttrNode).getObject() = use
+    cached predicate attribute_deletion_refinement(Variable v, NameNode use, DeletionNode def) {
+        use.uses(v) and
+        def.getTarget().(AttrNode).getObject() = use
     }
 
     /** Holds if the set of possible values for `v` is refined by `test` and `use` is the use of `v` in that test. */

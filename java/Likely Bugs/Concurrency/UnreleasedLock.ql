@@ -26,6 +26,8 @@
  */
 import java
 import semmle.code.java.dataflow.Guards
+import semmle.code.java.dataflow.SSA
+import semmle.code.java.dataflow.DefUse
 import semmle.code.java.frameworks.Mockito
 
 class LockType extends RefType {
@@ -97,7 +99,16 @@ predicate lockUnlockBlock(LockType t, BasicBlock b, int netlocks) {
 predicate failedLock(LockType t, BasicBlock lockblock, BasicBlock exblock) {
   exists (ControlFlowNode lock |
     lock = lockblock.getLastNode() and
-    lock = t.getLockAccess() and
+    (
+      lock = t.getLockAccess()
+      or
+      exists(SsaExplicitUpdate lockbool |
+        // Using the value of `t.getLockAccess()` ensures that it is a `tryLock` call.
+        lock = lockbool.getAUse() and
+        lockbool.getDefiningExpr().(VariableAssign).getSource() = t.getLockAccess()
+      )
+    )
+    and
     (
       lock.getAnExceptionSuccessor() = exblock or
       lock.(ConditionNode).getAFalseSuccessor() = exblock

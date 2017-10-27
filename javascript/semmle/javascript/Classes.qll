@@ -21,61 +21,109 @@
 import Stmt
 
 /**
- * A class definition, that is, either a class declaration statement or a
- * class expression.
+ * A class or interface definition.
  */
-class ClassDefinition extends @classdecl, ASTNode {
-  /** Gets the identifier naming the defined class, if any. */
-  VarDecl getIdentifier() {
-    result = getChildExpr(0)
-  }
+class ClassOrInterface extends @classorinterface, ASTNode {
+  /** Gets the identifier naming the declared type, if any. */
+  Identifier getIdentifier() { none() } // Overridden in subtypes.
 
-  /** Gets the name of the defined class, if any. */
+  /** Gets the name of the defined class or interface, if any. */
   string getName() {
     result = getIdentifier().getName()
   }
 
-  /** Gets the expression denoting the super class of the defined class, if any. */
-  Expr getSuperClass() {
-    result = getChildExpr(1)
-  }
-
-  /** Gets the nearest enclosing function or toplevel in which this class definition occurs. */
+  /** Gets the nearest enclosing function or toplevel in which this class or interface occurs. */
   StmtContainer getContainer() {
-    result = this.(Stmt).getContainer()
-    or
-    result = this.(Expr).getContainer()
+    result = this.(ExprOrStmt).getContainer()
   }
 
-  /** Gets a member declared in this class. */
-  MemberDefinition getAMember() {
-    result.getDeclaringClass() = this
+  /** Gets a member declared in this class or interface. */
+  MemberDeclaration getAMember() {
+    result.getDeclaringType() = this
   }
 
-  /** Gets the member with the given name declared in this class. */
-  MemberDefinition getMember(string name) {
+  /** Gets the member with the given name declared in this class or interface. */
+  MemberDeclaration getMember(string name) {
     result = getAMember() and
     result.getName() = name
   }
 
-  /** Gets a method declared in this class. */
-  MethodDefinition getAMethod() {
+  /** Gets a method declared in this class or interface. */
+  MethodDeclaration getAMethod() {
     result = getAMember()
   }
 
-  /** Gets the method with the given name declared in this class. */
-  MethodDefinition getMethod(string name) {
+  /** Gets the method with the given name declared in this class or interface. */
+  MethodDeclaration getMethod(string name) {
     result = getMember(name)
   }
 
-  /** Gets a field declared in this class. */
-  FieldDefinition getAField() {
+  /** Gets a field declared in this class or interface. */
+  FieldDeclaration getAField() {
     result = getAMember()
   }
 
-  /** Gets the field with the given name declared in this class. */
-  FieldDefinition getField(string name) {
+  /** Gets the field with the given name declared in this class or interface. */
+  FieldDeclaration getField(string name) {
     result = getMember(name)
+  }
+
+  /** Gets a call signature declared in this class or interface. */
+  CallSignature getACallSignature() {
+    result = getAMember()
+  }
+
+  /**
+   * Gets the expression denoting the super class of this class,
+   * or nothing if this is an interface or a class without an `extends` clause.
+   */
+  Expr getSuperClass() { none() }
+
+  /**
+   * Gets the `n`th type from the `implements` clause of this class or `extends` clause of this interface,
+   * starting at 0.
+   */
+  TypeExpr getSuperInterface(int n) { none() }
+
+  /**
+   * Gets any type from the `implements` clause of this class or `extends` clause of this interface.
+   */
+  TypeExpr getASuperInterface() { result = getSuperInterface(_) }
+
+  /**
+   * Gets a description of this class or interface.
+   *
+   * For named types such as `class C { ... }`, this is just the declared
+   * name. For classes assigned to variables, this is the name of the variable.
+   * If no meaningful name can be inferred, the result is "anonymous class" or
+   * "anonymous interface".
+   */
+  string describe() { none() } // Overridden in subtypes.
+}
+
+/**
+ * A class definition, that is, either a class declaration statement or a
+ * class expression.
+ */
+class ClassDefinition extends @classdefinition, ClassOrInterface {
+  /** Gets the identifier naming the defined class, if any. */
+  override VarDecl getIdentifier() {
+    result = getChildExpr(0)
+  }
+
+  /** Gets the expression denoting the super class of the defined class, if any. */
+  override Expr getSuperClass() {
+    result = getChildExpr(1)
+  }
+
+  /** Gets the `n`th type from the `implements` clause of this class, starting at 0. */
+  override TypeExpr getSuperInterface(int i) {
+    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -1 and i = -astIndex / 2)
+  }
+
+  /** Gets any type from the `implements` clause of this class. */
+  override TypeExpr getASuperInterface() {
+    result = ClassOrInterface.super.getASuperInterface()
   }
 
   /**
@@ -84,7 +132,7 @@ class ClassDefinition extends @classdecl, ASTNode {
    * Note that every class has a constructor: if no explicit constructor
    * is declared, it has a synthetic default constructor.
    */
-  ConstructorDefinition getConstructor() {
+  ConstructorDeclaration getConstructor() {
     result = getAMethod()
   }
 
@@ -95,7 +143,7 @@ class ClassDefinition extends @classdecl, ASTNode {
    * `@A` as its 0th decorator, and `@B` as its first decorator.
    */
   Decorator getDecorator(int i) {
-    result = getChildExpr(-(i+1))
+    exists (int astIndex | exprs(result, _, this, astIndex, _) | astIndex <= -2 and i = -(astIndex / 2 + 1))
   }
 
   /**
@@ -108,14 +156,7 @@ class ClassDefinition extends @classdecl, ASTNode {
     result = getDecorator(_)
   }
 
-  /**
-   * Gets a description of this class.
-   *
-   * For named classes such as `class C { ... }`, this is just the declared
-   * name. For classes assigned to variables, this is the name of the variable.
-   * If no meaningful name can be inferred, the result is "anonymous class".
-   */
-  string describe() {
+  override string describe() {
     if exists(inferNameFromVarDef()) then
       result = inferNameFromVarDef()
     else
@@ -203,7 +244,7 @@ class ClassExpr extends @classexpr, ClassDefinition, Expr {
 }
 
 /** Members that are initialized at class creation time (as opposed to instance creation time). */
-private class ClassInitializedMember extends MemberDefinition {
+private class ClassInitializedMember extends MemberDeclaration {
   ClassInitializedMember() {
     this instanceof MethodDefinition or this.isStatic()
   }
@@ -280,12 +321,22 @@ class ClassExprScope extends @classexprscope, Scope {
 }
 
 /**
- * A member definition in a class, that is, either a method definition or a field definition.
+ * A member declaration in a class or interface, that is, either a method declaration or a field declaration.
+ *
+ * The subtype `MemberSignature` contains TypeScript members that are abstract, ambient, or
+ * overload signatures.
+ *
+ * The subtype `MemberDefinition` contains all members that are not signatures. In regular
+ * JavaScript, all members are definitions.
+ *
+ * There are also subtypes for working with specific kinds of members, such as `FieldDeclaration`,
+ * `FieldSignature`, and `FieldDefinition`, and similarly named subtypes for methods, constructors, and
+ * getters and setters.
  */
-class MemberDefinition extends @property, ASTNode {
-  MemberDefinition() {
+class MemberDeclaration extends @property, ASTNode {
+  MemberDeclaration() {
     // filter out property patterns and object properties
-    exists (ClassDefinition cl | properties(this, cl, _, _, _))
+    exists (ClassOrInterface cl | properties(this, cl, _, _, _))
   }
 
   /**
@@ -305,14 +356,15 @@ class MemberDefinition extends @property, ASTNode {
   }
 
   /**
-   * Gets the expression specifying the name of this member.
+   * Gets the expression specifying the name of this member,
+   * or nothing if this is a call signature.
    */
   Expr getNameExpr() {
     result = getChildExpr(0)
   }
 
   /**
-   * Gets the expression specifying the initial value of the class member;
+   * Gets the expression specifying the initial value of the member;
    * for methods and constructors this is always a function, for fields
    * it may not be defined.
    */
@@ -331,7 +383,12 @@ class MemberDefinition extends @property, ASTNode {
     isComputed(this)
   }
 
-  /** Gets the class this member belongs to. */
+  /** Gets the class or interface this member belongs to. */
+  ClassOrInterface getDeclaringType() {
+    properties(this, result, _, _, _)
+  }
+
+  /** Gets the class this member belongs to, if any. */
   ClassDefinition getDeclaringClass() {
     properties(this, result, _, _, _)
   }
@@ -343,7 +400,7 @@ class MemberDefinition extends @property, ASTNode {
 
   /** Gets the nearest enclosing function or toplevel in which this member occurs. */
   StmtContainer getContainer() {
-    result = getDeclaringClass().getContainer()
+    result = getDeclaringType().getContainer()
   }
 
   /** Holds if the name of this member is computed by an impure expression. */
@@ -378,13 +435,49 @@ class MemberDefinition extends @property, ASTNode {
   override ControlFlowNode getFirstControlFlowNode() {
     result = getNameExpr().getFirstControlFlowNode()
   }
+
+  /**
+   * True if this is neither abstract, ambient, nor part of an overloaded method signature.
+   */
+  predicate isConcrete() {
+    not isAbstract() and
+    not isAmbient() and
+    (this instanceof MethodDeclaration implies this.(MethodDeclaration).getBody().hasBody())
+  }
+
+  /**
+   * True if this is abstract, ambient, or an overload signature.
+   */
+  predicate isSignature() {
+    not isConcrete()
+  }
 }
 
 /**
- * A method definition in a class.
+ * A concrete member of a class, that is, a non-abstract, non-ambient field or method with a body.
  */
-class MethodDefinition extends MemberDefinition {
-  MethodDefinition() {
+class MemberDefinition extends MemberDeclaration {
+  MemberDefinition() {
+    isConcrete()
+  }
+}
+
+/**
+ * A member signature declared in a class or interface, that is, an abstract or ambient field or method without a function body.
+ */
+class MemberSignature extends MemberDeclaration {
+  MemberSignature() {
+    isSignature()
+  }
+}
+
+/**
+ * A method declaration in a class or interface, either a concrete definition or a signature without a body.
+ *
+ * Note that TypeScript call signatures are not considered methods.
+ */
+class MethodDeclaration extends MemberDeclaration {
+  MethodDeclaration() {
     isMethod(this)
   }
 
@@ -397,10 +490,24 @@ class MethodDefinition extends MemberDefinition {
 }
 
 /**
- * A constructor definition in a class.
+ * A concrete method definition in a class.
  */
-class ConstructorDefinition extends MethodDefinition {
-  ConstructorDefinition() {
+class MethodDefinition extends MethodDeclaration, MemberDefinition {
+}
+
+/**
+ * A method signature declared in a class or interface, that is, a method without a function body.
+ *
+ * Note that TypeScript call signatures are not considered method signatures.
+ */
+class MethodSignature extends MethodDeclaration, MemberSignature {
+}
+
+/**
+ * A constructor declaration in a class, either a concrete definition or a signature without a body.
+ */
+class ConstructorDeclaration extends MethodDeclaration {
+  ConstructorDeclaration() {
     not isComputed() and not isStatic() and
     getName() = "constructor"
   }
@@ -412,8 +519,18 @@ class ConstructorDefinition extends MethodDefinition {
 }
 
 /**
- * A function generated by the extractor to implement
- * a synthetic default constructor.
+ * The concrete constructor definition of a class, possibly a synthetic constructor if the class
+ * did not declare any constructors.
+ */
+class ConstructorDefinition extends ConstructorDeclaration, MethodDefinition {}
+
+/**
+ * A constructor signature declared in a class, that is, a constructor without a function body.
+ */
+class ConstructorSignature extends ConstructorDeclaration, MethodSignature {}
+
+/**
+ * A function generated by the extractor to implement a synthetic default constructor.
  */
 class SyntheticConstructor extends Function {
   SyntheticConstructor() {
@@ -422,28 +539,117 @@ class SyntheticConstructor extends Function {
 }
 
 /**
- * An accessor method definition in a class.
+ * An accessor method declaration in a class or interface, either a concrete definition or a signature without a body.
  */
-abstract class AccessorMethodDefinition extends MethodDefinition {
+abstract class AccessorMethodDeclaration extends MethodDeclaration {
 }
 
 /**
- * A getter method definition in a class.
+ * A concrete accessor method definition in a class, that is, an accessor method with a function body.
  */
-class GetterMethodDefinition extends AccessorMethodDefinition, @property_getter {
+abstract class AccessorMethodDefinition extends MethodDefinition, AccessorMethodDeclaration {
 }
 
 /**
- * A setter method definition in a class.
+ * An accessor method signature declared in a class or interface, that is, an accessor method without a function body.
  */
-class SetterMethodDefinition extends AccessorMethodDefinition, @property_setter {
+abstract class AccessorMethodSignature extends MethodSignature, AccessorMethodDeclaration {
 }
 
 /**
- * A field definition in a class.
+ * A getter method declaration in a class or interface, either a concrete definition or a signature without a function body.
  */
-class FieldDefinition extends MemberDefinition {
-  FieldDefinition() {
-    not isMethod(this)
+class GetterMethodDeclaration extends AccessorMethodDeclaration, @property_getter {
+}
+
+/**
+ * A concrete getter method definition in a class, that is, a getter method with a function body.
+ */
+class GetterMethodDefinition extends GetterMethodDeclaration, AccessorMethodDefinition {
+}
+
+/**
+ * A getter method signature declared in a class or interface, that is, a getter method without a function body.
+ */
+class GetterMethodSignature extends GetterMethodDeclaration, AccessorMethodSignature {
+}
+
+/**
+ * A setter method declaration in a class or interface, either a concrete definition or a signature without a body.
+ */
+class SetterMethodDeclaration extends AccessorMethodDeclaration, @property_setter {
+}
+
+/**
+ * A concrete setter method definition in a class, that is, a setter method with a function body
+ */
+class SetterMethodDefinition extends SetterMethodDeclaration, AccessorMethodDefinition {
+}
+
+/**
+ * A setter method signature declared in a class or interface, that is, a setter method without a function body.
+ */
+class SetterMethodSignature extends SetterMethodDeclaration, AccessorMethodSignature {
+}
+
+/**
+ * A field declaration in a class or interface, either a concrete definition or an abstract or ambient field signature.
+ */
+class FieldDeclaration extends MemberDeclaration {
+  FieldDeclaration() {
+    not isMethod(this) and
+    not this instanceof @call_signature
   }
+}
+
+/**
+ * A concrete field definition in a class.
+ */
+class FieldDefinition extends FieldDeclaration, MemberDefinition {
+}
+
+/**
+ * A field signature declared in a class or interface, that is, an abstract or ambient field declaration.
+ */
+class FieldSignature extends FieldDeclaration, MemberSignature {
+}
+
+/**
+ * A call signature declared in a class, interface, or function type, that is,
+ * a function call signature or a constructor call signature.
+ *
+ * For example, this interface contains one of each kind of call signature:
+ * ```
+ * interface I {
+ *   (x: number): number;
+ *   new (x: string): Object;
+ * }
+ * ```
+ */
+class CallSignature extends @call_signature, MemberSignature {
+  FunctionExpr getBody() { result = getChildExpr(1) }
+
+  /** Gets the interface or function type that declares this call signature. */
+  override InterfaceDefinition getDeclaringType() {
+    result = MemberSignature.super.getDeclaringType()
+  }
+}
+
+/**
+ * A function call signature declared in a class, interface, or function type, such as in:
+ * ```
+ * interface I { (x: number): string; }
+ * ```
+ */
+class FunctionCallSignature extends @function_call_signature, CallSignature {
+
+}
+
+/**
+ * A constructor call signature declared in a class, interface, or function type, such as in:
+ * ```
+ * interface I { new (x: string): Object; }
+ * ```
+ */
+class ConstructorCallSignature extends @constructor_call_signature, CallSignature {
 }

@@ -295,7 +295,6 @@ class DeletionDefinition extends PyNodeDefinition {
         SsaSource::deletion_definition(this.getSourceVariable(), this.getDefiningNode())
     }
 
-
 }
 
 /** Definition of variable at the entry of a scope. Usually this represents the transfer of
@@ -488,6 +487,7 @@ class PyEdgeRefinement extends EssaEdgeRefinement {
 predicate contains_interesting_expression_within_test(ControlFlowNode outer, ControlFlowNode inner) {
     inner.isLoad() and
     exists(ControlFlowNode test |
+        outer.getAChild*() = inner and
         test_contains(test, outer) and
         test_contains(test, inner) |
         inner instanceof NameNode or

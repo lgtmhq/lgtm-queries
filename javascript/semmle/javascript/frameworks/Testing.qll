@@ -58,3 +58,42 @@ class BDDTest extends Test, @callexpr {
  */
 class XUnitTest extends Test, XUnitFact {
 }
+
+private CallExpr getModuleMethodCall(string path, string methodName) {
+  exists(ModuleInstance m |
+    m.getPath() = path and
+    result = m.getAMethodCall(methodName)
+  )
+}
+
+/**
+ * A tape test, that is, an invocation of `require('tape').test`.
+ */
+class TapeTest extends Test, @callexpr {
+  TapeTest() {
+    this = getModuleMethodCall("tape", "test")
+  }
+}
+
+/**
+ * An AVA test, that is, an invocation of `require('ava').test`.
+ */
+class AvaTest extends Test, @callexpr {
+  AvaTest() {
+    this = getModuleMethodCall("ava", "test")
+  }
+}
+
+/**
+ * A Cucumber test, that is, an invocation of `require('cucumber')`.
+ */
+class CucumberTest extends Test, @callexpr {
+  CucumberTest() {
+    exists(ModuleInstance m, CallExpr call |
+      m.getPath() = "cucumber" and
+      call.getCallee().(DataFlowNode).getALocalSource() = m and
+      call.getArgument(0).(DataFlowNode).getALocalSource() instanceof Function and
+      this = call
+    )
+  }
+}

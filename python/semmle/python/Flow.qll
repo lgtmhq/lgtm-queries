@@ -678,6 +678,24 @@ class DefinitionNode extends ControlFlowNode {
     }
 }
 
+/** A control flow node corresponding to a deletion statement, such as `del x`.
+ * There can be multiple `DeletionNode`s for each `Delete` such that each
+ * target has own `DeletionNode`. The CFG for `del a, x.y` looks like:
+ * `NameNode('a') -> DeletionNode -> NameNode('b') -> AttrNode('y') -> DeletionNode`.
+ */
+class DeletionNode extends ControlFlowNode {
+
+    DeletionNode() {
+        toAst(this) instanceof Delete
+    }
+
+    /** Gets the unique target of this deletion node. */
+    ControlFlowNode getTarget() {
+        result.getASuccessor() = this
+    }
+
+}
+
 /** A control flow node corresponding to a sequence (tuple or list) literal */
 abstract class SequenceNode extends ControlFlowNode {
     SequenceNode() {

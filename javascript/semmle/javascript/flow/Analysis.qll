@@ -237,7 +237,7 @@ private class FunctionSource extends AnalyzedFlowNode, @function {
 /**
  * Flow analysis for class declarations.
  */
-private class ClassExprSource extends AnalyzedFlowNode, @classdecl {
+private class ClassExprSource extends AnalyzedFlowNode, @classdefinition {
   override AbstractValue getAValue() {
     result = TAbstractClass(this.(ClassDefinition))
   }
@@ -488,7 +488,8 @@ private class AnalyzedVarDef extends VarDef {
    * may evaluate to.
    */
   AbstractValue getAnRhsValue() {
-    result = getRhs().getAValue()
+    result = getRhs().getAValue() or
+    this = any(ForInStmt fis).getIteratorExpr() and result = abstractValueOfType(TTString())
   }
 
   /**
@@ -508,7 +509,9 @@ private class AnalyzedVarDef extends VarDef {
   predicate isIncomplete(DataFlowIncompleteness cause) {
     this instanceof Parameter and cause = "call" or
     this instanceof ImportSpecifier and cause = "import" or
-    exists (EnhancedForLoop efl | this = efl.getIteratorExpr()) and cause = "heap" or
+    exists (EnhancedForLoop efl | efl instanceof ForOfStmt or efl instanceof ForEachStmt |
+      this = efl.getIteratorExpr()
+    ) and cause = "heap" or
     exists (ComprehensionBlock cb | this = cb.getIterator()) and cause = "yield" or
     getTarget() instanceof DestructuringPattern and cause = "heap"
   }
@@ -1056,7 +1059,7 @@ private class AnalyzedPropertyAccess extends AnalyzedPropertyRead, @propaccess {
 
   override AbstractValue getAValue() {
     result = getAPropertyValue(getBase().getAValue(), propName) or
-    result = TIndefiniteAbstractValue("heap")
+    result = AnalyzedPropertyRead.super.getAValue()
   }
 
   /** Gets the node representing the base of this property access. */

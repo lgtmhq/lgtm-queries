@@ -14,8 +14,8 @@
 /**
  * @name Classify files
  * @description This query produces a list of all files in a snapshot
- *              that are classified as generated code, test code or
- *              externs.
+ *              that are classified as generated code, test code,
+ *              externs declarations, library code or template code.
  * @kind file-classifier
  */
 
@@ -25,13 +25,13 @@ import semmle.javascript.frameworks.Templating
 import semmle.javascript.dependencies.FrameworkLibraries
 
 /**
- * Holds if `e` may be caused by parsing a template HTML file as plain HTML.
+ * Holds if `e` may be caused by parsing a template file as plain HTML or JavaScript.
  *
  * Our heuristic is to check for the presence of a known template delimiter preceding
  * the error on the same line.
  */
 predicate maybeCausedByTemplate(JSParseError e) {
-  exists (HTMLFile f | f = e.getFile() |
+  exists (File f | f = e.getFile() |
     // to check whether a known template delimiter precedes `e`, we take the prefix
     // of the line on which `e` occurs up to the start of `e` plus the maximum length
     // of a template delimiter (to account for the possibility that the parser gives
@@ -60,7 +60,7 @@ predicate maybeCausedByTemplate(JSParseError e) {
  *   - `"test"`: `f` contains test code;
  *   - `"externs"`: `f` contains externs declarations;
  *   - `"library"`: `f` contains library code;
- *   - `"template"`: `f` contains as HTML template.
+ *   - `"template"`: `f` contains template code.
  */
 predicate classify(File f, string category) {
   isGenerated(f.getATopLevel()) and category = "generated"
