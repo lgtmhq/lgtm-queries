@@ -18,8 +18,8 @@
  *              rounding, then the sub-expression is redundant and could be
  *              removed.
  * @kind problem
- * @problem.severity warning
- * @precision high
+ * @problem.severity recommendation
+ * @precision medium
  * @id cpp/comparison-canceling-subexpr
  * @tags readability
  *       maintainability

@@ -51,7 +51,9 @@
  *   - `Property`: the CFG node represents the assignment of the property;
  *   - `PropertyPattern`: the CFG node represents the matching of the property;
  *   - `MemberDefinition`: the CFG node represents the definition of the member
- *     method or field.
+ *     method or field;
+ *   - `MemberSignature`: the CFG node represents the point where the signature
+ *     is declared, although this has no effect at runtime.
  *
  * ## CFG Structure
  *
@@ -355,7 +357,7 @@ class ControlFlowNode extends @cfg_node, Locatable {
     result = this.(Property).getContainer() or
     result = this.(PropertyPattern).getContainer() or
     result = this.(ClassDefinition).getContainer() or
-    result = this.(MemberDefinition).getContainer()
+    result = this.(MemberDeclaration).getContainer()
   }
 
   /** Gets the basic block this node belongs to. */

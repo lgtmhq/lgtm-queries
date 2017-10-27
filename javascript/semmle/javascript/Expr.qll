@@ -19,18 +19,53 @@ import Locations
 import AST
 import Regexp
 
-/** An expression. */
-class Expr extends @expr, ExprOrStmt {
-  /** Gets the statement in which this expression appears. */
+/** A program element that is either an expression or a type annotation. */
+class ExprOrType extends @exprortype, ASTNode {
+  /** Gets the statement in which this expression or type appears. */
   Stmt getEnclosingStmt() {
     enclosingStmt(this, result)
   }
 
-  /** Gets the function in which this expression appears, if any. */
+  /** Gets the function in which this expression or type appears, if any. */
   Function getEnclosingFunction() {
     result = getContainer()
   }
 
+  /**
+   * Gets the statement container (function or toplevel) in which
+   * this expression or type appears.
+   */
+  StmtContainer getContainer() {
+    exprContainers(this, result)
+  }
+
+  /**
+   * Gets the JSDoc comment associated with this expression or type or its parent statement, if any.
+   */
+  JSDoc getDocumentation() {
+    result = getOwnDocumentation() or
+    // if there is no JSDoc for the expression itself, check the enclosing property or statement
+    (not exists(getOwnDocumentation()) and
+     if getParent() instanceof Property then
+       result = getParent().(Property).getDocumentation()
+     else
+       result = getEnclosingStmt().getDocumentation())
+  }
+
+  /** Gets a JSDoc comment that is immediately before this expression or type (ignoring parentheses). */
+  private JSDoc getOwnDocumentation() {
+    exists (Token tk | tk = result.getComment().getNextToken() |
+      tk = this.getFirstToken() or
+      exists (Expr p | p.stripParens() = this | tk = p.getFirstToken())
+    )
+  }
+
+  /** Gets this expression or type, with any surrounding parentheses removed. */
+  ExprOrType stripParens() { result = this }
+}
+
+/** An expression. */
+class Expr extends @expr, ExprOrStmt, ExprOrType {
   /**
    * Gets the statement container (function or toplevel) in which
    * this expression appears.
@@ -40,7 +75,7 @@ class Expr extends @expr, ExprOrStmt {
   }
 
   /** Gets this expression, with any surrounding parentheses removed. */
-  Expr stripParens() {
+  override Expr stripParens() {
     result = this
   }
 
@@ -78,27 +113,6 @@ class Expr extends @expr, ExprOrStmt {
      exprs(this, result, _, _, _)
   }
 
-  /**
-   * Gets the JSDoc comment associated with this expression or its parent statement, if any.
-   */
-  JSDoc getDocumentation() {
-    result = getOwnDocumentation() or
-    // if there is no JSDoc for the expression itself, check the enclosing property or statement
-    (not exists(getOwnDocumentation()) and
-     if getParent() instanceof Property then
-       result = getParent().(Property).getDocumentation()
-     else
-       result = getEnclosingStmt().getDocumentation())
-  }
-
-  /** Gets a JSDoc comment that is immediately before this expression (ignoring parentheses). */
-  private JSDoc getOwnDocumentation() {
-    exists (Token tk | tk = result.getComment().getNextToken() |
-      tk = this.getFirstToken() or
-      exists (Expr p | p.stripParens() = this | tk = p.getFirstToken())
-    )
-  }
-
   override string toString() {
     exprs(this, _, _, _, result)
   }
@@ -130,14 +144,10 @@ class Expr extends @expr, ExprOrStmt {
 }
 
 /** An identifier. */
-class Identifier extends @identifier, Expr {
+class Identifier extends @identifier, ExprOrType {
   /** Gets the name of this identifier. */
   string getName() {
     literals(result, _, this)
-  }
-
-  override predicate isImpure() {
-    none()
   }
 }
 
@@ -145,7 +155,8 @@ class Identifier extends @identifier, Expr {
  * A statement or property label, that is, an identifier that
  * does not refer to a variable.
  */
-class Label extends @label, Identifier {
+class Label extends @label, Identifier, Expr {
+  override predicate isImpure() { none() }
 }
 
 /** A literal. */
@@ -635,6 +646,21 @@ class InvokeExpr extends @invokeexpr, Expr {
   /** Gets the number of arguments of this invocation. */
   int getNumArgument() {
     result = count(getAnArgument())
+  }
+
+  /** Gets the `i`th type argument of this invocation. */
+  TypeExpr getTypeArgument(int i) {
+    i >= 0 and result = this.getChildTypeExpr(-i - 2)
+  }
+
+  /** Gets a type argument of this invocation. */
+  TypeExpr getATypeArgument() {
+      result = getTypeArgument(_)
+  }
+
+  /** Gets the number of type arguments of this invocation. */
+  int getNumTypeArgument() {
+      result = count(getATypeArgument())
   }
 
   override ControlFlowNode getFirstControlFlowNode() {

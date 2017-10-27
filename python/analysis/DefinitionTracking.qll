@@ -17,6 +17,7 @@
  import python
 
 import semmle.dataflow.SSA
+import semmle.python.pointsto.Final
 
 private newtype TDefinition =
     TLocalDefinition(AstNode a) {
@@ -516,11 +517,19 @@ private predicate jump_to_defn_attribute(ControlFlowNode use, string name, Defin
     or
     /* Instance attributes */
     exists(ClassObject cls |
+        cls != theSuperType() and
         use.refersTo(_, cls, _) and
         exists(RemoteDefinition r |
             defn = r.getMember(name) and
             r.getSymbol().resolvesTo() = cls
         )
+    )
+    or
+    /* Super attributes */
+    exists(AttrNode f, Object function |
+        use = f.getObject(name) and
+        FinalPointsTo::super_bound_method(f, _, _, function) and
+        function = defn.(RemoteDefinition).getSymbol().resolvesTo()
     )
 }
 

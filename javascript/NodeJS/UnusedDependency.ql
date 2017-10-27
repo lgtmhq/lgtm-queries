@@ -72,8 +72,8 @@ predicate usesDependency(NPMPackage pkg, string name) {
     // there is a path expression (e.g., in a `require` or `import`) that
     // references `pkg`
     exists (PathExpr path | path = getAPathExpr(pkg) |
-      // check whether the path is `name` or starts with `name/`
-      path.getValue().regexpMatch("\\Q" + name + "\\E(/.*)?")
+      // check whether the path is `name` or starts with `name/`, ignoring a prefix that ends with '!' (example: "scriptloader!moment")
+      path.getValue().regexpMatch("(.*!)?\\Q" + name + "\\E(/.*)?")
     )
     or
     // there is an HTML URL attribute that may reference `pkg`

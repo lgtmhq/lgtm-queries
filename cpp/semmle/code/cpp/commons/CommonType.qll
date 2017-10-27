@@ -44,8 +44,11 @@ class VoidPointerType extends PointerType {
 /**
  * The C/C++ size_t type.
  */
-class Size_t extends IntegralType {
-  Size_t() { this.hasName("size_t") }
+class Size_t extends Type {
+  Size_t() {
+    this.getUnderlyingType() instanceof IntegralType and
+    this.hasName("size_t")
+  }
 }
 
 /**

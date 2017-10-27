@@ -77,6 +77,8 @@ predicate trivialConversion(Type expected, Type actual) {
   or
     expected instanceof CharType and actual instanceof IntType
   or
+    expected instanceof Wchar_t and actual instanceof IntType
+  or
     expected instanceof UnsignedCharType and actual instanceof IntType
   or
     expected.(IntegralType).getSize() = actual.(IntegralType).getSize()

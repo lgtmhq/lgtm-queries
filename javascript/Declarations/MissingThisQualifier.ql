@@ -29,7 +29,7 @@ import javascript
  * Holds if `call` is a call to global function `gv` which has the same name as method
  * `intendedTarget` in the same class as `call`.
  */
-predicate maybeMissingThis(CallExpr call, MethodDefinition intendedTarget, GlobalVariable gv) {
+predicate maybeMissingThis(CallExpr call, MethodDeclaration intendedTarget, GlobalVariable gv) {
   call.getCallee() = gv.getAnAccess() and
   call.getCalleeName() = intendedTarget.getName() and
   exists(MethodDefinition caller |
@@ -38,7 +38,7 @@ predicate maybeMissingThis(CallExpr call, MethodDefinition intendedTarget, Globa
   )
 }
 
-from CallExpr call, MethodDefinition intendedTarget, GlobalVariable gv
+from CallExpr call, MethodDeclaration intendedTarget, GlobalVariable gv
 where maybeMissingThis(call, intendedTarget, gv)
       and
       // exceptions:

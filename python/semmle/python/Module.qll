@@ -164,6 +164,21 @@ class Module extends Module_, Scope, AstNode {
         )
     }
 
+    /** Gets the path element from which this module was loaded. */
+    Container getLoadPath() {
+        result = this.getPath().getImportRoot()
+    }
+
+    /** Holds if this module is in the standard library for version `major.minor` */
+    predicate inStdLib(int major, int minor) {
+        this.getLoadPath().isStdLibRoot(major, minor)
+    }
+
+    /** Holds if this module is in the standard library */
+    predicate inStdLib() {
+        this.inStdLib(_, _)
+    }
+
 }
 
 private predicate hasInit(Folder f) {

@@ -104,14 +104,23 @@ abstract class BoundedType extends RefType, @boundedtype {
   /** Holds if this type is bounded. */
   predicate hasTypeBound() { exists(TypeBound tb | tb = this.getATypeBound()) }
 
-  /** A type bound for this type, if any. */
+  /** Gets a type bound for this type, if any. */
   TypeBound getATypeBound() { result.getBoundedType() = this }
-  
+
+  /** Gets the first type bound for this type, if any. */
+  TypeBound getFirstTypeBound() { result = getATypeBound() and result.getPosition() = 0 }
+
   /**
-   * The upper type bound of this type, or `Object`
+   * Gets an upper type bound of this type, or `Object`
    * if no explicit type bound is present.
    */
   abstract RefType getUpperBoundType();
+
+  /**
+   * Gets the first upper type bound of this type, or `Object`
+   * if no explicit type bound is present.
+   */
+  abstract RefType getFirstUpperBoundType();
 }
 
 /**
@@ -128,13 +137,25 @@ class TypeVariable extends BoundedType, @typevariable {
   GenericCallable getGenericCallable() { typeVars(this,_,_,_,result) }
 
   /**
-   * The upper bound of this type parameter, or `Object`
+   * Gets an upper bound of this type parameter, or `Object`
    * if no explicit type bound is present.
    */
   pragma[nomagic]
   RefType getUpperBoundType() {
     if this.hasTypeBound() then
       result = this.getATypeBound().getType()
+    else
+      result instanceof TypeObject
+  }
+
+  /**
+   * Gets the first upper bound of this type parameter, or `Object`
+   * if no explicit type bound is present.
+   */
+  pragma[nomagic]
+  RefType getFirstUpperBoundType() {
+    if this.hasTypeBound() then
+      result = this.getFirstTypeBound().getType()
     else
       result instanceof TypeObject
   }
@@ -189,19 +210,30 @@ class Wildcard extends BoundedType, @wildcard {
   predicate hasLowerBound() {
     wildcards(this, _, 2)
   }
-  
+
   /** The upper bound for this wildcard, if any. */
   TypeBound getUpperBound() {
     this.hasUpperBound() and result = this.getATypeBound()
   }
-  
+
   /**
-   * The upper bound type of this wildcard, or `Object`
+   * Gets an upper bound type of this wildcard, or `Object`
    * if no explicit type bound is present.
    */
   RefType getUpperBoundType() {
     if this.hasUpperBound() then
       result = this.getUpperBound().getType()
+    else
+      result instanceof TypeObject
+  }
+
+  /**
+   * Gets the first upper bound type of this wildcard, or `Object`
+   * if no explicit type bound is present.
+   */
+  RefType getFirstUpperBoundType() {
+    if this.hasUpperBound() then
+      result = this.getFirstTypeBound().getType()
     else
       result instanceof TypeObject
   }

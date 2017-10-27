@@ -15,7 +15,7 @@
  * @name Variable not declared before use
  * @description Variables should be declared before their first use.
  * @kind problem
- * @problem.severity recommendation
+ * @problem.severity warning
  * @id js/use-before-declaration
  * @tags maintainability
  *       readability
@@ -25,13 +25,11 @@
 import javascript
 private import Declarations
 
-from VarAccess acc, VarDecl decl, Variable var, TopLevel tl
-where // the first reference to `var` in `tl` is `acc` (that is, an access, not a declaration)
-      acc = firstRefInTopLevel(var, Ref(), tl) and
-      // `decl` is a declaration of `var` in `tl` (which must come after `acc`)
-      decl = refInTopLevel(var, Decl(), tl) and
-      // exclude function declarations
-      not exists (FunctionDeclStmt f | f.getVariable() = var) and
+from VarAccess acc, VarDecl decl, Variable var, StmtContainer sc
+where // the first reference to `var` in `sc` is `acc` (that is, an access, not a declaration)
+      acc = firstRefInContainer(var, Ref(), sc) and
+      // `decl` is a declaration of `var` in `sc` (which must come after `acc`)
+      decl = refInContainer(var, Decl(), sc) and
       // exclude globals declared by a linter directive
       not exists(Linting::GlobalDeclaration glob |
         glob.declaresGlobalForAccess(acc)

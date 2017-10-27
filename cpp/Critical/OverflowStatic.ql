@@ -25,25 +25,28 @@
  *       external/cwe/cwe-131
  */
 import default
+import semmle.code.cpp.commons.Buffer
 import LoopBounds
 
-predicate staticBuffer(Variable v, int size)
+private predicate staticBufferBase(VariableAccess access, Variable v)
 {
-  exists(ArrayType t |
-    v.getType() = t and
-    t.getArraySize() = size and
-    t.getBaseType() instanceof CharType and
-    not memberMayBeVarSize(_, v)
-  )
+  v.getType().(ArrayType).getBaseType() instanceof CharType and
+  access = v.getAnAccess() and
+  not memberMayBeVarSize(_, v)
+}
+
+predicate staticBuffer(VariableAccess access, Variable v, int size)
+{
+  staticBufferBase(access, v) and
+  size = getBufferSize(access, _)
 }
 
 class BufferAccess extends ArrayExpr
 {
   BufferAccess() {
-    exists(Variable v, int size |
-      size != 0 and
-      staticBuffer(v, size) and
-      this.getArrayBase() = v.getAnAccess()
+    exists(int size |
+      staticBuffer(this.getArrayBase(), _, size) and
+      size != 0
     ) and
 
     // exclude accesses in macro implementation of `strcmp`,
@@ -55,8 +58,7 @@ class BufferAccess extends ArrayExpr
   }
 
   int bufferSize() {
-    exists (Variable v |
-      staticBuffer(v, result) and this.getArrayBase() = v.getAnAccess())
+    staticBuffer(this.getArrayBase(), _, result)
   }
 
   Variable buffer() {
@@ -104,8 +106,7 @@ class CallWithBufferSize extends FunctionCall
 
 predicate wrongBufferSize(Expr error, string msg) {
   exists(CallWithBufferSize call, int bufsize, Variable buf |
-    staticBuffer(buf, bufsize) and
-    call.buffer() = buf.getAnAccess() and
+    staticBuffer(call.buffer(), buf, bufsize) and
     call.statedSize().getValue().toInt() > bufsize and
     error = call.statedSize() and
     msg = "Potential buffer-overflow: '" + buf.getName() +

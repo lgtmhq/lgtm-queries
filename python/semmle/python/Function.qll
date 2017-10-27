@@ -69,6 +69,11 @@ class Function extends Function_, Scope, AstNode {
         result = ((Name)this.getArg(index)).getId()
     }
 
+    Parameter getArgByName(string name) {
+        result = this.getAnArg() and
+        result.(Name).getId() = name
+    }
+
     Location getLocation() {
         py_scope_location(result, this)
     }

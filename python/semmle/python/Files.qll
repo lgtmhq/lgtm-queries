@@ -75,6 +75,12 @@ class File extends Container {
         result = "file://" + this.getAbsolutePath() + ":0:0:0:0"
     }
 
+    override Container getImportRoot(int n) {
+        /* File stem must be a legal Python identifier */
+        this.getStem().regexpMatch("[^\\d\\W]\\w*") and
+        result = this.getParent().getImportRoot(n)
+    }
+
 }
 
 private predicate occupied_line(File f, int n) {
@@ -116,6 +122,14 @@ class Folder extends Container {
     /** Gets the URL of this folder. */
     string getURL() {
         result = "folder://" + this.getAbsolutePath()
+    }
+
+    override Container getImportRoot(int n) {
+        this.isImportRoot(n) and result = this
+        or
+        /* Folder must be a legal Python identifier */
+        this.getBaseName().regexpMatch("[^\\d\\W]\\w*") and
+        result = this.getParent().getImportRoot(n)
     }
 
 }
@@ -172,12 +186,9 @@ abstract class Container extends @container {
      * for version `major.minor`
      */
     predicate inStdlib(int major, int minor) {
-        // https://docs.python.org/library/sys.html#sys.prefix
-        exists(string sys_prefix, string version |
-            version = major + "." + minor and
-            allowable_version(major, minor) and
-            py_flags_versioned("sys.prefix", sys_prefix, _) and
-            this.getName().regexpMatch(sys_prefix + "/lib/python" + version + ".*")
+        exists(Module m |
+            m.getPath() = this and 
+            m.inStdLib(major, minor)
         )
     }
 
@@ -307,6 +318,11 @@ abstract class Container extends @container {
         this = result.getAChildContainer()
     }
 
+    Container getChildContainer(string baseName) {
+        result = this.getAChildContainer() and
+        result.getBaseName() = baseName
+    }
+
     /**
      * Gets a URL representing the location of this container.
      *
@@ -314,6 +330,54 @@ abstract class Container extends @container {
      */
     abstract string getURL();
 
+    /** Holds if this folder is on the import path. */
+    predicate isImportRoot() {
+        this.isImportRoot(_)
+    }
+
+    /** Holds if this folder is on the import path, at index `n` in the list of
+     * paths. The list of paths is composed of the paths passed to the extractor and
+     * `sys.path`. */
+    predicate isImportRoot(int n) {
+        this.getName() = import_path_element(n)
+    }
+
+    /** Holds if this folder is the root folder for the standard library. */
+    predicate isStdLibRoot(int major, int minor) {
+        allowable_version(major, minor) and
+        this.isImportRoot() and
+        this.getBaseName().regexpMatch("python" + major + "." + minor)
+    }
+
+    /** Gets the path element from which this container would be loaded. */
+    Container getImportRoot() {
+        exists(int n |
+            result = this.getImportRoot(n) and
+            not exists(int m |
+                exists(this.getImportRoot(m)) and
+                m < n
+            )
+        )
+    }
+
+    /** Gets the path element from which this container would be loaded, given the index into the list of possible paths `n`. */
+    abstract Container getImportRoot(int n);
+
+}
+
+private string import_path_element(int n) {
+    exists(string path, string pathsep, int k |
+        path = get_path("extractor.path") and k = 0
+        or
+        path = get_path("sys.path") and k = count(get_path("extractor.path").splitAt(pathsep))
+        |
+        py_flags_versioned("os.pathsep", pathsep, _) and
+        result = path.splitAt(pathsep, n-k)
+    )
+}
+
+private string get_path(string name) {
+    py_flags_versioned(name, result, _)
 }
 
 private predicate allowable_version(int major, int minor) {

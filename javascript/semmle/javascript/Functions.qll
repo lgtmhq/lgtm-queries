@@ -68,12 +68,12 @@ class Function extends @function, Parameterized, StmtContainer {
   predicate declaresArguments() {
     exists(getScope().getVariable("arguments").getADeclaration())
   }
-  
+
   /** Gets the statement enclosing this function, if any. */
   Stmt getEnclosingStmt() {
     none()
   }
-  
+
   /** Gets the body of this function. */
   override ExprOrStmt getBody() {
     result = getChild(-2)
@@ -92,6 +92,11 @@ class Function extends @function, Parameterized, StmtContainer {
   /** Gets the number of statements in the body of this function. */
   int getNumBodyStmt() {
     result = count(getABodyStmt())
+  }
+
+  /** Gets the return type annotation on this function, if any. */
+  TypeExpr getReturnTypeAnnotation() {
+    typeexprs(result, _, this, -3, _)
   }
 
   /** Holds if this function is a generator function. */
@@ -178,7 +183,7 @@ class Function extends @function, Parameterized, StmtContainer {
     or
     // all parts of a class definition are strict code
     this.getParent*() = any(ClassDefinition cd).getSuperClass() or
-    this = any(MethodDefinition md).getBody()
+    this = any(MethodDeclaration md).getBody()
   }
 
   /** Gets a return statement in the body of this function, if any. */
@@ -265,17 +270,17 @@ class Function extends @function, Parameterized, StmtContainer {
    * member it is assigned to, if any.
    */
   private string inferNameFromMemberDef() {
-    exists (ClassDefinition c, string n, MemberDefinition m, string classpp |
+    exists (ClassDefinition c, string n, MemberDeclaration m, string classpp |
       m = c.getMember(n) and this = m.getInit() and classpp = c.describe() |
-      if m instanceof ConstructorDefinition then
-        if m.(ConstructorDefinition).isSynthetic() then
+      if m instanceof ConstructorDeclaration then
+        if m.(ConstructorDeclaration).isSynthetic() then
           result = "default constructor of " + classpp
         else
           result = "constructor of " + classpp
       else
-        if m instanceof GetterMethodDefinition then
+        if m instanceof GetterMethodDeclaration then
           result = "getter method for property " + n + " of " + classpp
-        else if m instanceof SetterMethodDefinition then
+        else if m instanceof SetterMethodDeclaration then
           result = "setter method for property " + n + " of " + classpp
         else
           result = "method " + n + " of " + classpp
@@ -286,7 +291,7 @@ class Function extends @function, Parameterized, StmtContainer {
    * Holds if this function has a body.
    *
    * A TypeScript function has no body if it is ambient, abstract, or an overload signature.
-   * 
+   *
    * A JavaScript function always has a body.
    */
   predicate hasBody() {
@@ -297,7 +302,7 @@ class Function extends @function, Parameterized, StmtContainer {
    * Holds if this function is part of an abstract class member.
    */
   predicate isAbstract() {
-      exists (MethodDefinition md | this = md.getBody() | md.isAbstract())
+      exists (MethodDeclaration md | this = md.getBody() | md.isAbstract())
   }
 }
 
@@ -306,7 +311,7 @@ class Function extends @function, Parameterized, StmtContainer {
  */
 class Method extends FunctionExpr {
   Method() {
-    exists (MethodDefinition md | this = md.getBody())
+    exists (MethodDeclaration md | this = md.getBody())
     or
     exists (ValueProperty p | p.isMethod() | this = p.getInit())
   }
@@ -317,6 +322,6 @@ class Method extends FunctionExpr {
  */
 class Constructor extends FunctionExpr {
   Constructor() {
-    exists (ConstructorDefinition cd | this = cd.getBody())
+    exists (ConstructorDeclaration cd | this = cd.getBody())
   }
 }

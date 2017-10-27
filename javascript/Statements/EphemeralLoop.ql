@@ -26,8 +26,9 @@ import javascript
 import semmle.javascript.RestrictedLocations
 import semmle.javascript.frameworks.Emscripten
 
-from LoopStmt l
-where not l.getBody().getASuccessor+() = l.getBody() and
+from LoopStmt l, BasicBlock body
+where body = l.getBody().getBasicBlock() and
+      not body.getASuccessor+() = body and
       not l instanceof EnhancedForLoop and
       // Emscripten generates lots of `do { ... } while(0);` loops, so exclude
       not l.getTopLevel() instanceof EmscriptenGeneratedToplevel

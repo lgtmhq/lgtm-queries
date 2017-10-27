@@ -215,16 +215,22 @@ private class EqRefinement extends RefinementCandidate, EqualityTest {
       l = getLeftOperand() and r = getRightOperand() and
       lv = l.eval(ctxt) and rv = r.eval(ctxt) |
       // if both sides evaluate to a constant, compare them
-      if exists(lv.getLiteral()) and exists(rv.getLiteral()) then
-        exists (string ls, string rs, boolean b |
-          ls = lv.getLiteral() and rs = rv.getLiteral() and result = TBoolConstant(b) |
-          ls = rs and b = getPolarity() or
-          ls != rs and b = getPolarity().booleanNot()
+      if lv instanceof SingletonRefinementValue and rv instanceof SingletonRefinementValue then
+        exists (boolean s, boolean p | s = getStrictness() and p = getPolarity()|
+          if lv.(SingletonRefinementValue).equals(rv, s) then
+            result = TBoolConstant(p)
+          else
+            result = TBoolConstant(p.booleanNot())
         )
       // otherwise give up
       else
         result = TValueWithType(TTBoolean())
     )
+  }
+
+  private boolean getStrictness() {
+    if this instanceof StrictEqualityTest then result = true
+    else result = false
   }
 }
 
@@ -314,6 +320,14 @@ class VarRefinementContext extends RefinementContext, TVarRefinementContext {
         result.(BoolConstant).getValue() = av.(AbstractBoolean).getBooleanValue()
       else if av instanceof AbstractZero then
         result.(IntConstant).getValue() = 0
+      else if av instanceof AbstractEmpty then
+        result.(StringConstant).getValue() = ""
+      else if av instanceof AbstractNumString then
+        result instanceof NumString
+      else if av instanceof AbstractOtherString then
+        result instanceof NonEmptyNonNumString
+      else if av instanceof AbstractNonZero then
+        result instanceof NonZeroNumber
       else
         result.(ValueWithType).getType() = av.getType()
     )
@@ -350,9 +364,12 @@ private newtype TRefinementValue =
    * An abstract value representing the string `s`.
    *
    * There are abstract values for every string literal appearing anywhere
-   * in a guard node, as well as for `typeof` tags and their characters.
+   * in a guard node, as well as for the empty string, all `typeof` tags and
+   * their characters.
    */
   TStringConstant(string s) {
+    s = ""
+    or
     s instanceof TypeofTag
     or
     s = any(StringRefinement sr | inGuard(sr)).getValue()
@@ -370,6 +387,22 @@ private newtype TRefinementValue =
     i = 0 or
     i = any(IntRefinement ir | inGuard(ir)).getValue().toInt()
   }
+  or
+  /**
+   * An abstract value representing a non-empty string that coerces to a number
+   * (and not `NaN`).
+   */
+  TNumString()
+  or
+  /**
+   * An abstract value representing a string `s` such that `Number(s)` is `NaN`.
+   */
+  TNonEmptyNonNumString()
+  or
+  /**
+   * An abstract value representing a non-zero number.
+   */
+  TNonZeroNumber()
 
 /**
  * An abstract value of a refinement expression.
@@ -377,15 +410,6 @@ private newtype TRefinementValue =
 class RefinementValue extends TRefinementValue {
   /** Gets a textual representation of this element. */
   abstract string toString();
-
-  /**
-   * Gets a representation of the constant value represented by this abstract value,
-   * if any.
-   *
-   * For string constants, this is the string value surrounded by double quotes;
-   * for non-string constants, it is the value itself.
-   */
-  abstract string getLiteral();
 
   /**
    * Gets the `typeof` tag of a concrete value represented by this abstract value.
@@ -398,69 +422,175 @@ class RefinementValue extends TRefinementValue {
   abstract boolean getABooleanValue();
 }
 
+/**
+ * A refinement value that represents exactly one concrete value.
+ */
+abstract class SingletonRefinementValue extends RefinementValue {
+  /**
+   * Holds if `this` equals `that` under strict or non-strict equality, depending
+   * on the value of `isStrict`.
+   */
+  predicate equals(SingletonRefinementValue that, boolean isStrict) {
+    this = that and
+    (isStrict = true or isStrict = false)
+  }
+}
+
 /** An abstract value indicating that no refinement information is available. */
 private class AnyValue extends RefinementValue, TAny {
   override string toString() { result = "any value" }
+
   override string typeof() { result instanceof TypeofTag }
+
   override boolean getABooleanValue() { result = true or result = false }
-  override string getLiteral() { none() }
 }
 
 /** An abstract value representing all concrete values of some `InferredType`. */
 private class ValueWithType extends RefinementValue, TValueWithType {
   InferredType getType() { this = TValueWithType(result) }
+
   override string toString() { result = "any " + getType() }
+
   override string typeof() { result = getType().getTypeofTag() }
-  override boolean getABooleanValue() { result = true or result = false }
-  override string getLiteral() { none() }
+
+  override boolean getABooleanValue() {
+    result = true or
+    // only primitive types can be falsy
+    getType() instanceof PrimitiveType and result = false
+  }
 }
 
 /** An abstract value representing `null` or `undefined`. */
-private class FalsyValueWithType extends ValueWithType {
-  FalsyValueWithType() { getType() instanceof TTNull or getType() instanceof TTUndefined }
+private class NullOrUndefined extends ValueWithType, SingletonRefinementValue {
+  NullOrUndefined() { getType() instanceof TTNull or getType() instanceof TTUndefined }
+
   override boolean getABooleanValue() { result = false }
-  override string getLiteral() { result = getType().toString() }
+
+  override predicate equals(SingletonRefinementValue that, boolean isStrict) {
+    SingletonRefinementValue.super.equals(that, isStrict) or
+    isStrict = false and that instanceof NullOrUndefined
+  }
 }
 
 /** An abstract value representing a Boolean constant. */
-private class BoolConstant extends RefinementValue, TBoolConstant {
+private class BoolConstant extends SingletonRefinementValue, TBoolConstant {
+  boolean value;
+
+  BoolConstant() { this = TBoolConstant(value) }
+
   /** Gets the Boolean value represented by this abstract value. */
   boolean getValue() { this = TBoolConstant(result) }
 
-  override string toString() { result = getLiteral() }
+  override string toString() { result = value.toString() }
+
   override string typeof() { result = "boolean" }
-  override boolean getABooleanValue() { result = getValue() }
-  override string getLiteral() { result = getValue().toString() }
+
+  override boolean getABooleanValue() { result = value }
+
+  override predicate equals(SingletonRefinementValue that, boolean isStrict) {
+    SingletonRefinementValue.super.equals(that, isStrict) or
+    isStrict = false and (
+      value = false and (that.(StringConstant).isEmptyOrZero() or that = TIntConstant(0))
+      or
+      value = true and (that = TStringConstant("1") or that = TIntConstant(1))
+    )
+  }
 }
 
 /** An abstract value representing a string constant. */
-private class StringConstant extends RefinementValue, TStringConstant {
+private class StringConstant extends SingletonRefinementValue, TStringConstant {
+  string value;
+
+  StringConstant() { this = TStringConstant(value) }
+
   /** Gets the string represented by this abstract value. */
   string getValue() { this = TStringConstant(result) }
 
-  override string toString() { result = getLiteral() }
+  /** Holds if this is the empty string or the string `"0"`. */
+  predicate isEmptyOrZero() {
+    value = "" or value = "0"
+  }
+
+  override string toString() { result = "'" + value + "'" }
+
   override string typeof() { result = "string" }
+
   override boolean getABooleanValue() {
-    if getValue() = "" then
+    if value = "" then
       result = false
     else
       result = true
   }
-  override string getLiteral() { result = "'" + getValue() + "'" }
+
+  override predicate equals(SingletonRefinementValue that, boolean isStrict) {
+    SingletonRefinementValue.super.equals(that, isStrict) or
+    isStrict = false and (
+      isEmptyOrZero() and that = TBoolConstant(false)
+      or
+      value = "1" and that = TBoolConstant(true)
+      or
+      that = TIntConstant(value.toInt())
+    )
+  }
 }
 
 /** An abstract value representing an integer value. */
-private class IntConstant extends RefinementValue, TIntConstant {
+private class IntConstant extends SingletonRefinementValue, TIntConstant {
+  int value;
+
+  IntConstant() { this = TIntConstant(value) }
+
   /** Gets the integer value represented by this abstract value. */
   int getValue() { this = TIntConstant(result) }
 
-  override string toString() { result = getLiteral() }
+  override string toString() { result = value.toString() }
+
   override string typeof() { result = "number" }
+
   override boolean getABooleanValue() {
-    if getValue() = 0 then
+    if value = 0 then
       result = false
     else
       result = true
   }
-  override string getLiteral() { result = getValue().toString() }
+
+  override predicate equals(SingletonRefinementValue that, boolean isStrict) {
+    SingletonRefinementValue.super.equals(that, isStrict) or
+    isStrict = false and (
+      value = 0 and that = TBoolConstant(false)
+      or
+      value = 1 and that = TBoolConstant(true)
+      or
+      value = that.(StringConstant).getValue().toInt()
+    )
+  }
+}
+
+/**
+ * An abstract value representing a non-empty string `s` such that
+ * `Number(s)` is not `NaN`.
+ */
+private class NumString extends RefinementValue, TNumString {
+  override string toString() { result = "numeric string" }
+  override string typeof() { result = "string" }
+  override boolean getABooleanValue() { result = true }
+}
+
+/**
+ * An abstract value representing a string `s` such that `Number(s)`
+ * is `NaN`.
+ */
+private class NonEmptyNonNumString extends RefinementValue, TNonEmptyNonNumString {
+  override string toString() { result = "non-empty, non-numeric string" }
+  override string typeof() { result = "string" }
+  override boolean getABooleanValue() { result = true }
+}
+
+/**
+ * An abstract value representing a non-zero number.
+ */
+private class NonZeroNumber extends RefinementValue, TNonZeroNumber {
+  override string toString() { result = "non-zero number" }
+  override string typeof() { result = "number" }
+  override boolean getABooleanValue() { result = true }
 }

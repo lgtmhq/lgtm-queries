@@ -63,24 +63,10 @@ string mode_from_mode_object(Object obj) {
 }
 
 /** A StrConst used as a regular expression */
-class Regex extends Expr {
-
-    Regex() {
-         used_as_regex(this, _)
-    }
-
-    /** Gets a mode (if any) of this regular expression. Can be any of:
-     * DEBUG
-     * IGNORECASE
-     * LOCALE
-     * MULTILINE
-     * DOTALL
-     * UNICODE
-     * VERBOSE
-     */
-    string getAMode() {
-        result != "None" and
-        used_as_regex(this, result)
+abstract class RegexString extends Expr {
+  
+    RegexString() {
+        (this instanceof Bytes or this instanceof Unicode)
     }
 
     predicate char_set_start(int start, int end) {
@@ -685,6 +671,30 @@ class Regex extends Expr {
         )
         and
         this.lastPart(start, end)
+    }
+
+}
+
+
+/** A StrConst used as a regular expression */
+class Regex extends RegexString {
+
+    Regex() {
+         used_as_regex(this, _)
+    }
+
+    /** Gets a mode (if any) of this regular expression. Can be any of:
+     * DEBUG
+     * IGNORECASE
+     * LOCALE
+     * MULTILINE
+     * DOTALL
+     * UNICODE
+     * VERBOSE
+     */
+    string getAMode() {
+        result != "None" and
+        used_as_regex(this, result)
     }
 
 }

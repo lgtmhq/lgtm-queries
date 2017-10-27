@@ -13,10 +13,11 @@
 
 import semmle.code.cpp.Class
 
-/** A class that is either a struct or just has getters and setters
-  * for its members. In either case it just stores data and has no
-  * real encapsulation.
-  */
+/**
+ * A class that is either a `struct` or just has getters and setters
+ * for its members. In either case it just stores data and has no
+ * real encapsulation.
+ */
 class StructLikeClass extends Class {
 
   StructLikeClass() {
@@ -46,12 +47,15 @@ class StructLikeClass extends Class {
       member variable of the class. In addition, its return type is the type
       of the corresponding member variable. */
   MemberFunction getAGetter(MemberVariable v) {
-    setter(v, result, this)
+    getter(v, result, this)
   }
 
 }
 
-/** Setter member function. See StructLikeClass.getASetter */
+/**
+ * Holds if `f` is a setter member function for `v`, in class `c`.
+ * See `StructLikeClass.getASetter`.
+ */
 predicate setter(MemberVariable v, MemberFunction f, Class c) {
     f.getDeclaringType() = c and
     v.getDeclaringType() = c and
@@ -66,7 +70,10 @@ predicate setter(MemberVariable v, MemberFunction f, Class c) {
     sameBaseType(f.getParameter(0).getType(), v.getType())
 }
 
-/** Getter member function. See StructLikeClass.getAGetter */
+/**
+ * Holds if `f` is a getter member function for `v`, in class `c`.
+ * See `StructLikeClass.getAGetter`.
+ */
 predicate getter(MemberVariable v, MemberFunction f, Class c) {
     f.getDeclaringType() = c and
     v.getDeclaringType() = c and
@@ -81,9 +88,12 @@ predicate getter(MemberVariable v, MemberFunction f, Class c) {
     sameBaseType(f.getType(), v.getType())
 }
 
-/** Same type up to typedefs, specifiers, and removing a single layer of pointers
-    or references (but not arrays). Equates, eg. const int* with int, but not int** with int
-    or int[] with int. */
+/**
+ * Holds if `t1` and `t2` are the same type up to typedefs, specifiers,
+ * and removing a single layer of pointers or references (but not arrays).
+ * Equates, for example, `const int*` with `int`, but not `int**` with `int`
+ * or `int[]` with `int`.
+ */
 predicate sameBaseType(Type t1, Type t2) {
   exists (Type base1, Type base2 |
     base1 = t1.getUnderlyingType().getUnspecifiedType() and

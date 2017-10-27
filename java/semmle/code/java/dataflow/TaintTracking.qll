@@ -82,7 +82,7 @@ module TaintTracking {
     final
     override predicate isAdditionalFlowStep(DataFlow::Node node1, DataFlow::Node node2) {
       isAdditionalTaintStep(node1, node2) or
-      localTaintStep(node1, node2)
+      localAdditionalTaintStep(node1, node2)
     }
 
     /**
@@ -98,22 +98,34 @@ module TaintTracking {
    * Holds if taint can flow from `src` to `sink` in zero or more
    * local (intra-procedural) steps.
    */
-  predicate localTaint(DataFlow::ExprNode src, DataFlow::Node sink) {
+  predicate localTaint(DataFlow::Node src, DataFlow::Node sink) {
     localTaintStep*(src, sink)
   }
 
   /**
    * Holds if taint can flow in one local step from `src` to `sink`.
    */
-  predicate localTaintStep(DataFlow::ExprNode src, DataFlow::Node sink) {
-    localTaintFlowExprStep(src.getExpr(), sink.asExpr()) or
-    exists(Argument arg | src.getExpr() = arg and arg.isVararg() and sink.(DataFlow::ImplicitVarargsArray).getCall() = arg.getCall())
+  predicate localTaintStep(DataFlow::Node src, DataFlow::Node sink) {
+    DataFlow::localFlowStep(src, sink) or
+    localAdditionalTaintStep(src, sink)
   }
 
   /**
-   * Holds if taint can flow in one local step from `src` to `sink`.
+   * Holds if taint can flow in one local step from `src` to `sink` excluding
+   * local data flow steps. That is, `src` and `sink` are likely to represent
+   * different objects.
    */
-  private predicate localTaintFlowExprStep(Expr src, Expr sink) {
+  private predicate localAdditionalTaintStep(DataFlow::Node src, DataFlow::Node sink) {
+    localAdditionalTaintExprStep(src.asExpr(), sink.asExpr()) or
+    exists(Argument arg | src.asExpr() = arg and arg.isVararg() and sink.(DataFlow::ImplicitVarargsArray).getCall() = arg.getCall())
+  }
+
+  /**
+   * Holds if taint can flow in one local step from `src` to `sink` excluding
+   * local data flow steps. That is, `src` and `sink` are likely to represent
+   * different objects.
+   */
+  private predicate localAdditionalTaintExprStep(Expr src, Expr sink) {
     sink.(AddExpr).getAnOperand() = src or
     sink.(AssignAddExpr).getSource() = src or
     sink.(ArrayCreationExpr).getInit() = src or

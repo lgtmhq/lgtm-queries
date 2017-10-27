@@ -13,7 +13,7 @@
 
 /**
  * Provides predicates for finding variable references and declarations
- * in a given toplevel.
+ * in a given function or toplevel.
  */
 
 import javascript
@@ -29,6 +29,26 @@ newtype RefKind = Ref() or Decl()
 
 /**
  * Gets a reference to `var` (if `kind` is `Ref()`) or declaration of
+ * `var` (if `kind` is `Decl()`) in `sc`.
+ */
+VarRef refInContainer(Variable var, RefKind kind, StmtContainer sc) {
+  result.getVariable() = var and
+  result.getContainer() = sc and
+  (kind = Decl() implies result instanceof VarDecl)
+}
+
+/**
+ * Gets the textually first reference to `var` (if `kind` is `Ref()`) or
+ * declaration of `var` (if `kind` is `Decl()`) in `sc`.
+ */
+VarRef firstRefInContainer(Variable var, RefKind kind, StmtContainer sc) {
+  result = min(refInContainer(var, kind, sc) as ref
+               order by ref.getLocation().getStartLine(),
+                        ref.getLocation().getStartColumn())
+}
+
+/**
+ * Gets a reference to `var` (if `kind` is `Ref()`) or declaration of
  * `var` (if `kind` is `Decl()`) in `tl`.
  */
 VarRef refInTopLevel(Variable var, RefKind kind, TopLevel tl) {
@@ -38,7 +58,7 @@ VarRef refInTopLevel(Variable var, RefKind kind, TopLevel tl) {
 }
 
 /**
- * Gets the lexically first reference to `var` (if `kind` is `Ref()`) or
+ * Gets the textually first reference to `var` (if `kind` is `Ref()`) or
  * declaration of `var` (if `kind` is `Decl()`) in `tl`.
  */
 VarRef firstRefInTopLevel(Variable var, RefKind kind, TopLevel tl) {

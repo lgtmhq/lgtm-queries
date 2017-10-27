@@ -128,7 +128,7 @@ private cached module Internal {
        }
     or TImplicitInit(EntryBasicBlock bb, SsaSourceVariable v) {
          bb.getContainer() = v.getDeclaringContainer() and
-         liveAtEntry(bb, v)
+         (liveAtEntry(bb, v) or v.isCaptured())
        }
     or TCapture(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
          mayCapture(bb, i, v) and liveAfterDef(bb, i, v)
@@ -140,8 +140,8 @@ private cached module Internal {
           bb.inDominanceFrontierOf(defbb)
          )
        }
-    or TRefinement(ReachableBasicBlock bb, GuardControlFlowNode guard, SsaSourceVariable v) {
-         bb.getNode(0) = guard and
+    or TRefinement(ReachableBasicBlock bb, int i, GuardControlFlowNode guard, SsaSourceVariable v) {
+         bb.getNode(i) = guard and
          guard.getTest().(Refinement).getRefinedVar() = v and
          liveAtEntry(bb, v)
        }
@@ -657,7 +657,7 @@ class SsaRefinementNode extends SsaPseudoDefinition, TRefinement {
   /**
    * Gets the guard that induces this refinement.
    */
-  GuardControlFlowNode getGuard() { this = TRefinement(_, result, _) }
+  GuardControlFlowNode getGuard() { this = TRefinement(_, _, result, _) }
 
   /**
    * Gets the refinement associated with this definition.
@@ -674,12 +674,12 @@ class SsaRefinementNode extends SsaPseudoDefinition, TRefinement {
   }
 
   override predicate definesAt(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
-    exists (ControlFlowNode nd | this = TRefinement(bb, nd, v) | nd = bb.getNode(i))
+    this = TRefinement(bb, i, _, v)
   }
 
-  override ReachableBasicBlock getBasicBlock() { this = TRefinement(result, _, _) }
+  override ReachableBasicBlock getBasicBlock() { this = TRefinement(result, _, _, _) }
 
-  override SsaSourceVariable getSourceVariable() { this = TRefinement(_, _, result) }
+  override SsaSourceVariable getSourceVariable() { this = TRefinement(_, _, _, result) }
 
   override string getKind() { result = "refine[" + getGuard() + "]" }
 
