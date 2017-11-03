@@ -308,15 +308,6 @@ private File tryExtensions(Folder dir, string basename, int priority) {
   )
 }
 
-/**
- * An expression that evaluates to a constant string.
- */
-class ConstantString extends Expr {
-  ConstantString() {
-    exists(getStringValue())
-  }
-}
-
 /** A literal path expression appearing in a `require` import. */
 private class LiteralRequiredPath extends PathExprInModule, ConstantString {
   LiteralRequiredPath() {

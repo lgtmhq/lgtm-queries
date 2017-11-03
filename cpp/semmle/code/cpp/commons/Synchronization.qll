@@ -140,7 +140,7 @@ private Function unlockCandidate() {
 }
 
 /**
- * Get a type that is a parameter to a function, or it's declaring type
+ * Gets a type that is a parameter to a function, or it's declaring type
  * (i.e. it's `this`).  If the function is a locking related function,
  * these can be thought of as candidates for the mutex is it locking or
  * unlocking.  It is narrowed down in `DefaultMutexType` by requiring that
@@ -182,17 +182,17 @@ class DefaultMutexType extends MutexType {
     )
   }
 
-  predicate mustlockAccess(FunctionCall fc, Expr arg) {
+  override predicate mustlockAccess(FunctionCall fc, Expr arg) {
     fc.getTarget() = mustlockCandidate() and
     lockArgType(fc, arg)
   }
 
-  predicate trylockAccess(FunctionCall fc, Expr arg) {
+  override predicate trylockAccess(FunctionCall fc, Expr arg) {
     fc.getTarget() = trylockCandidate() and
     lockArgType(fc, arg)
   }
 
-  predicate unlockAccess(FunctionCall fc, Expr arg) {
+  override predicate unlockAccess(FunctionCall fc, Expr arg) {
     fc.getTarget() = unlockCandidate() and
     lockArgType(fc, arg)
   }

@@ -1705,10 +1705,19 @@ class DynamicImportExpr extends @dynamicimport, Expr, Import {
 
 
 /** A literal path expression appearing in a dynamic import. */
-private class LiteralDynamicImportPath extends PathExprInModule, @stringliteral {
+private class LiteralDynamicImportPath extends PathExprInModule, ConstantString {
   LiteralDynamicImportPath() {
     exists (DynamicImportExpr di | this.getParentExpr*() = di.getSource())
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(ConstantString).getStringValue() }
+}
+
+/**
+ * An expression that evaluates to a constant string.
+ */
+class ConstantString extends Expr {
+  ConstantString() {
+    exists(getStringValue())
+  }
 }

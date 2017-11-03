@@ -34,7 +34,7 @@ private predicate potentiallyReturningFunctionCall(FunctionCall fc) {
 
 /** A function that *may* return; if in doubt, we assume it may. */
 private predicate potentiallyReturningFunction(Function f) {
-  not exits(f)
+  not getOptions().exits(f)
   and
   (
     nonAnalyzableFunction(f)
@@ -170,7 +170,7 @@ cached predicate successors_adapted(@cfgnode pred, @cfgnode succ) {
   and not impossibleTrueEdge(pred, succ)
   and not impossibleSwitchEdge(pred, succ)
   and not impossibleDefaultSwitchEdge(pred, succ)
-  and not exprExits(pred)
+  and not getOptions().exprExits(pred)
 }
 
 private predicate compileTimeConstantInt(Expr e, int val) {

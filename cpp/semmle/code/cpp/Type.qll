@@ -44,7 +44,7 @@ class Type extends Locatable, @type {
   }
 
   /**
-   * Get a specifier of this type, recursively looking through `typedef` and
+   * Gets a specifier of this type, recursively looking through `typedef` and
    * `decltype`. For example, in the context of `typedef const int *restrict
    * t`, the type `volatile t` has specifiers `volatile` and `restrict` but not
    * `const` since the `const` is attached to the type being pointed to rather
@@ -111,12 +111,13 @@ class Type extends Locatable, @type {
     result = 0
   }
 
-  /** Get a detailed string representation explaining the AST of this type
-   *  (with all specifiers and nested constructs such as pointers). This is
-   *  intended to help debug queries and is a very expensive operation; not
-   *  to be used in production queries.
+  /**
+   * Gets a detailed string representation explaining the AST of this type
+   * (with all specifiers and nested constructs such as pointers). This is
+   * intended to help debug queries and is a very expensive operation; not
+   * to be used in production queries.
    *
-   *  An example output is "const {pointer to {const {char}}}"
+   * An example output is "const {pointer to {const {char}}}".
    */
   string explain() { result = "type" } // Concrete base impl to allow filters on Type
 
@@ -1120,12 +1121,13 @@ class RoutineType extends Type, @routinetype {
           "} with arguments (" + this.explainParameters(0) + ")"
   }
 
-  /** Get a string with the explain() values for the parameters of
-   * this function, for instance "int,int". Internal only: use explain().
+  /**
+   * Gets a string with the `explain()` values for the parameters of
+   * this function, for instance "int,int".
    *
    * The integer argument is the index of the first parameter to explain.
    */
-  string explainParameters(int i) {
+  private string explainParameters(int i) {
     (i = 0 and result = "" and not exists(this.getAParameterType()))
     or
     (

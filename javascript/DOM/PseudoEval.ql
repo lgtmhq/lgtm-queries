@@ -35,7 +35,7 @@ class EvilTwin extends CallExpr {
       callee.accessesGlobal("setTimeout") or
       callee.accessesGlobal("setInterval")
     ) and
-    getArgument(0) instanceof StringLiteral
+    getArgument(0) instanceof ConstantString
   }
 }
 

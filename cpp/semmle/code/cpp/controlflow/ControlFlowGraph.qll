@@ -13,7 +13,6 @@
 
 import default
 import BasicBlocks
-import Options
 private import semmle.code.cpp.controlflow.internal.ConstantExprs
 
 /**

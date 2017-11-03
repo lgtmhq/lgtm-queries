@@ -121,10 +121,10 @@ private class BoolRefinement extends LiteralRefinement, BooleanLiteral {
   }
 }
 
-/** A string literal, viewed as a refinement expression. */
-private class StringRefinement extends LiteralRefinement, StringLiteral {
+/** A constant string, viewed as a refinement expression. */
+private class StringRefinement extends LiteralRefinement, ConstantString {
   override RefinementValue eval() {
-    result = TStringConstant(getValue())
+    result = TStringConstant(getStringValue())
   }
 }
 

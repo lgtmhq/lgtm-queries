@@ -18,7 +18,7 @@
 import semmle.code.cpp.Type
 
 /**
- * A scanf-like standard library function.
+ * A `scanf`-like standard library function.
  */
 abstract class ScanfFunction extends Function
 {
@@ -32,7 +32,7 @@ abstract class ScanfFunction extends Function
 }
 
 /**
-  * The standard function scanf (and variations)
+  * The standard function `scanf` (and variations)
   */
 class Scanf extends ScanfFunction
 {
@@ -52,7 +52,7 @@ class Scanf extends ScanfFunction
 }
 
 /**
-  * The standard function fscanf (and variations)
+  * The standard function `fscanf` (and variations)
   */
 class Fscanf extends ScanfFunction
 {
@@ -72,7 +72,7 @@ class Fscanf extends ScanfFunction
 }
 
 /**
-  * The standard function sscanf (and variations)
+  * The standard function `sscanf` (and variations)
   */
 class Sscanf extends ScanfFunction
 {
@@ -92,7 +92,7 @@ class Sscanf extends ScanfFunction
 }
 
 /**
-  * The standard(ish) function snscanf (and variations)
+  * The standard(ish) function `snscanf` (and variations)
   */
 class Snscanf extends ScanfFunction
 {
@@ -112,7 +112,7 @@ class Snscanf extends ScanfFunction
 }
 
 /**
- * A call to one of the scanf functions.
+ * A call to one of the `scanf` functions.
  */
 class ScanfFunctionCall extends FunctionCall
 {
@@ -144,7 +144,7 @@ class ScanfFunctionCall extends FunctionCall
     result = this.getArgument(this.getFormatParameterIndex())
   }
 
-  /** Whether the default meaning of %s is a wchar_t* or a char*. */
+  /** Holds if the default meaning of `%s` is a `wchar_t*` (rather than a `char*`). */
   predicate isWideCharDefault()
   {
     getScanfFunction().isWideCharDefault()
@@ -152,7 +152,7 @@ class ScanfFunctionCall extends FunctionCall
 }
 
 /**
- * A class to represent format strings that occur as arguments to invocations of scanf functions.
+ * A class to represent format strings that occur as arguments to invocations of `scanf` functions.
  */
 class ScanfFormatLiteral extends Expr {
   ScanfFormatLiteral() {
@@ -165,7 +165,7 @@ class ScanfFormatLiteral extends Expr {
     result.getFormat() = this
   }
 
-  /** Whether the default meaning of %s is a wchar_t* or a char*. */
+  /** Holds if the default meaning of `%s` is a `wchar_t*` (rather than a `char*`). */
   predicate isWideCharDefault() {
     getUse().getTarget().(ScanfFunction).isWideCharDefault()
   }
@@ -180,7 +180,7 @@ class ScanfFormatLiteral extends Expr {
     result = this.getValue().replaceAll("%%", "_").replaceAll("%*", "_")
   }
 
-  /** the number of conversion specifiers (not counting %% and %*...) */
+  /** Gets the number of conversion specifiers (not counting `%%` and `%*`...) */
   int getNumConvSpec() {
     result = count(this.getFormat().indexOf("%"))
   }

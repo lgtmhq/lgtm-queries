@@ -25,7 +25,7 @@ private predicate xUnitDetected() {
     mc.getReceiver().accessesGlobal("Function") and
     mc.getMethodName() = "RegisterNamespace" and
     mc.getNumArgument() = 1 and
-    mc.getArgument(0).(StringLiteral).getValue() = "xUnit.js"
+    mc.getArgument(0).(ConstantString).getStringValue() = "xUnit.js"
   )
 }
 

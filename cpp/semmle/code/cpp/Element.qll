@@ -75,9 +75,9 @@ class Element extends @element {
   }
 
   /**
-   * Gets the parent scope of this Element, if any.
-   * A scope is a Type (Class / Enum), a Namespace, a Block, a Function,
-   * or certain kinds of Statement.
+   * Gets the parent scope of this `Element`, if any.
+   * A scope is a `Type` (`Class` / `Enum`), a `Namespace`, a `Block`, a `Function`,
+   * or certain kinds of `Statement`.
    */
   Element getParentScope() {
     // result instanceof class
@@ -168,7 +168,7 @@ class Element extends @element {
     param_decl_bind(this,_,result)
   }
 
-  /** Gets the closest Element enclosing this one. */
+  /** Gets the closest `Element` enclosing this one. */
   cached Element getEnclosingElement() {
     result = getEnclosingElementPref() or
     (
@@ -195,7 +195,7 @@ class Element extends @element {
   }
 
   /**
-   * Holds if this Element is a part of a template instantiation (but not
+   * Holds if this `Element` is a part of a template instantiation (but not
    * the template itself).
    */
   predicate isFromTemplateInstantiation(Element instantiation) {
@@ -215,7 +215,7 @@ class Element extends @element {
 }
 
 /**
- * A C++11 static_assert or C11 _Static_assert construct.
+ * A C++11 `static_assert` or C11 `_Static_assert` construct.
  */
 class StaticAssert extends Locatable, @static_assert {
   override string toString() { result = "static_assert(..., \"" + getMessage() + "\")" }

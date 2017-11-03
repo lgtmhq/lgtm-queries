@@ -657,12 +657,12 @@ class Parameter extends BindingPattern {
 
   /** Gets the default expression for this parameter, if any. */
   Expr getDefault() {
-    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(2*n + 4)))
+    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(3*n + 4)))
   }
 
   /** Gets the type annotation for this parameter, if any. */
   override TypeExpr getTypeAnnotation() {
-    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildTypeExpr(-(2*n + 5)))
+    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildTypeExpr(-(3*n + 5)))
   }
 
   /** Holds if this parameter is a rest parameter. */

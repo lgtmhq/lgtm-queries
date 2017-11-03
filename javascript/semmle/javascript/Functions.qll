@@ -20,7 +20,7 @@ import AST
 import BasicBlocks
 
 /** A function as defined either by a function declaration or a function expression. */
-class Function extends @function, Parameterized, StmtContainer {
+class Function extends @function, Parameterized, TypeParameterized, StmtContainer {
   /** Gets the `i`th parameter of this function. */
   Parameter getParameter(int i) {
     result = getChildExpr(i)
@@ -35,6 +35,12 @@ class Function extends @function, Parameterized, StmtContainer {
   SimpleParameter getParameterByName(string name) {
     result = getAParameter() and
     result.getName() = name
+  }
+
+  /** Gets the `n`th type parameter declared on this function. */
+  override TypeParameter getTypeParameter(int i) {
+    // Type parameters are at indices -6, -9, -12, ...
+    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -6 and astIndex % 3 = 0 and i = -(astIndex + 6) / 3)
   }
 
   /** Gets the identifier specifying the name of this function, if any. */

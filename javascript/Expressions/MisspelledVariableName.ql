@@ -22,7 +22,7 @@
  * @tags maintainability
  *       readability
  *       correctness
- * @precision high
+ * @precision very-high
  */
 
 import Misspelling

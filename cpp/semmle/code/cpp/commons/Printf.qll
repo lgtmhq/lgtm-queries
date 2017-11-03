@@ -12,14 +12,14 @@
 // permissions and limitations under the License.
 
 /**
- * A library for dealing with printf-like formatting strings.
+ * A library for dealing with `printf`-like formatting strings.
  */
 import semmle.code.cpp.Type
 import semmle.code.cpp.commons.CommonType
 import semmle.code.cpp.commons.StringAnalysis
 
 /**
- * A standard library function that uses a printf-like formatting string.
+ * A standard library function that uses a `printf`-like formatting string.
  */
 abstract class FormattingFunction extends Function {
   /** the position at which the format parameter occurs */
@@ -31,10 +31,16 @@ abstract class FormattingFunction extends Function {
 
   /** the position at which the output parameter, if any, occurs */
   int getOutputParameterIndex() { none() }
+
+  /**
+   * Gets the position of the first format argument, corresponding with
+   * the first format specifier in the format string.
+   */
+  int getFirstFormatArgumentIndex() { result = getNumberOfParameters() }
 }
 
 /**
- * The standard functions printf, wprintf and their glib variants.
+ * The standard functions `printf`, `wprintf` and their glib variants.
  */
 class Printf extends FormattingFunction {
   Printf() { this instanceof TopLevelFunction and (hasGlobalName("printf") or hasGlobalName("wprintf") or hasGlobalName("g_printf")) }
@@ -44,7 +50,7 @@ class Printf extends FormattingFunction {
 }
 
 /**
- * The standard functions fprintf, fwprintf and their glib variants.
+ * The standard functions `fprintf`, `fwprintf` and their glib variants.
  */
 class Fprintf extends FormattingFunction {
   Fprintf() { this instanceof TopLevelFunction and (hasGlobalName("fprintf") or hasGlobalName("fwprintf") or hasGlobalName("g_fprintf"))}
@@ -55,7 +61,7 @@ class Fprintf extends FormattingFunction {
 }
 
 /**
- * The standard function sprintf and its Microsoft and glib variants.
+ * The standard function `sprintf` and its Microsoft and glib variants.
  */
 class Sprintf extends FormattingFunction {
   Sprintf() {
@@ -66,7 +72,8 @@ class Sprintf extends FormattingFunction {
       hasGlobalName("__swprintf_l") or
       hasGlobalName("wsprintf") or
       hasGlobalName("g_strdup_printf") or
-      hasGlobalName("g_sprintf")
+      hasGlobalName("g_sprintf") or
+      hasGlobalName("__builtin___sprintf_chk")
     )
   }
 
@@ -76,15 +83,22 @@ class Sprintf extends FormattingFunction {
 
   /** the position at which the format parameter occurs */
   int getFormatParameterIndex() {
-    if hasGlobalName("g_strdup_printf") then result = 0 else result = 1
+    if hasGlobalName("g_strdup_printf") then result = 0
+    else if hasGlobalName("__builtin___sprintf_chk") then result = 3
+    else result = 1
   }
   int getOutputParameterIndex() {
     not hasGlobalName("g_strdup_printf") and result = 0
   }
+  
+  int getFirstFormatArgumentIndex() {
+    if hasGlobalName("__builtin___sprintf_chk") then result = 4
+    else result = getNumberOfParameters()
+  }
 }
 
 /**
- * The standard functions snprintf and swprintf, and their
+ * The standard functions `snprintf` and `swprintf`, and their
  * Microsoft and glib variants.
  */
 class Snprintf extends FormattingFunction {
@@ -104,19 +118,25 @@ class Snprintf extends FormattingFunction {
       or hasGlobalName("_swprintf_s_l")
       or hasGlobalName("g_snprintf")
       or hasGlobalName("wnsprintf")
+      or hasGlobalName("__builtin___snprintf_chk")
     )
   }
 
   int getFormatParameterIndex() {
     if getName().matches("%\\_l")
-      then result = getNumberOfParameters() - 2
-      else result = getNumberOfParameters() - 1
+      then result = getFirstFormatArgumentIndex() - 2 
+      else result = getFirstFormatArgumentIndex() - 1
   }
 
   predicate isWideCharDefault() {
     getParameter(getFormatParameterIndex()).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() > 1
   }
   int getOutputParameterIndex() { result=0 }
+  
+  int getFirstFormatArgumentIndex() {
+    if hasGlobalName("__builtin___snprintf_chk") then result = 5
+    else result = getNumberOfParameters()
+  }
 }
 
 /**
@@ -152,7 +172,7 @@ class StringCchPrintf extends FormattingFunction {
 }
 
 /**
- * The standard function syslog.
+ * The standard function `syslog`.
  */
 class Syslog extends FormattingFunction {
   Syslog() {
@@ -192,7 +212,7 @@ predicate variadicFormatter(Function f, int formatParamIndex, boolean wide) {
 }
 
 /**
- * A function not in the standard library which takes a printf-style formatting
+ * A function not in the standard library which takes a `printf`-like formatting
  * string and a variable number of arguments.
  */
 class UserDefinedFormattingFunction extends FormattingFunction {
@@ -207,7 +227,7 @@ class UserDefinedFormattingFunction extends FormattingFunction {
 }
 
 /**
- * The Objective C method stringWithFormat:.
+ * The Objective C method `stringWithFormat:`.
  */
 class NsstringStringWithFormat extends FormattingFunction {
   NsstringStringWithFormat() {
@@ -268,7 +288,7 @@ class FormattingFunctionCall extends Expr {
     exists(int i |
       result = this.getArgument(i)
       and n >= 0
-      and n = i - getTarget().getNumberOfParameters()
+      and n = i - getTarget().(FormattingFunction).getFirstFormatArgumentIndex()
     )
   }
 
@@ -328,7 +348,7 @@ class FormatLiteral extends Expr {
   }
 
   /**
-   * Holds if this FormatLiteral is in a context that supports
+   * Holds if this `FormatLiteral` is in a context that supports
    * Microsoft rules and extensions.
    */
   predicate isMicrosoft() {
@@ -342,7 +362,7 @@ class FormatLiteral extends Expr {
     result = this.getValue().replaceAll("%%", "_")
   }
 
-  /** the number of conversion specifiers (not counting %%) */
+  /** Gets the number of conversion specifiers (not counting `%%`) */
   int getNumConvSpec() {
     result = count(this.getFormat().indexOf("%"))
   }
@@ -425,7 +445,7 @@ class FormatLiteral extends Expr {
           conv = "%")))
   }
 
-  /** the nth conversion specifier (including the initial %) */
+  /** Gets the nth conversion specifier (including the initial `%`) */
   string getConvSpec(int n) {
     exists(int offset, string fmt, string rst, string regexp |
       offset = this.getConvSpecOffset(n) and
