@@ -20,7 +20,7 @@
  * @id js/angular/double-compilation
  * @tags reliability
  *       frameworks/angularjs
- * @precision high
+ * @precision very-high
  */
 
 import javascript
@@ -29,5 +29,7 @@ from AngularJS::InjectedService compile, SimpleParameter elem, CallExpr c
 where compile.getServiceName() = "$compile" and
       elem = any(AngularJS::CustomDirective d).getALinkFunction().getParameter(1) and
       c.getCallee().(DataFlowNode).getALocalSource() = compile.getAnAccess() and
-      c.getArgument(0).(DataFlowNode).getALocalSource() = elem.getVariable().getAnAccess()
+      c.getArgument(0).(DataFlowNode).getALocalSource() = elem.getVariable().getAnAccess() and
+      // don't flag $compile calls that specify a `maxPriority`
+      c.getNumArgument() < 3
 select c, "This call to $compile may cause double compilation of '" + elem + "'."

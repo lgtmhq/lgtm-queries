@@ -83,12 +83,12 @@ class ExternalModuleReference extends Expr, Import, @externalmodulereference {
 }
 
 /** A literal path expression appearing in an external module reference. */
-private class LiteralExternalModulePath extends PathExprInModule, @stringliteral {
+private class LiteralExternalModulePath extends PathExprInModule, ConstantString {
   LiteralExternalModulePath() {
     exists (ExternalModuleReference emr | this.getParentExpr*() = emr.getExpression())
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(ConstantString).getStringValue() }
 }
 
 /** A TypeScript "export-assign" declaration. */
@@ -110,6 +110,10 @@ class InterfaceDeclaration extends Stmt, InterfaceDefinition, @interfacedeclarat
     result = getChild(0)
   }
 
+  override TypeParameter getTypeParameter(int n) {
+    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -2 and astIndex % 2 = 0 and n = -(astIndex + 2) / 2)
+  }
+
   override StmtContainer getContainer() {
     result = Stmt.super.getContainer()
   }
@@ -126,7 +130,7 @@ class InterfaceDeclaration extends Stmt, InterfaceDefinition, @interfacedeclarat
    * Gets the `n`th type from the `extends` clause of this interface, starting at 0.
    */
   override TypeExpr getSuperInterface(int n) {
-      result = getChildTypeExpr(-(n+1)) and n >= 0
+    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -1 and astIndex % 2 = -1 and n = -(astIndex + 1) / 2)
   }
 
   /**
@@ -151,39 +155,17 @@ class InterfaceTypeExpr extends TypeExpr, InterfaceDefinition, @interfacetypeexp
 }
 
 /**
- * A TypeScript function type, such as `(x: string) => number`.
- *
- * Function types are treated as interfaces that contain a single call signature member.
- * For example, the type
- * ```
- * (x: number) => string
- * ```
- * is represented as
- * ```
- * { (x: number): string; }
- * ```
+ * A TypeScript function type, such as `(x: string) => number` or a
+ * constructor type such as `new (x: string) => Object`.
  */
-class FunctionTypeExpr extends TypeExpr, InterfaceDefinition, @functiontypeexpr {
-  override Identifier getIdentifier() { none() }
-
-  override StmtContainer getContainer() {
-    result = TypeExpr.super.getContainer()
-  }
-
-  override string describe() {
-    result = "function type"
-  }
-
-  /** Holds if this is a constructor type, such as `new(x: number) => Object` */
-  predicate isConstructorType() { getCallSignature() instanceof ConstructorCallSignature }
-
-  /** Gets the implicit call signature defined by the function type. */
-  CallSignature getCallSignature() { result = getACallSignature() }
+class FunctionTypeExpr extends TypeExpr, @functiontypeexpr {
+  /** Holds if this is a constructor type, such as `new (x: string) => Object`. */
+  predicate isConstructor() { this instanceof ConstructorTypeExpr }
 
   /** Gets the function AST node that holds the parameters and return type. */
-  FunctionExpr getFunction() { result = getCallSignature().getBody() }
+  FunctionExpr getFunction() { result = getChildExpr(0) }
 
-  /** Gets the `n`-th parameter of this function type. */
+  /** Gets the `n`th parameter of this function type. */
   Parameter getParameter(int n) { result = getFunction().getParameter(n) }
 
   /** Gets any of the parameters of this function type. */
@@ -192,20 +174,34 @@ class FunctionTypeExpr extends TypeExpr, InterfaceDefinition, @functiontypeexpr 
   /** Gets the number of parameters of this function type. */
   int getNumParameter() { result = getFunction().getNumParameter() }
 
+  /** Gets the `n`th type parameter of this function type. */
+  TypeParameter getTypeParameter(int n) { result = getFunction().getTypeParameter(n) }
+
+  /** Gets any of the type parameters of this function type. */
+  TypeParameter getATypeParameter() { result = getFunction().getATypeParameter() }
+
+  /** Gets the number of type parameters of this function type. */
+  int getNumTypeParameter() { result = getFunction().getNumTypeParameter() }
+
   /** Gets the return type of this function type, if any. */
   TypeExpr getReturnTypeAnnotation() { result = getFunction().getReturnTypeAnnotation() }
 }
+
+/** A constructor type, such as `new (x: string) => Object`. */
+class ConstructorTypeExpr extends FunctionTypeExpr, @constructortypeexpr {}
+
+/** A function type that is not a constructor type, such as `(x: string) => number`. */
+class PlainFunctionTypeExpr extends FunctionTypeExpr, @plainfunctiontypeexpr {}
 
 /** A possibly qualified identifier that declares or refers to a type. */
 abstract class TypeRef extends ASTNode {
 }
 
-/** The identifier declaring the name of a class or interface declaration. */
+/** An identifier declaring a type name, that is, the name of a class, interface, or type parameter. */
 class TypeDecl extends TypeRef, Identifier {
-  ClassOrInterface declaredType;
-
   TypeDecl() {
-    this = declaredType.getIdentifier()
+    this = any(ClassOrInterface ci).getIdentifier() or
+    this = any(TypeParameter tp).getIdentifier()
   }
 }
 
@@ -684,3 +680,76 @@ class ExpressionWithTypeArguments extends @expressionwithtypearguments, Expr {
     result = getExpression().getFirstControlFlowNode()
   }
 }
+
+/**
+ * A program element that supports type parameters, that is, a function, class, interface, or type alias.
+ */
+class TypeParameterized extends @type_parameterized, ASTNode {
+  /** Gets the `n`th type parameter declared on this function or type. */
+  TypeParameter getTypeParameter(int n) { none() } // Overridden in subtypes.
+
+  /** Gets any type parameter declared on this function or type. */
+  TypeParameter getATypeParameter() { result = getTypeParameter(_) }
+
+  /** Gets the number of type parameters declared on this function or type. */
+  int getNumTypeParameter() { result = count(getATypeParameter()) }
+
+  /** Holds if this function or type declares any type parameters. */
+  predicate hasTypeParameters() { exists(getATypeParameter()) }
+}
+
+/**
+ * A type parameter declared on a class, interface, function, or type alias.
+ */
+class TypeParameter extends @typeparameter, TypeExpr {
+  /**
+   * Gets the name of the type parameter as a string.
+   */
+  string getName() { result = getIdentifier().getName() }
+
+  /**
+   * Gets the identifier node of the type parameter, such as `T` in `class C<T>`.
+   */
+  Identifier getIdentifier() { result = getChildTypeExpr(0) }
+
+  /**
+   * Gets the upper bound of the type parameter, such as `U` in `class C<T extends U>`.
+   */
+  TypeExpr getBound() { result = getChildTypeExpr(1) }
+
+  /**
+   * Gets the default value of the type parameter, such as `D` in `class C<T = D>`.
+   */
+  TypeExpr getDefault() { result = getChildTypeExpr(2) }
+
+  /**
+   * Gets the function or type that declares this type parameter.
+   */
+  TypeParameterized getHost() { result.getATypeParameter() = this }
+}
+
+/**
+ * A type assertion, also known as an unchecked type cast, is a TypeScript expression
+ * of form `E as T` or `<T> E` where `E` is an expression and `T` is a type.
+ */
+class TypeAssertion extends Expr, @typeassertion {
+  /** Gets the expression whose type to assert, that is, the `E` in `E as T` or `<T> E`. */
+  Expr getExpression() { result = getChildExpr(0) }
+
+  /** Gets the type to cast to, that is, the `T` in `E as T` or `<T> E`. */
+  TypeExpr getTypeAnnotation() { result = getChildTypeExpr(1) }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+      result = getExpression().getFirstControlFlowNode()
+  }
+}
+
+/**
+ * A type assertion specifically of the form `E as T` (as opposed to the `<T> E` syntax).
+ */
+class AsTypeAssertion extends TypeAssertion, @astypeassertion {}
+
+/**
+ * A type assertion specifically of the form `<T> E` (as opposed to the `E as T` syntax).
+ */
+class PrefixTypeAssertion extends TypeAssertion, @prefixtypeassertion {}

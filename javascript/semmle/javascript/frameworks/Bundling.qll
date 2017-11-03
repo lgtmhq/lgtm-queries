@@ -63,7 +63,7 @@ predicate isBrowserifyBundle(ObjectExpr oe) {
  */
 private predicate isBrowserifyModuleId(Expr e) {
   e.(NumberLiteral).getValue().regexpMatch("[0-9]+") or
-  e instanceof StringLiteral
+  e instanceof ConstantString
 }
 
 /**
@@ -105,7 +105,7 @@ private predicate isBrowserifyDependencyMap(ObjectExpr deps) {
   // there may be no dependencies, hence `forall` instead of `forex`
   forall (Property dep | dep = deps.getAProperty() |
     // each key must be a string literal
-    dep.(ValueProperty).getNameExpr() instanceof StringLiteral and
+    dep.(ValueProperty).getNameExpr() instanceof ConstantString and
     // and each value must be a module id
     isBrowserifyModuleId(dep.getInit())
   )
@@ -178,11 +178,24 @@ predicate isWebpackBundle(ArrayExpr ae) {
 }
 
 /**
+ * Holds if `tl` is a collection of concatenated files by [atpackager](https://github.com/ariatemplates/atpackager).
+ */
+predicate isMultiPartBundle(TopLevel tl) {
+  exists(Comment c1, Comment c2 |
+    c1.getTopLevel() = tl and
+    c2.getTopLevel() = tl and
+    c1.getText() = "***MULTI-PART" and
+    c2.getText().regexpMatch("LOGICAL-PATH:.*")
+  )
+}
+
+/**
  * Holds if toplevel `tl` contains code that looks like the output of a module bundler.
  */
 predicate isBundle(TopLevel tl) {
   exists (Expr e | e.getTopLevel() = tl |
     isBrowserifyBundle(e) or
     isWebpackBundle(e)
-  )
+  ) or
+  isMultiPartBundle(tl)
 }

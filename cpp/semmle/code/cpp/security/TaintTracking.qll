@@ -234,7 +234,7 @@ predicate insideFunctionValueMoveTo(Element src, Element dest)
       and comma.getRightOperand() = src)
     or exists(FunctionCall c, int sourceArg, int destArg |
       copyValueBetweenArguments(c.getTarget(), sourceArg, destArg)
-      // Only consider copies from printf-like functions if the format is a string
+      // Only consider copies from `printf`-like functions if the format is a string
       and (
         exists(FormattingFunctionCall ffc, FormatLiteral format, string argFormat |
           ffc = c

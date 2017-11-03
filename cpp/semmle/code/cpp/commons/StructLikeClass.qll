@@ -34,18 +34,22 @@ class StructLikeClass extends Class {
     )
   }
 
-  /** Get a setter function in this class, setting the given variable.
-      This is a function called set... that assigns to this variable and no other
-      member variable of the class. In addition, it takes a single parameter of
-      type the type of the corresponding member variable. */
+  /**
+   * Gets a setter function in this class, setting the given variable.
+   * This is a function whose name begins "set"... that assigns to this variable and no other
+   * member variable of the class. In addition, it takes a single parameter of
+   * type the type of the corresponding member variable.
+   */
   MemberFunction getASetter(MemberVariable v) {
     setter(v, result, this)
   }
 
-  /** Get a getter function in this class, getting the given variable.
-      This is a function called get... that reads this variable and no other
-      member variable of the class. In addition, its return type is the type
-      of the corresponding member variable. */
+  /**
+   * Gets a getter function in this class, getting the given variable.
+   * This is a function whose name begins "get"... that reads this variable and no other
+   * member variable of the class. In addition, its return type is the type
+   * of the corresponding member variable.
+   */
   MemberFunction getAGetter(MemberVariable v) {
     getter(v, result, this)
   }

@@ -93,12 +93,12 @@ class ImportDeclaration extends Stmt, Import, @importdeclaration {
 }
 
 /** A literal path expression appearing in an `import` declaration. */
-private class LiteralImportPath extends PathExprInModule, @stringliteral {
+private class LiteralImportPath extends PathExprInModule, ConstantString {
   LiteralImportPath() {
     exists (ImportDeclaration req | this = req.getChildExpr(-1))
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(ConstantString).getStringValue() }
 }
 
 /**
@@ -245,7 +245,7 @@ abstract class ExportDeclaration extends Stmt, @exportdeclaration {
  */
 class BulkReExportDeclaration extends ReExportDeclaration, @exportalldeclaration {
   /** Gets the name of the module from which this declaration re-exports. */
-  override StringLiteral getImportedPath() {
+  override ConstantString getImportedPath() {
     result = getChildExpr(0)
   }
 
@@ -326,7 +326,7 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
   }
 
   /** Gets the module from which the exports are taken if this is a re-export. */
-  StringLiteral getImportedPath() {
+  ConstantString getImportedPath() {
     result = getChildExpr(-2)
   }
 
@@ -374,7 +374,7 @@ class ExportNamespaceSpecifier extends ExportSpecifier, @exportnamespacespecifie
 /** An export declaration that re-exports declarations from another module. */
 abstract class ReExportDeclaration extends ExportDeclaration {
   /** Gets the path of the module from which this declaration re-exports. */
-  abstract StringLiteral getImportedPath();
+  abstract ConstantString getImportedPath();
 
   /** Gets the module from which this declaration re-exports. */
   ES2015Module getImportedModule() {
@@ -383,12 +383,12 @@ abstract class ReExportDeclaration extends ExportDeclaration {
 }
 
 /** A literal path expression appearing in a re-export declaration. */
-private class LiteralReExportPath extends PathExprInModule, @stringliteral {
+private class LiteralReExportPath extends PathExprInModule, ConstantString {
   LiteralReExportPath() {
     exists (ReExportDeclaration bred | this = bred.getImportedPath())
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(ConstantString).getStringValue() }
 }
 
 /** A named export declaration that re-exports symbols imported from another module. */
@@ -398,7 +398,7 @@ class SelectiveReExportDeclaration extends ReExportDeclaration, ExportNamedDecla
   }
 
   /** Gets the path of the module from which this declaration re-exports. */
-  override StringLiteral getImportedPath() { result = ExportNamedDeclaration.super.getImportedPath() }
+  override ConstantString getImportedPath() { result = ExportNamedDeclaration.super.getImportedPath() }
 }
 
 /** An export declaration that exports zero or more declarations from the module it appears in. */

@@ -67,7 +67,7 @@ InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
     // and so are strings
     tp = TTString() and
     // exclude cases where the string is guaranteed to coerce to NaN
-    not exists(StringLiteral l | l = operand | not exists(l.getValue().toFloat())) and
+    not exists(ConstantString l | l = operand | not exists(l.getStringValue().toFloat())) and
     result = TTNumber()
     or
     // Dates are converted to strings (which are guaranteed to coerce to NaN)

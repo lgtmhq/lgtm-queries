@@ -13,7 +13,6 @@
 
 import default
 import DefinitionsAndUses
-import Options
 
 /**
  * A C/C++ literal whose value is considered null.
@@ -261,10 +260,12 @@ predicate nullInit(Variable v, ControlFlowNode n)
  */
 predicate callMayReturnNull(Call call)
 {
-  if overrideReturnsNull(call) then
-    returnsNull(call)
-  else
-    mayReturnNull(call.(FunctionCall).getTarget())
+  exists(Options opts |
+    if opts.overrideReturnsNull(call) then
+      opts.returnsNull(call)
+    else
+      mayReturnNull(call.(FunctionCall).getTarget())
+  )
 }
 
 /**

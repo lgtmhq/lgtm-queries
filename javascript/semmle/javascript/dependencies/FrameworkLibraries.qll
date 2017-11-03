@@ -367,7 +367,7 @@ private predicate mooToolsObject(ObjectExpr oe, TopLevel tl, string version) {
     tl = oe.getTopLevel() and assgn.getLhs() = d and assgn.getRhs() = oe |
     d.getBase() instanceof ThisExpr and
     d.getPropertyName() = "MooTools" and
-    version = oe.getPropertyByName("version").getInit().(StringLiteral).getValue()
+    version = oe.getPropertyByName("version").getInit().(ConstantString).getStringValue()
   )
 }
 
@@ -403,7 +403,7 @@ private class Prototype extends FrameworkLibraryWithGenericURL {
 private predicate prototypeObject(ObjectExpr oe, TopLevel tl, string version) {
   exists (VariableDeclarator vd | tl = vd.getTopLevel() and oe = vd.getInit() |
     vd.getBindingPattern().(Identifier).getName() = "Prototype" and
-    version = oe.getPropertyByName("Version").getInit().(StringLiteral).getValue()
+    version = oe.getPropertyByName("Version").getInit().(ConstantString).getStringValue()
   )
 }
 
@@ -439,7 +439,7 @@ private class Scriptaculous extends FrameworkLibraryWithGenericURL {
 private predicate scriptaculousObject(ObjectExpr oe, TopLevel tl, string version) {
   exists (VariableDeclarator vd | tl = vd.getTopLevel() and oe = vd.getInit() |
     vd.getBindingPattern().(Identifier).getName() = "Scriptaculous" and
-    version = oe.getPropertyByName("Version").getInit().(StringLiteral).getValue()
+    version = oe.getPropertyByName("Version").getInit().(ConstantString).getStringValue()
   )
 }
 

@@ -43,7 +43,7 @@ class AMDModuleDefinition extends CallExpr {
     exists (int n | n = getNumArgument() |
       n = 1 or
       n = 2 and getArgument(0) instanceof ArrayExpr or
-      n = 3 and getArgument(0) instanceof StringLiteral and getArgument(1) instanceof ArrayExpr
+      n = 3 and getArgument(0) instanceof ConstantString and getArgument(1) instanceof ArrayExpr
     )
   }
 
@@ -196,21 +196,21 @@ class AMDModuleDefinition extends CallExpr {
 }
 
 /** A path expression appearing in the list of dependencies of an AMD module. */
-private class AMDDependencyPath extends PathExprInModule, @stringliteral {
+private class AMDDependencyPath extends PathExprInModule, ConstantString {
   AMDDependencyPath() {
     exists (AMDModuleDefinition amd | this.getParentExpr*() = amd.getDependencies().getAnElement())
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(ConstantString).getStringValue() }
 }
 
 /** A path expression appearing in a `require` call in an AMD module. */
-private class AMDRequirePath extends PathExprInModule, @stringliteral {
+private class AMDRequirePath extends PathExprInModule, ConstantString {
   AMDRequirePath() {
     exists (AMDModuleDefinition amd | this.getParentExpr*() = amd.getARequireCall().getAnArgument())
   }
 
-  override string getValue() { result = this.(StringLiteral).getValue() }
+  override string getValue() { result = this.(ConstantString).getStringValue() }
 }
 
 /**

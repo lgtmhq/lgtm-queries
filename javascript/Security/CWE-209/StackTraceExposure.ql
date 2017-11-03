@@ -18,7 +18,7 @@
  *              to an attacker for developing a subsequent exploit.
  * @kind problem
  * @problem.severity warning
- * @precision high
+ * @precision very-high
  * @id js/stack-trace-exposure
  * @tags security
  *       external/cwe/cwe-209

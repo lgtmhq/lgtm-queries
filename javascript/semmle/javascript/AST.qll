@@ -150,10 +150,10 @@ class ASTNode extends @ast_node, Locatable {
   }
 
   /**
-   * Holds if this is part of an ambient declaration in a TypeScript file.
+   * Holds if this is part of an ambient declaration or type annotation in a TypeScript file.
    *
    * A declaration is ambient if it occurs under a `declare` modifier or is
-   * an interface declaration or type alias.
+   * an interface declaration, type alias, or type annotation.
    *
    * The TypeScript compiler emits no code for ambient declarations, but they
    * can affect name resolution and type checking at compile-time.

@@ -35,7 +35,7 @@ class CallToObjectDefineProperty extends CallExpr {
 
   /** Gets the name of the property being defined, if it can be determined. */
   string getPropertyName() {
-    result = getArgument(1).(StringLiteral).getValue()
+    result = getArgument(1).(ConstantString).getStringValue()
   }
 
   /** Gets the expression denoting the descriptor of the property being defined. */

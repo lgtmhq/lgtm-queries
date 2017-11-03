@@ -19,11 +19,12 @@
  */
 
 import Stmt
+import TypeScript
 
 /**
  * A class or interface definition.
  */
-class ClassOrInterface extends @classorinterface, ASTNode {
+class ClassOrInterface extends @classorinterface, TypeParameterized {
   /** Gets the identifier naming the declared type, if any. */
   Identifier getIdentifier() { none() } // Overridden in subtypes.
 
@@ -111,6 +112,11 @@ class ClassDefinition extends @classdefinition, ClassOrInterface {
     result = getChildExpr(0)
   }
 
+  override TypeParameter getTypeParameter(int i) {
+    // AST indices for type parameters: -3, -6, -9, ...
+    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -3 and astIndex % 3 = 0 and i = -(astIndex + 3) / 3)
+  }
+
   /** Gets the expression denoting the super class of the defined class, if any. */
   override Expr getSuperClass() {
     result = getChildExpr(1)
@@ -118,7 +124,8 @@ class ClassDefinition extends @classdefinition, ClassOrInterface {
 
   /** Gets the `n`th type from the `implements` clause of this class, starting at 0. */
   override TypeExpr getSuperInterface(int i) {
-    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -1 and i = -astIndex / 2)
+    // AST indices for super interfaces: -1, -4, -7, ...
+    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -1 and astIndex % 3 = -1 and i = -(astIndex + 1) / 3)
   }
 
   /** Gets any type from the `implements` clause of this class. */
@@ -143,7 +150,8 @@ class ClassDefinition extends @classdefinition, ClassOrInterface {
    * `@A` as its 0th decorator, and `@B` as its first decorator.
    */
   Decorator getDecorator(int i) {
-    exists (int astIndex | exprs(result, _, this, astIndex, _) | astIndex <= -2 and i = -(astIndex / 2 + 1))
+    // AST indices for decorators: -2, -5, -8, ...
+    exists (int astIndex | exprs(result, _, this, astIndex, _) | astIndex <= -2 and astIndex % 3 = -2 and i = -(astIndex + 2) / 3)
   }
 
   /**
@@ -599,6 +607,11 @@ class FieldDeclaration extends MemberDeclaration {
   FieldDeclaration() {
     not isMethod(this) and
     not this instanceof @call_signature
+  }
+
+  /** Gets the type annotation of this field, if any, such as `T` in `{ x: T }`. */
+  TypeExpr getTypeAnnotation() {
+    result = getChildTypeExpr(2)
   }
 }
 
