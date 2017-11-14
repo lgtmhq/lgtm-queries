@@ -797,7 +797,7 @@ library class For_ extends @py_For, Stmt {
 library class FormattedValue_ extends @py_FormattedValue, Expr {
 
 
-    /** Gets the the expression to be formatted of this formatted value. */
+    /** Gets the expression to be formatted of this formatted value. */
     Expr getValue() {
         py_exprs(result, _, this, 2)
     }

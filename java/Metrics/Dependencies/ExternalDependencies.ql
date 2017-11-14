@@ -18,6 +18,7 @@
  * @treemap.warnOn highValues 
  * @metricType externalDependency
  * @precision medium
+ * @id java/external-dependencies
  */
 
 import java

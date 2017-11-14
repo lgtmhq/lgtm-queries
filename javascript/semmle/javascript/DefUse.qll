@@ -27,7 +27,9 @@ import javascript
  * <tr><td><code>function f { ... }</code><td><code>f</code><td><code>f</code><td><code>function f { ... }</code></tr>
  * <tr><td><code>class C { ... }</code><td><code>C</code><td><code>C</code><td><code>class C { ... }</code></tr>
  * <tr><td><code>namespace N { ... }</code><td><code>N</code><td><code>N</code><td><code>namespace N { ... }</code></tr>
+ * <tr><td><code>enum E { ... }</code><td><code>E</code><td><code>E</code><td><code>enum E { ... }</code></tr>
  * <tr><td><code>import x = y</code><td><code>x</code><td><code>x</code><td><code>y</code></tr>
+ * <tr><td><code>enum { x = y }</code><td><code>x</code><td><code>x</code><td><code>y</code></tr>
  * </table>
  *
  * Note that `def` and `lhs` are not in general the same: the latter
@@ -51,8 +53,14 @@ private predicate defn(ControlFlowNode def, Expr lhs, DataFlowNode rhs) {
   exists (NamespaceDeclaration n | def = n.getId() |
     lhs = def and rhs = n
   ) or
+  exists (EnumDeclaration ed | def = ed.getIdentifier() |
+    lhs = def and rhs = ed
+  ) or
   exists (ImportEqualsDeclaration i | def = i.getId() |
     lhs = def and rhs = i.getImportedEntity()
+  ) or
+  exists (EnumMember member | def = member.getIdentifier() |
+    lhs = def and rhs = member.getInitializer()
   )
 }
 
@@ -68,6 +76,7 @@ private predicate defn(ControlFlowNode def, Expr lhs, DataFlowNode rhs) {
  * <tr><td><code>++z.q</code><td><code>++z.q</code><td><code>z.q</code></tr>
  * <tr><td><code>import { a as b } from 'm'</code><td><code>a as b</code><td><code>b</code></tr>
  * <tr><td><code>for (var p in o) ...</code><td><code>var p</code><td><code>p</code></tr>
+ * <tr><td><code>enum { x  }</code><td><code>x</code><td><code>x</code></tr>
  * </table>
  *
  * Additionally, parameters are also considered definitions, which are their own `lhs`.
@@ -84,7 +93,9 @@ private predicate defn(ControlFlowNode def, Expr lhs) {
   lhs = def and (
     def instanceof Parameter or
     def = any(ComprehensionBlock cb).getIterator()
-  )
+  ) or
+  exists (EnumMember member | def = member.getIdentifier() |
+    lhs = def and not exists (member.getInitializer()))
 }
 
 /**

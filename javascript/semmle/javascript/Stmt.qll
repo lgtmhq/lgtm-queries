@@ -191,8 +191,8 @@ private class MaybeDirective extends ExprStmt {
   }
 }
 
-/** A directive, such as a strict mode declaration. */
-abstract class Directive extends MaybeDirective {
+/** A directive: string literal expression statement in the beginning of a statement container. */
+class Directive extends MaybeDirective {
   Directive() {
     exists (StmtContainer sc, ASTNode body, int i |
       // directives must be toplevel statements in their container
@@ -203,28 +203,33 @@ abstract class Directive extends MaybeDirective {
   }
 }
 
+/** A known directive, such as a strict mode declaration. */
+abstract class KnownDirective extends Directive {
+
+}
+
 /** A strict mode declaration. */
-class StrictModeDecl extends Directive {
+class StrictModeDecl extends KnownDirective {
   StrictModeDecl() { getDirectiveText() = "use strict" }
 }
 
 /** An asm.js directive. */
-class ASMJSDirective extends Directive {
+class ASMJSDirective extends KnownDirective {
   ASMJSDirective() { getDirectiveText() = "use asm" }
 }
 
 /** A Babel directive. */
-class BabelDirective extends Directive {
+class BabelDirective extends KnownDirective {
   BabelDirective() { getDirectiveText() = "use babel" }
 }
 
 /** A legacy 6to5 directive. */
-class SixToFiveDirective extends Directive {
+class SixToFiveDirective extends KnownDirective {
   SixToFiveDirective() { getDirectiveText() = "use 6to5" }
 }
 
 /** A SystemJS `format` directive. */
-class SystemJSFormatDirective extends Directive {
+class SystemJSFormatDirective extends KnownDirective {
   SystemJSFormatDirective() {
     getDirectiveText().regexpMatch("format (cjs|esm|global|register)")
   }
@@ -236,8 +241,16 @@ class FormatRegisterDirective extends SystemJSFormatDirective {
 }
 
 /** A `ngInject` or `ngNoInject` directive. */
-class NgInjectDirective extends Directive {
+class NgInjectDirective extends KnownDirective {
   NgInjectDirective() { getDirectiveText().regexpMatch("ng(No)?Inject") }
+}
+
+
+/** A SystemJS `deps` directive. */
+class SystemJSDepsDirective extends KnownDirective {
+  SystemJSDepsDirective() {
+    getDirectiveText().regexpMatch("deps [^ ]+")
+  }
 }
 
 /** An `if` statement. */

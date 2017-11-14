@@ -21,6 +21,7 @@
  * @metricType file
  * @metricAggregate avg sum max
  * @precision very-high
+ * @id cpp/lines-of-comments-in-files
  * @tags maintainability
  *       documentation
  */

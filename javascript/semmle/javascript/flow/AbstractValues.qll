@@ -95,6 +95,18 @@ class AbstractValue extends TAbstractValue {
     none()
   }
 
+  /**
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `f`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   */
+  predicate hasLocationInfo(string f, int startline, int startcolumn,
+                                      int endline, int endcolumn) {
+    f = "" and startline = 0 and startcolumn = 0 and endline = 0 and endcolumn = 0
+  }
+
   /** Gets a textual representation of this element. */
   abstract string toString();
 }
@@ -199,27 +211,34 @@ class AbstractOtherString extends PrimitiveAbstractValue, TAbstractOtherString {
 }
 
 /**
- * An abstract value representing an individual function.
+ * An abstract value representing a function or class.
  */
-class AbstractFunction extends DefiniteAbstractValue, TAbstractFunction {
+abstract class AbstractCallable extends DefiniteAbstractValue {
   /**
    * Gets the function represented by this abstract value.
    */
-  Function getFunction() {
-    this = TAbstractFunction(result)
-  }
+  abstract Function getFunction();
+}
 
+/**
+ * An abstract value representing an individual function.
+ */
+class AbstractFunction extends AbstractCallable, TAbstractFunction {
+  override Function getFunction() { this = TAbstractFunction(result) }
   override boolean getBooleanValue() { result = true }
   override InferredType getType() { result = TTFunction() }
   override predicate isCoercibleToNumber() { none() }
   override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
-  override string toString() { result = "function" }
+  override predicate hasLocationInfo(string path, int startline, int startcolumn, int endline, int endcolumn) {
+    getFunction().getLocation().hasLocationInfo(path, startline, startcolumn, endline, endcolumn)
+  }
+  override string toString() { result = getFunction().describe() }
 }
 
 /**
  * An abstract value representing an individual class.
  */
-class AbstractClass extends DefiniteAbstractValue, TAbstractClass {
+class AbstractClass extends AbstractCallable, TAbstractClass {
   /**
    * Gets the class represented by this abstract value.
    */
@@ -227,11 +246,15 @@ class AbstractClass extends DefiniteAbstractValue, TAbstractClass {
     this = TAbstractClass(result)
   }
 
+  override Function getFunction() { result = getClass().getConstructor().getBody() }
   override boolean getBooleanValue() { result = true }
   override InferredType getType() { result = TTClass() }
   override predicate isCoercibleToNumber() { none() }
   override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
-  override string toString() { result = "class" }
+  override predicate hasLocationInfo(string path, int startline, int startcolumn, int endline, int endcolumn) {
+    getClass().getLocation().hasLocationInfo(path, startline, startcolumn, endline, endcolumn)
+  }
+  override string toString() { result = getClass().describe() }
 }
 
 
@@ -259,7 +282,10 @@ class AbstractArguments extends DefiniteAbstractValue, TAbstractArguments {
   override InferredType getType() { result = TTObject() }
   override predicate isCoercibleToNumber() { none() }
   override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
-  override string toString() { result = "arguments" }
+  override predicate hasLocationInfo(string path, int startline, int startcolumn, int endline, int endcolumn) {
+    getFunction().getLocation().hasLocationInfo(path, startline, startcolumn, endline, endcolumn)
+  }
+  override string toString() { result = "arguments object of " + getFunction().describe() }
 }
 
 /**
@@ -283,7 +309,10 @@ class AbstractModuleObject extends DefiniteAbstractValue, TAbstractModuleObject 
   override InferredType getType() { result = TTObject() }
   override predicate isCoercibleToNumber() { none() }
   override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
-  override string toString() { result = "module" }
+  override predicate hasLocationInfo(string path, int startline, int startcolumn, int endline, int endcolumn) {
+    getModule().getLocation().hasLocationInfo(path, startline, startcolumn, endline, endcolumn)
+  }
+  override string toString() { result = "module object of module " + getModule().getName() }
 }
 
 /**
@@ -296,7 +325,10 @@ class AbstractExportsObject extends DefiniteAbstractValue, TAbstractExportsObjec
   override InferredType getType() { result = TTObject() }
   override predicate isCoercibleToNumber() { none() }
   override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
-  override string toString() { result = "exports" }
+  override predicate hasLocationInfo(string path, int startline, int startcolumn, int endline, int endcolumn) {
+    getModule().getLocation().hasLocationInfo(path, startline, startcolumn, endline, endcolumn)
+  }
+  override string toString() { result = "exports object of module " + getModule().getName() }
 }
 
 /**

@@ -69,6 +69,21 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
   }
 
   /**
+   * Holds if this function is deleted.
+   * This may be because it was explicitly deleted with an `= delete`
+   * definition, or because the compiler was unable to auto-generate a
+   * definition for it.
+   *
+   * Most implicitly deleted functions are omitted from the database.
+   * `Class.implicitCopyConstructorDeleted` and
+   * `Class.implicitCopyAssignmentOperatorDeleted` can be used to find
+   * whether a class would have had those members implicitly deleted.
+   */
+  predicate isDeleted() {
+    function_deleted(this)
+  }
+
+  /**
    * Holds if this function is declared with `__attribute__((naked))` or
    * `__declspec(naked)`.
    */

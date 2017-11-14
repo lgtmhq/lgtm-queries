@@ -23,6 +23,7 @@
  */
 
 import javascript
+import semmle.javascript.RestrictedLocations
 
 from WithStmt ws
-select ws, "Do not use 'with'."
+select (FirstLineOf)ws, "Do not use 'with'."

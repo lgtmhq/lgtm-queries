@@ -45,7 +45,7 @@ private predicate potentiallyReturningFunction(Function f) {
 }
 
 /**
- * A non-analyzable function is one for which there is is no
+ * A non-analyzable function is one for which there is no
  * path from the entry point to the exit point using the bare
  * `successors_extended` relation. This can happen if either the
  * function has no entry point (an external/library function),
@@ -285,6 +285,14 @@ library class ExprEvaluator extends int {
     interestingInternal(e, va, sub) and
     v = getVariableTarget(va) and
     (v.hasInitializer() or sub = true and allowVariableWithoutInitializer(e, v)) and
+    // For performance reasons, we only want to compute the below `forall` if
+    // its range is small enough that we can do it fast. The threshold chosen
+    // here has been tested empirically to have effect only on a few rare
+    // examples.
+    ( not exists(StmtParent def | nonAnalyzableVariableDefinition(v, def))
+      or
+      strictcount(StmtParent def | nonAnalyzableVariableDefinition(v, def)) < 1000
+    ) and
     forall(StmtParent def |
       nonAnalyzableVariableDefinition(v, def) |
       sub = true and
@@ -607,7 +615,7 @@ private predicate nonAnalyzableVariableDefinition(Variable v, StmtParent def) {
 
 /** Holds if assembler statement `asm` may define variable `v`. */
 private predicate asmStmtMayDefineVariable(AsmStmt asm, Variable v) {
-  // We don't actually have access the the assembler code, so assume
+  // We don't actually have access to the assembler code, so assume
   // that any variable declared in the same function may be defined
   exists(DeclStmt decl, Function f |
     decl.getADeclaration() = v and

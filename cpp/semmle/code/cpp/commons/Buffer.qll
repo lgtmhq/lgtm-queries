@@ -50,7 +50,7 @@ private predicate isDynamicallyAllocatedWithDifferentSize(Class s) {
  */
 predicate memberMayBeVarSize(Class c, MemberVariable v) {
   exists(int i |
-    i = max(int j | exists(c.getMember(j)) | j) and
+    i = max(int j | c.getMember(j) instanceof Field | j) and
     v = c.getMember(i) and
     v.getType().getUnspecifiedType().(ArrayType).getSize() <= 1
   ) and

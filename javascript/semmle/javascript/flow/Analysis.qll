@@ -142,46 +142,46 @@ class AnalyzedFlowNode extends @dataflownode {
 }
 
 /**
- * Flow analysis for Boolean literals.
+ * Flow analysis for literal expressions.
  */
-private class BooleanLiteralSource extends AnalyzedFlowNode, @booleanliteral {
+private class LiteralSource extends AnalyzedFlowNode, @literal {
+  string value;
+
+  LiteralSource() { value = this.(Literal).getValue() }
+
   override AbstractValue getAValue() {
-    exists (string v | v = this.(Literal).getValue() |
-      v = "true" and result = TAbstractBoolean(true) or
-      v = "false" and result = TAbstractBoolean(false)
+    // flow analysis for `null` literals
+    this instanceof NullLiteral and result = TAbstractNull()
+    or
+    // flow analysis for Boolean literals
+    this instanceof BooleanLiteral and (
+      value = "true" and result = TAbstractBoolean(true) or
+      value = "false" and result = TAbstractBoolean(false)
     )
-  }
-}
-
-/**
- * Flow analysis for number literals.
- */
-private class NumberLiteralSource extends AnalyzedFlowNode, @numberliteral {
-  private predicate isZero() {
-    exists (float v | v = this.(Literal).getValue().toFloat() | v = 0.0 or v = -0.0)
-  }
-
-  override AbstractValue getAValue() {
-    if isZero() then
-      result = TAbstractZero()
-    else
-      result = TAbstractNonZero()
-  }
-}
-
-/**
- * Flow analysis for string literals.
- */
-private class StringLiteralSource extends AnalyzedFlowNode, @stringliteral {
-  override AbstractValue getAValue() {
-    exists (string v | v = this.(Literal).getValue() |
-      if v = "" then
+    or
+    // flow analysis for number literals
+    this instanceof NumberLiteral and
+    exists (float fv | fv = value.toFloat() |
+      if fv = 0.0 or fv = -0.0 then
+        result = TAbstractZero()
+      else
+        result = TAbstractNonZero()
+    )
+    or
+    // flow analysis for string literals
+    this instanceof StringLiteral and
+    (
+      if value = "" then
         result = TAbstractEmpty()
-      else if exists(v.toFloat()) then
+      else if exists(value.toFloat()) then
         result = TAbstractNumString()
       else
         result = TAbstractOtherString()
     )
+    or
+    // flow analysis for regular expression literals
+    this instanceof RegExpLiteral and
+    result = TAbstractOtherObject()
   }
 }
 
@@ -190,20 +190,6 @@ private class StringLiteralSource extends AnalyzedFlowNode, @stringliteral {
  */
 private class TemplateLiteralSource extends AnalyzedFlowNode, @templateliteral {
   override AbstractValue getAValue() { result = abstractValueOfType(TTString()) }
-}
-
-/**
- * Flow analysis for regular expression literals.
- */
-private class RegExpLiteralSource extends AnalyzedFlowNode, @regexpliteral {
-  override AbstractValue getAValue() { result = TAbstractOtherObject() }
-}
-
-/**
- * Flow analysis for the null literal.
- */
-private class NullLiteralSource extends AnalyzedFlowNode, @nullliteral {
-  override AbstractValue getAValue() { result = TAbstractNull() }
 }
 
 /**
@@ -238,9 +224,7 @@ private class FunctionSource extends AnalyzedFlowNode, @function {
  * Flow analysis for class declarations.
  */
 private class ClassExprSource extends AnalyzedFlowNode, @classdefinition {
-  override AbstractValue getAValue() {
-    result = TAbstractClass(this.(ClassDefinition))
-  }
+  override AbstractValue getAValue() { result = TAbstractClass(this) }
 }
 
 /**
@@ -251,10 +235,38 @@ private class NamespaceSource extends AnalyzedFlowNode, @namespacedeclaration {
 }
 
 /**
+ * Flow analysis for enum objects.
+ */
+private class EnumSource extends AnalyzedFlowNode, @enumdeclaration {
+  override AbstractValue getAValue() { result = TAbstractOtherObject() }
+}
+
+/**
+ * Flow analysis for JSX elements.
+ */
+private class JSXElementSource extends AnalyzedFlowNode, @jsxelement {
+  override AbstractValue getAValue() { result = TAbstractOtherObject() }
+}
+
+/**
+ * Flow analysis for qualified JSX names.
+ */
+private class JSXQualifiedNameSource extends AnalyzedFlowNode, @jsxqualifiedname {
+  override AbstractValue getAValue() { result = TAbstractOtherObject() }
+}
+
+/**
+ * Flow analysis for empty JSX expressions.
+ */
+private class JSXEmptyExpressionSource extends AnalyzedFlowNode, @jsxemptyexpr {
+  override AbstractValue getAValue() { result = TAbstractUndefined() }
+}
+
+/**
  * Flow analysis for `super` in super constructor calls.
  */
-private class SuperCallSource extends AnalyzedFlowNode, @superexpr {
-  SuperCallSource() { this = any(SuperCall sc).getCallee().stripParens() }
+private class AnalyzedSuperCall extends AnalyzedFlowNode, @superexpr {
+  AnalyzedSuperCall() { this = any(SuperCall sc).getCallee().stripParens() }
 
   override AbstractValue getAValue() {
     exists (MethodDefinition md, AnalyzedFlowNode sup, AbstractValue supVal |
@@ -284,8 +296,8 @@ private class NewSource extends AnalyzedFlowNode, @newexpr {
 /**
  * Flow analysis for (non-short circuiting) binary expressions.
  */
-private class BinaryExprSource extends AnalyzedFlowNode, @binaryexpr {
-  BinaryExprSource() { not this instanceof LogicalBinaryExpr }
+private class AnalyzedBinaryExpr extends AnalyzedFlowNode, @binaryexpr {
+  AnalyzedBinaryExpr() { not this instanceof LogicalBinaryExpr }
 
   override AbstractValue getAValue() {
     // most binary expressions are arithmetic expressions;
@@ -316,7 +328,7 @@ private predicate isAddition(Expr e) {
 /**
  * Flow analysis for addition.
  */
-private class AddExprSource extends BinaryExprSource, @addexpr {
+private class AnalyzedAddExpr extends AnalyzedBinaryExpr, @addexpr {
   override AbstractValue getAValue() {
     isStringAppend(this) and result = abstractValueOfType(TTString()) or
     isAddition(this) and result = abstractValueOfType(TTNumber())
@@ -326,21 +338,21 @@ private class AddExprSource extends BinaryExprSource, @addexpr {
 /**
  * Flow analysis for comparison expressions.
  */
-private class ComparisonSource extends BinaryExprSource, @comparison {
+private class ComparisonSource extends AnalyzedBinaryExpr, @comparison {
   override AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
 /**
  * Flow analysis for `in` expressions.
  */
-private class InSource extends BinaryExprSource, @inexpr {
+private class InSource extends AnalyzedBinaryExpr, @inexpr {
   override AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
 /**
  * Flow analysis for `instanceof` expressions.
  */
-private class InstanceofSource extends BinaryExprSource, @instanceofexpr {
+private class InstanceofSource extends AnalyzedBinaryExpr, @instanceofexpr {
   override AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
@@ -349,8 +361,8 @@ private class InstanceofSource extends BinaryExprSource, @instanceofexpr {
  * Flow analysis for unary expressions (except for spread, which is not
  * semantically a unary expression).
  */
-private class UnaryExprSource extends AnalyzedFlowNode, @unaryexpr {
-  UnaryExprSource() { not this instanceof SpreadElement }
+private class AnalyzedUnaryExpr extends AnalyzedFlowNode, @unaryexpr {
+  AnalyzedUnaryExpr() { not this instanceof SpreadElement }
 
   override AbstractValue getAValue() {
     // many unary expressions are arithmetic expressions;
@@ -362,21 +374,21 @@ private class UnaryExprSource extends AnalyzedFlowNode, @unaryexpr {
 /**
  * Flow analysis for `void` expressions.
  */
-private class VoidSource extends UnaryExprSource, @voidexpr {
+private class VoidSource extends AnalyzedUnaryExpr, @voidexpr {
   override AbstractValue getAValue() { result = TAbstractUndefined() }
 }
 
 /**
  * Flow analysis for `typeof` expressions.
  */
-private class TypeofSource extends UnaryExprSource, @typeofexpr {
+private class TypeofSource extends AnalyzedUnaryExpr, @typeofexpr {
   override AbstractValue getAValue() { result = TAbstractOtherString() }
 }
 
 /**
  * Flow analysis for logical negation.
  */
-private class LogNotSource extends UnaryExprSource, @lognotexpr {
+private class AnalyzedLogNotExpr extends AnalyzedUnaryExpr, @lognotexpr {
   override AbstractValue getAValue() {
     exists (AbstractValue op | op = this.(UnaryExpr).getOperand().(AnalyzedFlowNode).getAValue() |
       exists (boolean bv | bv = op.getBooleanValue() |
@@ -390,7 +402,7 @@ private class LogNotSource extends UnaryExprSource, @lognotexpr {
 /**
  * Flow analysis for `delete` expressions.
  */
-private class DeleteSource extends UnaryExprSource, @deleteexpr {
+private class DeleteSource extends AnalyzedUnaryExpr, @deleteexpr {
   override AbstractValue getAValue() { result = TAbstractBoolean(_) }
 }
 
@@ -406,8 +418,8 @@ private class UpdateSource extends AnalyzedFlowNode, @updateexpr {
 /**
  * Flow analysis for compound assignments.
  */
-private class CompoundAssignSource extends AnalyzedFlowNode, @assignment {
-  CompoundAssignSource() { this instanceof CompoundAssignExpr }
+private class AnalyzedCompoundAssignExpr extends AnalyzedFlowNode, @assignment {
+  AnalyzedCompoundAssignExpr() { this instanceof CompoundAssignExpr }
 
   override AbstractValue getAValue() { result = abstractValueOfType(TTNumber()) }
 }
@@ -415,7 +427,7 @@ private class CompoundAssignSource extends AnalyzedFlowNode, @assignment {
 /**
  * Flow analysis for add-assign.
  */
-private class AddAssignSource extends CompoundAssignSource, @assignaddexpr {
+private class AnalyzedAddAssignExpr extends AnalyzedCompoundAssignExpr, @assignaddexpr {
   override AbstractValue getAValue() {
     isStringAppend(this) and result = abstractValueOfType(TTString()) or
     isAddition(this) and result = abstractValueOfType(TTNumber())
@@ -456,14 +468,14 @@ private class AnalyzedCapturedVariable extends @variable {
  * Flow analysis for accesses to SSA variables.
  */
 private class SsaVarAccessAnalysis extends AnalyzedFlowNode, @varaccess {
+  AnalyzedSsaDefinition def;
+
   SsaVarAccessAnalysis() {
-    this = any(SsaVariable v).getAUse()
+    this = def.getVariable().getAUse()
   }
 
   override AbstractValue getAValue() {
-    exists (SsaVariable ssa | this = ssa.getAUse() |
-      result = ssa.(AnalyzedSsaDefinition).getAnRhsValue()
-    )
+    result = def.getAnRhsValue()
   }
 }
 
@@ -489,7 +501,8 @@ private class AnalyzedVarDef extends VarDef {
    */
   AbstractValue getAnRhsValue() {
     result = getRhs().getAValue() or
-    this = any(ForInStmt fis).getIteratorExpr() and result = abstractValueOfType(TTString())
+    this = any(ForInStmt fis).getIteratorExpr() and result = abstractValueOfType(TTString()) or
+    this = any(EnumMember member | not exists(member.getInitializer())).getIdentifier() and result = abstractValueOfType(TTNumber())
   }
 
   /**
@@ -786,23 +799,6 @@ private AbstractValue getImplicitInitValue(LocalVariable v) {
 }
 
 /**
- * Flow analysis for local variables that are used before being initialized.
- */
-private class UninitializedVarAccessSource extends AnalyzedFlowNode, @varaccess {
-  UninitializedVarAccessSource() {
-    exists (LocalVariable lv |
-      lv = this.(VarUse).getVariable() and
-      not lv instanceof SsaSourceVariable and
-      not guaranteedToBeInitialized(lv)
-    )
-  }
-
-  override AbstractValue getAValue() {
-    result = getImplicitInitValue(this.(VarUse).getVariable())
-  }
-}
-
-/**
  * Holds if `v` is a local variable that can never be observed in its uninitialized state.
  */
 private predicate guaranteedToBeInitialized(LocalVariable v) {
@@ -817,7 +813,7 @@ private predicate guaranteedToBeInitialized(LocalVariable v) {
  * `TAbstractModuleObject(m)` if exports of `m` are tracked, or `TAbstractOtherObject()`
  * if not.
  */
-private AbstractValue getAbstractModuleObject(NodeModule m) {
+private AbstractValue getAbstractModuleObject(Module m) {
   result = TAbstractModuleObject(m)
   or
   not exists(TAbstractModuleObject(m)) and result = TAbstractOtherObject()
@@ -829,7 +825,7 @@ private AbstractValue getAbstractModuleObject(NodeModule m) {
  * `TAbstractExportsObject(m)` if exports of `m` are tracked, or `TAbstractOtherObject()`
  * if not.
  */
-private AbstractValue getAbstractExportsObject(NodeModule m) {
+private AbstractValue getAbstractExportsObject(Module m) {
   result = TAbstractExportsObject(m)
   or
   not exists(TAbstractExportsObject(m)) and result = TAbstractOtherObject()
@@ -839,7 +835,7 @@ private AbstractValue getAbstractExportsObject(NodeModule m) {
  * Holds if `av` represents an initial value of CommonJS variable `var`.
  */
 private predicate nodeBuiltins(Variable var, AbstractValue av) {
-  exists (NodeModule m, string name | var = m.getScope().getVariable(name) |
+  exists (Module m, string name | var = m.getScope().getVariable(name) |
     name = "require" and av = TIndefiniteAbstractValue("heap")
     or
     name = "module" and av = getAbstractModuleObject(m)
@@ -856,8 +852,8 @@ private predicate nodeBuiltins(Variable var, AbstractValue av) {
 /**
  * Flow analysis for global variables.
  */
-private class GlobalVarAccessSource extends AnalyzedFlowNode, @varaccess {
-  GlobalVarAccessSource() { this instanceof GlobalVarAccess }
+private class AnalyzedGlobalVarAccess extends AnalyzedFlowNode, @varaccess {
+  AnalyzedGlobalVarAccess() { this instanceof GlobalVarAccess }
 
   /** Gets the name of this global variable. */
   string getVariableName() { result = this.(VarAccess).getName() }
@@ -901,7 +897,7 @@ private predicate clobberedProp(string name, DataFlowIncompleteness reason) {
 /**
  * Flow analysis for `undefined`.
  */
-private class UndefinedSource extends GlobalVarAccessSource {
+private class UndefinedSource extends AnalyzedGlobalVarAccess {
   UndefinedSource() { getVariableName() = "undefined" }
 
   override AbstractValue getAValue() { result = TAbstractUndefined() }
@@ -992,27 +988,6 @@ private class NamespaceExportVarFlow extends AnalyzedFlowNode, @varaccess {
   }
 
   override AbstractValue getAValue() { result = TIndefiniteAbstractValue("namespace") }
-}
-
-/**
- * Flow analysis for JSX elements.
- */
-private class JSXElementSource extends AnalyzedFlowNode, @jsxelement {
-  override AbstractValue getAValue() { result = TAbstractOtherObject() }
-}
-
-/**
- * Flow analysis for qualified JSX names.
- */
-private class JSXQualifiedNameSource extends AnalyzedFlowNode, @jsxqualifiedname {
-  override AbstractValue getAValue() { result = TAbstractOtherObject() }
-}
-
-/**
- * Flow analysis for empty JSX expressions.
- */
-private class JSXEmptyExpressionSource extends AnalyzedFlowNode, @jsxemptyexpr {
-  override AbstractValue getAValue() { result = TAbstractUndefined() }
 }
 
 /**
@@ -1129,12 +1104,12 @@ AbstractValue getAPropertyValue(DefiniteAbstractValue baseVal, string propertyNa
  * Flow analysis for `arguments.callee`. We assume it is never redefined,
  * which is unsound in practice, but pragmatically useful.
  */
-private class ArgumentsCalleeSource extends AnalyzedPropertyAccess {
-  ArgumentsCalleeSource() {
+private class AnalyzedArgumentsCallee extends AnalyzedPropertyAccess {
+  AnalyzedArgumentsCallee() {
     propName = "callee"
   }
 
-  AbstractValue getAValue() {
+  override AbstractValue getAValue() {
     exists (AbstractArguments baseVal | baseVal = getBase().getAValue() |
       result = TAbstractFunction(baseVal.getFunction())
     )

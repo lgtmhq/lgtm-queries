@@ -121,7 +121,7 @@ from Expr e
 where e.isPure() and inVoidContext(e) and
       // disregard pure expressions wrapped in a void(...)
       not e instanceof VoidExpr and
-      // filter out directives
+      // filter out directives (unknown directives are handled by UnknownDirective.ql)
       not exists (Directive d | e = d.getExpr()) and
       // or about externs
       not e.inExternsFile() and

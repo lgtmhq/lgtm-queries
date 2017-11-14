@@ -23,7 +23,8 @@
  */
 import java
 import semmle.code.java.security.Encryption
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.TaintTracking
+import DataFlow
 
 private class ShortStringLiteral extends StringLiteral {
   ShortStringLiteral() {
@@ -31,14 +32,25 @@ private class ShortStringLiteral extends StringLiteral {
   }
 }
 
-class BrokenAlgoLiteral extends FlowSource, ShortStringLiteral {
+class BrokenAlgoLiteral extends ShortStringLiteral {
   BrokenAlgoLiteral() {
     getLiteral().regexpMatch(algorithmBlacklistRegex())
   }
 }
 
-from CryptoAlgoSpec c, Expr a, BrokenAlgoLiteral s
-where a = c.getAlgoSpec() and
-      s.flowsTo(a)
+class InsecureCryptoConfiguration extends TaintTracking::Configuration {
+  InsecureCryptoConfiguration() { this = "BrokenCryptoAlgortihm::InsecureCryptoConfiguration" }
+  override predicate isSource(Node n) {
+    n.asExpr() instanceof BrokenAlgoLiteral
+  }
+  override predicate isSink(Node n) {
+    exists(CryptoAlgoSpec c | n.asExpr() = c.getAlgoSpec())
+  }
+}
+
+from CryptoAlgoSpec c, Expr a, BrokenAlgoLiteral s, InsecureCryptoConfiguration conf
+where
+  a = c.getAlgoSpec() and
+  conf.hasFlow(exprNode(s), exprNode(a))
 select c, "Cryptographic algorithm $@ is weak and should not be used.",
-  s, s.(StringLiteral).getLiteral()
+  s, s.getLiteral()

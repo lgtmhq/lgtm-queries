@@ -39,8 +39,25 @@ class Function extends @function, Parameterized, TypeParameterized, StmtContaine
 
   /** Gets the `n`th type parameter declared on this function. */
   override TypeParameter getTypeParameter(int i) {
-    // Type parameters are at indices -6, -9, -12, ...
-    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -6 and astIndex % 3 = 0 and i = -(astIndex + 6) / 3)
+    // Type parameters are at indices -7, -10, -13, ...
+    exists (int astIndex | typeexprs(result, _, this, astIndex, _) | astIndex <= -7 and astIndex % 4 = -3 and i = -(astIndex + 7) / 4)
+  }
+
+  /**
+   * Gets the type annotation for the special `this` parameter, if it is present.
+   *
+   * For example, this would be `void` for the following function:
+   * ```
+   * function f(this: void, x: number, y: string) {}
+   * ```
+   *
+   * The `this` parameter is not counted as an ordinary parameter.
+   * The `x` parameter above is thus considered the first parameter of the function `f`.
+   *
+   * `this` parameter types are specific to TypeScript.
+   */
+  TypeExpr getThisTypeAnnotation() {
+    result = getChildTypeExpr(-4)
   }
 
   /** Gets the identifier specifying the name of this function, if any. */
@@ -235,13 +252,19 @@ class Function extends @function, Parameterized, TypeParameterized, StmtContaine
    * members), this is the name of the variable or property. If no meaningful name
    * can be inferred, the result is "anonymous function".
    */
-  string describe() {
+  override string describe() {
     if exists(inferNameFromVarDef()) then
       result = inferNameFromVarDef()
     else if exists(inferNameFromProp()) then
       result = inferNameFromProp()
     else if exists(inferNameFromMemberDef()) then
       result = inferNameFromMemberDef()
+    else if exists(inferNameFromCallSig()) then
+      result = inferNameFromCallSig()
+    else if exists(inferNameFromIndexSig()) then
+      result = inferNameFromIndexSig()
+    else if exists(inferNameFromFunctionType()) then
+      result = inferNameFromFunctionType()
     else
       result = "anonymous function"
   }
@@ -276,7 +299,7 @@ class Function extends @function, Parameterized, TypeParameterized, StmtContaine
    * member it is assigned to, if any.
    */
   private string inferNameFromMemberDef() {
-    exists (ClassDefinition c, string n, MemberDeclaration m, string classpp |
+    exists (ClassOrInterface c, string n, MemberDeclaration m, string classpp |
       m = c.getMember(n) and this = m.getInit() and classpp = c.describe() |
       if m instanceof ConstructorDeclaration then
         if m.(ConstructorDeclaration).isSynthetic() then
@@ -291,6 +314,35 @@ class Function extends @function, Parameterized, TypeParameterized, StmtContaine
         else
           result = "method " + n + " of " + classpp
     )
+  }
+
+  /**
+   * Gets a description of this function if it is part of a call signature.
+   */
+  private string inferNameFromCallSig() {
+    exists (InterfaceDefinition c, CallSignature sig |
+      sig = c.getACallSignature() and sig.getBody() = this and
+      if sig instanceof FunctionCallSignature
+      then result = "call signature of " + c.describe()
+      else result = "construct signature of " + c.describe()
+    )
+  }
+
+  /**
+   * Gets a description of this function if it is part of a call signature.
+   */
+  private string inferNameFromIndexSig() {
+    exists (InterfaceDefinition c | c.getAnIndexSignature().getBody() = this |
+      result = "index signature of " + c.describe()
+    )
+  }
+
+  /**
+   * Gets a description of this function if it is part of a function type.
+   */
+  private string inferNameFromFunctionType() {
+    exists (FunctionTypeExpr type | type.getFunction() = this |
+      result = "anonymous function type")
   }
 
   /**

@@ -22,14 +22,18 @@ import semmle.code.cpp.commons.StringAnalysis
  * A standard library function that uses a `printf`-like formatting string.
  */
 abstract class FormattingFunction extends Function {
-  /** the position at which the format parameter occurs */
+  /** Gets the position at which the format parameter occurs. */
   abstract int getFormatParameterIndex();
 
-  /** Whether the default meaning of %s is a wchar_t* or a char*. Either
-   *  way, %S will have the opposite meaning. */
+  /**
+   * Holds if the default meaning of `%s` is a `wchar_t *`, rather than
+   * a `char *` (either way, `%S` will have the opposite meaning).
+   */
   predicate isWideCharDefault() { none() }
 
-  /** the position at which the output parameter, if any, occurs */
+  /**
+   * Gets the position at which the output parameter, if any, occurs.
+   */
   int getOutputParameterIndex() { none() }
 
   /**
@@ -37,6 +41,11 @@ abstract class FormattingFunction extends Function {
    * the first format specifier in the format string.
    */
   int getFirstFormatArgumentIndex() { result = getNumberOfParameters() }
+
+  /**
+   * Gets the position of the buffer size argument, if any.
+   */
+  int getSizeParameterIndex() { none() }
 }
 
 /**
@@ -137,6 +146,21 @@ class Snprintf extends FormattingFunction {
     if hasGlobalName("__builtin___snprintf_chk") then result = 5
     else result = getNumberOfParameters()
   }
+
+  /**
+   * Holds if this function returns the length of the formatting string
+   * that would have been output, regardless of the amount of space
+   * in the buffer.
+   */
+  predicate returnsFullFormatLength() {
+    hasGlobalName("snprintf") or
+    hasGlobalName("g_snprintf") or
+    hasGlobalName("__builtin___snprintf_chk")
+  }
+
+  int getSizeParameterIndex() {
+    result = 1
+  }
 }
 
 /**
@@ -168,6 +192,10 @@ class StringCchPrintf extends FormattingFunction {
 
   int getOutputParameterIndex() {
     result = 0
+  }
+
+  int getSizeParameterIndex() {
+    result = 1
   }
 }
 
@@ -251,7 +279,7 @@ class FormattingFunctionCall extends Expr {
   /**
    * Get the formatting function being called.
    */
-  Function getTarget() {
+  FormattingFunction getTarget() {
     result = this.(Call).getTarget()
   }
 
@@ -766,7 +794,8 @@ class FormatLiteral extends Expr {
 
   /** the number of arguments required by the nth conversion specifier of this format string */
   int getNumArgNeeded(int n) {
-    this.getConversionChar(n)!="%" and
+    exists(this.getConvSpecOffset(n)) and
+    not this.getConversionChar(n) = "%" and
     exists(int n1, int n2, int n3 |
       (if this.hasImplicitMinFieldWidth(n) then n1=1 else n1=0) and
       (if this.hasImplicitPrecision(n) then n2=1 else n2=0) and

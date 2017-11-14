@@ -21,6 +21,7 @@
  * @metricAggregate avg sum max
  * @precision very-high
  * @tags maintainability
+ * @id py/lines-of-code-in-files
  */
 import python
 

@@ -59,6 +59,13 @@ class JSXElement extends Expr, @jsxelement {
   override ControlFlowNode getFirstControlFlowNode() {
     result = getNameExpr().getFirstControlFlowNode()
   }
+
+  /**
+   * Gets the parent JSX element of this element.
+   */
+  JSXElement getJsxParent() {
+    this = result.getABodyElement()
+  }
 }
 
 /**

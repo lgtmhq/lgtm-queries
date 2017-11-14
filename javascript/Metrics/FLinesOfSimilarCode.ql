@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Number of similar lines in files
+ * @name Similar lines in files
  * @description The number of lines in a file (including code, comment and whitespace lines)
  *              occurring in a block of lines that is similar to a block of lines seen
  *              somewhere else.
@@ -21,6 +21,7 @@
  * @metricType file
  * @metricAggregate avg sum max
  * @precision high
+ * @id js/similar-lines-in-files
  * @tags testability
  *       duplicate-code
  */

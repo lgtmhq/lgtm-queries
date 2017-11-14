@@ -21,6 +21,7 @@
  * @metricAggregate avg sum max
  * @precision high
  * @tags testability
+ * @id py/similar-lines-in-files
  */
 import python
 import external.CodeDuplication

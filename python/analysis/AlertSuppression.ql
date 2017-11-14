@@ -15,6 +15,7 @@
  * @name Alert suppression
  * @description Generates information about alert suppressions.
  * @kind alert-suppression
+ * @id py/alert-suppression
  */
 
 import python

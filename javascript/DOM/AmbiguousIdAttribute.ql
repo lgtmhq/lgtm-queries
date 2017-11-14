@@ -33,7 +33,7 @@ import javascript
  * Furthermore, the id is required to be non-empty (since empty ids
  * are reported by a different query).
  */
-predicate elementAt(DOM::ElementDefinition elt, string id, DOM::DocumentElementDefinition root,
+predicate elementAt(DOM::ElementDefinition elt, string id, DOM::ElementDefinition root,
                     int line, int column) {
   id = elt.getAttributeByName("id").getStringValue() and id != "" and
   root = elt.getRoot() and
@@ -45,7 +45,7 @@ predicate elementAt(DOM::ElementDefinition elt, string id, DOM::DocumentElementD
  * to the same document, and `earlier` appears textually before `later`.
  */
 predicate sameId(DOM::ElementDefinition earlier, DOM::ElementDefinition later) {
-  exists (string id, DOM::DocumentElementDefinition root, int l1, int c1, int l2, int c2 |
+  exists (string id, DOM::ElementDefinition root, int l1, int c1, int l2, int c2 |
     elementAt(earlier, id, root, l1, c1) and elementAt(later, id, root, l2, c2) |
     l1 < l2 or
     l1 = l2 and c1 < c2

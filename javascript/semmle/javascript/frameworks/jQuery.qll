@@ -115,6 +115,8 @@ private class JQueryDomElementDefinition extends DOM::ElementDefinition, @callex
   DataFlowNode getAttributes() {
     result = this.(CallExpr).getArgument(1).(DataFlowNode).getALocalSource()
   }
+
+  override DOM::ElementDefinition getParent() { none() }
 }
 
 /**

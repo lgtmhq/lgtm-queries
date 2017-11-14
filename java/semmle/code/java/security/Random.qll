@@ -12,7 +12,8 @@
 // permissions and limitations under the License.
 
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.DefUse
+import semmle.code.java.dataflow.DataFlow
 
 class SecureRandomNumberGenerator extends RefType {
   SecureRandomNumberGenerator() {
@@ -27,7 +28,7 @@ class GetRandomData extends MethodAccess {
   }
 }
 
-predicate isSeeded(RValue use) {
+private predicate isSeeded(RValue use) {
   isSeeding(_, use)
   or
   exists(GetRandomData da, RValue seeduse |
@@ -36,10 +37,60 @@ predicate isSeeded(RValue use) {
   )
 }
 
-predicate safelySeeded(RValue use) {
+private class PredictableSeedFlowConfiguration extends DataFlow::Configuration {
+  PredictableSeedFlowConfiguration() { this = "Random::PredictableSeedFlowConfiguration" }
+  override predicate isSource(DataFlow::Node source) {
+    source.asExpr() instanceof PredictableSeedExpr
+  }
+  override predicate isSink(DataFlow::Node sink) {
+    isSeeding(sink.asExpr(), _)
+  }
+  override predicate isAdditionalFlowStep(DataFlow::Node node1, DataFlow::Node node2) {
+    predictableCalcStep(node1.asExpr(), node2.asExpr())
+  }
+}
+
+private class TypeNumber extends Class {
+  TypeNumber() { this.getQualifiedName() = "java.lang.Number" }
+}
+
+private predicate predictableCalcStep(Expr e1, Expr e2) {
+  e2.(BinaryExpr).hasOperands(e1, any(PredictableSeedExpr p)) or
+  exists(AssignOp a | a = e2 |
+    e1 = a.getDest() and a.getRhs() instanceof PredictableSeedExpr
+  ) or
+  exists(ConstructorCall cc, TypeNumber t | cc = e2 |
+    cc.getArgument(0) = e1 and
+    t.hasSubtype*(cc.getConstructedType())
+  ) or
+  exists(Method m, MethodAccess ma |
+    ma = e2 and
+    e1 = ma.getQualifier() and
+    m = ma.getMethod() and
+    exists(TypeNumber t | hasSubtype*(t, m.getDeclaringType())) and
+    (
+      m.getName().matches("to%String") or
+      m.getName() = "toByteArray" or
+      m.getName().matches("%Value")
+    )
+  ) or
+  exists(Method m, MethodAccess ma |
+    ma = e2 and
+    e1 = ma.getArgument(0) and
+    m = ma.getMethod() and
+    exists(TypeNumber t | hasSubtype*(t, m.getDeclaringType())) and
+    (
+      m.getName().matches("parse%") or
+      m.getName().matches("valueOf%") or
+      m.getName().matches("to%String")
+    )
+  )
+}
+
+private predicate safelySeeded(RValue use) {
   exists(Expr arg |
     isSeeding(arg, use)
-    and not exists(PredictableSeedExpr p | p.flowsToReverse(arg) and isSeeding(arg, use))
+    and not exists(PredictableSeedFlowConfiguration conf | conf.hasFlowToExpr(arg))
   )
   or
   exists(GetRandomData da, RValue seeduse |
@@ -53,7 +104,7 @@ predicate unsafelySeeded(RValue use, PredictableSeedExpr source) {
   not safelySeeded(use)
 }
 
-predicate isSeeding(Expr arg, RValue use) {
+private predicate isSeeding(Expr arg, RValue use) {
   exists(Expr e, VariableAssign def |
     def.getSource() = e and
     isSeedingConstruction(e, arg)
@@ -68,12 +119,12 @@ predicate isSeeding(Expr arg, RValue use) {
   )
 }
 
-predicate isSeedingSource(Expr arg, RValue use, FlowSource source) {
+private predicate isSeedingSource(Expr arg, RValue use, Expr source) {
   isSeeding(arg, use) and
-  source.flowsToReverse(arg)
+  exists(PredictableSeedFlowConfiguration conf | conf.hasFlow(DataFlow::exprNode(source), DataFlow::exprNode(arg)))
 }
 
-predicate isRandomSeeding(MethodAccess m, Expr arg) {
+private predicate isRandomSeeding(MethodAccess m, Expr arg) {
   exists(Method def | 
     m.getMethod() = def | 
     def.getDeclaringType() instanceof SecureRandomNumberGenerator 
@@ -82,7 +133,7 @@ predicate isRandomSeeding(MethodAccess m, Expr arg) {
   )
 }
 
-predicate isSeedingConstruction(ClassInstanceExpr c, Expr arg) {
+private predicate isSeedingConstruction(ClassInstanceExpr c, Expr arg) {
   c.getConstructedType() instanceof SecureRandomNumberGenerator
   and
   c.getNumArgument() = 1
@@ -90,10 +141,14 @@ predicate isSeedingConstruction(ClassInstanceExpr c, Expr arg) {
   c.getArgument(0) = arg
 }
 
-class PredictableSeedExpr extends FlowSource {
+class PredictableSeedExpr extends Expr {
   PredictableSeedExpr() {
     this.(MethodAccess).getCallee() instanceof ReturnsPredictableExpr or
-    this instanceof CompileTimeConstantExpr
+    this instanceof CompileTimeConstantExpr or
+    this.(ArrayCreationExpr).getInit() instanceof PredictableSeedExpr or
+    exists(ArrayInit init | init = this |
+      forall(Expr e | e = init.getAnInit() | e instanceof PredictableSeedExpr)
+    )
   }
 }
 

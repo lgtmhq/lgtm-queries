@@ -24,7 +24,7 @@ private predicate variable_or_attribute_defined_out_of_scope(Variable v) {
     exists(AttrNode a | a.isStore() and a.getObject() = v.getAUse() and not a.getScope() = v.getScope())
 }
 
-/** Holds if the the global variable `v` may be used in the call `call`. */
+/** Holds if the global variable `v` may be used in the call `call`. */
 private predicate global_variable_maybe_used_in_call(GlobalVariable v, CallNode call) {
     exists(Module m |
         m = call.getScope() and v.getScope() = m and

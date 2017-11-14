@@ -22,8 +22,7 @@
  *       frameworks/angularjs
  */
 import javascript
-private import AngularJS
-import semmle.javascript.frameworks.AngularJS::AngularJS::DependencyInjectionServiceDefinitions
+import AngularJS
 
 /**
  * Holds if `request` originates from a "service", "directive" or "filter" method call.

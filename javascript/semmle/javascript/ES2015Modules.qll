@@ -298,7 +298,8 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
       result = op.(DeclStmt).getADecl().getBindingPattern().getABindingVarRef() or
       result = op.(FunctionDeclStmt).getId() or
       result = op.(ClassDeclStmt).getIdentifier() or
-      result = op.(NamespaceDeclaration).getId()
+      result = op.(NamespaceDeclaration).getId() or
+      result = op.(EnumDeclaration).getIdentifier()
     )
   }
 
@@ -339,7 +340,7 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
   ExportSpecifier getASpecifier() {
     result = getSpecifier(_)
   }
-  
+
   override predicate isAmbient() {
     // An export such as `export declare function f()` should be seen as ambient.
     hasDeclareKeyword(getOperand()) or getParent().isAmbient()

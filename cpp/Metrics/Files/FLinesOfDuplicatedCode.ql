@@ -23,6 +23,7 @@
  * @precision high
  * @tags testability
  *       modularity
+ * @id cpp/duplicated-lines-in-files
  */
 import external.CodeDuplication
 

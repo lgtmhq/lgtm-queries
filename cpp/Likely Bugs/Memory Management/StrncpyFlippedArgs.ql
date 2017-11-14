@@ -95,7 +95,20 @@ predicate sameAccess(Access a, Access b) {
   )
 }
 
-from FunctionCall fc, int argDest, int argSrc, int argLimit, Access copyDest, Access copySource, Access takenSizeOf, BufferSizeExpr sizeExpr, int plus
+string nthString (int num) {
+  (
+    num = 0 and
+    result = "first"
+  ) or (
+    num = 1 and
+    result = "second"
+  ) or (
+    num = 2 and 
+    result = "third"
+  )
+}
+
+from FunctionCall fc, int argDest, int argSrc, int argLimit, Access copyDest, Access copySource, Access takenSizeOf, BufferSizeExpr sizeExpr, int plus, string name, string nth
 where
   strncpyFunction(fc.getTarget(), argDest, argSrc, argLimit) and
   copyDest = fc.getArgument(argDest) and
@@ -106,4 +119,6 @@ where
   takenSizeOf = sizeExpr.getArg() and
   sameAccess(copySource, takenSizeOf) and // e.g. strncpy(x, y, strlen(y))
   not sameAccess(copyDest, takenSizeOf) // e.g. strncpy(y, y, strlen(y))
-select fc, "Potentially unsafe call to strncpy; third argument should be size of destination."
+  and name = fc.getTarget().getName()
+  and nth = nthString(argLimit)
+select fc, "Potentially unsafe call to " + name + "; " + nth + " argument should be size of destination."

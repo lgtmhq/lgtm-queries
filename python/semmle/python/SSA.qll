@@ -49,7 +49,7 @@ class SsaVariable extends @py_ssa_var{
     }
 
     /** Gets the edge(s) (result->this.getDefinition()) on which the SSA variable 'input' defines this SSA variable.
-     * For each incoming edge `X->B`, where `B` is the the basic block containing this phi-node, only one of the input SSA variables
+     * For each incoming edge `X->B`, where `B` is the basic block containing this phi-node, only one of the input SSA variables
      * for this phi-node is live. This predicate returns the predecessor block such that the variable 'input'
      * is the live variable on the edge result->B.
      */

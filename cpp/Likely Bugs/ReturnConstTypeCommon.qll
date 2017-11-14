@@ -21,7 +21,9 @@ private predicate mightHaveConstMethods(Type t) {
 predicate hasSuperfluousConstReturn(Function f) {
   exists(Type t | t = f.getType() |
     // This is the primary thing we're testing for,
-    t.isConst()
+    t instanceof SpecifiedType
+    and t.hasSpecifier("const")
+    and (not affectedByMacro(t))
     // but "const" is meaningful when applied to user defined types,
     and not mightHaveConstMethods(t.getUnspecifiedType())
   )

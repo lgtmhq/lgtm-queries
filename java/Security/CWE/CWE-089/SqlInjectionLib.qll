@@ -14,18 +14,19 @@
 /** Definitions used by the queries for database query injection. */
 
 import semmle.code.java.Expr
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
+import semmle.code.java.frameworks.android.SQLite
 import semmle.code.java.frameworks.javaee.Persistence
 
 /** A sink for database query language injection vulnerabilities. */
-abstract class QueryInjectionSink extends Expr {}
+abstract class QueryInjectionSink extends DataFlow::ExprNode {}
 
 /** A sink for SQL injection vulnerabilities. */
 class SqlInjectionSink extends QueryInjectionSink {
   SqlInjectionSink() {
-    this instanceof SqlExpr or
+    this.getExpr() instanceof SqlExpr or
     exists(SQLiteRunner s, MethodAccess m | m.getMethod() = s |
-      m.getArgument(s.sqlIndex()) = this
+      m.getArgument(s.sqlIndex()) = this.getExpr()
     )
   }
 }
@@ -34,7 +35,7 @@ class SqlInjectionSink extends QueryInjectionSink {
 class PersistenceQueryInjectionSink extends QueryInjectionSink {
   PersistenceQueryInjectionSink() {
     // the query (first) argument to a `createQuery` or `createNativeQuery` method on `EntityManager`
-    exists (MethodAccess call, TypeEntityManager em | call.getArgument(0) = this |
+    exists (MethodAccess call, TypeEntityManager em | call.getArgument(0) = this.getExpr() |
       call.getMethod() = em.getACreateQueryMethod() or
       call.getMethod() = em.getACreateNativeQueryMethod()
       // note: `createNamedQuery` is safe, as it takes only the query name,
@@ -43,11 +44,18 @@ class PersistenceQueryInjectionSink extends QueryInjectionSink {
   }
 }
 
+private class QueryInjectionFlowConfig extends TaintTracking::Configuration {
+  QueryInjectionFlowConfig() { this = "SqlInjectionLib::QueryInjectionFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { src instanceof UserInput }
+  override predicate isSink(DataFlow::Node sink) { sink instanceof QueryInjectionSink }
+}
 
 /**
  * Implementation of `SqlTainted.ql`. This is extracted to a QLL so that it
  * can be excluded from `SqlUnescaped.ql` to avoid overlapping results.
  */
 predicate queryTaintedBy(QueryInjectionSink query, UserInput source) {
-  source.flowsTo(query)
+  exists(QueryInjectionFlowConfig conf |
+    conf.hasFlow(source, query)
+  )
 }
