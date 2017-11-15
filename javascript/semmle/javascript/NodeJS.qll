@@ -40,13 +40,8 @@ class NodeModule extends Module {
     result.getScopeElement() = this
   }
 
-  /** Gets a `require` import in this module. */
-  Require getAnImport() {
-    result.getTopLevel() = this
-  }
-
   /** Gets a module imported by this module. */
-  override NodeModule getAnImportedModule() {
+  override Module getAnImportedModule() {
     result = getAnImport().getImportedModule()
   }
 
@@ -160,10 +155,10 @@ private class RequireVariable extends Variable {
 }
 
 /**
- * Holds if node module `nm` is in file `f`.
+ * Holds if module `m` is in file `f`.
  */
-private predicate nodeModuleFile(NodeModule nm, File f) {
-  nm.getFile() = f
+private predicate moduleInFile(Module m, File f) {
+  m.getFile() = f
 }
 
 /**
@@ -180,12 +175,12 @@ class Require extends CallExpr, Import {
     result = getArgument(0)
   }
 
-  override NodeModule getEnclosingModule() {
+  override Module getEnclosingModule() {
     this = result.getAnImport()
   }
 
-  override NodeModule resolveImportedPath() {
-    nodeModuleFile(result, load(min(int prio | nodeModuleFile(_, load(prio)))))
+  override Module resolveImportedPath() {
+    moduleInFile(result, load(min(int prio | moduleInFile(_, load(prio)))))
   }
 
   /**

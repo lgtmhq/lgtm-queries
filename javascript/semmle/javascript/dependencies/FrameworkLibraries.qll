@@ -94,7 +94,7 @@ abstract class FrameworkLibraryInstance extends Script {
  */
 abstract class FrameworkLibraryReference extends HTMLAttribute {
   FrameworkLibraryReference() {
-    getName() = "src" and getElement() instanceof HTMLScriptTag
+    getName() = "src" and getElement() instanceof HtmlScriptElement
   }
 
   /**
@@ -236,7 +236,7 @@ class FrameworkLibraryReferenceWithURL extends FrameworkLibraryReference {
  * `fl` at `version`.
  */
 private predicate matchURL(HTMLAttribute attr, FrameworkLibraryWithURLRegex fl, string version) {
-  attr.getName() = "src" and attr.getElement() instanceof HTMLScriptTag and
+  attr.getName() = "src" and attr.getElement() instanceof HtmlScriptElement and
   version = attr.getValue().regexpCapture(fl.getAURLRegex(), 1)
 }
 
@@ -794,12 +794,12 @@ private class RequireJS extends FrameworkLibraryWithGenericURL, FrameworkLibrary
  */
 private class FrameworkLibraryReferenceToInstance extends FrameworkLibraryReference {
   FrameworkLibraryReferenceToInstance() {
-    getElement().(HTMLScriptTag).resolveSource() instanceof FrameworkLibraryInstance
+    getElement().(HtmlScriptElement).resolveSource() instanceof FrameworkLibraryInstance
   }
 
   /** Gets the framework library instance this reference refers to. */
   private FrameworkLibraryInstance getInstance() {
-    result = getElement().(HTMLScriptTag).resolveSource()
+    result = getElement().(HtmlScriptElement).resolveSource()
   }
 
   override FrameworkLibrary getFramework() {

@@ -16,12 +16,11 @@
 import Locations
 
 /**
- * An HTML file, that is, a file with extension
- * `html`, `htm`, `xhtml` or `xhtm` (regardless of case).
+ * An HTML file.
  */
 class HTMLFile extends File {
   HTMLFile() {
-    getExtension().regexpMatch("(?i)x?html?")
+    getFileType().isHtml()
   }
 }
 
@@ -58,6 +57,13 @@ class HTMLElement extends Locatable, @xmlelement {
    */
   predicate isTopLevel() {
     not exists(getParent())
+  }
+
+  /**
+   * Gets the root HTML document element in which this element is contained.
+   */
+  HtmlDocumentElement getDocument() {
+    result = getRoot()
   }
 
   /**
@@ -164,10 +170,19 @@ class HTMLAttribute extends Locatable, @xmlattribute {
 }
 
 /**
- * An HTML `<script>` tag.
+ * An HTML `<html>` element.
  */
-class HTMLScriptTag extends HTMLElement {
-  HTMLScriptTag() {
+class HtmlDocumentElement extends HTMLElement {
+  HtmlDocumentElement() {
+    getName() = "html"
+  }
+}
+
+/**
+ * An HTML `<script>` element.
+ */
+class HtmlScriptElement extends HTMLElement {
+  HtmlScriptElement() {
     getName() = "script"
   }
 
@@ -215,11 +230,21 @@ class HTMLScriptTag extends HTMLElement {
 }
 
 /**
+ * DEPRECATED: Use `HTML::HtmlScriptElement` instead.
+ *
+ * An HTML `<script>` tag.
+ */
+deprecated
+class HTMLScriptTag extends HtmlScriptElement {
+
+}
+
+/**
  * Holds if there is an HTML `<script>` tag with the given `src`
  * such that the script is resolved relative to `root`.
  */
 private predicate scriptSrc(string src, Folder root) {
-  exists (HTMLScriptTag script |
+  exists (HtmlScriptElement script |
     src = script.getSourcePath() and
     root = script.getSearchRoot()
   )
@@ -236,4 +261,54 @@ private class ScriptSrcPath extends PathString {
   override Folder getARootFolder() {
     scriptSrc(this, result)
   }
+}
+
+/**
+ * An HTML text node like `<div>this-is-the-node</div>`.
+ *
+ * NB: Instances of this class are only available if extraction is done with `--html all` or `--experimental`.
+ */
+class HtmlText extends Locatable, @xmlcharacters {
+  HtmlText() {
+    exists (HTMLFile f | xmlChars(this, _, _, _, _, f))
+  }
+
+  override string toString() {
+    result = getText()
+  }
+
+  /**
+   * Gets the content of this text node.
+   *
+   * Note that entity expansion has been performed already.
+   */
+  string getText() {
+    xmlChars(this, result, _, _, _, _)
+  }
+
+  /**
+   * Gets the parent this text.
+   */
+  HTMLElement getParent() {
+    xmlChars(this, _, result, _, _, _)
+  }
+
+  /**
+   * Gets the child index number of this text node.
+   */
+  int getIndex() {
+    xmlChars(this, _, _, result, _, _)
+  }
+
+  /**
+   * Holds if this text node is inside a `CDATA` tag.
+   */
+  predicate isCData() {
+    xmlChars(this, _, _, _, 1, _)
+  }
+
+  override Location getLocation() {
+    xmllocations(this, result)
+  }
+
 }

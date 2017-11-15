@@ -58,9 +58,24 @@ module DOM {
     }
 
     /**
+     * Gets the parent element of this element.
+     */
+    abstract ElementDefinition getParent();
+
+    /**
+     * Gets the root element (i.e. an element without a parent) in which this element is contained.
+     */
+    ElementDefinition getRoot() {
+      if not exists(getParent()) then
+        result = this
+      else
+        result = getParent().getRoot()
+    }
+
+    /**
      * Gets the document element to which this element belongs, if it can be determined.
      */
-    DocumentElementDefinition getRoot() { none() }
+    DocumentElementDefinition getDocument() { result = getRoot() }
   }
 
   /**
@@ -75,8 +90,8 @@ module DOM {
       result = this.(HTMLElement).getAttribute(i)
     }
 
-    override DocumentElementDefinition getRoot() {
-      result = this.(HTMLElement).getParent*()
+    override ElementDefinition getParent() {
+      result = this.(HTMLElement).getParent()
     }
   }
 
@@ -91,6 +106,11 @@ module DOM {
     override AttributeDefinition getAttribute(int i) {
       result = this.(JSXElement).getAttribute(i)
     }
+
+    override ElementDefinition getParent() {
+      result = this.(JSXElement).getJsxParent()
+    }
+
   }
 
   /**
@@ -159,6 +179,7 @@ module DOM {
     override string getName() { none() }
     override AttributeDefinition getAttribute(int i) { none() }
     override AttributeDefinition getAttributeByName(string name) { none() }
+    override ElementDefinition getParent() { none() }
   }
 
   /**

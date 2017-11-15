@@ -35,6 +35,11 @@ abstract class Module extends TopLevel {
     result = getFile().getStem()
   }
 
+  /** Gets an import appearing in this module. */
+  Import getAnImport() {
+    result.getTopLevel() = this
+  }
+
   /** Gets a module from which this module imports. */
   abstract Module getAnImportedModule();
 

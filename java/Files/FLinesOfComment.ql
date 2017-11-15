@@ -19,6 +19,7 @@
  * @metricType file
  * @metricAggregate avg sum max
  * @precision very-high
+ * @id java/lines-of-comments-in-files
  * @tags maintainability
  *       documentation
  */

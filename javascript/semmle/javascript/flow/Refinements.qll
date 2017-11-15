@@ -149,6 +149,24 @@ private class IntRefinement extends NumberRefinement, NumberLiteral {
   }
 }
 
+/**
+ * A use of the global variable `undefined`, viewed as a refinement expression.
+ */
+private class UndefinedInRefinement extends RefinementCandidate, VarUse {
+  UndefinedInRefinement() {
+    getVariable().(GlobalVariable).getName() = "undefined"
+  }
+
+  override SsaSourceVariable getARefinedVar() {
+    none()
+  }
+
+  override RefinementValue eval(RefinementContext ctxt) {
+    ctxt.appliesTo(this) and
+    result = TValueWithType(TTUndefined())
+  }
+}
+
 /** A variable use, viewed as a refinement expression. */
 private class VariableRefinement extends RefinementCandidate, VarUse {
   VariableRefinement() {

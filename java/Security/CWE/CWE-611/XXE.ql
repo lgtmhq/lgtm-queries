@@ -25,13 +25,19 @@
 
 import java
 import XmlParsers
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 
-class UnsafeXxeSink extends Expr {
+class SafeSAXSourceFlowConfig extends TaintTracking::Configuration {
+  SafeSAXSourceFlowConfig() { this = "XmlParsers::SafeSAXSourceFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeSAXSource }
+  override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(XmlParserCall parse).getSink() }
+}
+
+class UnsafeXxeSink extends DataFlow::ExprNode {
   UnsafeXxeSink() {
-    not exists(SafeSAXSource safeSource | safeSource.flowsTo(this)) and
+    not exists(SafeSAXSourceFlowConfig safeSource | safeSource.hasFlowTo(this)) and
     exists(XmlParserCall parse |
-      parse.getSink() = this and
+      parse.getSink() = this.getExpr() and
       not parse.isSafe()
     )
   }

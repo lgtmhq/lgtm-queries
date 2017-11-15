@@ -15,6 +15,7 @@
  * @name External dependency source links
  * @kind source-link
  * @metricType externalDependency
+ * @id js/dependency-source-links
  */
 
 import ExternalDependencies

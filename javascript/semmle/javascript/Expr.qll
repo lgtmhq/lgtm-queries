@@ -1637,7 +1637,9 @@ class Decoratable extends ASTNode {
   Decoratable() {
     this instanceof ClassDefinition or
     this instanceof Property or
-    this instanceof MemberDefinition
+    this instanceof MemberDefinition or
+    this instanceof EnumDeclaration or
+    this instanceof Parameter
   }
 
   /**
@@ -1646,7 +1648,9 @@ class Decoratable extends ASTNode {
   Decorator getDecorator(int i) {
     result = this.(ClassDefinition).getDecorator(i) or
     result = this.(Property).getDecorator(i) or
-    result = this.(MemberDefinition).getDecorator(i)
+    result = this.(MemberDefinition).getDecorator(i) or
+    result = this.(EnumDeclaration).getDecorator(i) or
+    result = this.(Parameter).getDecorator(i)
   }
 
   /**

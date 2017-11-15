@@ -19,6 +19,7 @@
  * @metricType file
  * @precision high
  * @tags maintainability
+ * @id py/lines-of-commented-out-code-in-files
  */
 
 import python

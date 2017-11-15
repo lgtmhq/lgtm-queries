@@ -1001,20 +1001,39 @@ class TypeLiteral extends Expr,@typeliteral {
 }
 
 /**
+ * A use of one of the keywords `this` or `super`, which may be qualified.
+ */
+abstract class InstanceAccess extends Expr {
+  /**
+   * Gets the qualifying expression, if any.
+   *
+   * For example, the qualifying expression of `A.this` is `A`.
+   */
+  Expr getQualifier() { result.getParent() = this }
+
+  /**
+   * Holds if this instance access gets the value of `this`. That is, it is not
+   * an enclosing instance.
+   */
+  predicate isOwnInstanceAccess() {
+    not isEnclosingInstanceAccess(_)
+  }
+
+  /** Holds if this instance access is to an enclosing instance of type `t`. */
+  predicate isEnclosingInstanceAccess(RefType t) {
+    t = getQualifier().getType().(RefType).getSourceDeclaration() and
+    t != getEnclosingCallable().getDeclaringType()
+  }
+}
+
+/**
  * A use of the keyword `this`, which may be qualified.
  *
  * Such an expression allows access to an enclosing instance.
  * For example, `A.this` refers to the enclosing instance
  * of type `A`.
 */
-class ThisAccess extends Expr,@thisaccess {
-  /**
-   * The qualifying expression, if any.
-   *
-   * For example, the qualifying expression of `A.this` is `A`.
-   */
-  Expr getQualifier() { result.getParent() = this }
-
+class ThisAccess extends InstanceAccess,@thisaccess {
   /** A printable representation of this expression. */
   string toString() {
     if exists(this.getQualifier()) then (
@@ -1031,10 +1050,7 @@ class ThisAccess extends Expr,@thisaccess {
  * Such an expression allows access to super-class members of an enclosing instance.
  * For example, `A.super.x`.
  */
-class SuperAccess extends Expr,@superaccess {
-  /** The qualifying expression, if any. */
-  Expr getQualifier() { result.getParent() = this }
-
+class SuperAccess extends InstanceAccess,@superaccess {
   /** A printable representation of this expression. */
   string toString() {
     if exists(this.getQualifier()) then (
@@ -1097,18 +1113,9 @@ class VarAccess extends Expr,@varaccess {
   predicate isLocal() {
     // The access has no qualifier, or...
     not hasQualifier() or
-    exists(Expr qual, RefType encl |
-      qual = getQualifier() and encl = getEnclosingCallable().getDeclaringType() |
-      // the qualifier is either `this` or `A.this`, where `A` is the enclosing type, or
-      qual.(ThisAccess).getType() = encl or
-      // the qualifier is either `super` or `A.super`, where `A` is the enclosing type.
-      exists(SuperAccess sa | sa = qual |
-        // Note that we cannot use `qual.(SuperAccess).getType()` here, since for `B.super`
-        // that yields the superclass of `B`, which may be the same as the superclass of `A`.
-        not exists(sa.getQualifier()) or
-        sa.getQualifier().getType() = encl
-      )
-    )
+    // the qualifier is either `this` or `A.this`, where `A` is the enclosing type, or
+    // the qualifier is either `super` or `A.super`, where `A` is the enclosing type.
+    getQualifier().(InstanceAccess).isOwnInstanceAccess()
   }
 }
 
@@ -1437,7 +1444,7 @@ class FieldAccess extends VarAccess {
 }
 
 private module Qualifier {
-  /** A type qualifier for a `ThisAccess` or `SuperAccess`. */
+  /** A type qualifier for an `InstanceAccess`. */
   private newtype TThisQualifier = TThis() or TEnclosing(RefType t)
 
   /** An expression that accesses a member. That is, either a `FieldAccess` or a `MethodAccess`. */
@@ -1491,21 +1498,16 @@ private module Qualifier {
   }
 
   /**
-   * Gets the type qualifier of the `ThisAccess` or `SuperAccess` qualifier of `ma`.
+   * Gets the type qualifier of the `InstanceAccess` qualifier of `ma`.
    */
   private TThisQualifier getThisQualifier(MemberAccess ma) {
     result = getImplicitQualifier(ma) or
-    exists(RefType t, Expr q |
+    exists(Expr q |
       not ma.getMember().isStatic() and
-      t = ma.getEnclosingCallable().getDeclaringType() and
       q = ma.getQualifier()
       |
-      exists(ThisAccess ta | ta = q and not exists(ta.getQualifier()) and result = TThis()) or
-      exists(SuperAccess sa | sa = q and not exists(sa.getQualifier()) and result = TThis()) or
-      exists(Expr qq, RefType qt | qq = q.(ThisAccess).getQualifier() or qq = q.(SuperAccess).getQualifier() |
-        qt = qq.getType().(RefType).getSourceDeclaration() and
-        if qt = t then result = TThis() else result = TEnclosing(qt)
-      )
+      exists(InstanceAccess ia | ia = q and ia.isOwnInstanceAccess() and result = TThis()) or
+      exists(InstanceAccess ia, RefType qt | ia = q and ia.isEnclosingInstanceAccess(qt) and result = TEnclosing(qt))
     )
   }
 

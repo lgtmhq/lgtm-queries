@@ -33,9 +33,7 @@ where name = attr.getName() and
       (name = "href" or name = "src" or name = "srcset") and
       // ...where the value contains some interpolated expressions
       attr.getValue().matches("%{{%}}") and
-      // check that there is at least one use of an `ng-*` attribute
+      // check that there is at least one use of an AngularJS attribute directive nearby
       // (`{{...}}` is used by other templating frameworks as well)
-      exists (HTMLAttribute ngAttr | ngAttr.getRoot() = attr.getRoot() |
-        ngAttr.getName().matches("ng-%")
-      )
+      any(AngularJS::DirectiveInstance d).getATarget().getElement().getRoot() = attr.getRoot()
 select attr, "Use 'ng-" + name + "' instead of '" + name + "'."

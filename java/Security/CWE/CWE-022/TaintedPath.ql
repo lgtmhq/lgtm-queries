@@ -25,12 +25,12 @@
  *       external/cwe/cwe-073
  */
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import PathsCommon
 
 from RemoteUserInput u, PathCreation p, Expr e
 where 
   e = p.getInput()
-  and u.flowsTo(e)
+  and u.flowsTo(DataFlow::exprNode(e))
   and not guarded(e)
 select p, "$@ flows to here and is used in a path.", u, "User-provided value"

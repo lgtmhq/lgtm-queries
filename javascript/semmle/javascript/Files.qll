@@ -263,4 +263,59 @@ class File extends Container, @file, Locatable {
   predicate hasIndentation(int lineno, string c, int d) {
     indentation(this, lineno, c, d)
   }
+
+  /**
+   * Gets the type of this file.
+   */
+  FileType getFileType() {
+    filetype(this, result)
+  }
+}
+
+/**
+ * A file type.
+ */
+class FileType extends string {
+  FileType() {
+    this = "javascript" or
+    this = "html" or
+    this = "typescript" or
+    this = "json" or
+    this = "yaml"
+  }
+
+  /**
+   * Holds if this is the JavaScript file type.
+   */
+  predicate isJavaScript() {
+    this = "javascript"
+  }
+
+  /**
+   * Holds if this is the HTML file type.
+   */
+  predicate isHtml() {
+    this = "html"
+  }
+
+  /**
+   * Holds if this is the TypeScript file type.
+   */
+  predicate isTypeScript() {
+    this = "typescript"
+  }
+
+  /**
+   * Holds if this is the JSON file type.
+   */
+  predicate isJson() {
+    this = "json"
+  }
+
+  /**
+   * Holds if this is the YAML file type.
+   */
+  predicate isYaml() {
+    this = "yaml"
+  }
 }

@@ -17,6 +17,7 @@
  *              that are classified as generated code, test code,
  *              externs declarations, library code or template code.
  * @kind file-classifier
+ * @id js/file-classifier
  */
 
 import semmle.javascript.GeneratedCode

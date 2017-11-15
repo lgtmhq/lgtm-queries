@@ -88,7 +88,7 @@ where illegalInvocation(cs, callee, calleeDesc, how) and
       // filter out some easy cases
       not isCallToFunction(cs) and
       // conservatively only flag call sites where _all_ callees are illegal
-      forall (Function otherCallee | otherCallee = cs.getACallee() |
+      forex (Function otherCallee | otherCallee = cs.getACallee() |
         illegalInvocation(cs, otherCallee, _, _)
       )
 select cs, "Illegal invocation of $@ " + how + ".", callee, calleeDesc

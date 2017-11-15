@@ -364,6 +364,18 @@ class ControlFlowNode extends @cfg_node, Locatable {
   BasicBlock getBasicBlock() {
     this = result.getANode()
   }
+
+  /**
+   * For internal use.
+   *
+   * Gets a string representation of this control-flow node that can help
+   * distinguish it from other nodes with the same `toString` value.
+   */
+  string describeControlFlowNode() {
+    if this = any(MethodDeclaration mem).getBody()
+    then result = "function in " + any(MethodDeclaration mem | mem.getBody() = this)
+    else result = toString()
+  }
 }
 
 /**

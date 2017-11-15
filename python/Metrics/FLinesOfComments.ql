@@ -20,6 +20,7 @@
  * @metricType file
  * @metricAggregate avg sum max
  * @precision very-high
+ * @id py/lines-of-comments-in-files
  */
 import python
 

@@ -19,6 +19,7 @@
  * @metricType file
  * @metricAggregate avg sum max
  * @precision medium
+ * @id js/test-in-files
  */
 
 import semmle.javascript.frameworks.Testing

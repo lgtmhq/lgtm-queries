@@ -20,6 +20,7 @@
  * @metricType file
  * @metricAggregate avg sum max
  * @precision high
+ * @id js/duplicated-lines-in-files
  * @tags testability
  *       duplicate-code
  */

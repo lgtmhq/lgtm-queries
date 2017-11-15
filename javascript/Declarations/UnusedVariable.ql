@@ -33,7 +33,7 @@ class UnusedLocal extends LocalVariable {
     not exists(Parameter p | this = p.getAVariable()) and
     not exists(FunctionExpr fe | this = fe.getVariable()) and
     not exists(ExportNamedDeclaration end | this = end.getADecl().getVariable()) and
-    not exists(SimpleVarTypeAccess type | type.getVariable() = this)
+    not exists(LocalVarTypeAccess type | type.getVariable() = this)
   }
 }
 
@@ -75,12 +75,46 @@ predicate isReactImportForJSX(UnusedLocal v) {
 }
 
 /**
+ * Holds if `decl` is both a variable declaration and a type declaration,
+ * and the declared type has a use.
+ */
+predicate isUsedAsType(VarDecl decl) {
+  exists (decl.(TypeDecl).getLocalTypeName().getAnAccess())
+}
+
+/**
+ * Holds if `decl` declares a local alias for a namespace that is used from inside a type.
+ */
+predicate isUsedAsNamespace(VarDecl decl) {
+  exists (decl.(LocalNamespaceDecl).getLocalNamespaceName().getAnAccess())
+}
+
+/**
+ * Holds if the given identifier belongs to a decorated class or enum.
+ */
+predicate isDecorated(VarDecl decl) {
+  exists (ClassDefinition cd | cd.getIdentifier() = decl | exists(cd.getDecorator(_))) or
+  exists (EnumDeclaration cd | cd.getIdentifier() = decl | exists(cd.getDecorator(_)))
+}
+
+/**
+ * Holds if this is the name of an enum member.
+ */
+predicate isEnumMember(VarDecl decl) {
+  decl = any(EnumMember member).getIdentifier()
+}
+
+/**
  * Gets a description of the declaration `vd`, which is either of the form "function f" if
  * it is a function name, or "variable v" if it is not.
  */
 string describe(VarDecl vd) {
   if vd = any(Function f).getId() then
     result = "function " + vd.getName()
+  else if vd = any(ClassDefinition c).getIdentifier() then
+    result = "class " + vd.getName()
+  else if (vd = any(ImportSpecifier im).getLocal() or vd = any(ImportEqualsDeclaration im).getId()) then
+    result = "import " + vd.getName()
   else
     result = "variable " + vd.getName()
 }
@@ -92,5 +126,13 @@ where v = vd.getVariable() and
       // exclude variables used to filter out unwanted properties
       not isPropertyFilter(v) and
       // exclude imports of React that are implicitly referenced by JSX
-      not isReactImportForJSX(v)
+      not isReactImportForJSX(v) and
+      // exclude names that are used as types
+      not isUsedAsType(vd) and
+      // exclude names that are used as namespaces from inside a type
+      not isUsedAsNamespace(vd) and
+      // exclude decorated functions and classes
+      not isDecorated(vd) and
+      // exclude names of enum members; they also define property names
+      not isEnumMember(vd)
 select vd, "Unused " + describe(vd) + "."

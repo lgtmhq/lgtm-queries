@@ -51,7 +51,10 @@ from SelfAssignment e, string dsc
 where e.same(_) and
       dsc = describe(e) and
       // exclude properties for which there is an accessor somewhere
-      not exists(PropertyAccessor acc | acc.getName() = e.(PropAccess).getPropertyName()) and
+      not exists(string propName | propName = e.(PropAccess).getPropertyName() |
+        propName = any(PropertyAccessor acc).getName() or
+        propName = any(AccessorMethodDeclaration amd).getName()
+      ) and
       // exclude DOM properties
       not isDOMProperty(e.(PropAccess).getPropertyName())
 select e.getParent(), "This expression assigns " + dsc + " to itself."

@@ -43,6 +43,28 @@ class OrdPrimitiveType extends PrimitiveType {
     or
     (this.getName() = "double" and result = 6)
   }
+  
+  float getMaxValue() {
+    (this.getName() = "byte" and result = 127.0)
+    or
+    (this.getName() = "short" and result = 32767.0)
+    or
+    (this.getName() = "int" and result = 2147483647.0)
+    or
+    (this.getName() = "long" and result = 9223372036854775807.0)
+    // don't try for floats and doubles
+  }
+
+  float getMinValue() {
+    (this.getName() = "byte" and result = -128.0)
+    or
+    (this.getName() = "short" and result = -32768.0)
+    or
+    (this.getName() = "int" and result = -2147483648.0)
+    or
+    (this.getName() = "long" and result = -9223372036854775808.0)
+    // don't try for floats and doubles
+  }
 }
 
 class NumType extends Type {

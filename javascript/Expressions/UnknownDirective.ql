@@ -12,20 +12,17 @@
 // permissions and limitations under the License.
 
 /**
- * @name Number of tests
- * @description The number of test methods defined in a module
- * @kind treemap
- * @treemap.warnOn lowValues
- * @metricType file
- * @metricAggregate avg sum max
- * @precision medium
- * @precision very-high
- * @id py/tests-in-files
+ * @name Unknown directive
+ * @description An unknown directive has no effect and may indicate a misspelling.
+ * @kind problem
+ * @problem.severity warning
+ * @id js/unknown-directive
+ * @tags correctness
+ * @precision high
  */
-import python
-import semmle.python.filters.Tests
 
-from Module m, int n
-where n = strictcount(Test test | test.getEnclosingModule() = m)
-select m.getFile(), n
-order by n desc
+import javascript
+
+from Directive d
+where not d instanceof KnownDirective
+select d, "Unknown directive: '" + d.getDirectiveText() + "'."

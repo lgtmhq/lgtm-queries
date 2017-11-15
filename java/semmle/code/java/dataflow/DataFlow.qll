@@ -174,7 +174,7 @@ module DataFlow {
   /** Holds if `n` is an access to an unqualified `this` at `cfgnode`. */
   private predicate thisAccess(Node n, ControlFlowNode cfgnode) {
     n.(InstanceParameterNode).getCallable().getBody() = cfgnode or
-    exists(ThisAccess ta | ta = n.asExpr() and ta = cfgnode and not exists(ta.getQualifier())) or
+    exists(InstanceAccess ia | ia = n.asExpr() and ia = cfgnode and ia.isOwnInstanceAccess()) or
     exists(FieldAccess fa | fa = n.(ImplicitThisQualifier).getFieldAccess() |
       if fa instanceof RValue then fa = cfgnode
       else cfgnode.(AssignExpr).getDest() = fa
@@ -310,6 +310,20 @@ module DataFlow {
      */
     predicate hasFlow(Node source, Node sink) {
       flowsTo(source, sink, this)
+    }
+
+    /**
+     * Holds if data may flow from some source to `sink` for this configuration.
+     */
+    predicate hasFlowTo(Node sink) {
+      flowsTo(_, sink, this)
+    }
+
+    /**
+     * Holds if data may flow from some source to `sink` for this configuration.
+     */
+    predicate hasFlowToExpr(Expr sink) {
+      flowsTo(_, exprNode(sink), this)
     }
   }
 
@@ -544,41 +558,44 @@ module DataFlow {
    */
   private predicate nodeCandFwd2(Node node, boolean fromArg, Configuration config) {
     nodeCand1(node, config) and
-    (
-      config.isSource(node) and fromArg = false
-      or
-      exists(Node mid |
-        nodeCandFwd2(mid, fromArg,config) and
-        localFlowStep(mid, node, config)
-      )
-      or
-      exists(Node mid |
-        nodeCandFwd2(mid, _, config) and
-        jumpStep(mid, node) and
-        fromArg = false
-      )
-      or
-      // flow into a callable
-      exists(Node arg |
-        nodeCandFwd2(arg, _, config) and
-        viableParamArg(node, arg) and
-        fromArg = true
-      )
-      or
-      // flow out of a callable
-      exists(Method m, MethodAccess ma, ReturnNode ret |
-        nodeCandFwd2(ret, false, config) and
-        m = ret.getEnclosingCallable() and
-        m = viableImpl(ma) and
-        node.asExpr() = ma and
-        fromArg = false
-      )
-      or
-      // flow through a callable
-      exists(ArgumentNode arg |
-        nodeCandFwd2(arg, fromArg, config) and
-        simpleArgumentFlowsThrough(arg, node, config)
-      )
+    config.isSource(node) and fromArg = false
+    or
+    nodeCand1(node, config) and
+    exists(Node mid |
+      nodeCandFwd2(mid, fromArg, config) and
+      localFlowStep(mid, node, config)
+    )
+    or
+    nodeCand1(node, config) and
+    exists(Node mid |
+      nodeCandFwd2(mid, _, config) and
+      jumpStep(mid, node) and
+      fromArg = false
+    )
+    or
+    // flow into a callable
+    nodeCand1(node, config) and
+    exists(Node arg |
+      nodeCandFwd2(arg, _, config) and
+      viableParamArg(node, arg) and
+      fromArg = true
+    )
+    or
+    // flow out of a callable
+    nodeCand1(node, config) and
+    exists(Method m, MethodAccess ma, ReturnNode ret |
+      nodeCandFwd2(ret, false, config) and
+      m = ret.getEnclosingCallable() and
+      m = viableImpl(ma) and
+      node.asExpr() = ma and
+      fromArg = false
+    )
+    or
+    // flow through a callable
+    nodeCand1(node, config) and
+    exists(ArgumentNode arg |
+      nodeCandFwd2(arg, fromArg, config) and
+      simpleArgumentFlowsThrough(arg, node, config)
     )
   }
 
@@ -588,40 +605,43 @@ module DataFlow {
    */
   private predicate nodeCand2(Node node, boolean toReturn, Configuration config) {
     nodeCandFwd2(node, _, config) and
-    (
-      config.isSink(node) and toReturn = false
-      or
-      exists(Node mid |
-        localFlowStep(node, mid, config) and
-        nodeCand2(mid, toReturn, config)
-      )
-      or
-      exists(Node mid |
-        jumpStep(node, mid) and
-        nodeCand2(mid, _, config) and
-        toReturn = false
-      )
-      or
-      // flow into a callable
-      exists(Node param |
-        viableParamArg(param, node) and
-        nodeCand2(param, false, config) and
-        toReturn = false
-      )
-      or
-      // flow out of a callable
-      exists(Method m, ExprNode ma |
-        nodeCand2(ma, _, config) and
-        toReturn = true and
-        m = node.(ReturnNode).getEnclosingCallable() and
-        m = viableImpl(ma.getExpr())
-      )
-      or
-      // flow through a callable
-      exists(Node call |
-        simpleArgumentFlowsThrough(node, call, config) and
-        nodeCand2(call, toReturn, config)
-      )
+    config.isSink(node) and toReturn = false
+    or
+    nodeCandFwd2(node, _, config) and
+    exists(Node mid |
+      localFlowStep(node, mid, config) and
+      nodeCand2(mid, toReturn, config)
+    )
+    or
+    nodeCandFwd2(node, _, config) and
+    exists(Node mid |
+      jumpStep(node, mid) and
+      nodeCand2(mid, _, config) and
+      toReturn = false
+    )
+    or
+    // flow into a callable
+    nodeCandFwd2(node, _, config) and
+    exists(Node param |
+      viableParamArg(param, node) and
+      nodeCand2(param, false, config) and
+      toReturn = false
+    )
+    or
+    // flow out of a callable
+    nodeCandFwd2(node, _, config) and
+    exists(Method m, ExprNode ma |
+      nodeCand2(ma, _, config) and
+      toReturn = true and
+      m = node.(ReturnNode).getEnclosingCallable() and
+      m = viableImpl(ma.getExpr())
+    )
+    or
+    // flow through a callable
+    nodeCandFwd2(node, _, config) and
+    exists(Node call |
+      simpleArgumentFlowsThrough(node, call, config) and
+      nodeCand2(call, toReturn, config)
     )
   }
 
@@ -923,12 +943,14 @@ module DataFlow {
     result = viableCallable(call) and cc instanceof CallContextReturn
   }
 
+  private bindingset[conf, result] Configuration unbind(Configuration conf) { result >= conf and result <= conf }
+
   /**
    * Holds if data may flow from `source` to `node`. The last step in or out of
    * a callable is recorded by `cc`.
    */
   private predicate flowsTo(Node source, Node node, CallContext cc, Configuration config) {
-    nodeCand(node, config) and
+    nodeCand(node, unbind(config)) and
     (
       config.isSource(source) and
       source = node and
@@ -1039,13 +1061,13 @@ module DataFlow {
    * Holds if data can flow (inter-procedurally) from `source` to `sink`.
    *
    * Will only have results if `configuration` has non-empty sources and
-   * sinks, and more sinks than sources.
+   * sinks.
    */
   predicate flowsTo(Node source, Node sink, Configuration configuration) {
     exists(Node node |
       flowsTo(source, node, _, configuration) and
       (node = sink or localFlowStepPlus(node, sink, configuration)) and
-      configuration.isSink(sink)
+      unbind(configuration).isSink(sink)
     )
   }
 }

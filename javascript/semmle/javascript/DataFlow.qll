@@ -260,6 +260,20 @@ private class ParExprFlow extends DataFlowNode, @parexpr {
   }
 }
 
+/** A type assertion, `E as T` or `<T> E`, viewed as a data flow node. */
+private class TypeAssertionFlow extends DataFlowNode, @typeassertion {
+  override DataFlowNode localFlowPred() {
+    result = this.(TypeAssertion).getExpression()
+  }
+}
+
+/** An expression with type arguments, viewed as a data flow node. */
+private class ExpressionWithTypeArgumentsFlow extends DataFlowNode, @expressionwithtypearguments {
+  override DataFlowNode localFlowPred() {
+    result = this.(ExpressionWithTypeArguments).getExpression()
+  }
+}
+
 /** A sequence expression, viewed as a data flow node. */
 private class SeqExprFlow extends DataFlowNode, @seqexpr {
   override DataFlowNode localFlowPred() {

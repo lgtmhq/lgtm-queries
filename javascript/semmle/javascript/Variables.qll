@@ -307,6 +307,23 @@ class VarAccess extends @varaccess, VarRef {
   }
 }
 
+/**
+ * An identifier that occurs in a named export declaration, such as in `export { A }`.
+ *
+ * Such an identifier may refer to a variable, type, or namespace, or a combination of these.
+ */
+class ExportVarAccess extends VarAccess, @export_varaccess {
+  /** Gets the type being exported, if this identifier refers to a type. */
+  LocalTypeName getLocalTypeName() {
+    result.getAnAccess() = this
+  }
+
+  /** Gets the namespace being exported, if this identifier refers to a namespace. */
+  LocalNamespaceName getLocalNamespaceName() {
+    result.getAnAccess() = this
+  }
+}
+
 /** A global variable. */
 class GlobalVariable extends Variable {
   GlobalVariable() {
@@ -609,6 +626,21 @@ class VariableDeclarator extends Expr, @vardeclarator {
 }
 
 /**
+ * For internal use, holding the decorators of a function parameter.
+ */
+private class DecoratorList extends Expr, @decorator_list {
+  Decorator getDecorator(int i) {
+    result = getChildExpr(i)
+  }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    if exists(getDecorator(0))
+    then result = getDecorator(0).getFirstControlFlowNode()
+    else result = this
+  }
+}
+
+/**
  * A program element that declares parameters, that is, either a function or
  * a catch clause.
  */
@@ -657,12 +689,12 @@ class Parameter extends BindingPattern {
 
   /** Gets the default expression for this parameter, if any. */
   Expr getDefault() {
-    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(3*n + 4)))
+    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(4*n + 5)))
   }
 
   /** Gets the type annotation for this parameter, if any. */
   override TypeExpr getTypeAnnotation() {
-    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildTypeExpr(-(3*n + 5)))
+    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildTypeExpr(-(4*n + 6)))
   }
 
   /** Holds if this parameter is a rest parameter. */
@@ -673,6 +705,25 @@ class Parameter extends BindingPattern {
     )
   }
 
+  private DecoratorList getDecoratorList() {
+    exists (Function f, int n | this = f.getParameter(n) | result = f.getChildExpr(-(4*n + 8)))
+  }
+
+  /** Gets the `i`th decorator applied to this parameter. */
+  Decorator getDecorator(int i) {
+    result = getDecoratorList().getDecorator(i)
+  }
+
+  /** Gets a decorator applied to this parameter. */
+  Decorator getADecorator() {
+    result = getDecorator(_)
+  }
+
+  /** Gets the number of decorators applied to this parameter. */
+  int getNumDecorator() {
+    result = count(getADecorator())
+  }
+
   override predicate isLValue() {
     any()
   }
@@ -681,4 +732,21 @@ class Parameter extends BindingPattern {
 /** A parameter declaration that is not an object or array pattern. */
 class SimpleParameter extends Parameter, VarDecl {
   override predicate isLValue() { Parameter.super.isLValue() }
+}
+
+/**
+ * A constructor parameter that induces a field in its class, such as the parameter `x` in:
+ * ```
+ * class C {
+ *   constructor(public x: number) {}
+ * }
+ * ```
+ */
+class FieldParameter extends SimpleParameter {
+  FieldParameter() {
+    exists (ParameterField field | field.getParameter() = this)
+  }
+
+  /** Gets the field induced by this parameter. */
+  ParameterField getField() { result.getParameter() = this }
 }

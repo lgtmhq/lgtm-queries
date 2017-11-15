@@ -55,9 +55,11 @@ predicate isUnused(Function f, Parameter p, Variable pv, int i) {
   // nor could it be accessed through arguments
   not f.usesArgumentsObject() and
   // nor is it mentioned in a type
-  not exists (SimpleVarTypeAccess acc | acc.getVariable() = pv) and
+  not exists (LocalVarTypeAccess acc | acc.getVariable() = pv) and
   // functions without a body cannot use their parameters
-  f.hasBody()
+  f.hasBody() and
+  // field parameters are used to initialize a field
+  not p instanceof FieldParameter
 }
 
 /**

@@ -26,22 +26,28 @@
 import semmle.code.java.security.SqlUnescapedLib
 import SqlInjectionLib
 
-class UncontrolledStringBuilderSource extends FlowSource {
+class UncontrolledStringBuilderSource extends DataFlow::ExprNode {
   UncontrolledStringBuilderSource() {
     exists(StringBuilderVar sbv | 
       uncontrolledStringBuilderQuery(sbv, _) and
-      this = sbv.getToStringCall()
+      this.getExpr() = sbv.getToStringCall()
     )
   }
+}
+
+class UncontrolledStringBuilderSourceFlowConfig extends TaintTracking::Configuration {
+  UncontrolledStringBuilderSourceFlowConfig() { this = "SqlUnescaped::UncontrolledStringBuilderSourceFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { src instanceof UncontrolledStringBuilderSource }
+  override predicate isSink(DataFlow::Node sink) { sink instanceof QueryInjectionSink }
 }
 
 from QueryInjectionSink query, Expr uncontrolled
 where
   (
-    builtFromUncontrolledConcat(query, uncontrolled) or
-    exists (StringBuilderVar sbv |
+    builtFromUncontrolledConcat(query.getExpr(), uncontrolled) or
+    exists (StringBuilderVar sbv, UncontrolledStringBuilderSourceFlowConfig conf |
       uncontrolledStringBuilderQuery(sbv, uncontrolled) and
-      sbv.getToStringCall().(UncontrolledStringBuilderSource).flowsTo(query)
+      conf.hasFlow(DataFlow::exprNode(sbv.getToStringCall()), query)
     )
   )
   and not queryTaintedBy(query, _)

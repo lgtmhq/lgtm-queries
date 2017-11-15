@@ -14,7 +14,7 @@
 /* Definitions used by `SqlUnescaped.ql`. */
 
 import semmle.code.java.security.ControlledString
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.TaintTracking
 
 /**
  * A string concatenation that includes a string

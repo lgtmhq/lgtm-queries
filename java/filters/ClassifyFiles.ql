@@ -16,6 +16,7 @@
  * @description This query produces a list of all files in a snapshot
  *              that are classified as generated code or test code.
  * @kind file-classifier
+ * @id java/file-classifier
  */
 
 import java

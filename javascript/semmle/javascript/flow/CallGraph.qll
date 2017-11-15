@@ -20,15 +20,6 @@ import Analysis
 private import InferredTypes
 
 /**
- * Holds if `v` is an abstract value representing a concrete value that,
- * when called, invokes function `f`.
- */
-private predicate isCallable(AbstractValue v, Function f) {
-  f = v.(AbstractFunction).getFunction() or
-  f = v.(AbstractClass).getClass().getConstructor().getBody()
-}
-
-/**
  * A function call or `new` expression, with information about its potential callees.
  *
  * Both direct calls and reflective calls using `call` or `apply` are modelled.
@@ -73,7 +64,7 @@ class CallSite extends @invokeexpr {
 
   /** Gets a potential callee of this call site. */
   Function getACallee() {
-    isCallable(getACalleeValue(), result)
+    result = getACalleeValue().(AbstractCallable).getFunction()
   }
 
   /**
@@ -98,7 +89,7 @@ class CallSite extends @invokeexpr {
   predicate isImprecise() {
     isIndefinite("global") and
     exists (DefiniteAbstractValue v | v = getACalleeValue() |
-      not isCallable(v, _)
+      not v instanceof AbstractCallable
     )
   }
 

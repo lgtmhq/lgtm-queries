@@ -12,8 +12,8 @@
 // permissions and limitations under the License.
 
 /**
- * @name Result of integer multiplication cast to long
- * @description Casting the result of an integer multiplication to type 'long' instead of casting
+ * @name Result of multiplication cast to wider type
+ * @description Casting the result of a multiplication to a wider type instead of casting
  *              before the multiplication may cause overflow.
  * @kind problem
  * @problem.severity warning
@@ -30,71 +30,39 @@
  */
 import java
 import semmle.code.java.dataflow.RangeUtils
+import semmle.code.java.Conversions
 
-/** Either the boxed type `java.lang.Long` or the primitive type `long`. */
-class Long extends Type {
-  Long() {
-    this.(Class).hasQualifiedName("java.lang","Long") or
-    this.hasName("long")
-  }
-}
-
-/** A declaration of a local variable whose initializer is a `MulExpr`. */
-class LocalVariableWithMulExprInit extends LocalVariableDeclStmt {
-  MulExpr getInit() {
-    result = this.getAVariable().getInit()
-  }
-  Type getType() {
-    result = this.getAVariable().getType()
-  }
-}
-
-/** A return statement returning a `MulExpr`. */
-class ReturnMulExpr extends ReturnStmt {
-  MulExpr getInit() {
-    result = this.getResult()
-  }
-  Type getType() {
-    result = this.getEnclosingCallable().getReturnType()
-  }
-}
-
-/** An assignment whose right hand side is a `MulExpr`. */
-class AssignMulExprStmt extends ExprStmt {
-  MulExpr getInit() {
-    result = this.getExpr().(AssignExpr).getSource()
-  }
-  Type getType() {
-    result = this.getExpr().(AssignExpr).getType()
-  }
-}
-
-/** An integer multiplication that does not overflow. */
+/** An multiplication that does not overflow. */
 predicate small(MulExpr e) {
-  exists(float lhs, float rhs, float res |
+  exists(NumType t, float lhs, float rhs, float res | t = e.getType() |
     lhs = e.getLeftOperand().getProperExpr().(ConstantIntegerExpr).getIntValue() and
     rhs = e.getRightOperand().getProperExpr().(ConstantIntegerExpr).getIntValue() and
     lhs * rhs = res and
-    -2147483648.0 <= res and res <= 2147483647.0
+    t.getOrdPrimitiveType().getMinValue() <= res and res <= t.getOrdPrimitiveType().getMaxValue()
   )
 }
 
-from Stmt s, MulExpr e
-where s.getEnclosingCallable().fromSource() and
-      not exists(Long l | e.getAnOperand().getType() = l) and
-      (
-        exists(LocalVariableWithMulExprInit p | s = p and
-          p.getType() instanceof Long and
-          p.getInit() = e
-        ) or
-        exists(ReturnMulExpr p | s = p and
-          p.getType() instanceof Long and
-          p.getInit() = e
-        ) or
-        exists(AssignMulExprStmt p | s = p and
-          p.getType() instanceof Long and
-          p.getInit() = e
-        )
-      ) and
-      not small(e)
-select s, "Result of integer multiplication cast to long."
+/**
+ * A parent of e, but only one that roughly preserves the value - in particular, not calls.
+ */
+Expr getRestrictedParent(Expr e) {
+  result = e.getParent() and
+  (result instanceof ArithExpr or result instanceof ConditionalExpr or result instanceof ParExpr)
+}
+
+from ConversionSite c, MulExpr e, NumType sourceType, NumType destType
+where 
+  // e is nested inside c, with only parents that roughly "preserve" the value
+  getRestrictedParent*(e) = c and
+  // the destination type is wider than the type of the multiplication
+  e.getType() = sourceType and
+  c.getConversionTarget() = destType and
+  destType.widerThan(sourceType) and
+  // not a trivial conversion
+  not c.isTrivial() and
+  // not an explicit conversion, which is probably intended by a user
+  c.isImplicit() and
+  // not obviously small and ok
+  not small(e) and
+  e.getEnclosingCallable().fromSource()
+select c, "$@ converted to "+ destType.getName() +" by use in " + ("a " + c.kind()).regexpReplaceAll("^a ([aeiou])", "an $1") + ".", e, sourceType.getName() + " multiplication"

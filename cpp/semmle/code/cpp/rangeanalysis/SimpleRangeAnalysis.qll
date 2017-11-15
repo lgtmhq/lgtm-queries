@@ -921,6 +921,16 @@ predicate defMightOverflowPositively(RangeSsaDefinition def, LocalScopeVariable 
 }
 
 /**
+ * Holds if the definition might overflow (either positively or
+ * negatively).
+ */
+cached
+predicate defMightOverflow(RangeSsaDefinition def, LocalScopeVariable v) {
+  defMightOverflowNegatively(def, v) or
+  defMightOverflowPositively(def, v)
+}
+
+/**
  * Get the lower bounds for a `RangeSsaDefinition`. Most of the work is
  * done by `getDefLowerBoundsImpl`, but this is where widening is applied
  * to prevent the analysis from exploding due to a recursive definition.

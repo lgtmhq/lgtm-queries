@@ -13,11 +13,30 @@
 
 import javascript
 
-/** A TypeScript namespace declaration. */
+/**
+ * A TypeScript namespace declaration.
+ *
+ * This is also known as an "internal module" and can be declared
+ * using the `module` or `namespace` keyword. For example:
+ * ```
+ * namespace util { ... }
+ * module util { ... } // equivalent
+ * ```
+ *
+ * Note that modules whose name is a string literal, called "external modules",
+ * and are not namespace declarations.
+ * For example, `declare module "X" {...}` is an external module declaration.
+ * These are represented by `ExternalModuleDeclaration`.
+ */
 class NamespaceDeclaration extends Stmt, StmtContainer, @namespacedeclaration {
   /** Gets the name of this namespace. */
   Identifier getId() {
     result = getChild(-1)
+  }
+
+  /** Gets the name of this namespace as a string. */
+  string getName() {
+    result = getId().getName()
   }
 
   /** Gets the `i`th statement in this namespace. */
@@ -47,6 +66,52 @@ class NamespaceDeclaration extends Stmt, StmtContainer, @namespacedeclaration {
   predicate isInstantiated() {
     isInstantiated(this)
   }
+}
+
+/**
+ * A TypeScript declaration of form `declare module "X" {...}` where `X`
+ * is the name of an external module.
+ */
+class ExternalModuleDeclaration extends Stmt, StmtContainer, @externalmoduledeclaration {
+  /**
+   * Gets the string literal denoting the module name, such as `"fs"` in:
+   * ```
+   * declare module "fs" {...}
+   * ```
+   */
+  StringLiteral getNameLiteral() {
+    result = getChildExpr(-1)
+  }
+
+  /**
+   * Gets the module name, such as `fs` in:
+   * ```
+   * declare module "fs" {...}
+   * ```
+   */
+  string getName() {
+    result = getNameLiteral().getStringValue()
+  }
+
+  /** Gets the `i`th statement in this namespace. */
+  Stmt getStmt(int i) {
+    i >= 0 and
+    result = getChild(i)
+  }
+
+  /** Gets a statement in this namespace. */
+  Stmt getAStmt() {
+    result = getStmt(_)
+  }
+
+  /** Gets the number of statements in this namespace. */
+  int getNumStmt() {
+    result = count(getAStmt())
+  }
+
+  override StmtContainer getEnclosingContainer() { result = this.getContainer() }
+
+  override predicate isAmbient() { any() }
 }
 
 /** A TypeScript "import-equals" declaration. */
@@ -99,6 +164,47 @@ class ExportAssignDeclaration extends Stmt, @exportassigndeclaration {
   }
 }
 
+/** A TypeScript export of form `export as namespace X` where `X` is an identifier. */
+class ExportAsNamespaceDeclaration extends Stmt, @exportasnamespacedeclaration {
+  /**
+   * Gets the `X` in `export as namespace X`.
+   */
+  Identifier getIdentifier() {
+    result = getChildExpr(0)
+  }
+
+  override predicate isAmbient() { any() }
+}
+
+/**
+ * A type alias declaration, that is, a statement of form `type A = T`.
+ */
+class TypeAliasDeclaration extends @typealiasdeclaration, TypeParameterized, Stmt {
+  /** Gets the name of this type alias as a string. */
+  string getName() {
+    result = getIdentifier().getName()
+  }
+
+  Identifier getIdentifier() {
+    result = getChildTypeExpr(0)
+  }
+
+  override TypeParameter getTypeParameter(int n) {
+    result = getChildTypeExpr(n + 2)
+  }
+
+  /**
+   * Gets the `T` in `type A = T`.
+   */
+  TypeExpr getDefinition() {
+    result = getChildTypeExpr(1)
+  }
+
+  override string describe() {
+    result = "type alias " + getName()
+  }
+}
+
 /**
  * A TypeScript interface declaration, inline interface type, or function type.
  */
@@ -137,7 +243,7 @@ class InterfaceDeclaration extends Stmt, InterfaceDefinition, @interfacedeclarat
    * Gets any type from the `extends` clause of this interface.
    */
   override TypeExpr getASuperInterface() {
-      result = InterfaceDefinition.super.getASuperInterface()
+    result = InterfaceDefinition.super.getASuperInterface()
   }
 }
 
@@ -197,11 +303,184 @@ class PlainFunctionTypeExpr extends FunctionTypeExpr, @plainfunctiontypeexpr {}
 abstract class TypeRef extends ASTNode {
 }
 
-/** An identifier declaring a type name, that is, the name of a class, interface, or type parameter. */
+/** An identifier declaring a type name, that is, the name of a class, interface, type parameter, or import. */
 class TypeDecl extends TypeRef, Identifier {
   TypeDecl() {
     this = any(ClassOrInterface ci).getIdentifier() or
-    this = any(TypeParameter tp).getIdentifier()
+    this = any(TypeParameter tp).getIdentifier() or
+    this = any(ImportSpecifier im | not im instanceof ImportNamespaceSpecifier).getLocal() or
+    this = any(TypeAliasDeclaration td).getIdentifier() or
+    this = any(EnumDeclaration ed).getIdentifier() or
+    this = any(EnumMember member).getIdentifier()
+  }
+
+  /**
+   * Gets the local type name being declared.
+   *
+   * If this is an import or type alias, the local type name represents the local alias.
+   */
+  LocalTypeName getLocalTypeName() {
+    result.getADeclaration() = this
+  }
+
+  /**
+   * Gets a string describing the type being declared, consisting of the declaration kind and
+   * the name being declared, such as `class C` for a class declaration `C`.
+   */
+  string describe() {
+    exists (ClassOrInterface ci | this = ci.getIdentifier() | result = ci.describe()) or
+    exists (TypeParameter tp | this = tp.getIdentifier() | result = "type parameter " + getName()) or
+    exists (TypeAliasDeclaration td | this = td.getIdentifier() | result = "type alias " + getName()) or
+    exists (EnumDeclaration enum | this = enum.getIdentifier() | result = "enum " + getName()) or
+    exists (EnumMember member | this = member.getIdentifier() | result = "enum member " + member.getPrefixedName()) or
+    exists (ImportSpecifier im | this = im.getLocal() | result = "imported type " + getName())
+  }
+}
+
+/**
+ * The local name for a type in a particular scope.
+ *
+ * It is possible for two distinct local type names to refer to the same underlying
+ * type through imports or type aliases. For example:
+ * ```
+ * namespace A {
+ *   export class C {}
+ * }
+ * namespace B {
+ *   import C = A.C;
+ * }
+ * ```
+ * In the above example, two distinct local type names exist for the type `C`:
+ * one in `A` and one in `B`.
+ * Since a local type name is always specific to one scope, it is not possible
+ * for the two namespaces to share a single local type name for `C`.
+ *
+ * There may be multiple declarations of a given local type name, for example:
+ * ```
+ * interface Point { x: number; }
+ * interface Point { y: number; }
+ * ```
+ * In the above example, the two declarations of `Point` refer to the same
+ * local type name.
+ */
+class LocalTypeName extends @local_type_name {
+  /** Gets the local name of this type. */
+  string getName() {
+    local_type_names(this, result, _)
+  }
+
+  /** Gets the scope this type name is declared in. */
+  Scope getScope() {
+    local_type_names(this, _, result)
+  }
+
+  /** Gets a textual representation of this element. */
+  string toString() {
+    result = getName()
+  }
+
+  /**
+   * Gets a declaration of this type name.
+   *
+   * All local type names have at least one declaration and may have
+   * multiple declarations in case these are interface declarations.
+   */
+  TypeDecl getADeclaration() {
+    typedecl(result, this)
+  }
+
+  /**
+   * Gets the first declaration of this type name.
+   */
+  TypeDecl getFirstDeclaration() {
+    result = min(getADeclaration() as decl order by decl.getFirstToken().getIndex())
+  }
+
+  /** Gets a use of this type name in a type annotation. */
+  LocalTypeAccess getATypeAccess() {
+    typebind(result, this)
+  }
+
+  /** Gets a use of this type name in an export. */
+  ExportVarAccess getAnExportAccess() {
+    typebind(result, this)
+  }
+
+  /** Gets an identifier that refers to this type name. */
+  Identifier getAnAccess() {
+    typebind(result, this)
+  }
+}
+
+/**
+ * The local name for a namespace in a particular scope.
+ *
+ * Namespace declarations and imports can give rise to local namespace names.
+ * For example, the following declarations declare two local namespace names,
+ * `A` and `B`:
+ * ```
+ * import A from './A';
+ * namespace B {}
+ * ```
+ *
+ * It is possible for a namespace to have multiple aliases; each alias corresponds
+ * to a distinct local namespace name. For example, there are three distinct local
+ * namespace names for `A` in this example:
+ * ```
+ * namespace A {}
+ * namespace Q {
+ *   import B = A;
+ *   import C = A;
+ * }
+ * ```
+ * There is one local namespace name for the declaration of `A` and one for each import.
+ */
+class LocalNamespaceName extends @local_namespace_name {
+  /** Gets the local name of this namespace. */
+  string getName() {
+    local_namespace_names(this, result, _)
+  }
+
+  /** Gets the scope this namespace name is declared in. */
+  Scope getScope() {
+    local_namespace_names(this, _, result)
+  }
+
+  /** Gets a textual representation of this element. */
+  string toString() {
+    result = getName()
+  }
+
+  /**
+   * Gets a declaration of this namespace name.
+   *
+   * All local namespace names have at least one declaration and may have
+   * multiple declarations unless it comes from an import.
+   */
+  LocalNamespaceDecl getADeclaration() {
+    namespacedecl(result, this)
+  }
+
+  /**
+   * Gets the first declaration of this namespace name.
+   */
+  LocalNamespaceDecl getFirstDeclaration() {
+    result = min(getADeclaration() as decl order by decl.getFirstToken().getIndex())
+  }
+
+  /** Gets a use of this namespace name in a type annotation. */
+  LocalNamespaceAccess getATypeAccess() {
+    namespacebind(result, this)
+  }
+
+  /** Gets a use of this namespace in an export. */
+  ExportVarAccess getAnExportAccess() {
+    namespacebind(result, this)
+  }
+
+  /** Gets an identifier that refers to this namespace name. */
+  Identifier getAnAccess() {
+    namespacebind(result, this)
   }
 }
 
@@ -362,13 +641,26 @@ class TypeAccess extends @typeaccess, TypeExpr, TypeRef {
 }
 
 /** An identifier that is used as part of a type, such as `Date`. */
-class SimpleTypeAccess extends @simpletypeaccess, TypeAccess, Identifier {
+class LocalTypeAccess extends @localtypeaccess, TypeAccess, Identifier {
   override predicate isStringy() { getName() = "String" }
   override predicate isNumbery() { getName() = "Number" }
   override predicate isBooleany() { getName() = "Boolean" }
   override predicate isRawFunction() { getName() = "Function" }
 
   override Identifier getIdentifier() { result = this }
+
+  /**
+   * Gets the local type name being referenced by this identifier, if any.
+   *
+   * Names that refer to a declaration in an external `d.ts` file, such as in
+   * the built-in `lib.d.ts` prelude, do not have a local typename.
+   *
+   * For example, in `Array<number>`, the `Array` name will usually not have
+   * a local type name as it is declared in `lib.d.ts`.
+   */
+  LocalTypeName getLocalTypeName() {
+    result.getAnAccess() = this
+  }
 }
 
 /**
@@ -378,10 +670,10 @@ class QualifiedTypeAccess extends @qualifiedtypeaccess, TypeAccess {
   /**
    * Gets the qualifier in front of the name, such as `http` in `http.ServerRequest`.
    *
-   * If the prefix consists of multiple identifiers, the qualifier is itself a qualified type access.
+   * If the prefix consists of multiple identifiers, the qualifier is itself a qualified namespace access.
    * For example, the qualifier of `lib.util.List` is `lib.util`.
    */
-  TypeAccess getQualifier() { result = getChildTypeExpr(0) }
+  NamespaceAccess getQualifier() { result = getChildTypeExpr(0) }
 
   /** Gets the last identifier in the name, such as `ServerRequest` in `http.ServerRequest`. */
   override Identifier getIdentifier() { result = getChildTypeExpr(1) }
@@ -561,6 +853,34 @@ class KeyofTypeExpr extends @keyoftypeexpr, TypeExpr {
 }
 
 /**
+ * A type of form `{ [K in C]: T }` where `K in C` declares a type parameter with `C`
+ * as the bound, and `T` is a type that may refer to `K`.
+ */
+class MappedTypeExpr extends @mappedtypeexpr, TypeParameterized, TypeExpr {
+  /**
+   * Gets the `K in C` part from `{ [K in C]: T }`.
+   */
+  TypeParameter getTypeParameter() {
+    result = getChildTypeExpr(0)
+  }
+
+  override TypeParameter getTypeParameter(int n) {
+    n = 0 and result = getTypeParameter()
+  }
+
+  /**
+   * Gets the `T` part from `{ [K in C]: T }`.
+   */
+  TypeExpr getElementType() {
+    result = getChildTypeExpr(1)
+  }
+
+  override string describe() {
+    result = "mapped type"
+  }
+}
+
+/**
  * A type of form `typeof E` where `E` is a possibly qualified name referring to a variable,
  * function, class, or namespace.
  */
@@ -612,7 +932,7 @@ class VarTypeAccess extends @vartypeaccess, TypeExpr {
  *
  * This can occur as part of the operand to a `typeof` type or as the first operand to an `is` type.
  */
-class SimpleVarTypeAccess extends @simplevartypeaccess, VarTypeAccess, Identifier {
+class LocalVarTypeAccess extends @localvartypeaccess, VarTypeAccess, Identifier {
   /** Gets the variable being referenced, or nothing if this is a `this` keyword. */
   Variable getVariable() { bind(this, result) }
 }
@@ -682,7 +1002,7 @@ class ExpressionWithTypeArguments extends @expressionwithtypearguments, Expr {
 }
 
 /**
- * A program element that supports type parameters, that is, a function, class, interface, or type alias.
+ * A program element that supports type parameters, that is, a function, class, interface, type alias, or mapped type.
  */
 class TypeParameterized extends @type_parameterized, ASTNode {
   /** Gets the `n`th type parameter declared on this function or type. */
@@ -696,6 +1016,9 @@ class TypeParameterized extends @type_parameterized, ASTNode {
 
   /** Holds if this function or type declares any type parameters. */
   predicate hasTypeParameters() { exists(getATypeParameter()) }
+
+  /** Gets a description of this function or type. */
+  string describe() { none() }
 }
 
 /**
@@ -726,6 +1049,13 @@ class TypeParameter extends @typeparameter, TypeExpr {
    * Gets the function or type that declares this type parameter.
    */
   TypeParameterized getHost() { result.getATypeParameter() = this }
+
+  /**
+   * Gets the local type name declared by this type parameter.
+   */
+  LocalTypeName getLocalTypeName() {
+      result = getIdentifier().(TypeDecl).getLocalTypeName()
+  }
 }
 
 /**
@@ -740,7 +1070,7 @@ class TypeAssertion extends Expr, @typeassertion {
   TypeExpr getTypeAnnotation() { result = getChildTypeExpr(1) }
 
   override ControlFlowNode getFirstControlFlowNode() {
-      result = getExpression().getFirstControlFlowNode()
+    result = getExpression().getFirstControlFlowNode()
   }
 }
 
@@ -753,3 +1083,278 @@ class AsTypeAssertion extends TypeAssertion, @astypeassertion {}
  * A type assertion specifically of the form `<T> E` (as opposed to the `E as T` syntax).
  */
 class PrefixTypeAssertion extends TypeAssertion, @prefixtypeassertion {}
+
+/**
+ * A possibly qualified identifier that refers to or declares a local name for a namespace.
+ */
+abstract class NamespaceRef extends ASTNode {}
+
+/**
+ * An identifier that declares a local name for a namespace, that is,
+ * the name of an actual namespace declaration or the local name of an import.
+ *
+ * For instance, this includes the `N` in each of the following examples:
+ * ```
+ * namespace N {}
+ * import N = require('./lib')
+ * import N from './lib'
+ * import { N } from './lib'
+ * import { X as N } from './lib'
+ * import * as N from './lib'
+ * ```
+ */
+class LocalNamespaceDecl extends VarDecl, NamespaceRef {
+  LocalNamespaceDecl() {
+    any(NamespaceDeclaration nd).getId() = this or
+    any(ImportEqualsDeclaration im).getId() = this or
+    any(ImportSpecifier im).getLocal() = this or
+    any(EnumDeclaration ed).getIdentifier() = this
+  }
+
+  /** Gets the local name being declared. */
+  LocalNamespaceName getLocalNamespaceName() {
+    namespacedecl(this, result)
+  }
+}
+
+/**
+ * A possibly qualified name that refers to a namespace from inside a type annotation.
+ *
+ * For example, in the type access `A.B.C`, the prefix `A.B` is a qualified namespace access, and
+ * the prefix `A` is a local namespace access.
+ *
+ * *Expressions* that refer to namespaces are represented as `VarAccess` and `PropAccess` expressions,
+ * as opposed to `NamespaceAccess`.
+ */
+class NamespaceAccess extends TypeExpr, NamespaceRef, @namespaceaccess {
+  Identifier getIdentifier() { none() }
+}
+
+/**
+ * An identifier that refers to a namespace from inside a type annotation.
+ */
+class LocalNamespaceAccess extends NamespaceAccess, Identifier, @localnamespaceaccess {
+  override Identifier getIdentifier() { result = this }
+
+  /** Gets the local name being accessed. */
+  LocalNamespaceName getLocalNamespaceName() {
+    namespacebind(this, result)
+  }
+}
+
+/**
+ * A qualified name that refers to a namespace from inside a type annotation.
+ */
+class QualifiedNamespaceAccess extends NamespaceAccess, @qualifiednamespaceaccess {
+  NamespaceAccess getQualifier() { result = getChildTypeExpr(0) }
+  override Identifier getIdentifier() { result = getChildTypeExpr(1) }
+}
+
+/**
+ * A TypeScript enum declaration, such as the following declaration:
+ * ```
+ * enum Color { red = 1, green, blue }
+ * ```
+ */
+class EnumDeclaration extends Stmt, @enumdeclaration {
+  /** Gets the name of this enum, such as `E` in `enum E { A, B }`. */
+  Identifier getIdentifier() {
+    result = getChildExpr(0)
+  }
+
+  /** Gets the name of this enum as a string. */
+  string getName() {
+    result = getIdentifier().getName()
+  }
+
+  /**
+   * Gets the variable holding the enumeration object.
+   *
+   * For example, this would be the variable `E` introduced by `enum E { A, B }`.
+   *
+   * If the enumeration is a `const enum` then this variable will not exist at runtime
+   * and all uses of the variable will be constant-folded by the TypeScript compiler,
+   * but the analysis models it as an ordinary variable.
+   */
+  Variable getVariable() {
+    result = getIdentifier().(VarDecl).getVariable()
+  }
+
+  /**
+   * Gets the local type name introduced by the enumeration.
+   *
+   * For example, this would be the type `E` introduced by `enum E { A, B }`.
+   */
+  LocalTypeName getLocalTypeName() {
+    result = getIdentifier().(TypeDecl).getLocalTypeName()
+  }
+
+  /**
+   * Gets the local namespace name introduced by the enumeration, for use in
+   * types that reference the enum members directly.
+   *
+   * For example, in the type `E.A` below, the enum `E` is accessed through the
+   * local namespace name `E`:
+   * ```
+   * enum E { A = 1, B = 2 }
+   * var x: E.A = 1
+   * ```
+   */
+  LocalNamespaceName getLocalNamespaceName() {
+    result = getIdentifier().(LocalNamespaceDecl).getLocalNamespaceName()
+  }
+
+  /** Gets the `n`th enum member, starting at 0, such as `A` or `B` in `enum E { A, B }`. */
+  EnumMember getMember(int n) {
+    properties(result, this, n + 1, _, _)
+  }
+
+  /** Gets the enum member with the given name, if any. */
+  EnumMember getMemberByName(string name) {
+    result = getAMember() and result.getName() = name
+  }
+
+  /** Gets any of the enum members. */
+  EnumMember getAMember() {
+    result = getMember(_)
+  }
+
+  /** Gets the number of enum members. */
+  int getNumMember() {
+    result = count(getAMember())
+  }
+
+  /** Gets the `n`th decorator applied to this enum declaration. */
+  Decorator getDecorator(int n) {
+    result = getChildExpr(-n - 1)
+  }
+
+  /** Gets a decorator applied to this enum declaration. */
+  Decorator getADecorator() {
+    result = getDecorator(_)
+  }
+
+  /** Gets the number of decorators applied to this enum declaration. */
+  int getNumDecorator() {
+    result = count(getADecorator())
+  }
+
+  /** Holds if this enumeration is declared with the `const` keyword. */
+  predicate isConst() {
+    isConstEnum(this)
+  }
+
+  override predicate isAmbient() {
+    hasDeclareKeyword(this) or getParent().isAmbient()
+  }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getIdentifier()
+  }
+}
+
+/**
+ * A member of a TypeScript enum declaration, such as `red` in the following declaration:
+ * ```
+ * enum Color { red = 1, green, blue }
+ * ```
+ */
+class EnumMember extends ASTNode, @enum_member {
+  /**
+   * Gets the name of the enum member, such as `off` in `enum State { on, off }`.
+   *
+   * Note that if the name of the member is written as a string literal,
+   * a synthetic identifier node is created to represent the name.
+   * In other words, the name will always be an identifier node.
+   */
+  Identifier getIdentifier() {
+    result = getChildExpr(0)
+  }
+
+  /** Gets the name of the enum member as a string. */
+  string getName() {
+    result = getIdentifier().getName()
+  }
+
+  /** Gets the explicit initializer expression of this member, if any. */
+  Expr getInitializer() {
+    result = getChildExpr(1)
+  }
+
+  /** Gets the enum declaring this member. */
+  EnumDeclaration getDeclaringEnum() {
+    result.getAMember() = this
+  }
+
+  override string toString() {
+    properties(this, _, _, _, result)
+  }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getIdentifier()
+  }
+
+  /**
+   * Gets the name of the member prefixed by the declaring enum name.
+   *
+   * For example, the prefixed name of the `red` member below is `Color.red`:
+   * ```
+   * enum Color { red, green, blue }
+   * ```
+   */
+  string getPrefixedName() {
+    result = getDeclaringEnum().getName() + "." + getName()
+  }
+}
+
+/**
+ * Scope induced by an interface declaration, containing the type parameters declared on the interface.
+ *
+ * Interfaces that do not declare type parameters have no scope object.
+ */
+class InterfaceScope extends @interfacescope, Scope {
+  override string toString() {
+    result = "interface scope"
+  }
+}
+
+/**
+ * Scope induced by a type alias declaration, containing the type parameters declared the the alias.
+ *
+ * Type aliases that do not declare type parameters have no scope object.
+ */
+class TypeAliasScope extends @typealiasscope, Scope {
+  override string toString() {
+    result = "type alias scope"
+  }
+}
+
+/**
+ * Scope induced by a mapped type expression, containing the type parameter declared as part of the type.
+ */
+class MappedTypeScope extends @mappedtypescope, Scope {
+  override string toString() {
+    result = "mapped type scope"
+  }
+}
+
+/**
+ * Scope induced by an enum declaration, containing the names of its enum members.
+ *
+ * Initializers of enum members are resolved in this scope since they can reference
+ * previously-defined enum members by their unqualified name.
+ */
+class EnumScope extends @enumscope, Scope {
+  override string toString() {
+    result = "enum scope"
+  }
+}
+
+/**
+ * Scope induced by a declaration of form `declare module "X" {...}`.
+ */
+class ExternalModuleScope extends @externalmodulescope, Scope {
+  override string toString() {
+    result = "external module scope"
+  }
+}

@@ -28,8 +28,9 @@ class StructLikeClass extends Class {
         exists(MemberVariable v | setter(v, f, this) or getter(v, f, this)) or
         f instanceof Constructor or
         f instanceof Destructor or
-        // Allow the copy assignment op - still struct-like
-        f instanceof CopyAssignmentOperator
+        // Allow the copy and move assignment ops - still struct-like
+        f instanceof CopyAssignmentOperator or
+        f instanceof MoveAssignmentOperator
       )
     )
   }

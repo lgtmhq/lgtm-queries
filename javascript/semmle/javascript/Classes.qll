@@ -69,8 +69,13 @@ class ClassOrInterface extends @classorinterface, TypeParameterized {
     result = getMember(name)
   }
 
-  /** Gets a call signature declared in this class or interface. */
+  /** Gets a call signature declared in this interface. */
   CallSignature getACallSignature() {
+    result = getAMember()
+  }
+
+  /** Gets an index signature declared in this interface. */
+  IndexSignature getAnIndexSignature() {
     result = getAMember()
   }
 
@@ -99,7 +104,7 @@ class ClassOrInterface extends @classorinterface, TypeParameterized {
    * If no meaningful name can be inferred, the result is "anonymous class" or
    * "anonymous interface".
    */
-  string describe() { none() } // Overridden in subtypes.
+  override string describe() { none() } // Overridden in subtypes.
 }
 
 /**
@@ -320,11 +325,20 @@ class NewTargetExpr extends @newtargetexpr, Expr {
 }
 
 /**
- * A scope induced by a named class expression.
+ * A scope induced by a named class expression or class expression with type parameters.
  */
 class ClassExprScope extends @classexprscope, Scope {
   override string toString() {
     result = "class expression scope"
+  }
+}
+
+/**
+ * A scope induced by a class declaration with type parameters.
+ */
+class ClassDeclScope extends @classdeclscope, Scope {
+  override string toString() {
+    result = "class declaration scope"
   }
 }
 
@@ -343,7 +357,7 @@ class ClassExprScope extends @classexprscope, Scope {
  */
 class MemberDeclaration extends @property, ASTNode {
   MemberDeclaration() {
-    // filter out property patterns and object properties
+    // filter out property patterns and object properties and enum members
     exists (ClassOrInterface cl | properties(this, cl, _, _, _))
   }
 
@@ -361,6 +375,35 @@ class MemberDeclaration extends @property, ASTNode {
    */
   predicate isAbstract() {
     isAbstractMember(this)
+  }
+
+  /**
+   * Holds if this member is public, either because it has no access modifier or
+   * because it is explicitly annotated as `public`.
+   *
+   * Class members not declared in a TypeScript file are always considered public.
+   */
+  predicate isPublic() {
+    not isPrivate() and not isProtected()
+  }
+
+  /**
+   * Holds if this is a TypeScript member explicitly annotated with the `public` keyword.
+   */
+  predicate hasPublicKeyword() { hasPublicKeyword(this) }
+
+  /**
+   * Holds if this is a TypeScript member annotated with the `private` keyword.
+   */
+  predicate isPrivate() {
+    hasPrivateKeyword(this)
+  }
+
+  /**
+   * Holds if this is a TypeScript member annotated with the `protected` keyword.
+   */
+  predicate isProtected() {
+    hasProtectedKeyword(this)
   }
 
   /**
@@ -603,15 +646,15 @@ class SetterMethodSignature extends SetterMethodDeclaration, AccessorMethodSigna
 /**
  * A field declaration in a class or interface, either a concrete definition or an abstract or ambient field signature.
  */
-class FieldDeclaration extends MemberDeclaration {
-  FieldDeclaration() {
-    not isMethod(this) and
-    not this instanceof @call_signature
-  }
-
+class FieldDeclaration extends MemberDeclaration, @field {
   /** Gets the type annotation of this field, if any, such as `T` in `{ x: T }`. */
   TypeExpr getTypeAnnotation() {
     result = getChildTypeExpr(2)
+  }
+
+  /** Holds if this is a TypeScript field annotated with the `readonly` keyword. */
+  predicate isReadonly() {
+      hasReadonlyKeyword(this)
   }
 }
 
@@ -628,16 +671,40 @@ class FieldSignature extends FieldDeclaration, MemberSignature {
 }
 
 /**
- * A call signature declared in a class, interface, or function type, that is,
- * a function call signature or a constructor call signature.
- *
- * For example, this interface contains one of each kind of call signature:
+ * A field induced by an initializing constructor parameter, such as the field `x` in:
+ * ```
+ * class C {
+ *   constructor(public x: number) {}
+ * }
+ * ```
+ */
+class ParameterField extends FieldDeclaration, @parameter_field {
+  /** Gets the initializing constructor parameter from which this field was induced. */
+  Parameter getParameter() {
+    exists (FunctionExpr constructor, int index |
+      parameter_fields(this, constructor, index) |
+      result = constructor.getParameter(index))
+  }
+
+  override Expr getNameExpr() {
+    result = getParameter()
+  }
+
+  override TypeExpr getTypeAnnotation() {
+    result = getParameter().getTypeAnnotation()
+  }
+}
+
+/**
+ * A call signature declared in an interface, such as in:
  * ```
  * interface I {
  *   (x: number): number;
  *   new (x: string): Object;
  * }
  * ```
+ *
+ * Call signatures are either function call signatures or constructor call signatures.
  */
 class CallSignature extends @call_signature, MemberSignature {
   FunctionExpr getBody() { result = getChildExpr(1) }
@@ -649,7 +716,7 @@ class CallSignature extends @call_signature, MemberSignature {
 }
 
 /**
- * A function call signature declared in a class, interface, or function type, such as in:
+ * A function call signature declared in an interface, such as in:
  * ```
  * interface I { (x: number): string; }
  * ```
@@ -659,10 +726,27 @@ class FunctionCallSignature extends @function_call_signature, CallSignature {
 }
 
 /**
- * A constructor call signature declared in a class, interface, or function type, such as in:
+ * A constructor call signature declared in an interface, such as in:
  * ```
  * interface I { new (x: string): Object; }
  * ```
  */
 class ConstructorCallSignature extends @constructor_call_signature, CallSignature {
+}
+
+/**
+ * An index signature declared in an interface, such as in:
+ * ```
+ * interface I {
+ *   [x: number]: number;
+ * }
+ * ```
+ */
+class IndexSignature extends @index_signature, MemberSignature {
+  FunctionExpr getBody() { result = getChildExpr(1) }
+
+  /** Gets the interface or function type that declares this index signature. */
+  override InterfaceDefinition getDeclaringType() {
+    result = MemberSignature.super.getDeclaringType()
+  }
 }
