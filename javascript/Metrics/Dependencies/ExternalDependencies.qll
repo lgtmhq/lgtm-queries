@@ -24,8 +24,9 @@ import semmle.javascript.dependencies.Dependencies
  * respectively, of `dep`.
  */
 predicate externalDependencies(File f, Dependency dep, string entity, int n) {
-  entity = "/" + f.getRelativePath() + "<|>" + dep.getId() + "<|>" + dep.getVersion() and
-  n = strictcount (Locatable use |
-    use.getLocation().getFile() = f and use = dep.getAUse(_)
+  exists (string id, string v | dep.info(id, v) |
+    entity = "/" + f.getRelativePath() + "<|>" + id + "<|>" + v
   )
+  and
+  n = strictcount (Locatable use | use.getFile() = f and use = dep.getAUse(_))
 }

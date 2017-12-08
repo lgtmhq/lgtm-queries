@@ -52,6 +52,8 @@ where
         exists (MethodDefinition toMethodWithSameKind |
             isLocalMethodAccess(access, fromMethod, toMethodWithSameKind) and
             fromKind = getKind(toMethodWithSameKind)
-        )
+        ) or
+        // the access is an assignment, probably deliberate
+        access instanceof LValue
     )
-select access, "Access to " + toKind + " method $@ from " + fromKind + " method $@ is not possible through `this`.", fromMethod, fromMethod.getName(), toMethod, toMethod.getName()
+select access, "Access to " + toKind + " method $@ from " + fromKind + " method $@ is not possible through `this`.", toMethod, toMethod.getName(), fromMethod, fromMethod.getName()

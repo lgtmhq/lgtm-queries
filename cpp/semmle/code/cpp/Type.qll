@@ -335,35 +335,41 @@ class IntegralType extends ArithmeticType {
        kind = 43 or kind = 44))
   }
 
-  /** whether this integral type is unsigned */
+  /** Holds if this integral type is signed. */
+  predicate isSigned() {
+    builtintypes(this,_,_,_,-1)
+  }
+
+  /** Holds if this integral type is unsigned. */
   predicate isUnsigned() {
     builtintypes(this,_,_,_,1)
   }
 
-  /** whether this integral type is signed */
+  /** Holds if this integral type is explicitly signed. */
   predicate isExplicitlySigned() {
     builtintypes(this,_,7,_,_) or builtintypes(this,_,10,_,_) or builtintypes(this,_,13,_,_) or
     builtintypes(this,_,16,_,_) or builtintypes(this,_,19,_,_) or
     builtintypes(this,_,37,_,_)
   }
 
+  /** Holds if this integral type is explicitly unsigned. */
   predicate isExplicitlyUnsigned() {
     builtintypes(this,_,6,_,_) or builtintypes(this,_,9,_,_) or builtintypes(this,_,12,_,_) or
     builtintypes(this,_,15,_,_) or builtintypes(this,_,18,_,_) or
     builtintypes(this,_,36,_,_)
   }
 
-  /** whether this integral type is implicitly unsigned */
+  /** Holds if this integral type is implicitly signed. */
   predicate isImplicitlySigned() {
     builtintypes(this,_,5,_,-1) or builtintypes(this,_,8,_,-1) or builtintypes(this,_,11,_,-1) or
     builtintypes(this,_,14,_,-1) or builtintypes(this,_,17,_,-1) or
     builtintypes(this,_,35,_,-1)
   }
 
-  predicate isSigned() {
-    builtintypes(this,_,_,_,-1)
-  }
-
+  /**
+   * Gets the unsigned type corresponding to this integral type.  For
+   * example on a `short`, this would give the type `unsigned short`.
+   */
   IntegralType getUnsigned() {
        (builtintypes(this,_, 5,_,_) or builtintypes(this,_, 6,_,_) or builtintypes(this,_, 7,_,_)) and builtintypes(result,_, 6,_,_)
     or (builtintypes(this,_, 8,_,_) or builtintypes(this,_, 9,_,_) or builtintypes(this,_,10,_,_)) and builtintypes(result,_, 9,_,_)

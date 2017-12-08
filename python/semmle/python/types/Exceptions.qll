@@ -251,12 +251,22 @@ class ExceptFlowNode extends ControlFlowNode {
         this.getNode() instanceof ExceptStmt
     }
 
-    private predicate handledObject(Object obj, ClassObject cls, ControlFlowNode origin) {
-        exists(ExceptStmt ex, ControlFlowNode type |
-            this.getBasicBlock().dominates(type.getBasicBlock()) and
-            ex = this.getNode() and type = ex.getType().getAFlowNode() and
-            type.refersTo(obj, cls, origin)
+    ControlFlowNode getType() {
+        exists(ExceptStmt ex |
+            this.getBasicBlock().dominates(result.getBasicBlock()) and
+            ex = this.getNode() and result = ex.getType().getAFlowNode()
         )
+    }
+
+    ControlFlowNode getName() {
+        exists(ExceptStmt ex |
+            this.getBasicBlock().dominates(result.getBasicBlock()) and
+            ex = this.getNode() and result = ex.getName().getAFlowNode()
+        )
+    }
+
+    private predicate handledObject(Object obj, ClassObject cls, ControlFlowNode origin) {
+        this.getType().refersTo(obj, cls, origin)
         or
         exists(Object tup |
             this.handledObject(tup, theTupleType(), _) |

@@ -17,6 +17,7 @@
 
 import java
 import semmle.code.java.dataflow.DataFlow
+import semmle.code.java.dataflow.DataFlow2
 
 /**
  * The class `org.yaml.snakeyaml.constructor.Constructor`.
@@ -58,7 +59,7 @@ class Yaml extends RefType {
   }
 }
 
-private class SafeYamlConstructionFlowConfig extends DataFlow::Configuration {
+private class SafeYamlConstructionFlowConfig extends DataFlow2::Configuration {
   SafeYamlConstructionFlowConfig() { this = "SnakeYaml::SafeYamlConstructionFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeSnakeYamlConstruction }
   override predicate isSink(DataFlow::Node sink) { sink = yamlClassInstanceExprArgument(_) }
@@ -66,7 +67,7 @@ private class SafeYamlConstructionFlowConfig extends DataFlow::Configuration {
     cie.getConstructedType() instanceof Yaml and
     result.getExpr() = cie.getArgument(0)
   }
-  ClassInstanceExpr getSafeYaml() { hasFlowTo(yamlClassInstanceExprArgument(result))}
+  ClassInstanceExpr getSafeYaml() { hasFlowTo(yamlClassInstanceExprArgument(result)) }
 }
 
 /**

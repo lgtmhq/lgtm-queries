@@ -85,3 +85,21 @@ class CookieStorageSink extends CleartextStorageSink {
     )
   }
 }
+
+/**
+ * An expression set as a value of localStorage or sessionStorage.
+ */
+class WebStorageSink extends CleartextStorageSink {
+  WebStorageSink() {
+    this instanceof WebStorageWrite
+  }
+}
+
+/**
+ * An expression stored by AngularJS.
+ */
+class AngularJSStorageSink extends CleartextStorageSink {
+  AngularJSStorageSink() {
+    any(AngularJS::AngularJSCall call).storesArgumentGlobally(this)
+  }
+}

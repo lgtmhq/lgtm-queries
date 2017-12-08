@@ -15,6 +15,10 @@
  * Provides classes for working with the AngularJS `$injector` methods.
  *
  * INTERNAL: Do not import this module directly, import `AngularJS` instead.
+ *
+ * NOTE: The API of this library is not stable yet and may change in
+ *       the future.
+ *
  */
 
 import javascript
@@ -145,7 +149,7 @@ abstract class InjectableFunction extends DataFlowNode {
   /**
    * Gets a service corresponding to the dependency-injected `parameter`.
    */
-  ServiceIdentity getAResolvedDependency(SimpleParameter parameter) {
+  ServiceReference getAResolvedDependency(SimpleParameter parameter) {
     exists(string name, InjectableFunctionServiceRequest request |
       this = request.getAnInjectedFunction() and
       parameter = getDependencyParameter(name) and
@@ -159,7 +163,7 @@ abstract class InjectableFunction extends DataFlowNode {
    */
   DataFlowNode getCustomServiceDependency(SimpleParameter parameter) {
     exists(CustomServiceDefinition custom |
-      custom.getServiceIdentity() = getAResolvedDependency(parameter) and
+      custom.getServiceReference() = getAResolvedDependency(parameter) and
       result = custom.getAService()
     )
   }
@@ -264,9 +268,12 @@ private class FunctionWithExplicitDependencyAnnotation extends InjectableFunctio
 }
 
 /**
+ * DEPRECATED: Use `AngularJS::ServiceReference` instead.
+ *
  * A local variable that refers to an AngularJS service such as `$compile`
  * or `$scope`.
  */
+deprecated
 class InjectedService extends LocalVariable {
   /** The injectable function into which this service is injected. */
   InjectableFunction f;

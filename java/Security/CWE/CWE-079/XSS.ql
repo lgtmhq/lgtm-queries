@@ -23,7 +23,7 @@
  *       external/cwe/cwe-079
  */
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.security.XSS
 
 from XssSink sink, RemoteUserInput source

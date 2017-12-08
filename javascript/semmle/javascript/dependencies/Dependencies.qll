@@ -26,17 +26,12 @@ private import semmle.javascript.frameworks.Emscripten
  */
 abstract class Dependency extends Locatable {
   /**
-   * Gets the unique identifier of this dependency.
+   * Holds if this dependency has identifier `id` and version `v`.
    *
-   * This should be treated as an opaque value.
+   * The identifier should be treated as an opaque value. If the version
+   * cannot be determined, `v` is bound to the string `"unknown"`.
    */
-  abstract string getId();
-
-  /**
-   * Gets the version of the dependency, or `unknown` if the version
-   * could not be determined.
-   */
-  abstract string getVersion();
+  abstract predicate info(string id, string v);
 
   /**
    * A use of this dependency, which is of the given `kind`.
@@ -57,11 +52,15 @@ abstract class NPMDependency extends Dependency {
   /** Gets the name of the NPM package this module belongs to. */
   abstract string getNPMPackageName();
 
+  /** Gets the version of the NPM package this module belongs to. */
+  abstract string getVersion();
+
   /** Gets an import that imports to this module. */
   abstract Import getAnImport();
 
-  override string getId() {
-    result = getNPMPackageName()
+  override predicate info(string id, string v) {
+    id = getNPMPackageName() and
+    v = getVersion()
   }
 
   override Locatable getAUse(string kind) {
@@ -77,7 +76,7 @@ abstract class NPMDependency extends Dependency {
  */
 private Variable getATargetVariable(Import i) {
   // `var v = require('m')` or `var w = require('n').p`
-  result.getAnAssignedValue().(DataFlowNode).getALocalSource() = propAccessOn*(i)
+  result.getAnAssignedExpr().(DataFlowNode).getALocalSource() = propAccessOn*(i)
   or
   // `import { x as y }, * as z from 'm'`
   result = i.(ImportDeclaration).getASpecifier().getLocal().getVariable()
@@ -224,24 +223,26 @@ abstract class ScriptDependency extends Dependency {
  * An embedded JavaScript library included inside a `<script>` tag.
  */
 class InlineScriptDependency extends ScriptDependency, @toplevel {
-  FrameworkLibrary fl;
+  FrameworkLibraryInstance fli;
 
   InlineScriptDependency() {
-    fl = this.(FrameworkLibraryInstance).getFramework()
+    this = fli
   }
 
-  override string getId() {
-    result = fl.getId()
-  }
-
-  override string getVersion() {
-    result = this.(FrameworkLibraryInstance).getVersion()
+  override predicate info(string id, string v) {
+    exists (FrameworkLibrary fl |
+      fli.info(fl, v) and
+      id = fl.getId()
+    )
   }
 
   override Expr getAnApiUse() {
-    propAccessOnGlobal(result, fl.getAnEntryPoint()) and
-    result.getFile() = this.getFile() and
-    result.getTopLevel() != this
+    exists (FrameworkLibrary fl |
+      fli.info(fl, _) and
+      propAccessOnGlobal(result, fl.getAnEntryPoint()) and
+      result.getFile() = this.getFile() and
+      result.getTopLevel() != this
+    )
   }
 }
 
@@ -250,23 +251,25 @@ class InlineScriptDependency extends ScriptDependency, @toplevel {
  * of a `<script>` tag.
  */
 class ExternalScriptDependency extends ScriptDependency, @xmlattribute {
-  FrameworkLibrary fl;
+  FrameworkLibraryReference flr;
 
   ExternalScriptDependency() {
-    fl = this.(FrameworkLibraryReference).getFramework()
+    this = flr
   }
 
-  override string getId() {
-    result = fl.getId()
-  }
-
-  override string getVersion() {
-    result = this.(FrameworkLibraryReference).getVersion()
+  override predicate info(string id, string v) {
+    exists (FrameworkLibrary fl |
+      flr.info(fl, v) and
+      id = fl.getId()
+    )
   }
 
   override Expr getAnApiUse() {
-    propAccessOnGlobal(result, fl.getAnEntryPoint()) and
-    result.getFile() = this.getFile()
+    exists (FrameworkLibrary fl |
+      flr.info(fl, _) and
+      propAccessOnGlobal(result, fl.getAnEntryPoint()) and
+      result.getFile() = this.getFile()
+    )
   }
 }
 
@@ -278,14 +281,11 @@ private class GWTDependency extends ScriptDependency {
     this instanceof GWTHeader
   }
 
-  override string getId() {
-    result = "gwt"
-  }
-
-  override string getVersion() {
+  override predicate info(string id, string v) {
+    id = "gwt" and
     exists (GWTHeader h | h = this |
-      result = h.getGWTVersion() or
-      not exists(h.getGWTVersion()) and result = "unknown"
+      v = h.getGWTVersion() or
+      not exists(h.getGWTVersion()) and v = "unknown"
     )
   }
 
@@ -305,12 +305,9 @@ private class GoogleClosureDep extends Dependency, @callexpr {
     )
   }
 
-  override string getId() {
-    result = "closure"
-  }
-
-  override string getVersion() {
-    result = "unknown"
+  override predicate info(string id, string v) {
+    id = "closure" and
+    v = "unknown"
   }
 
   override Locatable getAUse(string kind) {
@@ -327,12 +324,9 @@ private class GeneratorComment extends Dependency, @comment {
     generatedBy(this, _)
   }
 
-  override string getId() {
-    generatedBy(this, result)
-  }
-
-  override string getVersion() {
-    result = "unknown"
+  override predicate info(string id, string v) {
+    generatedBy(this, id) and
+    v = "unknown"
   }
 
   override Locatable getAUse(string kind) {
@@ -363,13 +357,13 @@ private class BundledTopLevel extends Dependency, @expr {
     isWebpackBundle(this)
   }
 
-  override string getId() {
-    isBrowserifyBundle(this) and result = "browserify" or
-    isWebpackBundle(this) and result = "webpack"
-  }
-
-  override string getVersion() {
-    result = "unknown"
+  override predicate info(string id, string v) {
+    (
+     isBrowserifyBundle(this) and id = "browserify"
+     or
+     isWebpackBundle(this) and id = "webpack"
+    ) and
+    v = "unknown"
   }
 
   override Locatable getAUse(string kind) {

@@ -19,6 +19,7 @@
  * @precision high
  * @id cpp/class-many-fields
  * @tags maintainability
+ *       statistical
  */
 import default
 

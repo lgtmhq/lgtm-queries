@@ -22,6 +22,8 @@ module NonePointsTo {
 
     CallNode get_a_call(FunctionObject func, int context) { none() }
 
+    predicate ssa_variable_points_to(EssaVariable var, int ctx, Object value, ClassObject vcls, ObjectOrCfg origin) { none() }
+
     module Types {
 
         ClassObject get_an_improper_super_type(ClassObject cls) { none() }
@@ -49,8 +51,6 @@ module NonePointsTo {
         predicate module_attribute_points_to(ControlFlowNode mod, string name, Object value, ClassObject cls, ObjectOrCfg origin) { none() }
 
         ClassObject class_get_meta_class_candidate(ClassObject cls) { none() }
-
-        predicate ssa_variable_points_to(EssaVariable var, int ctx, Object value, ClassObject vcls, ObjectOrCfg origin) { none() }
 
     }
 }

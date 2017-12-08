@@ -13,6 +13,7 @@
 
 import python
 private import semmle.python.pointsto.Final
+private import semmle.python.pointsto.Penultimate
 
 /*
  * A note on 'cost'. Cost doesn't represent the cost to compute,
@@ -29,7 +30,7 @@ private int given_cost() {
 }
 
 private int max_context_cost() {
-    not py_flags_versioned("context.cost", _, _) and result = 4
+    not py_flags_versioned("context.cost", _, _) and result = 7
     or
     result = max(int cost | cost = given_cost() | cost)
 }
@@ -58,6 +59,26 @@ private int call_cost(CallNode call) {
         result = 2
 }
 
+private int incoming_calls_estimate(FunctionObject f) {
+    result = count(PenultimatePointsTo::get_a_call(f, _))+1
+}
+
+/** Cost of contexts for a call, the more callers the 
+ * callee of call has the more expensive it is to add contexts for it.
+ * This seems to be an effective heuristics for preventing an explosion
+ * in the number of contexts while retaining good results.
+ */
+private int splay_cost(CallNode c) {
+    exists(FunctionObject func | 
+        PenultimatePointsTo::get_a_call(func, _) = c and
+        result = incoming_calls_estimate(func).log(2).floor()
+    )
+    or
+    not exists(FunctionObject func | 
+        PenultimatePointsTo::get_a_call(func, _) = c
+    ) and result = 0
+}
+
 private newtype TFinalContext =
     TMainContext()
     or
@@ -68,7 +89,7 @@ private newtype TFinalContext =
     TCallContext(ControlFlowNode call, FinalContext outerContext, int cost) {
         outerContext.appliesTo(call) and
         cost <= max_context_cost() and
-        cost = call_cost(call) + function_cost(call) + context_cost(outerContext)
+        cost = call_cost(call) + function_cost(call) + context_cost(outerContext) + splay_cost(call)
     }
 
 /** Points-to context. Context can be one of:

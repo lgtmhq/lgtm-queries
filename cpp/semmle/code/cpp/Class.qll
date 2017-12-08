@@ -154,7 +154,7 @@ class Class extends UserType {
   }
 
   /**
-   * DEPRECATED: name changed from `hasImplicitCopyConstructor` to reflect that
+   * DEPRECATED: name changed to `hasImplicitCopyConstructor` to reflect that
    * `= default` members are no longer included.
    */
   deprecated predicate hasGeneratedCopyConstructor() {
@@ -162,7 +162,7 @@ class Class extends UserType {
   }
 
   /**
-   * DEPRECATED: name changed from `hasImplicitCopyAssignmentOperator` to
+   * DEPRECATED: name changed to `hasImplicitCopyAssignmentOperator` to
    * reflect that `= default` members are no longer included.
    */
   deprecated predicate hasGeneratedCopyAssignmentOperator() {
@@ -180,7 +180,7 @@ class Class extends UserType {
   predicate hasImplicitCopyConstructor() {
     not this.implicitCopyConstructorDeleted() and
     forall(CopyConstructor cc | cc = this.getAMemberFunction() |
-      cc.isCompilerGenerated()
+      cc.isCompilerGenerated() and not cc.isDeleted()
     )
   }
 
@@ -195,7 +195,7 @@ class Class extends UserType {
   predicate hasImplicitCopyAssignmentOperator() {
     not this.implicitCopyAssignmentOperatorDeleted() and
     forall(CopyAssignmentOperator ca | ca = this.getAMemberFunction() |
-      ca.isCompilerGenerated()
+      ca.isCompilerGenerated() and not ca.isDeleted()
     )
   }
 
@@ -541,7 +541,7 @@ class Class extends UserType {
            not this.canAccessMember(cc, objectClass))
     or
     (
-      not exists(CopyConstructor cc | cc = c.getAMemberFunction()) and
+      not exists(CopyConstructor cc | cc = c.getAMemberFunction() and not cc.isDeleted()) and
       c.implicitCopyConstructorDeleted() // mutual recursion here
       // no access check in this case since the implicit member is always
       // public.
@@ -572,7 +572,7 @@ class Class extends UserType {
            not this.canAccessMember(ca, objectClass))
     or
     (
-      not exists(CopyAssignmentOperator ca | ca = c.getAMemberFunction()) and
+      not exists(CopyAssignmentOperator ca | ca = c.getAMemberFunction() and not ca.isDeleted()) and
       c.implicitCopyAssignmentOperatorDeleted() // mutual recursion here
       // no access check in this case since the implicit member is always
       // public.

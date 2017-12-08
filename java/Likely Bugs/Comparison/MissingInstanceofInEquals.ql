@@ -17,7 +17,7 @@
  *              of its argument may lead to failing casts.
  * @kind problem
  * @problem.severity error
- * @precision very-high
+ * @precision high
  * @id java/unchecked-cast-in-equals
  * @tags reliability
  *       correctness
@@ -40,7 +40,9 @@ class CheckedCast extends CastExpr {
   }
 }
 
-/** An `equals` method with the body `return o == this;`. */
+/** An `equals` method with a body of either `return o == this;`
+ *  or `return o == field;`
+ */
 class ReferenceEquals extends EqualsMethod {
   ReferenceEquals() {
     exists(Block b, ReturnStmt ret, EQExpr eq |
@@ -48,7 +50,7 @@ class ReferenceEquals extends EqualsMethod {
       b.getStmt(0) = ret and
       (ret.getResult() = eq or exists(ParExpr pe | ret.getResult() = pe and pe.getExpr() = eq)) and
       eq.getAnOperand() = this.getAParameter().getAnAccess() and
-      eq.getAnOperand() instanceof ThisAccess
+      (eq.getAnOperand() instanceof ThisAccess or eq.getAnOperand() instanceof FieldAccess)
     )
   }
 }

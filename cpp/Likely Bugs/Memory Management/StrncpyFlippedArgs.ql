@@ -78,21 +78,29 @@ predicate strncpyFunction(Function f, int argDest, int argSrc, int argLimit)
 }
 
 /**
- * Holds if `a` and `b` access the same value. 
+ * Holds if `a` and `b` access the same value, where `a` is in a source or
+ * destination argument to `strncpy`.
  */
-predicate sameAccess(Access a, Access b) {
-  // same target
+predicate sameAccess(VariableAccess a, VariableAccess b) {
+  // Base case: unqualified access to the same variable
   a.getTarget() = b.getTarget() and
-  
-  // same qualifier
-  (
-    (
-      not exists(a.(VariableAccess).getQualifier()) and
-      not exists(b.(VariableAccess).getQualifier())
-    ) or (
-      sameAccess(a.(VariableAccess).getQualifier(), b.(VariableAccess).getQualifier())
-    )
+  not exists(a.getQualifier()) and
+  not exists(b.getQualifier()) and
+  // Manual magic: `a` is a source or destination argument to `strncpy`.
+  exists(FunctionCall fc, int argDest, int argSrc, VariableAccess top |
+    strncpyFunction(fc.getTarget(), argDest, argSrc, _) and
+    top.getQualifier*() = a
+  |
+    top = fc.getArgument(argDest)
+    or
+    top = fc.getArgument(argSrc)
   )
+  or
+  // Recursive case: if `a` and `b` access the same variable, then `a.f` and
+  // `b.f` do as well.
+  a.getTarget() = b.getTarget() and
+  sameAccess(a.getQualifier(),
+             b.getQualifier())
 }
 
 string nthString (int num) {
@@ -108,7 +116,10 @@ string nthString (int num) {
   )
 }
 
-from FunctionCall fc, int argDest, int argSrc, int argLimit, Access copyDest, Access copySource, Access takenSizeOf, BufferSizeExpr sizeExpr, int plus, string name, string nth
+from FunctionCall fc, int argDest, int argSrc, int argLimit,
+     VariableAccess copyDest, VariableAccess copySource,
+     VariableAccess takenSizeOf, BufferSizeExpr sizeExpr,
+     int plus, string name, string nth
 where
   strncpyFunction(fc.getTarget(), argDest, argSrc, argLimit) and
   copyDest = fc.getArgument(argDest) and

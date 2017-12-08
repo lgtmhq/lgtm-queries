@@ -47,7 +47,8 @@ predicate caughtInside(TryStmt t, Stmt s, RefType rt) {
 private
 RefType getAThrownExceptionType(TryStmt t) {
   exists(Method m, Exception e |
-    m = t.getAResourceDecl().getAVariable().getType().(RefType).getAMethod() and
+    (m = t.getAResourceDecl().getAVariable().getType().(RefType).getAMethod() or
+     m = t.getAResourceExpr().getType().(RefType).getAMethod()) and
     m.hasName("close") and
     m.hasNoParameters() and
     m.getAnException() = e and

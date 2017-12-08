@@ -13,7 +13,8 @@
 
 import java
 import semmle.code.java.arithmetic.Overflow
-import semmle.code.java.dataflow.DefUse
+import semmle.code.java.dataflow.SSA
+import semmle.code.java.dataflow.Guards
 
 class NumericNarrowingCastExpr extends CastExpr {
   NumericNarrowingCastExpr() {
@@ -32,12 +33,31 @@ class RightShiftOp extends Expr {
     this instanceof AssignURShiftExpr
   }
 
+  private Expr getLhs() {
+    this.(BinaryExpr).getLeftOperand() = result or
+    this.(Assignment).getDest() = result
+  }
+
   Variable getShiftedVariable() {
-    this.(BinaryExpr).getLeftOperand() = result.getAnAccess() or
-    this.(Assignment).getDest() = result.getAnAccess()
+    getLhs() = result.getAnAccess() or
+    getLhs().getProperExpr().(AndBitwiseExpr).getAnOperand() = result.getAnAccess()
   }
 }
 
-VarAccess priorAccess(VarAccess access) {
-  useUsePair(result, access)
+predicate boundedRead(RValue read) {
+  exists(SsaVariable v, ConditionBlock cb, ComparisonExpr comp, boolean testIsTrue |
+    read = v.getAUse() and
+    cb.controls(read.getBasicBlock(), testIsTrue) and
+    cb.getCondition() = comp
+    |
+    comp.getLesserOperand() = v.getAUse() and testIsTrue = true or
+    comp.getGreaterOperand() = v.getAUse() and testIsTrue = false
+  )
+}
+
+predicate castCheck(RValue read) {
+  exists(EqualityTest eq, CastExpr cast |
+    cast.getExpr() = read and
+    eq.hasOperands(cast, read.getVariable().getAnAccess())
+  )
 }

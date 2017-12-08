@@ -84,6 +84,14 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
   }
 
   /**
+   * Holds if this function is explicitly defaulted with the `= default`
+   * specifier.
+   */
+  predicate isDefaulted() {
+    function_defaulted(this)
+  }
+
+  /**
    * Holds if this function is declared with `__attribute__((naked))` or
    * `__declspec(naked)`.
    */

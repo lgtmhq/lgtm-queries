@@ -103,15 +103,25 @@ class MacroAccessWithHasLocationInfo extends Top {
 Top definitionOf(Top e, string kind) {
   (
     (
+      // call -> function called
       kind = "M" and
-      result = e.(Call).getTarget()
+      result = e.(Call).getTarget() and
+      not e.(Expr).isCompilerGenerated()
     ) or (
+      // access -> function, variable or enum constant accessed
       kind = "V" and
-      result = e.(Access).getTarget()
+      result = e.(Access).getTarget() and
+      not e.(Expr).isCompilerGenerated()
     ) or (
+      // macro access -> macro accessed
       kind = "X" and
       result = e.(MacroAccess).getMacro()
     ) or (
+      // class derivation -> base class
+      kind = "T" and
+      result = e.(ClassDerivation).getBaseClass()
+    ) or (
+      // include -> included file
       kind = "I" and
       result = e.(Include).getIncludedFile() and
 
@@ -131,6 +141,15 @@ Top definitionOf(Top e, string kind) {
 
     // exclude nested macro invocations, as they will overlap with
     // the top macro invocation.
-    not exists(e.(MacroAccess).getParentInvocation())
+    not exists(e.(MacroAccess).getParentInvocation()) and
+
+    // exclude results from template instantiations, as:
+    // (1) these dependencies will often be caused by a choice of
+    // template parameter, which is non-local to this part of code; and
+    // (2) overlapping results pointing to different locations will
+    // be very common.
+    // It's possible we could allow a subset of these dependencies
+    // in future, if we're careful to ensure the above don't apply.
+    not e.isFromTemplateInstantiation(_)
   )
 }

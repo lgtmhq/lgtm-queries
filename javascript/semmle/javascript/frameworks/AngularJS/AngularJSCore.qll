@@ -17,6 +17,10 @@
  * As the module grows, large features might move to separate files.
  *
  * INTERNAL: Do not import this module directly, import `AngularJS` instead.
+ *
+ * NOTE: The API of this library is not stable yet and may change in
+ *       the future.
+ *
  */
 
 import javascript
@@ -720,10 +724,10 @@ private class DirectiveTargetName extends string {
  */
 private class LocationFlowSource extends RemoteFlowSource {
   LocationFlowSource() {
-    exists (InjectedService location, MethodCallExpr mce, string m, int n |
-      location.getServiceName() = "$location" and
+    exists (ServiceReference service, MethodCallExpr mce, string m, int n |
+      service.getName() = "$location" and
       this = mce and
-      mce.calls(location.getAnAccess(), m) and
+      mce =  service.getAMethodCall(m) and
       n = mce.getNumArgument() |
       m = "search" and n < 2 or
       m = "hash" and n = 0
@@ -743,13 +747,217 @@ private class LocationFlowSource extends RemoteFlowSource {
  */
 private class RouteParamSource extends RemoteFlowSource {
   RouteParamSource() {
-    exists (InjectedService routeParams |
-      routeParams.getServiceName() = "$routeParams" and
-      this.(PropAccess).accesses(routeParams.getAnAccess(), _)
+    exists (ServiceReference service |
+      service.getName() = "$routeParams" and
+      this = service.getAPropertyAccess(_)
     )
   }
 
   override string getSourceType() {
     result = "$routeParams"
+  }
+}
+
+/**
+ * AngularJS expose a jQuery-like interface through `angular.html(..)`.
+ * The interface may be backed by an actual jQuery implementation.
+ */
+private class JQLiteObject extends JQueryObject {
+
+  JQLiteObject() {
+    exists(MethodCallExpr mce |
+      this = mce and
+      isAngularRef(mce.getReceiver()) and
+      mce.getMethodName() = "element"
+    ) or
+    exists(SimpleParameter param |
+      // element parameters to user-functions invoked by AngularJS
+      param = any(LinkFunction link).getElementParameter() or
+      exists(GeneralDirective d |
+        param = d.getCompileFunction().getParameter(0) or
+        param = d.getCompileFunction().getAReturnedExpr().(DataFlowNode).getALocalSource().(Function).getParameter(1) or
+        param = d.getMember("template").(Function).getParameter(0) or
+        param = d.getMember("templateUrl").(Function).getParameter(0)
+      ) |
+      this = param.getVariable().getAnAccess()
+    ) or
+    exists(ServiceReference element |
+      element.getName() = "$rootElement" or
+      element.getName() = "$document" |
+      this = element.getAnAccess()
+    )
+  }
+}
+
+/**
+ * A call to an AngularJS function.
+ *
+ * Used for exposing behavior that is similar to the behavior of other libraries.
+ */
+abstract class AngularJSCall extends CallExpr {
+
+  /**
+   * Holds if `e` is an argument that this call interprets as HTML.
+   */
+  abstract predicate interpretsArgumentAsHtml(Expr e);
+
+  /**
+   * Holds if `e` is an argument that this call stores globally, e.g. in a cookie.
+   */
+  abstract predicate storesArgumentGlobally(Expr e);
+
+  /**
+   * Holds if `e` is an argument that this call interprets as code.
+   */
+  abstract predicate interpretsArgumentAsCode(Expr e);
+
+}
+
+/**
+ * A call to a method on the AngularJS object itself.
+ */
+private class AngularMethodCall extends AngularJSCall {
+
+  MethodCallExpr mce;
+
+  AngularMethodCall() {
+    isAngularRef(mce.getReceiver()) and
+    mce = this
+  }
+
+  override predicate interpretsArgumentAsHtml(Expr e) {
+    mce.getMethodName() = "element" and
+    e = mce.getArgument(0)
+  }
+
+  override predicate storesArgumentGlobally(Expr e) {
+    none()
+  }
+
+  override predicate interpretsArgumentAsCode(Expr e) {
+    none()
+  }
+}
+
+/**
+ * A call to a method on a builtin service.
+ */
+private class ServiceMethodCall extends AngularJSCall {
+
+  MethodCallExpr mce;
+
+  ServiceMethodCall() {
+    exists(BuiltinServiceReference service |
+      service.getAMethodCall(_) = this and
+      mce = this
+    )
+  }
+
+  override predicate interpretsArgumentAsHtml(Expr e) {
+    exists(ServiceReference service, string methodName |
+      service.getName() = "$sce" and
+      mce = service.getAMethodCall(methodName) |
+      (
+        // specialized call
+        (methodName = "trustAsHtml" or methodName = "trustAsCss") and
+        e = mce.getArgument(0)
+      ) or (
+        // generic call with enum argument
+        methodName = "trustAs" and
+        exists(PropReadNode prn |
+          prn = mce.getArgument(0) and
+          (prn = service.getAPropertyAccess("HTML") or prn = service.getAPropertyAccess("CSS")) and
+          e = mce.getArgument(1)
+        )
+      )
+    )
+  }
+
+  override predicate storesArgumentGlobally(Expr e) {
+    exists(ServiceReference service, string serviceName, string methodName |
+      service.getName() = serviceName and
+      mce = service.getAMethodCall(methodName) |
+      ( // AngularJS caches (only available during runtime, so similar to sessionStorage)
+        (serviceName = "$cacheFactory" or serviceName = "$templateCache") and
+        methodName = "put" and
+        e = mce.getArgument(1)
+      ) or
+      (
+        serviceName = "$cookies" and
+        (methodName = "put" or methodName = "putObject") and
+        e = mce.getArgument(1)
+      )
+    )
+  }
+
+  override predicate interpretsArgumentAsCode(Expr e) {
+    exists(ScopeServiceReference scope, string methodName |
+      methodName = "$apply" or
+      methodName = "$applyAsync" or
+      methodName = "$eval" or
+      methodName = "$evalAsync" or
+      methodName = "$watch" or
+      methodName = "$watchCollection" or
+      methodName = "$watchGroup" |
+      e = scope.getAMethodCall(methodName).getArgument(0)
+    ) or
+    exists(ServiceReference service |
+      service.getName() = "$compile" or
+      service.getName() = "$parse" or
+      service.getName() = "$interpolate" |
+      e = service.getACall().getArgument(0)
+    ) or
+    exists(ServiceReference service, CallExpr filter, CallExpr filterInvocation |
+      // `$filter('orderBy')(collection, expression)`
+      service.getName() = "$filter" and
+      filter = service.getACall() and
+      filter.getArgument(0).(DataFlowNode).getALocalSource().(ConstantString).getStringValue() = "orderBy" and
+      filterInvocation.getCallee() = filter and
+      e = filterInvocation.getArgument(1)
+    )
+  }
+}
+
+/**
+ * A link-function used in a custom AngularJS directive.
+ */
+class LinkFunction extends Function {
+  LinkFunction() {
+    this = any(GeneralDirective d).getALinkFunction()
+  }
+
+  /**
+   * Gets the scope parameter of this function.
+   */
+  SimpleParameter getScopeParameter() {
+    result = getParameter(0)
+  }
+
+  /**
+   * Gets the element parameter of this function (contains a jqLite-wrapped DOM element).
+   */
+  SimpleParameter getElementParameter() {
+    result = getParameter(1)
+  }
+
+  /**
+   * Gets the attributes parameter of this function.
+   */
+  SimpleParameter getAttributesParameter() {
+    result = getParameter(2)
+  }
+
+  /**
+   * Gets the controller parameter of this function.
+   */
+  SimpleParameter getControllerParameter() {
+    result = getParameter(3)
+  }
+
+  /**
+   * Gets the transclude-function parameter of this function.
+   */
+  SimpleParameter getTranscludeFnParameter() {
+    result = getParameter(4)
   }
 }

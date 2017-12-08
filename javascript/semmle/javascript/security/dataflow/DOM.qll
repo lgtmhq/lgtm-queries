@@ -79,3 +79,77 @@ predicate isSafeLocationProperty(PropAccess pacc) {
     prop != "href" and prop != "hash" and prop != "search"
   )
 }
+
+/**
+ * A call to a DOM method.
+ */
+class DomMethodCallExpr extends MethodCallExpr {
+  DomMethodCallExpr() {
+    isDomValue(getReceiver())
+  }
+
+  /**
+   * Holds if `arg` is an argument that is interpreted as HTML.
+   */
+  predicate interpretsArgumentsAsHTML(Expr arg){
+    exists (int argPos, string name |
+      arg = getArgument(argPos) and
+      name = getMethodName() |
+      // individual signatures:
+      name = "write" or
+      name = "writeln" or
+      name = "insertAdjacentHTML" and argPos = 0 or
+      name = "insertAdjacentElement" and argPos = 0 or
+      name = "insertBefore" and argPos = 0 or
+      name = "createElement" and argPos = 0 or
+      name = "appendChild" and argPos = 0 or
+      name = "setAttribute" and argPos = 0
+    )
+  }
+}
+
+/**
+ * An assignment to a property of a DOM object.
+ */
+class DomPropWriteNode extends Assignment {
+
+  PropAccess lhs;
+
+  DomPropWriteNode (){
+    lhs = getLhs() and
+    isDomValue(lhs.getBase())
+  }
+
+  /**
+   * Holds if the assigned value is interpreted as HTML.
+   */
+  predicate interpretsValueAsHTML(){
+    lhs.getPropertyName() = "innerHTML" or
+    lhs.getPropertyName() = "outerHTML"
+  }
+}
+
+/**
+ * Holds if `e` is an access to `window.localStorage` or `window.sessionStorage`.
+ */
+private predicate isWebStorage(Expr e) {
+  e.accessesGlobal(any(string name | name = "localStorage" or name = "sessionStorage"))
+}
+
+/**
+ * A value written to web storage, like localStorage or sessionStorage.
+ */
+class WebStorageWrite extends Expr {
+  WebStorageWrite(){
+    // an assignment to `window.localStorage[someProp]`
+    exists(PropWriteNode pwn |
+      isWebStorage(pwn.getBase()) and
+      this = pwn.getRhs()) or
+    // an invocation of `window.localStorage.setItem`
+    exists (MethodCallExpr mce |
+      isWebStorage(mce.getReceiver()) and
+      mce.getMethodName() = "setItem" and
+      this = mce.getArgument(1)
+    )
+  }
+}

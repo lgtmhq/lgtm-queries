@@ -17,6 +17,7 @@
  * @kind problem
  * @tags changeability
  *       maintainability
+ *       external/cwe/cwe-477
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high

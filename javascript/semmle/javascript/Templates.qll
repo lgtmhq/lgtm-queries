@@ -48,6 +48,12 @@ class TemplateLiteral extends Expr, @templateliteral {
   }
 
   override predicate isImpure() { getAnElement().isImpure() }
+
+  override string getStringValue() {
+    // fold singletons
+    getNumChildExpr() = 1 and
+    result = getElement(0).getStringValue()
+  }
 }
 
 /** A constant template element. */

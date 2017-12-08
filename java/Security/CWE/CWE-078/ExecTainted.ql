@@ -25,7 +25,7 @@
  */
 
 import semmle.code.java.Expr
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.security.ExternalProcess
 import ExecCommon
 

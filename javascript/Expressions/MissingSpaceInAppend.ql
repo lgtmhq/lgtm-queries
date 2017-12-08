@@ -35,7 +35,14 @@ Expr leftChild(Expr e) {
   result = e.(AddExpr).getLeftOperand()
 }
 
-from AddExpr e, StringLiteral l, StringLiteral r, string word
+class LiteralOrTemplate extends Expr {
+  LiteralOrTemplate() {
+    this instanceof TemplateLiteral or
+    this instanceof Literal
+  }
+}
+
+from AddExpr e, LiteralOrTemplate l, LiteralOrTemplate r, string word
 where // l and r are appended together
       l = rightChild*(e.getLeftOperand()) and
       r = leftChild*(e.getRightOperand()) and
@@ -45,7 +52,7 @@ where // l and r are appended together
       // Only the first character of `word2` is matched, whereas `word` is matched
       // completely to distinguish grammatical punctuation after which a space is
       // needed, and intra-identifier punctuation in, for example, a qualified name.
-      word = l.getValue().regexpCapture(".* (([-A-Za-z/'\\.:,]*[a-zA-Z]|[0-9]+)[\\.:,!?']*)", 1) and
-      r.getValue().regexpMatch("[a-zA-Z].*") and
+      word = l.getStringValue().regexpCapture(".* (([-A-Za-z/'\\.:,]*[a-zA-Z]|[0-9]+)[\\.:,!?']*)", 1) and
+      r.getStringValue().regexpMatch("[a-zA-Z].*") and
       not word.regexpMatch(".*[,\\.:].*[a-zA-Z].*[^a-zA-Z]")
 select l, "This string appears to be missing a space after '" + word + "'."

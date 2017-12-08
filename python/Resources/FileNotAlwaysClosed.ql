@@ -18,6 +18,7 @@
  * @tags efficiency
  *       correctness
  *       resources
+ *       external/cwe/cwe-772
  * @problem.severity warning
  * @sub-severity high
  * @precision medium

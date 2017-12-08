@@ -21,6 +21,7 @@
  * @tags changeability
  *       maintainability
  *       modularity
+ *       statistical
  */
 import default
 

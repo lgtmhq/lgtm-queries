@@ -41,12 +41,12 @@ class ES2015Module extends Module {
 
   /** Gets an import declaration in this module. */
   ImportDeclaration getAnImport() {
-    result.getTopLevel() = this
+    result.getContainer() = this
   }
 
   /** Gets an export declaration in this module. */
   ExportDeclaration getAnExport() {
-    result.getTopLevel() = this
+    result.getContainer() = this
   }
 
   override Module getAnImportedModule() {
@@ -61,7 +61,7 @@ class ES2015Module extends Module {
   }
 
   /** Holds if this module exports variable `v` under the name `name`. */
-  predicate exportsAs(Variable v, string name) {
+  predicate exportsAs(LexicalName v, string name) {
     getAnExport().exportsAs(v, name)
   }
 
@@ -183,7 +183,7 @@ class SelectiveImportDeclaration extends ImportDeclaration {
   }
 
   /** Holds if `local` is the local variable into which `imported` is imported. */
-  predicate importsAs(string imported, VarDecl local) {
+  predicate importsAs(string imported, LexicalDecl local) {
     exists (ImportSpecifier spec | spec = getASpecifier() |
       imported = spec.getImported().getName() and
       local = spec.getLocal()
@@ -213,7 +213,7 @@ abstract class ExportDeclaration extends Stmt, @exportdeclaration {
   }
 
   /** Holds if this export declaration exports variable `v` under the name `name`. */
-  abstract predicate exportsAs(Variable v, string name);
+  abstract predicate exportsAs(LexicalName v, string name);
 
   /**
    * Gets the data flow node corresponding to the value this declaration exports
@@ -249,13 +249,34 @@ class BulkReExportDeclaration extends ReExportDeclaration, @exportalldeclaration
     result = getChildExpr(0)
   }
 
-  override predicate exportsAs(Variable v, string name) {
-    getImportedModule().exportsAs(v, name)
+  override predicate exportsAs(LexicalName v, string name) {
+    getImportedModule().exportsAs(v, name) and
+    not isShadowedFromBulkExport(this, name)
   }
 
   override DataFlowNode getSourceNode(string name) {
     result = getImportedModule().getAnExport().getSourceNode(name)
   }
+}
+
+/**
+  * Holds if the given bulk export should not re-export `name` because there is an explicit export
+  * of that name in the same module.
+  *
+  * At compile time, shadowing works across declaration spaces.
+  * For instance, directly exporting an interface `X` will block a variable `X` from being re-exported:
+  * ```
+  * export interface X {}
+  * export * from 'lib' // will not re-export X
+  * ```
+  * At runtime, the interface `X` will have been removed, so `X` is actually re-exported anyway,
+  * but we ignore this subtlety.
+  */
+private predicate isShadowedFromBulkExport(BulkReExportDeclaration reExport, string name) {
+  exists (ExportNamedDeclaration other | other.getContainer() = reExport.getEnclosingModule() |
+    other.getAnExportedDecl().getName() = name
+    or
+    other.getASpecifier().getExported().getName() = name)
 }
 
 /**
@@ -268,7 +289,7 @@ class ExportDefaultDeclaration extends ExportDeclaration, @exportdefaultdeclarat
     result = getChild(0)
   }
 
-  override predicate exportsAs(Variable v, string name) {
+  override predicate exportsAs(LexicalName v, string name) {
     name = "default" and v = getADecl().getVariable()
   }
 
@@ -292,22 +313,34 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
     result = getChild(-1)
   }
 
-  /** Gets the declaration, if any, exported by this named export. */
-  VarDecl getADecl() {
+  /**
+   * Gets an identifier, if any, exported as part of a declaration by this named export.
+   *
+   * Does not include names of export specifiers.
+   * That is, it includes the `v` in `export var v` but not in `export {v}`.
+   */
+  Identifier getAnExportedDecl() {
     exists (ExprOrStmt op | op = getOperand() |
       result = op.(DeclStmt).getADecl().getBindingPattern().getABindingVarRef() or
       result = op.(FunctionDeclStmt).getId() or
       result = op.(ClassDeclStmt).getIdentifier() or
       result = op.(NamespaceDeclaration).getId() or
-      result = op.(EnumDeclaration).getIdentifier()
+      result = op.(EnumDeclaration).getIdentifier() or
+      result = op.(InterfaceDeclaration).getIdentifier() or
+      result = op.(TypeAliasDeclaration).getIdentifier()
     )
   }
 
-  override predicate exportsAs(Variable v, string name) {
-    exists (VarDecl vd | vd = getADecl() | name = vd.getName() and v = vd.getVariable()) or
+  /** Gets the variable declaration, if any, exported by this named export. */
+  VarDecl getADecl() {
+    result = getAnExportedDecl()
+  }
+
+  override predicate exportsAs(LexicalName v, string name) {
+    exists (LexicalDecl vd | vd = getAnExportedDecl() | name = vd.getName() and v = vd.getALexicalName()) or
     exists (ExportSpecifier spec | spec = getASpecifier() |
       name = spec.getExported().getName() and
-      (v = spec.getLocal().(VarAccess).getVariable() or
+      (v = spec.getLocal().(LexicalAccess).getALexicalName() or
        this.(ReExportDeclaration).getImportedModule().exportsAs(v, spec.getLocal().getName()))
     )
   }
@@ -408,7 +441,7 @@ class OriginalExportDeclaration extends ExportDeclaration {
     not this instanceof ReExportDeclaration
   }
 
-  override predicate exportsAs(Variable v, string name) {
+  override predicate exportsAs(LexicalName v, string name) {
     this.(ExportDefaultDeclaration).exportsAs(v, name) or
     this.(ExportNamedDeclaration).exportsAs(v, name)
   }

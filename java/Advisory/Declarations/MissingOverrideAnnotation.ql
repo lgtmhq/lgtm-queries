@@ -37,5 +37,6 @@ from OverridingMethod m, Method overridden
 where m.fromSource()
   and m.overrides(overridden)
   and not m.isOverrideAnnotated()
+  and not exists(MemberRefExpr mref | mref.asMethod() = m)
 select m, "This method overrides $@; it is advisable to add an Override annotation.",
   overridden, overridden.getDeclaringType() + "." + overridden.getName()

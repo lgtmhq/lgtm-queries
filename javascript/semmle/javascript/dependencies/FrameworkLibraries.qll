@@ -78,14 +78,9 @@ abstract class FrameworkLibrary extends string {
  */
 abstract class FrameworkLibraryInstance extends Script {
   /**
-   * Gets the framework of which this is an instance.
+   * Holds if this is an instance of version `v` of framework library `fl`.
    */
-  abstract FrameworkLibrary getFramework();
-
-  /**
-   * Gets the version of the framework of which this is an instance.
-   */
-  abstract string getVersion();
+  abstract predicate info(FrameworkLibrary fl, string v);
 }
 
 /**
@@ -98,14 +93,9 @@ abstract class FrameworkLibraryReference extends HTMLAttribute {
   }
 
   /**
-   * Gets the framework to which this is a reference.
+   * Holds if this is a reference to version `v` of framework library `fl`.
    */
-  abstract FrameworkLibrary getFramework();
-
-  /**
-   * Gets the version of the framework to which this is a reference.
-   */
-  abstract string getVersion();
+  abstract predicate info(FrameworkLibrary fl, string v);
 }
 
 /**
@@ -204,8 +194,7 @@ private string semverRegex() {
  */
 class FrameworkLibraryInstanceWithMarkerComment extends FrameworkLibraryInstance {
   FrameworkLibraryInstanceWithMarkerComment() { matchMarkerComment(_, this, _, _) }
-  override FrameworkLibrary getFramework() { matchMarkerComment(_, this, result, _) }
-  override string getVersion() { matchMarkerComment(_, this, _, result) }
+  override predicate info(FrameworkLibrary fl, string v) { matchMarkerComment(_, this, fl, v) }
 }
 
 /**
@@ -227,8 +216,7 @@ private predicate matchMarkerComment(Comment c, TopLevel tl,
  */
 class FrameworkLibraryReferenceWithURL extends FrameworkLibraryReference {
   FrameworkLibraryReferenceWithURL() { matchURL(this, _, _) }
-  override FrameworkLibrary getFramework() { matchURL(this, result, _) }
-  override string getVersion() { matchURL(this, _, result) }
+  override predicate info(FrameworkLibrary fl, string v) { matchURL(this, fl, v) }
 }
 
 /**
@@ -281,8 +269,10 @@ private predicate jQueryMarkerComment(Comment c, TopLevel tl, string version) {
  */
 private class JQueryInstance extends FrameworkLibraryInstance {
   JQueryInstance() { jQueryMarkerComment(_, this, _) }
-  override JQuery getFramework() { any() }
-  override string getVersion() { jQueryMarkerComment(_, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof JQuery and
+    jQueryMarkerComment(_, this, v)
+  }
 }
 
 
@@ -376,8 +366,10 @@ private predicate mooToolsObject(ObjectExpr oe, TopLevel tl, string version) {
  */
 private class MooToolsInstance extends FrameworkLibraryInstance {
   MooToolsInstance() { mooToolsObject(_, this, _) }
-  override MooTools getFramework() { any() }
-  override string getVersion() { mooToolsObject(_, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof MooTools and
+    mooToolsObject(_, this, v)
+  }
 }
 
 
@@ -412,8 +404,10 @@ private predicate prototypeObject(ObjectExpr oe, TopLevel tl, string version) {
  */
 private class PrototypeInstance extends FrameworkLibraryInstance {
   PrototypeInstance() { prototypeObject(_, this, _) }
-  override Prototype getFramework() { any() }
-  override string getVersion() { prototypeObject(_, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof Prototype and
+    prototypeObject(_, this, v)
+  }
 }
 
 
@@ -448,8 +442,10 @@ private predicate scriptaculousObject(ObjectExpr oe, TopLevel tl, string version
  */
 private class ScriptaculousInstance extends FrameworkLibraryInstance {
   ScriptaculousInstance() { scriptaculousObject(_, this, _) }
-  override Scriptaculous getFramework() { any() }
-  override string getVersion() { scriptaculousObject(_, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof Scriptaculous and
+    scriptaculousObject(_, this, v)
+  }
 }
 
 
@@ -501,8 +497,10 @@ private predicate dojoMarkerComment(Comment c, TopLevel tl, string version) {
  */
 private class DojoInstance extends FrameworkLibraryInstance {
   DojoInstance() { dojoMarkerComment(_, this, _) }
-  override Dojo getFramework() { any() }
-  override string getVersion() { dojoMarkerComment(_, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof Dojo and
+    dojoMarkerComment(_, this, v)
+  }
 }
 
 
@@ -578,8 +576,10 @@ private predicate angularMarkerComment(Comment c, TopLevel tl, string version) {
  */
 private class AngularJSInstance extends FrameworkLibraryInstance {
   AngularJSInstance() { angularMarkerComment(_, this, _) }
-  override AngularJS getFramework() { any() }
-  override string getVersion() { angularMarkerComment(_, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof AngularJS and
+    angularMarkerComment(_, this, v)
+  }
 }
 
 
@@ -607,8 +607,10 @@ private predicate angularUIBootstrapMarkerComment(Comment c, TopLevel tl, string
  */
 private class AngularUIBootstrapInstance extends FrameworkLibraryInstance {
   AngularUIBootstrapInstance() { angularUIBootstrapMarkerComment(_, this, _) }
-  override AngularUIBootstrap getFramework() { any() }
-  override string getVersion() { angularUIBootstrapMarkerComment(_, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof AngularUIBootstrap and
+    angularUIBootstrapMarkerComment(_, this, v)
+  }
 }
 
 
@@ -647,8 +649,10 @@ private predicate microsoftAJAXFrameworkMarkerComments(Comment c1, Comment c2,
  */
 private class MicrosoftAJAXFrameworkInstance extends FrameworkLibraryInstance {
   MicrosoftAJAXFrameworkInstance() { microsoftAJAXFrameworkMarkerComments(_, _, this, _) }
-  override MicrosoftAJAXFramework getFramework() { any() }
-  override string getVersion() { microsoftAJAXFrameworkMarkerComments(_, _, this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof MicrosoftAJAXFramework and
+    microsoftAJAXFrameworkMarkerComments(_, _, this, v)
+  }
 }
 
 /**
@@ -678,8 +682,10 @@ private predicate isPolymer(TopLevel tl, string version) {
  */
 private class PolymerInstance extends FrameworkLibraryInstance {
   PolymerInstance() { isPolymer(this, _) }
-  override Polymer getFramework() { any() }
-  override string getVersion() { isPolymer(this, result) }
+  override predicate info(FrameworkLibrary fl, string v) {
+    fl instanceof Polymer and
+    isPolymer(this, v)
+  }
 }
 
 /**
@@ -793,20 +799,13 @@ private class RequireJS extends FrameworkLibraryWithGenericURL, FrameworkLibrary
  * that is recognised as an instance of a framework library.
  */
 private class FrameworkLibraryReferenceToInstance extends FrameworkLibraryReference {
+  FrameworkLibraryInstance fli;
+
   FrameworkLibraryReferenceToInstance() {
-    getElement().(HtmlScriptElement).resolveSource() instanceof FrameworkLibraryInstance
+    fli = getElement().(HtmlScriptElement).resolveSource()
   }
 
-  /** Gets the framework library instance this reference refers to. */
-  private FrameworkLibraryInstance getInstance() {
-    result = getElement().(HtmlScriptElement).resolveSource()
-  }
-
-  override FrameworkLibrary getFramework() {
-    result = getInstance().getFramework()
-  }
-
-  override string getVersion() {
-    result = getInstance().getVersion()
+  override predicate info(FrameworkLibrary fl, string v) {
+    fli.info(fl, v)
   }
 }

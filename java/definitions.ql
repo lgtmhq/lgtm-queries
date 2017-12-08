@@ -32,6 +32,16 @@ import java
  */
 class LocationOverridingMethodAccess extends MethodAccess {
   predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+    exists(MemberRefExpr e | e.getReferencedCallable() = getMethod() |
+      exists(int elRef, int ecRef |
+        e.hasLocationInfo(path, _, _, elRef, ecRef) |
+        sl = elRef and
+        sc = ecRef - getMethod().getName().length() + 1 and
+        el = elRef and
+        ec = ecRef
+      )
+    ) or
+    not exists(MemberRefExpr e | e.getReferencedCallable() = getMethod()) and
     exists(int slSuper, int scSuper, int elSuper, int ecSuper |
       super.hasLocationInfo(path, slSuper, scSuper, elSuper, ecSuper) |
       (
@@ -127,16 +137,21 @@ Element definition(Element e, string kind) {
   e.(ImportStaticTypeMember).getAMemberImport() = result and kind = "I"
 }
 
-predicate dummyAccess(VarAccess va) {
+predicate dummyVarAccess(VarAccess va) {
   exists(AssignExpr ae, InitializerMethod im |
     ae.getDest() = va and
     ae.getParent() = im.getBody().getAChild()
   )
 }
 
+predicate dummyTypeAccess(TypeAccess ta) {
+  exists(MemberRefExpr e | e.getAnonymousClass().getClassInstanceExpr().getTypeName() = ta)
+}
+
 from Element e, Element def, string kind
 where def = definition(e, kind)
   and def.fromSource()
   and e.fromSource()
-  and not dummyAccess(e)
+  and not dummyVarAccess(e)
+  and not dummyTypeAccess(e)
 select e, def, kind

@@ -100,10 +100,10 @@ predicate isCompatibleRequestedService(InjectableFunctionServiceRequest request,
  * Gets the kind of a service named `serviceName`.
  */
 string getServiceKind(InjectableFunctionServiceRequest request, string serviceName) {
-  exists(ServiceIdentity id | id = request.getAServiceDefinition(serviceName) |
+  exists(ServiceReference id | id = request.getAServiceDefinition(serviceName) |
     id = getBuiltinServiceOfKind(result) or
     exists(CustomServiceDefinition custom |
-      id = custom.getServiceIdentity() and
+      id = custom.getServiceReference() and
       ((custom instanceof ValueRecipeDefinition and result = "value") or
         (custom instanceof ServiceRecipeDefinition and result = "service") or
         (custom instanceof FactoryRecipeDefinition and result = "factory") or

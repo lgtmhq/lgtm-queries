@@ -18,6 +18,7 @@
  * @kind problem
  * @tags reliability
  *       maintainability
+ *       external/cwe/cwe-584
  * @problem.severity warning
  * @sub-severity low
  * @precision medium

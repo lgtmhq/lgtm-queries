@@ -17,6 +17,7 @@
  * @kind problem
  * @tags maintainability
  *       useless-code
+ *       external/cwe/cwe-563
  * @problem.severity recommendation
  * @sub-severity high
  * @precision very-high

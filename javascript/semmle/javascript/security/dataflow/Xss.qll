@@ -27,62 +27,6 @@ import semmle.javascript.frameworks.jQuery
  */
 
 /**
- * Holds if `name` is a jQuery method that interprets its arguments as HTML
- * or CSS.
- */
-predicate jqueryXss(string name) {
-  name = "addClass" or
-  name = "after" or
-  name = "append" or
-  name = "appendTo" or
-  name = "before" or
-  name = "html" or
-  name = "insertAfter" or
-  name = "insertBefore" or
-  name = "parseHTML" or
-  name = "prepend" or
-  name = "prependTo" or
-  name = "prop" or
-  name = "replaceWith" or
-  name = "wrap" or
-  name = "wrapAll" or
-  name = "wrapInner"
-}
-
-/**
- * Holds if `sink` is an expression whose value is interpreted as HTML or CSS
- * and may be inserted into the DOM.
- */
-private predicate isSink(Expr sink) {
-  // Call to a DOM function that inserts its argument into the DOM
-  exists (MethodCallExpr mce, string methodName, int index |
-    isDomValue(mce.getReceiver()) and methodName = mce.getMethodName() and
-    sink = mce.getArgument(index) |
-    methodName = "write" or
-    methodName = "writeln" or
-    methodName = "insertAdjacentHTML" and index = 0 or
-    methodName = "insertAdjacentElement" and index = 0 or
-    methodName = "insertBefore" and index = 0 or
-    methodName = "createElement" and index = 0 or
-    methodName = "appendChild" and index = 0 or
-    methodName = "setAttribute" and index = 0
-  )
-  or
-  // Assignment to a dangerous DOM property
-  exists (PropWriteNode pw |
-    isDomValue(pw.getBase()) and sink = pw.getRhs() |
-    pw.getPropertyName() = "innerHTML" or
-    pw.getPropertyName() = "outerHTML"
-  )
-  or
-  // Call to a jQuery method that inserts its argument into the DOM
-  exists(JQueryMethodCall call |
-    jqueryXss(call.getMethodName()) and
-    sink = call.getAnArgument()
-  )
-}
-
-/**
  * A data flow source for XSS vulnerabilities.
  */
 abstract class XssSource extends DataFlowNode { }
@@ -93,7 +37,10 @@ abstract class XssSource extends DataFlowNode { }
 abstract class XssSink extends DataFlowNode { }
 
 class DefaultSink extends XssSink {
-  DefaultSink() { isSink(this) }
+  DefaultSink() {
+    this instanceof DomSink or
+    this instanceof LibrarySink
+  }
 }
 
 /**
@@ -117,6 +64,7 @@ class XssDataFlowConfiguration extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     isSafeLocationProperty(node) or
     node instanceof XssSanitizer
   }
@@ -132,6 +80,39 @@ class LocationSource extends XssSource {
 }
 
 /**
+ * An expression whose value is interpreted as HTML or CSS
+ * and may be inserted into the DOM through a library.
+ */
+class LibrarySink extends XssSink {
+  LibrarySink() {
+    // Call to a jQuery method that inserts its argument into the DOM
+    exists(JQueryMethodCall call |
+      call.interpretsArgumentsAsHtml() and
+      this = call.getAnArgument()
+    ) or
+    any(AngularJS::AngularJSCall call).interpretsArgumentAsHtml(this)
+  }
+}
+
+/**
+ * An expression whose value is interpreted as HTML or CSS
+ * and may be inserted into the DOM.
+ */
+class DomSink extends XssSink {
+  DomSink() {
+    // Call to a DOM function that inserts its argument into the DOM
+    any(DomMethodCallExpr call).interpretsArgumentsAsHTML(this)
+    or
+    // Assignment to a dangerous DOM property
+    exists (DomPropWriteNode pw |
+      pw.interpretsValueAsHTML() and
+      this = pw.getRhs()
+    )
+  }
+}
+
+
+/**
  * A React `dangerouslySetInnerHTML` attribute, viewed as an XSS sink.
  */
 class DangerouslySetInnerHtmlSink extends XssSink {
@@ -140,5 +121,44 @@ class DangerouslySetInnerHtmlSink extends XssSink {
       attr.getName() = "dangerouslySetInnerHTML" and
       this = attr.getValue()
     )
+  }
+}
+
+/**
+ * A conditional checking a tainted string against a regular expression, which is
+ * considered to be a sanitizer.
+ */
+class SanitizingRegExpTest extends TaintTracking::SanitizingGuard, Expr {
+  VarUse u;
+
+  SanitizingRegExpTest() {
+    exists (MethodCallExpr mce, DataFlowNode base, string m, DataFlowNode firstArg |
+      mce = this and mce.calls(base, m) and firstArg = mce.getArgument(0) |
+      // /re/.test(u) or /re/.exec(u)
+      base.getALocalSource() instanceof RegExpLiteral and
+      (m = "test" or m = "exec") and
+      firstArg = u
+      or
+      // u.match(/re/) or u.match("re")
+      base = u and
+      m = "match" and
+      (
+       firstArg.getALocalSource() instanceof RegExpLiteral or
+       firstArg.getALocalSource() instanceof ConstantString
+      )
+    )
+    or
+    // m = /re/.exec(u) and similar
+    this.(AssignExpr).getRhs().(SanitizingRegExpTest).getSanitizedVarUse() = u
+  }
+
+  VarUse getSanitizedVarUse() {
+    result = u
+  }
+
+  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
+    cfg instanceof XssDataFlowConfiguration and
+    (outcome = true or outcome = false) and
+    u = v.getAUse()
   }
 }

@@ -14,6 +14,7 @@
 /** Provides classes for working with files and folders. */
 
 import AST
+private import FilesInternal
 
 /** A file or folder. */
 abstract class Container extends @container {
@@ -196,6 +197,21 @@ class Folder extends Container, @folder {
     result = getAChildContainer() and
     result.getStem() = stem and
     result.getExtension() = extension
+  }
+
+  /**
+   * Gets the file in this folder that has the given `stem` and any of the supported JavaScript extensions.
+   *
+   * If there are multiple such files, the one with the "best" extension is chosen based on a
+   * prioritized list of file extensions.
+   *
+   * `js` files are given less preference than files that compile to `js`, to ensure we pick the
+   * original source file rather than its compiled output.
+   *
+   * HTML files will not be found by this method.
+   */
+  File getJavaScriptFile(string stem) {
+    result = min(int p, string ext | p = getFileExtensionPriority(ext) | getFile(stem, ext) order by p)
   }
 
   /** Gets a subfolder contained in this folder. */

@@ -18,6 +18,7 @@
  * @tags reliability
  *       readability
  *       convention
+ *       external/cwe/cwe-396
  * @problem.severity recommendation
  * @sub-severity high
  * @precision very-high

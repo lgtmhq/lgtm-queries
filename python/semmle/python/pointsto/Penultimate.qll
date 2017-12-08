@@ -42,6 +42,16 @@ private import Layer0
 private import Filters as BaseFilters
 import semmle.dataflow.SSA
 
+/** Get a `ControlFlowNode` from an object or `here`.
+ * If the object is a ControlFlowNode then use that, otherwise fall back on `here`
+ */
+pragma[inline]
+private ControlFlowNode origin_from_object_or_here(ObjectOrCfg object, ControlFlowNode here) {
+    result = object
+    or
+    not object instanceof ControlFlowNode and result = here
+}
+
 module PenultimatePointsTo {
 
     
@@ -89,7 +99,7 @@ module PenultimatePointsTo {
             test_contains(expr, use) and
             result = Filters::evaluates_boolean(expr, use, context, val, cls) and
             (
-                exists(EssaVariable var | use = var.getAUse() | Layer::ssa_variable_points_to(var, context, val, cls, origin))
+                exists(EssaVariable var | use = var.getAUse() | ssa_variable_points_to(var, context, val, cls, origin))
                 or
                 exists(EssaVariable var, string name |
                     use.(AttrNode).getObject(name) = var.getAUse() |
@@ -117,12 +127,10 @@ module PenultimatePointsTo {
             exists(EssaVariable var, ControlFlowNode exit, ObjectOrCfg orig, PenultimateContext imp |
                 exit =  m.getANormalExit() and var.getAUse() = exit and
                 var.getSourceVariable().getName() = name and
-                Layer::ssa_variable_points_to(var, imp, obj, cls, orig) and
+                ssa_variable_points_to(var, imp, obj, cls, orig) and
                 imp.isImport() and
                 not obj = undefinedVariable() |
-                origin = orig
-                or
-                not orig instanceof ControlFlowNode and origin = exit
+                origin = origin_from_object_or_here(orig, exit)
             )
             or
             not exists(EssaVariable var | var.getAUse() = m.getANormalExit() and var.getSourceVariable().getName() = name) and
@@ -139,9 +147,7 @@ module PenultimatePointsTo {
                 exists(ModuleObject imported, ObjectOrCfg maybe_origin, ImportStar im |
                     has_import_star(m, im, imported) and
                     Layer::module_attribute_points_to(imported, name, obj, cls, maybe_origin) |
-                    origin = maybe_origin
-                    or
-                    not maybe_origin instanceof ControlFlowNode and origin = im.getAFlowNode()
+                    origin = origin_from_object_or_here(maybe_origin, im.getAFlowNode())
                 )
             )
         }
@@ -151,7 +157,6 @@ module PenultimatePointsTo {
          *  Whether the module defines name. */
         
         predicate module_defines_name(Module mod, string name) {
-            extensional_name(name) and
             (
                 exists(SsaVariable var | name = var.getId() and var.getAUse() = mod.getANormalExit())
                 or
@@ -179,7 +184,6 @@ module PenultimatePointsTo {
         /** Holds if `name` is defined in the module `m` by an `import *` statement within that module. */
         
         predicate import_star_defines_name(Module m, string name) {
-            extensional_name(name) and
             exists(ModuleObject imported_module, ImportStar import_stmt |
                 has_import_star(m, import_stmt, imported_module)
                 |
@@ -203,7 +207,6 @@ module PenultimatePointsTo {
         /** INTERNAL -- Use `FunctionObject.getNamedArgumentForCall(call, name)` instead.  */
         
         ControlFlowNode get_named_argument_for_call(FunctionObject func, PenultimateContext context, CallNode call, string name) {
-          extensional_name(name) and
           (
             result = Calls::get_argument_for_call_by_name(func, context, call, name)
             or
@@ -266,30 +269,34 @@ module PenultimatePointsTo {
             )
         }
 
-        /** INTERNAL -- Use `m.exports(name)` instead. */
-        
-        predicate module_exports(ModuleObject mod, string name) {
-            extensional_name(name) and
-            exists(PackageObject pack |
-                pack = mod |
-                not pack.getInitModule().getModule().declaredInAll(_) and not name.charAt(0) = "_" and
-                exists(ModuleObject sub |
-                    sub = pack.submodule(name) |
-                    explicitly_imported(sub)
-                )
-                or
-                module_exports(pack.getInitModule(), name)
-            )
-            or
+        private predicate py_module_exports(ModuleObject mod, string name) {
             exists(Module m |
                 m = mod.getModule() |
                 m.declaredInAll(_) and m.declaredInAll(name)
                 or
-                not m.declaredInAll(_) and module_defines_name(m, name) and not name.charAt(0) = "_"
+                not m.declaredInAll(_) and module_defines_name(m, name) and name.charAt(0) != "_"
+            )
+        }
+
+        private predicate package_exports(PackageObject pack, string name) {
+            not pack.getInitModule().getModule().declaredInAll(_) and name.charAt(0) != "_" and
+            exists(ModuleObject sub |
+                sub = pack.submodule(name) |
+                explicitly_imported(sub)
             )
             or
+            py_module_exports(pack.getInitModule(), name)
+        }
+
+        /** INTERNAL -- Use `m.exports(name)` instead. */
+        
+        predicate module_exports(ModuleObject mod, string name) {
+            package_exports(mod, name)
+            or
+            py_module_exports(mod, name)
+            or
             py_cmembers_versioned(mod, name, _, major_version().toString()) and
-            not name.matches("\\_%")
+            name.charAt(0) != "_"
         }
 
         /** INTERNAL -- Use `m.importedAs(name)` instead.
@@ -297,22 +304,20 @@ module PenultimatePointsTo {
          * Holds if `import name` will import the module `m`. */
         
         predicate module_imported_as(ModuleObject m, string name) {
-            extensional_name(name) and (
-              /* Normal imports */
-              m.getName() = name
-              or
-              /* sys.modules['name'] = m */
-              exists(ControlFlowNode sys_modules_flow, ControlFlowNode n, ControlFlowNode mod |
-                /* Use previous points-to here to avoid slowing down the recursion too much */
-                exists(SubscriptNode sub, Object sys_modules |
-                    sub.getValue() = sys_modules_flow and
-                    Layer0PointsTo::points_to(sys_modules_flow, _, sys_modules, _, _) and
-                    builtin_module_attribute(theSysModuleObject(), "modules", sys_modules, _) and
-                    sub.getIndex() = n and
-                    n.getNode().(StrConst).getText() = name and
-                    sub.(DefinitionNode).getValue() = mod and
-                    Layer0PointsTo::points_to(mod, _, m, _, _)
-                )
+            /* Normal imports */
+            m.getName() = name
+            or
+            /* sys.modules['name'] = m */
+            exists(ControlFlowNode sys_modules_flow, ControlFlowNode n, ControlFlowNode mod |
+              /* Use previous points-to here to avoid slowing down the recursion too much */
+              exists(SubscriptNode sub, Object sys_modules |
+                  sub.getValue() = sys_modules_flow and
+                  Layer0PointsTo::points_to(sys_modules_flow, _, sys_modules, _, _) and
+                  builtin_module_attribute(theSysModuleObject(), "modules", sys_modules, _) and
+                  sub.getIndex() = n and
+                  n.getNode().(StrConst).getText() = name and
+                  sub.(DefinitionNode).getValue() = mod and
+                  Layer0PointsTo::points_to(mod, _, m, _, _)
               )
             )
         }
@@ -333,6 +338,12 @@ module PenultimatePointsTo {
             not Calls::callToClassMayNotReturnInstance(cls)
         }
 
+        /** Holds if `var` refers to `(value, cls, origin)` given the context `context`. */
+        
+        predicate ssa_variable_points_to(EssaVariable var, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
+            SSA::ssa_definition_points_to(var.getDefinition(), context, value, cls, origin)
+        }
+
          /** Holds if f is of the form `obj.meth` where `obj` refers to an instance of `super` and
           * `function` is the method `T.meth` that is bound.
           */
@@ -341,7 +352,7 @@ module PenultimatePointsTo {
              exists(CallNode super_call, ControlFlowNode super_use, ClassObject mro_type, ClassObject start_type, ClassObject self_type, string name |
                  super_call(super_call, context, self, mro_type) and
                  points_to(super_use, context, super_call, _, _) and
-                 Layer::ssa_variable_points_to(self, context, _, self_type, _) and
+                 ssa_variable_points_to(self, context, _, self_type, _) and
                  start_type = Types::next_in_mro(self_type, mro_type) and
                  super_use = f.getObject(name) and
                  Types::class_lookup_in_mro(self_type, start_type, name, function)
@@ -421,11 +432,6 @@ module PenultimatePointsTo {
                 Types::six_add_metaclass(_, cls, meta) and
                 points_to(meta, _, result, _, _)
             )
-        }
-
-        /** Holds if `var` refers to `(value, cls, origin)` given the context `context`. */
-        predicate ssa_variable_points_to(EssaVariable var, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
-            SSA::ssa_definition_points_to(var.getDefinition(), context, value, cls, origin)
         }
 
     }
@@ -519,7 +525,7 @@ module PenultimatePointsTo {
     }
 
     private predicate use_points_to_maybe_origin(NameNode f, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin_or_obj) {
-        Layer::ssa_variable_points_to(fast_local_variable(f), context, value, cls, origin_or_obj)
+        ssa_variable_points_to(fast_local_variable(f), context, value, cls, origin_or_obj)
         or
         name_lookup_points_to_maybe_origin(f, context, value, cls, origin_or_obj)
         or
@@ -529,12 +535,12 @@ module PenultimatePointsTo {
 
     pragma [noinline]
     private predicate local_variable_undefined(NameNode f, PenultimateContext context) { 
-        Layer::ssa_variable_points_to(name_local_variable(f), context, undefinedVariable(), _, _)
+        ssa_variable_points_to(name_local_variable(f), context, undefinedVariable(), _, _)
     }
 
     private predicate name_lookup_points_to_maybe_origin(NameNode f, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin_or_obj) {
         exists(EssaVariable var | var = name_local_variable(f) |
-            Layer::ssa_variable_points_to(var, context, value, cls, origin_or_obj)
+            ssa_variable_points_to(var, context, value, cls, origin_or_obj)
         )
         or
         local_variable_undefined(f, context) and
@@ -542,9 +548,9 @@ module PenultimatePointsTo {
     }
 
     private predicate global_lookup_points_to_maybe_origin(NameNode f, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin_or_obj) {
-        Layer::ssa_variable_points_to(global_variable(f), context, value, cls, origin_or_obj)
+        ssa_variable_points_to(global_variable(f), context, value, cls, origin_or_obj)
         or
-        Layer::ssa_variable_points_to(global_variable(f), context, undefinedVariable(), _, _) and
+        ssa_variable_points_to(global_variable(f), context, undefinedVariable(), _, _) and
         potential_builtin_points_to(f, value, cls, origin_or_obj)
         or
         not exists(global_variable(f)) and context.appliesToScope(f.getScope()) and
@@ -556,9 +562,7 @@ module PenultimatePointsTo {
         exists(ObjectOrCfg origin_or_obj |
             not value = undefinedVariable() and
             use_points_to_maybe_origin(f, context, value, cls, origin_or_obj) |
-            origin = origin_or_obj
-            or
-            not origin_or_obj instanceof ControlFlowNode and origin = f
+            origin = origin_from_object_or_here(origin_or_obj, f)
         )
     }
 
@@ -602,11 +606,8 @@ module PenultimatePointsTo {
         exists(string name, ControlFlowNode fval, Object obj, ObjectOrCfg orig |
             class_or_module_attribute(obj, name, value, cls, orig) and
             points_to(fval, context, obj, _, _) and
-            fval = f.getObject(name)
-            |
-            not orig instanceof ControlFlowNode and origin = f
-            or
-            origin = orig
+            fval = f.getObject(name) and
+            origin = origin_from_object_or_here(orig, f)
         )
     }
 
@@ -636,11 +637,8 @@ module PenultimatePointsTo {
     private predicate from_import_points_to(ImportMemberNode f, PenultimateContext context, Object value, ClassObject cls, ControlFlowNode origin) {
         exists(EssaVariable var, ObjectOrCfg orig |
             live_import_from_dot_in_init(f, var) and
-            Layer::ssa_variable_points_to(var, context, value, cls, orig)
-            |
-            origin = orig
-            or
-            not orig instanceof ControlFlowNode and origin = f
+            ssa_variable_points_to(var, context, value, cls, orig) and
+            origin = origin_from_object_or_here(orig, f)
         )
         or
         not live_import_from_dot_in_init(f, _) and
@@ -648,20 +646,14 @@ module PenultimatePointsTo {
             fmod = f.getModule(name) and
             points_to(fmod, context, mod, _, _) |
             exists(ObjectOrCfg orig |
-                Layer::module_attribute_points_to(mod, name, value, cls, orig) |
-                origin = orig
-                or
-                not orig instanceof ControlFlowNode and origin = f
+                Layer::module_attribute_points_to(mod, name, value, cls, orig) and
+                origin = origin_from_object_or_here(orig, f)
             )
             or
             not Layer0PointsTo::Layer::module_attribute_points_to(mod, name, _, _, _) and
             value = mod.(PackageObject).submodule(name) and cls = theModuleType() and
             context.appliesTo(f) and
-            (
-                origin = value
-                or
-                not value instanceof ControlFlowNode and origin = f
-            )
+            origin = origin_from_object_or_here(value, f)
         )
     }
 
@@ -1048,8 +1040,6 @@ module PenultimatePointsTo {
           *  Also bind the name of the attribute.
           */
          predicate receiver_type_for(ClassObject cls, string name, ControlFlowNode n, PenultimateContext context) {
-           extensional_name(name) and
-           (
              /* `super().meth()` is not a method on `super` */
              cls != theSuperType() and
              exists(Object o |
@@ -1062,7 +1052,6 @@ module PenultimatePointsTo {
                  n.getNode() = p and n.(NameNode).uses(v) and name = v.getId() and
                  p.getScope().getScope() = cls.getPyClass() and context.appliesTo(n)
              )
-           )
          }
 
          /** Gets the argument for the parameter at `position` where `call` is a call to `func`.
@@ -1240,7 +1229,7 @@ module PenultimatePointsTo {
         private predicate ssa_phi_points_to(PhiFunction phi, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
             exists(EssaVariable input, BasicBlock pred |
                 input = phi.getInput(pred) and not Layer0PointsTo::Layer::prunedEdge(pred, phi.getBasicBlock(), _) and
-                Layer::ssa_variable_points_to(input, context, value, cls, origin)
+                ssa_variable_points_to(input, context, value, cls, origin)
                 )
         }
 
@@ -1332,17 +1321,6 @@ module PenultimatePointsTo {
             )
         }
 
-        /** Hold if `cls` is a possible class of self in `method`. */
-        private
-        pragma[nomagic]
-        predicate self_type(FunctionObject method, ClassObject cls) {
-            Types::class_attribute_lookup(cls, _, method, _, _)
-            and
-            method.getFunction().getScope() = cls.getPyClass()
-            and
-            not Layer0PointsTo::Types::abstract_class(cls)
-        }
-
         /** Holds if the `(obj, caller)` pair matches up with `(self, callee)` pair across call. */
         pragma [noinline]
         private predicate self_callsite_transfer(EssaVariable obj, PenultimateContext caller, ParameterDefinition self, PenultimateContext callee) {
@@ -1365,12 +1343,13 @@ module PenultimatePointsTo {
                 meth.getFunction() = scope and
                 def.getDefiningNode().getScope() = scope and
                 context.isRuntime() and context.appliesToScope(scope) and
-                self_type(meth, cls) and
+                scope.getScope() = cls.getPyClass() and
+                not Layer0PointsTo::Types::abstract_class(cls) and
                 value = def.getDefiningNode() and origin = value
             )
             or
             exists(EssaVariable obj, PenultimateContext caller |
-                Layer::ssa_variable_points_to(obj, caller, value, cls, origin) and
+                ssa_variable_points_to(obj, caller, value, cls, origin) and
                 self_callsite_transfer(obj, caller, def, context)
             )
         }
@@ -1413,7 +1392,7 @@ module PenultimatePointsTo {
             /* Transfer from another scope */
             exists(EssaVariable var, PenultimateContext outer |
                 Flow::scope_entry_value_transfer(var, outer, def, context) and
-                Layer::ssa_variable_points_to(var, outer, value, cls, origin)
+                ssa_variable_points_to(var, outer, value, cls, origin)
             )
             or
             /* Undefined variable */
@@ -1434,17 +1413,17 @@ module PenultimatePointsTo {
         private predicate callsite_points_to(CallsiteRefinement def, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
             exists(EssaVariable var, PenultimateContext callee |
                 Flow::callsite_exit_value_transfer(var, callee, def, context) and
-                Layer::ssa_variable_points_to(var, callee, value, cls, origin)
+                ssa_variable_points_to(var, callee, value, cls, origin)
             )
             or
             not Layer0PointsTo::get_a_call(_, _) = def.getDefiningNode() and
-            Layer::ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+            ssa_variable_points_to(def.getInput(), context, value, cls, origin)
         }
 
         /** Pass through for `self` for the implicit re-definition of `self` in `self.foo()`. */
         private predicate method_callsite_points_to(MethodCallsiteRefinement def, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
             /* The value of self remains the same, only the attributes may change */
-            Layer::ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+            ssa_variable_points_to(def.getInput(), context, value, cls, origin)
         }
 
         /** Points-to for `from ... import *`. */
@@ -1459,7 +1438,7 @@ module PenultimatePointsTo {
             exists(EssaVariable var |
                 /* Retain value held before import */
                 Flow::variable_not_redefined_by_import_star(var, context, def) and
-                Layer::ssa_variable_points_to(var, context, value, cls, origin)
+                ssa_variable_points_to(var, context, value, cls, origin)
             )
         }
 
@@ -1467,22 +1446,22 @@ module PenultimatePointsTo {
         pragma [noinline]
         private predicate attribute_assignment_points_to(AttributeAssignment def, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
             if def.getName() = "__class__" then
-                Layer::ssa_variable_points_to(def.getInput(), context, value, _, _) and Layer0PointsTo::points_to(def.getValue(), _, cls, _,_) and
+                ssa_variable_points_to(def.getInput(), context, value, _, _) and Layer0PointsTo::points_to(def.getValue(), _, cls, _,_) and
                 origin = def.getDefiningNode()
             else
-                Layer::ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+                ssa_variable_points_to(def.getInput(), context, value, cls, origin)
         }
 
         /** Ignore the effects of calls on their arguments. Penultimate is an approximation, but attempting to improve accuracy would be very expensive for very little gain. */
         pragma [noinline]
         private predicate argument_points_to(ArgumentRefinement def, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
-            Layer::ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+            ssa_variable_points_to(def.getInput(), context, value, cls, origin)
         }
 
         /** Attribute deletions have no effect as far as value tracking is concerned. */
         pragma [noinline]
         private predicate attribute_delete_points_to(EssaAttributeDeletion def, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
-            Layer::ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+            ssa_variable_points_to(def.getInput(), context, value, cls, origin)
         }
 
         /* Data flow for attributes. These mirror the "normal" points-to predicates.
@@ -1645,8 +1624,11 @@ module PenultimatePointsTo {
                     points_to(fmod, context, mod, _, _) |
                     if module_exports(mod, name) then (
                         /* Attribute from imported module */
-                        Layer::module_attribute_points_to(mod, name, value, cls, origin) and
-                        not exists(Variable v | v.getId() = name and v.getScope() = imp.getScope())
+                        exists(ObjectOrCfg obj |
+                            Layer::module_attribute_points_to(mod, name, value, cls, obj) and
+                            not exists(Variable v | v.getId() = name and v.getScope() = imp.getScope()) and
+                            origin = origin_from_object_or_here(obj, imp)
+                        )
                     ) else (
                         /* Retain value held before import */
                         exists(EssaVariable var |
@@ -1826,7 +1808,7 @@ module PenultimatePointsTo {
             exists(ControlFlowNode test, ControlFlowNode use |
                 refinement_test(test, use, _, def) and
                 not comprehensible_test(test, use) and
-                Layer::ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+                ssa_variable_points_to(def.getInput(), context, value, cls, origin)
             )
         }
 
@@ -1983,7 +1965,6 @@ module PenultimatePointsTo {
          /** INTERNAL -- Use `ClassObject.lookupMro(start, name)` instead. */
          
          predicate class_lookup_in_mro(ClassObject cls, ClassObject start, string name, Object object) {
-             extensional_name(name) and
              exists(int i, int j |
                  start = get_mro_item(cls, i) and
                  j = declaring_class_index(cls, name) and j >= i and
@@ -2001,7 +1982,7 @@ module PenultimatePointsTo {
                  var.getSourceVariable() = src_var and
                  src_var.getId() = name and
                  var.getAUse() = owner.getImportTimeScope().getANormalExit() |
-                 Layer0PointsTo::Layer::ssa_variable_points_to(var, _, value, vcls, origin)
+                 Layer0PointsTo::ssa_variable_points_to(var, _, value, vcls, origin)
              )
              or
              value = builtin_class_attribute(owner, name) and class_declares_attribute(owner, name) and
@@ -2011,7 +1992,6 @@ module PenultimatePointsTo {
          /** INTERNAL -- Use `ClassObject.hasAttribute(name)` instead. */
          
          predicate class_has_attribute(ClassObject cls, string name) {
-             extensional_name(name) and
              class_declares_attribute(Types::get_an_improper_super_type(cls), name)
          }
 
@@ -2027,7 +2007,6 @@ module PenultimatePointsTo {
           */
          
          predicate class_attribute_lookup(ClassObject cls, string name, Object value, ClassObject vcls, ObjectOrCfg origin) {
-             extensional_name(name) and
              /* Choose attribute declared in (super)class  closest to start of MRO. */
              exists(ClassObject decl |
                  decl = class_supertype_declaring_attr(cls, name)

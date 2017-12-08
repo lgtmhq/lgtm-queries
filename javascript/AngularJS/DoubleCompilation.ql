@@ -25,10 +25,10 @@
 
 import javascript
 
-from AngularJS::InjectedService compile, SimpleParameter elem, CallExpr c
-where compile.getServiceName() = "$compile" and
-      elem = any(AngularJS::CustomDirective d).getALinkFunction().getParameter(1) and
-      c.getCallee().(DataFlowNode).getALocalSource() = compile.getAnAccess() and
+from AngularJS::ServiceReference compile, SimpleParameter elem, CallExpr c
+where compile.getName() = "$compile" and
+      elem = any(AngularJS::CustomDirective d).getALinkFunction().(AngularJS::LinkFunction).getElementParameter() and
+      c = compile.getACall() and
       c.getArgument(0).(DataFlowNode).getALocalSource() = elem.getVariable().getAnAccess() and
       // don't flag $compile calls that specify a `maxPriority`
       c.getNumArgument() < 3

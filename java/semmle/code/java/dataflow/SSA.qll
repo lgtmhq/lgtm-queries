@@ -64,8 +64,10 @@ class SsaSourceVariable extends TSsaSourceVariable {
   }
 
   /**
-   * Gets an access of this `SsaSourceVariable`. This access is within `this.getEnclosingCallable()`
-   * except for `LocalScopeVariable`s, which can also be accessed from nested callables.
+   * Gets an access of this `SsaSourceVariable`. This access is within
+   * `this.getEnclosingCallable()`. Note that `LocalScopeVariable`s that are
+   * accessed from nested callables are therefore associated with several
+   * `SsaSourceVariable`s.
    */
   cached
   VarAccess getAnAccess() {

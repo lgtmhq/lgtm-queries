@@ -249,6 +249,25 @@ class AssignmentDefinition extends PyNodeDefinition {
 
 }
 
+/** Capture of a raised exception `except ExceptionType ex:` */
+class ExceptionCapture  extends PyNodeDefinition {
+
+    ExceptionCapture() {
+        SsaSource::exception_capture(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+    ControlFlowNode getType() {
+        exists(ExceptFlowNode ex |
+            ex.getName() = this.getDefiningNode() and
+            result = ex.getType()
+        )
+    }
+
+    override string getRepresentation() {
+        result = "except " + this.getSourceVariable().getName()
+    }
+
+}
 /** An assignment to a variable as part of a multiple assignment `..., v, ... = val` */
 class MultiAssignmentDefinition extends PyNodeDefinition {
 
@@ -258,6 +277,19 @@ class MultiAssignmentDefinition extends PyNodeDefinition {
 
     override string getRepresentation() {
         result = "..."
+    }
+
+}
+
+
+class WithDefinition extends PyNodeDefinition {
+
+    WithDefinition  () {
+        SsaSource::with_definition(this.getSourceVariable(), this.getDefiningNode())
+    }
+
+    override string getRepresentation() {
+        result = "with"
     }
 
 }

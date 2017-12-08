@@ -33,6 +33,7 @@ import semmle.code.java.JDKAnnotations
 import semmle.code.java.JMX
 import semmle.code.java.Member
 import semmle.code.java.Modifier
+import semmle.code.java.Modules
 import semmle.code.java.Package
 import semmle.code.java.Statement
 import semmle.code.java.Type

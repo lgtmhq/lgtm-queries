@@ -30,7 +30,8 @@ private predicate arrayIndexOutOfBoundExceptionCaught(ArrayAccess arrayAccess) {
   exists(TryStmt ts, CatchClause cc |
     (
       ts.getBlock().getAChild*() = arrayAccess.getEnclosingStmt() or
-      ts.getAResourceDecl().getAChild*() = arrayAccess.getEnclosingStmt()
+      ts.getAResourceDecl().getAChild*() = arrayAccess.getEnclosingStmt() or
+      ts.getAResourceExpr().getAChildExpr*() = arrayAccess
     ) and
     cc = ts.getACatchClause() |
     cc.getVariable().getType().(RefType).hasQualifiedName("java.lang", "ArrayIndexOutOfBoundsException")

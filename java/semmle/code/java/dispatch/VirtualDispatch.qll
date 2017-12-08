@@ -142,8 +142,12 @@ cached private module Dispatch {
       if src instanceof ClassInstanceExpr then exact = true else exact = false
     ) or
     // If the call has no qualifier then it's an implicit `this` qualifier,
-    // so start from the caller's declaring type.
-    not exists(ma.getQualifier()) and t = ma.getEnclosingCallable().getDeclaringType() and exact = false
+    // so start from the caller's declaring type or enclosing type.
+    not exists(ma.getQualifier()) and exact = false and
+    (
+      ma.isOwnMethodAccess() and t = ma.getEnclosingCallable().getDeclaringType() or
+      ma.isEnclosingMethodAccess(t)
+    )
   }
 
   /** Gets the implementation of `top` present on a value of precisely type `t`. */

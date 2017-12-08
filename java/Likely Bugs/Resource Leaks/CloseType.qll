@@ -201,8 +201,9 @@ LocalVariableDecl getCloseableVariable(CloseableInitExpr cie) {
  */
 private
 predicate closeCalled(Variable v) {
-  // `close()` is implicitly called on variables declared in the resources clause of try-with-resource statements.
-  exists(TryStmt try | try.getAResourceDecl().getAVariable().getVariable() = v)
+  // `close()` is implicitly called on variables declared or referenced
+  // in the resources clause of try-with-resource statements.
+  exists(TryStmt try | try.getAResourceVariable() = v)
   or
   // Otherwise, there should be an explicit call to a method whose name contains "close".
   exists(MethodAccess e |

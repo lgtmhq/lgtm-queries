@@ -27,5 +27,5 @@ import javascript
 import semmle.javascript.security.dataflow.ServerSideUrlRedirect
 
 from ServerSideUrlRedirectDataFlowConfiguration urlRedirect, DataFlowNode source, DataFlowNode sink
-where urlRedirect.flowsTo(source, sink)
+where urlRedirect.flowsFrom(sink, source)
 select sink, "Untrusted URL redirection due to $@.", source, "user-provided value"

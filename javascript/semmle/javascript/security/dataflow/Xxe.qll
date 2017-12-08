@@ -53,6 +53,7 @@ class XxeTrackingConfig extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     node instanceof XxeSanitizer
   }
 }

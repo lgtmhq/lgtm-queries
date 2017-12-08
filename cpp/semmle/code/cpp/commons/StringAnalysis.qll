@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.exprs.Expr
-import semmle.code.cpp.controlflow.DefinitionsAndUses
+import semmle.code.cpp.controlflow.SSA
 
 /**
  * Can a value flow directly from one expr to another?
@@ -21,7 +21,9 @@ predicate canValueFlow(Expr fromExpr, Expr toExpr)
 {
   (
     // value propagated via a definition use pair
-    exists (Variable v | definitionUsePair(v, fromExpr, toExpr))
+    exists(Variable v, SsaDefinition def | fromExpr = def.getAnUltimateDefinition(v) |
+      toExpr = def.getAUse(v)
+    )
   ) or (
     // expr -> containing parenthesized expression
     fromExpr = toExpr.(ParenthesisExpr).getExpr()

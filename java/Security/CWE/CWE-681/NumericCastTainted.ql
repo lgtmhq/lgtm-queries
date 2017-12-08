@@ -24,19 +24,24 @@
  *       external/cwe/cwe-681
  */
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import NumericCastCommon
 
-from NumericNarrowingCastExpr exp, VarAccess tainted, RemoteUserInput origin
+private class NumericCastFlowConfig extends TaintTracking::Configuration {
+  NumericCastFlowConfig() { this = "NumericCastTainted::RemoteUserInputToNumericNarrowingCastExpr" }
+  override predicate isSource(DataFlow::Node src) { src instanceof RemoteUserInput }
+  override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(NumericNarrowingCastExpr cast).getExpr() }
+  override predicate isSanitizer(DataFlow::Node node) {
+    boundedRead(node.asExpr()) or
+    castCheck(node.asExpr()) or
+    node.getEnclosingCallable() instanceof HashCodeMethod
+  }
+}
+
+from NumericNarrowingCastExpr exp, VarAccess tainted, RemoteUserInput origin, NumericCastFlowConfig conf
 where
   exp.getExpr() = tainted and
-  origin.flowsTo(tainted)
-  and not exists(ConditionalStmt c, ComparisonExpr guard |
-    priorAccess(tainted) = guard.getAnOperand() and
-    guard = c.getCondition().getAChildExpr*() and
-    dominates(c, exp.getEnclosingStmt())
-  )
-  and not exists(RightShiftOp e | e.getShiftedVariable() = tainted.getVariable())
-  and not exp.getEnclosingCallable() instanceof HashCodeMethod
+  conf.hasFlow(origin, DataFlow::exprNode(tainted)) and
+  not exists(RightShiftOp e | e.getShiftedVariable() = tainted.getVariable())
 select exp, "$@ flows to here and is cast to a narrower type, potentially causing truncation.",
   origin, "User-provided value"

@@ -377,6 +377,12 @@ class RegExpCharacterRange extends RegExpTerm, @regexp_char_range {
   override predicate isNullable() {
     none()
   }
+
+  /** Holds if `lo` is the lower bound of this character range and `hi` the upper bound. */
+  predicate isRange(string lo, string hi) {
+    lo = getChild(0).(RegExpConstant).getValue() and
+    hi = getChild(1).(RegExpConstant).getValue()
+  }
 }
 
 /** A parse error encountered while processing a regular expression literal. */

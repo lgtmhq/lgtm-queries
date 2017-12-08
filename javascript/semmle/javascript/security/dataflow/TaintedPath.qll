@@ -51,6 +51,7 @@ class TaintedPathTrackingConfig extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     node instanceof TaintedPathSanitizer
   }
 }
@@ -108,6 +109,12 @@ class ExpressRenderSink extends TaintedPathSink {
       mce.getMethodName() = "render" and
       this = mce.getArgument(0)
     )
+  }
+}
+
+class AngularJSTemplateUrlSink extends TaintedPathSink {
+  AngularJSTemplateUrlSink() {
+    this = any(AngularJS::CustomDirective d).getMember("templateUrl")
   }
 }
 

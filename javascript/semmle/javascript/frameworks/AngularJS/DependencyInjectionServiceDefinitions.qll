@@ -17,6 +17,10 @@
  * Supports registration and lookup of dependency injection services.
  *
  * INTERNAL: Do not import this module directly, import `AngularJS` instead.
+ *
+ * NOTE: The API of this library is not stable yet and may change in
+ *       the future.
+ *
  */
 
 import javascript
@@ -31,27 +35,76 @@ private string getStringValue(DataFlowNode nd) {
 }
 
 /**
- * Service types.
+ * A reference to a service.
  */
-private newtype TServiceIdentity =
-MkBuiltinService(string name) { exists (getBuiltinKind(name)) } or
-MkCustomService(CustomServiceDefinition service)
+private newtype TServiceReference =
+MkBuiltinServiceReference(string name) { exists (getBuiltinKind(name)) } or
+MkCustomServiceReference(CustomServiceDefinition service)
 
-abstract class ServiceIdentity extends TServiceIdentity {
-  abstract string toString();
+/**
+ * A reference to a service.
+ */
+abstract class ServiceReference extends TServiceReference {
+
+  /** Gets a textual representation of this element. */
+  string toString() {
+    result = getName()
+  }
+
+  /**
+   * Gets the name of this reference.
+   */
+  abstract string getName();
+
+  /**
+   * Gets an access to the referenced service.
+   */
+  DataFlowNode getAnAccess() {
+    result.(DataFlowNode).getALocalSource() = any(ServiceRequest request).getAnAccess(this)
+  }
+
+  /**
+   * Gets a call that invokes the referenced service.
+   */
+  CallExpr getACall() {
+    result.getCallee() = getAnAccess()
+  }
+
+  /**
+   * Gets a method call that invokes method `methodName` on the referenced service.
+   */
+  MethodCallExpr getAMethodCall(string methodName) {
+    result.getReceiver() = getAnAccess() and
+    result.getMethodName() = methodName
+  }
+
+  /**
+   * Gets an access to property `propertyName` on the referenced service.
+   */
+  PropRefNode getAPropertyAccess(string propertyName) {
+    result.getBase() = getAnAccess() and
+    result.getPropertyName() = propertyName
+  }
+
 }
 
-class BuiltinServiceIdentity extends ServiceIdentity, MkBuiltinService {
-  string toString() {
-    this = MkBuiltinService(result)
+/**
+ * A reference to a builtin service.
+ */
+class BuiltinServiceReference extends ServiceReference, MkBuiltinServiceReference {
+  override string getName() {
+    this = MkBuiltinServiceReference(result)
   }
 }
 
-class CustomServiceIdentity extends ServiceIdentity, MkCustomService {
-  string toString() {
+/**
+ * A reference to a custom service.
+ */
+class CustomServiceReference extends ServiceReference, MkCustomServiceReference {
+  override string getName() {
     exists(CustomServiceDefinition def |
-      this = MkCustomService(def) and
-      result = def.toString()
+      this = MkCustomServiceReference(def) and
+      result = def.getName()
     )
   }
 }
@@ -229,36 +282,55 @@ class CustomServiceDefinition extends Expr {
     result = def.getAService()
   }
 
-  /** Gets the identity of the defined service. */
-  ServiceIdentity getServiceIdentity() {
-    result = MkCustomService(this)
+  /** Gets the reference to the defined service. */
+  ServiceReference getServiceReference() {
+    result = MkCustomServiceReference(this)
   }
-}
-
-/**
- * Gets a service with the name `name`.
- */
-private ServiceIdentity getAGlobalServiceDefinition(string name) {
-  result = MkBuiltinService(name) or
-  exists(CustomServiceDefinition custom |
-    name = custom.getName() and
-    result = MkCustomService(custom))
 }
 
 /**
  * Gets a builtin service with a specific kind.
  */
-ServiceIdentity getBuiltinServiceOfKind(string kind) {
+BuiltinServiceReference getBuiltinServiceOfKind(string kind) {
   exists(string name |
     kind = getBuiltinKind(name) and
-    result = MkBuiltinService(name)
+    result = MkBuiltinServiceReference(name)
   )
 }
 
 /**
+ * A request for one or more AngularJS services.
+ */
+abstract class ServiceRequest extends Expr {
+
+  /**
+   * Gets an access to `service` from this request.
+   */
+  abstract DataFlowNode getAnAccess(ServiceReference service);
+
+}
+
+/**
+ * The request for a scope service in the form of the link-function of a directive.
+ */
+private class LinkFunctionWithScopeInjection extends ServiceRequest {
+
+  LinkFunctionWithScopeInjection() {
+    this instanceof LinkFunction
+  }
+
+  override DataFlowNode getAnAccess(ServiceReference service) {
+    service instanceof ScopeServiceReference and
+    result = this.(LinkFunction).getScopeParameter().getAVariable().getAnAccess()
+  }
+
+}
+
+
+/**
  * A request for a service, in the form of a dependency-injected function.
  */
-class InjectableFunctionServiceRequest extends Expr {
+class InjectableFunctionServiceRequest extends ServiceRequest {
 
   InjectableFunction injectedFunction;
 
@@ -269,6 +341,9 @@ class InjectableFunctionServiceRequest extends Expr {
     this = injectedFunction
   }
 
+  /**
+   * Gets the function of this request.
+   */
   InjectableFunction getAnInjectedFunction() {
     result = injectedFunction
   }
@@ -284,9 +359,17 @@ class InjectableFunctionServiceRequest extends Expr {
    * Gets a service with the specified name, relative to this request.
    * (implementation detail: all services are in the global namespace)
    */
-  ServiceIdentity getAServiceDefinition(string name) {
-    result = getAGlobalServiceDefinition(name)
+  ServiceReference getAServiceDefinition(string name) {
+    result.getName() = name
   }
+
+  override DataFlowNode getAnAccess(ServiceReference service) {
+    exists(SimpleParameter param |
+      service = injectedFunction.getAResolvedDependency(param) and
+      result = param.getVariable().getAnAccess()
+    )
+  }
+
 }
 
 private DataFlowNode getFactoryFunctionResult(RecipeDefinition def) {
@@ -446,5 +529,14 @@ class RunMethodDefinition extends ModuleApiCall  {
    */
   InjectableFunction getRunMethod() {
     result = getArgument(0).(DataFlowNode).getALocalSource()
+  }
+}
+
+/**
+ * The `$scope` or `$rootScope` service.
+ */
+class ScopeServiceReference extends BuiltinServiceReference {
+  ScopeServiceReference() {
+    getName() = "$scope" or getName() = "$rootScope"
   }
 }

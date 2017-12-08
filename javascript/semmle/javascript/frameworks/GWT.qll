@@ -41,7 +41,7 @@ class GWTHeader extends InlineScript {
    */
   string getGWTVersion() {
     exists (Expr e | e.getTopLevel() = this |
-      e = any(GWTVersionVariable v).getAnAssignedValue() and
+      e = any(GWTVersionVariable v).getAnAssignedExpr() and
       result = e.getStringValue()
     )
   }

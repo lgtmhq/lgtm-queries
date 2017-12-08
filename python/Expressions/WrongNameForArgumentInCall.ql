@@ -17,6 +17,7 @@
  * @kind problem
  * @tags reliability
  *       correctness
+ *       external/cwe/cwe-628
  * @problem.severity error
  * @sub-severity low
  * @precision very-high

@@ -23,7 +23,7 @@
  *       external/cwe/cwe-601
  */
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import UrlRedirect
 
 from UrlRedirectSink sink, RemoteUserInput source

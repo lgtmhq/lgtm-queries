@@ -17,7 +17,7 @@
  * @kind problem
  * @tags reliability
  *       maintainability
- *       external/cwe/cwe-391
+ *       external/cwe/cwe-390
  * @problem.severity recommendation
  * @sub-severity high
  * @precision high

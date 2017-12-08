@@ -46,4 +46,9 @@ class CompilationUnit extends Element, File {
 
   /** The declared package of this compilation unit. */
   Package getPackage() { cupackage(this,result) }
+
+  /**
+   * The module associated with this compilation unit, if any.
+   */
+  Module getModule() { cumodule(this, result) }
 }

@@ -101,12 +101,12 @@ abstract class Module extends TopLevel {
        // import may refer to a file...
        result = c or
        // ...or to a directory, in which case we import index.js in that directory
-       result = c.(Folder).getFile("index.js")
+       result = c.(Folder).getJavaScriptFile("index")
      ) or
 
      // handle the case where the import path is missing an extension
      exists (Folder f | f = path.resolveUpTo(path.getNumComponent()-1) |
-       result = f.getFile(path.getBaseName() + ".js")
+       result = f.getJavaScriptFile(path.getBaseName())
      )
     )
   }
@@ -212,10 +212,14 @@ class ModuleInstance extends DataFlowNode {
    * Gets a function call that invokes method `methodName` on this module instance.
    */
   CallExpr getAMethodCall(string methodName) {
-    exists (PropReadNode prn |
-      prn.getBase().getALocalSource() = this and
-      prn.getPropertyName() = methodName and
-      result.getCallee().(DataFlowNode).getALocalSource() = prn
-    )
+    result.getCallee().(DataFlowNode).getALocalSource() = getAPropertyRead(methodName)
+  }
+
+  /**
+   * Gets a read access to property `propName` on this module instance.
+   */
+  PropReadNode getAPropertyRead(string propName) {
+    result.getBase().getALocalSource() = this and
+    result.getPropertyName() = propName
   }
 }

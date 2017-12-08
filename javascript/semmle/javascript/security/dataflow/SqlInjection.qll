@@ -51,6 +51,7 @@ class SqlInjectionTrackingConfig extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     node instanceof SqlInjectionSanitizer
   }
 }

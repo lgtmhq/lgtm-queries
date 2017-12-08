@@ -20,6 +20,7 @@
  * @id cpp/poorly-documented-function
  * @tags maintainability
  *       documentation
+ *       statistical
  */
 import default
 
