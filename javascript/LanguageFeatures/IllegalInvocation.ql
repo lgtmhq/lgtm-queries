@@ -28,23 +28,6 @@ import javascript
 import semmle.javascript.flow.CallGraph
 
 /**
- * Holds if `f` is a function of kind `fDesc` that cannot be invoked using `new`.
- */
-predicate nonConstructible(Function f, string fDesc) {
-  f instanceof Method and not f instanceof Constructor and
-  fDesc = "a method"
-  or
-  f instanceof ArrowFunctionExpr and
-  fDesc = "an arrow function" 
-  or
-  f.isGenerator() and
-  fDesc = "a generator function"
-  or
-  f.isAsync() and
-  fDesc = "an async function"
-}
-
-/**
  * Holds if call site `cs` may invoke function `callee` as specified by `how`.
  */
 predicate calls(CallSite cs, Function callee, string how) {
@@ -70,7 +53,7 @@ predicate illegalInvocation(CallSite cs, Function callee, string calleeDesc, str
     calleeDesc = "a constructor"
     or
     how = "using 'new'" and
-    nonConstructible(callee, calleeDesc)
+    callee.isNonConstructible(calleeDesc)
   )
 }
 

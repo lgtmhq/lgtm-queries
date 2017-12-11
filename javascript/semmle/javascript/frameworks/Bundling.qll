@@ -190,6 +190,52 @@ predicate isMultiPartBundle(TopLevel tl) {
 }
 
 /**
+ * A comment that starts with '!'. Minifiers avoid removing such comments.
+ */
+class ExclamationPointComment extends Comment {
+
+  ExclamationPointComment() {
+    getLine(0).matches("!%")
+  }
+
+}
+
+/**
+ * Gets a comment that belongs to a run of consecutive `ExclamationPointComment`s starting with `head`.
+ */
+Comment getExclamationPointCommentInRun(ExclamationPointComment head) {
+  exists(File f |
+    exists (int n |
+      head.onLines(f, n, _) and
+      not exists (ExclamationPointComment d |
+        d.onLines(f, _, n - 1)
+      )
+    ) and
+    ( result = head
+      or
+      exists (ExclamationPointComment prev, int n |
+        prev = getExclamationPointCommentInRun(head) and
+        prev.onLines(f, _, n) and
+        result.onLines(f, n + 1, _)
+      )
+    )
+  )
+}
+
+/**
+ * Holds if this is a bundle containing multiple licenses.
+ */
+predicate isMultiLicenseBundle(TopLevel tl) {
+  count(ExclamationPointComment head |
+    head.getTopLevel() = tl and
+    exists(ExclamationPointComment licenseIndicator |
+      licenseIndicator = getExclamationPointCommentInRun(head) and
+      licenseIndicator.getLine(_).regexpMatch("(?i).*\\b(copyright|license|\\d+\\.\\d+)\\b.*")
+    )
+  ) > 1
+}
+
+/**
  * Holds if toplevel `tl` contains code that looks like the output of a module bundler.
  */
 predicate isBundle(TopLevel tl) {
@@ -197,5 +243,6 @@ predicate isBundle(TopLevel tl) {
     isBrowserifyBundle(e) or
     isWebpackBundle(e)
   ) or
-  isMultiPartBundle(tl)
+  isMultiPartBundle(tl) or
+  isMultiLicenseBundle(tl)
 }

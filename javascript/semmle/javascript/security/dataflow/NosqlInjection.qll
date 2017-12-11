@@ -43,7 +43,7 @@ class NosqlInjectionTrackingConfig extends TaintTracking::Configuration {
 
   override predicate isSource(DataFlowNode source) {
     source instanceof NosqlInjectionSource or
-    source instanceof Express::RequestBodyAccess
+    source instanceof RemoteFlowSource
   }
 
   override predicate isSink(DataFlowNode sink) {
@@ -51,6 +51,7 @@ class NosqlInjectionTrackingConfig extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     node instanceof NosqlInjectionSanitizer
   }
 }

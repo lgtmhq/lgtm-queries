@@ -25,10 +25,24 @@
  */
 
 import javascript
+import semmle.javascript.frameworks.Templating
+
+/**
+ * Holds if the attribute has a value that we can not determine statically.
+ */
+predicate hasDynamicHrefAttributeValue(DOM::ElementDefinition elem) {
+  exists (DOM::AttributeDefinition attr |
+    attr = elem.getAnAttribute() and
+    attr.getName().matches("%href%") |
+    not exists(attr.getStringValue()) or
+    attr.getStringValue().regexpMatch(Templating::getDelimiterMatchingRegexp())
+  )
+}
 
 from DOM::ElementDefinition e
 where // `e` is a link that opens in a new browsing context (that is, it has `target="_blank"`)
       e.getName() = "a" and
+      hasDynamicHrefAttributeValue(e) and
       e.getAttributeByName("target").getStringValue() = "_blank" and
       // there is no `rel` attribute specifying link type `noopener`/`noreferrer`;
       // `rel` attributes with non-constant value are handled conservatively

@@ -14,6 +14,46 @@
 import javascript
 
 /**
+ * A statement that defines a namespace, that is, a namespace declaration or enum declaration.
+ *
+ * Declarations that declare an alias for a namespace (i.e. an import) are not
+ * considered to be namespace definitions.
+ */
+class NamespaceDefinition extends Stmt, @namespacedefinition {
+  /**
+   * Gets the identifier naming the namespace.
+   */
+  Identifier getId() {
+    result = this.(NamespaceDeclaration).getId()
+    or
+    result = this.(EnumDeclaration).getIdentifier()
+  }
+
+  /**
+   * Gets unqualified name of the namespace being defined.
+   */
+  string getName() {
+    result = this.(NamespaceDeclaration).getName()
+    or
+    result = this.(EnumDeclaration).getName()
+  }
+
+  /**
+   * Gets the local namespace name induced by this namespace.
+   */
+  LocalNamespaceName getLocalNamespaceName() {
+    result = getId().(LocalNamespaceDecl).getLocalNamespaceName()
+  }
+
+  /**
+   * Gets the canonical name of the namespace being defined.
+   */
+  Namespace getNamespace() {
+    result = NameResolution::getNamespaceFromDefinition(this)
+  }
+}
+
+/**
  * A TypeScript namespace declaration.
  *
  * This is also known as an "internal module" and can be declared
@@ -28,7 +68,7 @@ import javascript
  * For example, `declare module "X" {...}` is an external module declaration.
  * These are represented by `ExternalModuleDeclaration`.
  */
-class NamespaceDeclaration extends Stmt, StmtContainer, @namespacedeclaration {
+class NamespaceDeclaration extends NamespaceDefinition, StmtContainer, @namespacedeclaration {
   /** Gets the name of this namespace. */
   Identifier getId() {
     result = getChild(-1)
@@ -65,6 +105,39 @@ class NamespaceDeclaration extends Stmt, StmtContainer, @namespacedeclaration {
    */
   predicate isInstantiated() {
     isInstantiated(this)
+  }
+}
+
+/**
+ * A statement that defines a named type, that is, a class, interface, type alias, or enum declaration.
+ *
+ * Note that imports and type parameters are not type definitions.  Consider using `TypeDecl` to capture
+ * a wider class of type declarations.
+ */
+class TypeDefinition extends ASTNode, @typedefinition {
+  /**
+   * Gets the identifier naming the type.
+   */
+  Identifier getIdentifier() {
+    result = this.(ClassDefinition).getIdentifier() or
+    result = this.(InterfaceDeclaration).getIdentifier() or
+    result = this.(TypeAliasDeclaration).getIdentifier() or
+    result = this.(EnumDeclaration).getIdentifier() or
+    result = this.(EnumMember).getIdentifier()
+  }
+
+  /**
+   * Gets the unqualified name of the type being defined.
+   */
+  string getName() {
+    result = getIdentifier().getName()
+  }
+
+  /**
+   * Gets the canonical name of the type being defined.
+   */
+  TypeName getTypeName() {
+    result = NameResolution::getTypeNameFromDefinition(this)
   }
 }
 
@@ -304,7 +377,7 @@ abstract class TypeRef extends ASTNode {
 }
 
 /** An identifier declaring a type name, that is, the name of a class, interface, type parameter, or import. */
-class TypeDecl extends TypeRef, Identifier {
+class TypeDecl extends Identifier, TypeRef, LexicalDecl {
   TypeDecl() {
     this = any(ClassOrInterface ci).getIdentifier() or
     this = any(TypeParameter tp).getIdentifier() or
@@ -363,7 +436,7 @@ class TypeDecl extends TypeRef, Identifier {
  * In the above example, the two declarations of `Point` refer to the same
  * local type name.
  */
-class LocalTypeName extends @local_type_name {
+class LocalTypeName extends @local_type_name, LexicalName {
   /** Gets the local name of this type. */
   string getName() {
     local_type_names(this, result, _)
@@ -410,6 +483,10 @@ class LocalTypeName extends @local_type_name {
   Identifier getAnAccess() {
     typebind(result, this)
   }
+
+  override DeclarationSpace getDeclarationSpace() {
+    result = "type"
+  }
 }
 
 /**
@@ -435,7 +512,7 @@ class LocalTypeName extends @local_type_name {
  * ```
  * There is one local namespace name for the declaration of `A` and one for each import.
  */
-class LocalNamespaceName extends @local_namespace_name {
+class LocalNamespaceName extends @local_namespace_name, LexicalName {
   /** Gets the local name of this namespace. */
   string getName() {
     local_namespace_names(this, result, _)
@@ -481,6 +558,17 @@ class LocalNamespaceName extends @local_namespace_name {
   /** Gets an identifier that refers to this namespace name. */
   Identifier getAnAccess() {
     namespacebind(result, this)
+  }
+
+  /**
+   * Gets the canonical name of the namespace referenced by this name.
+   */
+  Namespace getNamespace() {
+    result = NameResolution::getNamespaceFromLocalName(this)
+  }
+
+  override DeclarationSpace getDeclarationSpace() {
+    result = "namespace"
   }
 }
 
@@ -604,7 +692,7 @@ class TypeAccess extends @typeaccess, TypeExpr, TypeRef {
    * For example, in `Array<number>`, the `Array` part is a type access with `Array<number>`
    * being its enclosing generic type.
    */
-  GenericTypeExpr getAsGenericType() { result.getTypeName() = this }
+  GenericTypeExpr getAsGenericType() { result.getTypeAccess() = this }
 
   /**
    * Holds if there are type arguments provided to this type by an enclosing generic type expression.
@@ -638,10 +726,17 @@ class TypeAccess extends @typeaccess, TypeExpr, TypeRef {
     then result = getAsGenericType().getNumTypeArgument()
     else result = 0
   }
+
+  /**
+   * Gets the canonical name of the type being accessed.
+   */
+  TypeName getTypeName() {
+    result = NameResolution::getTypeNameFromAccess(this)
+  }
 }
 
 /** An identifier that is used as part of a type, such as `Date`. */
-class LocalTypeAccess extends @localtypeaccess, TypeAccess, Identifier {
+class LocalTypeAccess extends @localtypeaccess, TypeAccess, Identifier, LexicalAccess {
   override predicate isStringy() { getName() = "String" }
   override predicate isNumbery() { getName() = "Number" }
   override predicate isBooleany() { getName() = "Boolean" }
@@ -687,7 +782,7 @@ class QualifiedTypeAccess extends @qualifiedtypeaccess, TypeAccess {
  */
 class GenericTypeExpr extends @generictypeexpr, TypeExpr {
   /** Gets the name of the type, such as `Array` in `Array<number>`. */
-  TypeAccess getTypeName() { result = getChildTypeExpr(-1) }
+  TypeAccess getTypeAccess() { result = getChildTypeExpr(-1) }
 
   /** Gets the `n`th type argument, starting at 0. */
   TypeExpr getTypeArgument(int n) { result = getChildTypeExpr(n) and n >= 0 }
@@ -932,7 +1027,7 @@ class VarTypeAccess extends @vartypeaccess, TypeExpr {
  *
  * This can occur as part of the operand to a `typeof` type or as the first operand to an `is` type.
  */
-class LocalVarTypeAccess extends @localvartypeaccess, VarTypeAccess, Identifier {
+class LocalVarTypeAccess extends @localvartypeaccess, VarTypeAccess, LexicalAccess, Identifier {
   /** Gets the variable being referenced, or nothing if this is a `this` keyword. */
   Variable getVariable() { bind(this, result) }
 }
@@ -1115,6 +1210,13 @@ class LocalNamespaceDecl extends VarDecl, NamespaceRef {
   LocalNamespaceName getLocalNamespaceName() {
     namespacedecl(this, result)
   }
+
+  /**
+   * Gets the canonical name of the namespace being defined or aliased by this name.
+   */
+  Namespace getNamespace() {
+    result = NameResolution::getNamespaceFromDeclarationId(this)
+  }
 }
 
 /**
@@ -1128,12 +1230,19 @@ class LocalNamespaceDecl extends VarDecl, NamespaceRef {
  */
 class NamespaceAccess extends TypeExpr, NamespaceRef, @namespaceaccess {
   Identifier getIdentifier() { none() }
+
+  /**
+   * Gets the canonical name of the namespace being accessed.
+   */
+  Namespace getNamespace() {
+    result = NameResolution::getNamespaceFromAccess(this)
+  }
 }
 
 /**
  * An identifier that refers to a namespace from inside a type annotation.
  */
-class LocalNamespaceAccess extends NamespaceAccess, Identifier, @localnamespaceaccess {
+class LocalNamespaceAccess extends NamespaceAccess, LexicalAccess, Identifier, @localnamespaceaccess {
   override Identifier getIdentifier() { result = this }
 
   /** Gets the local name being accessed. */
@@ -1156,7 +1265,7 @@ class QualifiedNamespaceAccess extends NamespaceAccess, @qualifiednamespaceacces
  * enum Color { red = 1, green, blue }
  * ```
  */
-class EnumDeclaration extends Stmt, @enumdeclaration {
+class EnumDeclaration extends NamespaceDefinition, @enumdeclaration {
   /** Gets the name of this enum, such as `E` in `enum E { A, B }`. */
   Identifier getIdentifier() {
     result = getChildExpr(0)
@@ -1200,7 +1309,7 @@ class EnumDeclaration extends Stmt, @enumdeclaration {
    * var x: E.A = 1
    * ```
    */
-  LocalNamespaceName getLocalNamespaceName() {
+  override LocalNamespaceName getLocalNamespaceName() {
     result = getIdentifier().(LocalNamespaceDecl).getLocalNamespaceName()
   }
 

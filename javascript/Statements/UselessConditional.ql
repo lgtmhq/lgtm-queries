@@ -112,7 +112,12 @@ where isConditional(cond, op) and
         (sel = cond and msg = "This logical 'and' expression can be replaced with a comma expression.")
 
       // otherwise we just report that `op` always evaluates to `cv`
-      else
-        (sel = op and msg = "This expression always evaluates to " + cv + ".")
+      else (
+        sel = op.(Expr).stripParens() and
+        if sel instanceof VarAccess then
+          msg = "Variable '" + sel.(VarAccess).getVariable().getName() + "' always evaluates to " + cv + " here."
+        else
+          msg = "This expression always evaluates to " + cv + "."
+      )
 
 select sel, msg

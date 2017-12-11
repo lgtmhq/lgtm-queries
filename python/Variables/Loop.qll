@@ -35,10 +35,17 @@ private Stmt loop_probably_defines(Variable v) {
     )
 }
 
-/** Whether the variable used by `use` is probably defined in a loop */
+/** Holds if the variable used by `use` is probably defined in a loop */
 predicate probably_defined_in_loop(Name use) {
     exists(Stmt loop |
         loop = loop_probably_defines(use.getVariable()) |
         loop.getAFlowNode().strictlyReaches(use.getAFlowNode())
     )
+}
+
+/** Holds if `s` is a loop that probably executes at least once */
+predicate loop_probably_executes_at_least_once(Stmt s) {
+    probably_non_empty_sequence(s.(For).getIter())
+    or
+    probably_non_empty_sequence(s.(While).getTest())
 }

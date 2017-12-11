@@ -51,6 +51,7 @@ class RegExpInjectionTaintTrackingConfiguration extends TaintTracking::Configura
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     node instanceof RegExpInjectionSanitizer
   }
 }

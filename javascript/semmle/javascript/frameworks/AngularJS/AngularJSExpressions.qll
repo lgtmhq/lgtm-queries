@@ -15,6 +15,10 @@
  * Provides classes for dealing with AngularJS expressions (e.g. `<div id="{{myId}}"/>`).
  *
  * INTERNAL: Do not import this module directly, import `AngularJS` instead.
+ *
+ * NOTE: The API of this library is not stable yet and may change in
+ *       the future.
+ *
  */
 
 import javascript
@@ -135,6 +139,28 @@ private class HtmlAttributeAsPlainNgSourceProvider extends HtmlAttributeAsNgSour
 
   override int getOffset() {
     result = 0
+  }
+
+}
+
+/**
+ * AngularJS expression sources interpolated with `{{}}` in the `.template` field of an AngularJS directive.
+ */
+private class TemplateFieldNgSourceProvider extends NgSourceProvider {
+
+  string source;
+
+  int offset;
+
+  TemplateFieldNgSourceProvider() {
+    this = any(AngularJS::GeneralDirective e).getMember("template") and
+    source = this.(ConstantString).getStringValue().regexpFind(getInterpolatedExpressionPattern(), _, offset)
+  }
+
+  override predicate providesSourceAt(string src, string path, int startLine, int startColumn, int endLine, int endColumn) {
+    src = source and
+    getLocation().hasLocationInfo(path, startLine, startColumn - offset, endLine, _) and
+    endColumn = startColumn + src.length()-1
   }
 
 }

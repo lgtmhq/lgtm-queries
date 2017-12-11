@@ -46,6 +46,7 @@ import semmle.javascript.Util
 import semmle.javascript.SSA
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.frameworks.AngularJS
+import semmle.javascript.frameworks.Credentials
 import semmle.javascript.frameworks.jQuery
 import semmle.javascript.frameworks.NoSQL
 import semmle.javascript.frameworks.SQL
@@ -55,3 +56,4 @@ import semmle.javascript.linters.ESLint
 import semmle.javascript.linters.JSLint
 import semmle.javascript.XML
 import semmle.javascript.TypeScript
+import semmle.javascript.QualifiedNames

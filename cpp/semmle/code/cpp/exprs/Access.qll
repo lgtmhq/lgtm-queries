@@ -138,7 +138,7 @@ class VariableAccess extends Access, @varaccess {
  * A C/C++ field access expression.
  */
 class FieldAccess extends VariableAccess {
-  FieldAccess() { super.getTarget() instanceof Field }
+  FieldAccess() { exists(Field f | varbind(this, f)) }
 
   /** Gets the accessed field. */
   Field getTarget() { result = super.getTarget() }

@@ -11,8 +11,14 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.security.ExternalProcess
+
+private class UserInputToArgumentToExecFlowConfig extends TaintTracking::Configuration {
+  UserInputToArgumentToExecFlowConfig() { this = "ExecCommon::UserInputToArgumentToExecFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { src instanceof UserInput }
+  override predicate isSink(DataFlow::Node sink) { sink.asExpr() instanceof ArgumentToExec }
+}
 
 /**
  * Implementation of `ExecTainted.ql`. It is extracted to a QLL
@@ -20,5 +26,7 @@ import semmle.code.java.security.ExternalProcess
  * reporting overlapping results.
  */
 predicate execTainted(UserInput source, ArgumentToExec execArg) {
-  source.flowsTo(execArg)
+  exists(UserInputToArgumentToExecFlowConfig conf |
+    conf.hasFlow(source, DataFlow::exprNode(execArg))
+  )
 }

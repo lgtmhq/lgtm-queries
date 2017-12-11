@@ -50,15 +50,6 @@ private predicate containsCodeExample(Comment c) {
   )
 }
 
-/** Holds if comment `c` spans lines `start` to `end` (inclusive) in file `f`. */
-private predicate commentOnLines(Comment c, File f, int start, int end) {
-  exists (Location loc | loc = c.getLocation() |
-    f = loc.getFile() and
-    start = loc.getStartLine() and
-    end = loc.getEndLine()
-  )
-}
-
 /**
  * Gets a comment that belongs to a run of consecutive comments in file `f`
  * starting with `c`, where `c` itself contains commented-out code, but the comment
@@ -66,17 +57,17 @@ private predicate commentOnLines(Comment c, File f, int start, int end) {
  */
 private Comment getCommentInRun(File f, Comment c) {
   exists (int n |
-    commentOnLines(c, f, n, _) and
+    c.onLines(f, n, _) and
     countCommentedOutLines(c) > 0 and
-    not exists (Comment d | commentOnLines(d, f, _, n-1) |
+    not exists (Comment d | d.onLines(f, _, n-1) |
       countCommentedOutLines(d) > 0
     )
   ) and
   (result = c or
    exists (Comment prev, int n |
      prev = getCommentInRun(f, c) and
-     commentOnLines(prev, f, _, n) and
-     commentOnLines(result, f, n+1, _)
+     prev.onLines(f, _, n) and
+     result.onLines(f, n+1, _)
    )
   )
 }

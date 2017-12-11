@@ -683,6 +683,21 @@ class InvokeExpr extends @invokeexpr, Expr {
   predicate isSpreadArgument(int i) {
     getArgument(i).stripParens() instanceof SpreadElement
   }
+
+  /**
+   * Holds if the `i`th argument of this invocation is an object literal whose property
+   * `name` is set to `value`.
+   *
+   * This predicate is an approximation, computed using only local data flow.
+   */
+  predicate hasOptionArgument(int i, string name, DataFlowNode value) {
+    exists (ObjectExpr obj, PropWriteNode pwn |
+      obj = getArgument(i).(DataFlowNode).getALocalSource() and
+      pwn.getBase().getALocalSource() = obj and
+      pwn.getPropertyName() = name and
+      value = pwn.getRhs()
+    )
+  }
 }
 
 /** A `new` expression. */

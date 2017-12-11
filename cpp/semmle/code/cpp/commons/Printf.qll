@@ -54,8 +54,8 @@ abstract class FormattingFunction extends Function {
 class Printf extends FormattingFunction {
   Printf() { this instanceof TopLevelFunction and (hasGlobalName("printf") or hasGlobalName("wprintf") or hasGlobalName("g_printf")) }
 
-  int getFormatParameterIndex() { result=0 }
-  predicate isWideCharDefault() { hasGlobalName("wprintf") }
+  override int getFormatParameterIndex() { result=0 }
+  override predicate isWideCharDefault() { hasGlobalName("wprintf") }
 }
 
 /**
@@ -64,9 +64,9 @@ class Printf extends FormattingFunction {
 class Fprintf extends FormattingFunction {
   Fprintf() { this instanceof TopLevelFunction and (hasGlobalName("fprintf") or hasGlobalName("fwprintf") or hasGlobalName("g_fprintf"))}
 
-  int getFormatParameterIndex() { result=1 }
-  predicate isWideCharDefault() { hasGlobalName("fwprintf") }
-  int getOutputParameterIndex() { result=0 }
+  override int getFormatParameterIndex() { result=1 }
+  override predicate isWideCharDefault() { hasGlobalName("fwprintf") }
+  override int getOutputParameterIndex() { result=0 }
 }
 
 /**
@@ -86,21 +86,20 @@ class Sprintf extends FormattingFunction {
     )
   }
 
-  predicate isWideCharDefault() {
+  override predicate isWideCharDefault() {
     getParameter(getFormatParameterIndex()).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() > 1
   }
 
-  /** the position at which the format parameter occurs */
-  int getFormatParameterIndex() {
+  override int getFormatParameterIndex() {
     if hasGlobalName("g_strdup_printf") then result = 0
     else if hasGlobalName("__builtin___sprintf_chk") then result = 3
     else result = 1
   }
-  int getOutputParameterIndex() {
+  override int getOutputParameterIndex() {
     not hasGlobalName("g_strdup_printf") and result = 0
   }
   
-  int getFirstFormatArgumentIndex() {
+  override int getFirstFormatArgumentIndex() {
     if hasGlobalName("__builtin___sprintf_chk") then result = 4
     else result = getNumberOfParameters()
   }
@@ -131,18 +130,18 @@ class Snprintf extends FormattingFunction {
     )
   }
 
-  int getFormatParameterIndex() {
+  override int getFormatParameterIndex() {
     if getName().matches("%\\_l")
       then result = getFirstFormatArgumentIndex() - 2 
       else result = getFirstFormatArgumentIndex() - 1
   }
 
-  predicate isWideCharDefault() {
+  override predicate isWideCharDefault() {
     getParameter(getFormatParameterIndex()).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() > 1
   }
-  int getOutputParameterIndex() { result=0 }
+  override int getOutputParameterIndex() { result=0 }
   
-  int getFirstFormatArgumentIndex() {
+  override int getFirstFormatArgumentIndex() {
     if hasGlobalName("__builtin___snprintf_chk") then result = 5
     else result = getNumberOfParameters()
   }
@@ -158,7 +157,7 @@ class Snprintf extends FormattingFunction {
     hasGlobalName("__builtin___snprintf_chk")
   }
 
-  int getSizeParameterIndex() {
+  override int getSizeParameterIndex() {
     result = 1
   }
 }
@@ -180,21 +179,21 @@ class StringCchPrintf extends FormattingFunction {
     )
   }
 
-  int getFormatParameterIndex() {
+  override int getFormatParameterIndex() {
     if getName().matches("%Ex")
       then result = 5
       else result = 2
   }
 
-  predicate isWideCharDefault() {
+  override predicate isWideCharDefault() {
     getParameter(getFormatParameterIndex()).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() > 1
   }
 
-  int getOutputParameterIndex() {
+  override int getOutputParameterIndex() {
     result = 0
   }
 
-  int getSizeParameterIndex() {
+  override int getSizeParameterIndex() {
     result = 1
   }
 }
@@ -209,8 +208,28 @@ class Syslog extends FormattingFunction {
     )
   }
 
-  /** the position at which the format parameter occurs */
-  int getFormatParameterIndex() { result=1 }
+  override int getFormatParameterIndex() { result=1 }
+}
+
+/**
+ * A function that can be identified as a `printf` style formatting
+ * function by it's use of the GNU `format` attribute.
+ */
+class AttributeFormattingFunction extends FormattingFunction {
+  FormatAttribute printf_attrib;
+
+  AttributeFormattingFunction() {
+    printf_attrib = getAnAttribute() and
+    (
+      printf_attrib.getArchetype() = "printf" or
+      printf_attrib.getArchetype() = "__printf__"
+    ) and
+    exists(printf_attrib.getFirstFormatArgIndex()) // exclude `vprintf` style format functions
+  }
+
+  override int getFormatParameterIndex() {
+    result = printf_attrib.getFormatIndex()
+  }
 }
 
 predicate primitiveVariadicFormatter(TopLevelFunction f, int formatParamIndex, boolean wide) {
@@ -248,10 +267,9 @@ class UserDefinedFormattingFunction extends FormattingFunction {
     isVarargs() and callsVariadicFormatter(this, _, _)
   }
 
-  /** the position at which the format parameter occurs */
-  int getFormatParameterIndex() { callsVariadicFormatter(this, result, _) }
+  override int getFormatParameterIndex() { callsVariadicFormatter(this, result, _) }
 
-  predicate isWideCharDefault() { callsVariadicFormatter(this, _, true) }
+  override predicate isWideCharDefault() { callsVariadicFormatter(this, _, true) }
 }
 
 /**
@@ -263,7 +281,7 @@ class NsstringStringWithFormat extends FormattingFunction {
     getQualifiedName().matches("NSString%::+localizedStringWithFormat:")
   }
 
-  int getFormatParameterIndex() {
+  override int getFormatParameterIndex() {
     result = 0
   }
 }
@@ -559,10 +577,6 @@ class FormatLiteral extends Expr {
     else any()
   }
 
-  Wchar_t getWchar_t() {
-    result.getSize() = min(Wchar_t t | | t.getSize())
-  }
-
   Intmax_t getIntmax_t() {
          if this.targetBitSize() = 4 then result.getSize() = min(Intmax_t l | | l.getSize())
     else if this.targetBitSize() = 8 then result.getSize() = max(Intmax_t l | | l.getSize())
@@ -701,7 +715,7 @@ class FormatLiteral extends Expr {
       ) or (
         cnv = "C" and
         isMicrosoft() and
-        result = this.getWchar_t()
+        result instanceof WideCharType
       ) or (
         cnv = "C" and
         not isMicrosoft() and
@@ -749,7 +763,7 @@ class FormatLiteral extends Expr {
 
   private Type getConversionType5(int n) {
     exists(string cnv | cnv = this.getEffectiveStringConversionChar(n) |
-      cnv="S" and result.(PointerType).getBaseType() = this.getWchar_t() 
+      cnv="S" and result.(PointerType).getBaseType().hasName("wchar_t") 
     )
   }
 

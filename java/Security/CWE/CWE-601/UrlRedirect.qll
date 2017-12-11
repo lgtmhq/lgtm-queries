@@ -12,23 +12,24 @@
 // permissions and limitations under the License.
 
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.frameworks.Servlets
+import semmle.code.java.dataflow.DataFlow
 
 /**
  * A URL redirection sink.
  */
-class UrlRedirectSink extends Expr {
+class UrlRedirectSink extends DataFlow::ExprNode {
   UrlRedirectSink() {
     exists(MethodAccess ma |
       ma.getMethod() instanceof HttpServletResponseSendRedirectMethod and
-      this = ma.getArgument(0)
+      this.asExpr() = ma.getArgument(0)
     )
     or
     exists(MethodAccess ma |
       ma.getMethod() instanceof ResponseSetHeaderMethod or
       ma.getMethod() instanceof ResponseAddHeaderMethod |
       ma.getArgument(0).(CompileTimeConstantExpr).getStringValue() = "Location" and
-      this = ma.getArgument(1)
+      this.asExpr() = ma.getArgument(1)
     )
   }
 }

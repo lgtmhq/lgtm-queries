@@ -91,12 +91,19 @@ private module MongoDB {
 /**
  * Provides classes modeling the Mongoose library.
  */
-module Mongoose {
+private module Mongoose {
   /**
    * Gets an expression that may refer to an import of Mongoose.
    */
-  private DataFlowNode getAMongooseInstance() {
+  DataFlowNode getAMongooseInstance() {
     result.getALocalSource().(ModuleInstance).getPath() = "mongoose"
+  }
+
+  /**
+   * Gets a call to `mongoose.createConnection`.
+   */
+  MethodCallExpr createConnection() {
+    result.calls(getAMongooseInstance(), "createConnection")
   }
 
   /**
@@ -105,6 +112,26 @@ module Mongoose {
   class Model extends MongoDB::Collection {
     Model() {
       this.getALocalSource().(MethodCallExpr).calls(getAMongooseInstance(), "model")
+    }
+  }
+
+  /**
+   * An expression passed to `mongoose.createConnection` to supply credentials.
+   */
+  class Credentials extends CredentialsExpr {
+    string kind;
+
+    Credentials() {
+      exists (string prop |
+        createConnection().hasOptionArgument(3, prop, this) |
+        prop = "user" and kind = "user name"
+        or
+        prop = "pass" and kind = "password"
+      )
+    }
+
+    override string getCredentialsKind() {
+      result = kind
     }
   }
 }

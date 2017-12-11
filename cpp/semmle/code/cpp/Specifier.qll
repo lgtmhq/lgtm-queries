@@ -201,6 +201,57 @@ class AlignAs extends Attribute, @alignas {
 }
 
 /**
+ * A GNU `format` attribute of the form `__attribute__((format(archetype, format-index, first-arg)))`
+ * that declares a function to accept a `printf` style format string.
+ */
+class FormatAttribute extends GnuAttribute {
+  FormatAttribute() {
+    getName() = "format"
+  }
+
+  /**
+   * Gets the archetype of this format attribute, for example
+   * `"printf"`.
+   */
+  string getArchetype() {
+    result = getArgument(0).getValueText()
+  }
+
+  /**
+   * Gets the index in (1-based) format attribute notation associated
+   * with the first argument of the function.
+   */
+  private int firstArgumentNumber() {
+    if exists(MemberFunction f | f.getAnAttribute() = this and not f.isStatic()) then (
+      // 1 is `this`, so the first parameter is 2
+      result = 2
+    ) else (
+      result = 1
+    )
+  }
+
+  /**
+   * Gets the (0-based) index of the format string,
+   * according to this attribute.
+   */
+  int getFormatIndex() {
+    result = getArgument(1).getValueInt() - firstArgumentNumber()
+  }
+
+  /**
+   * Gets the (0-based) index of the first format argument (if any),
+   * according to this attribute.
+   */
+  int getFirstFormatArgIndex() {
+    exists(int val |
+      val = getArgument(2).getValueInt() and
+      result = val - firstArgumentNumber() and
+      not val = 0 // indicates a `vprintf` style format function with arguments not directly available.
+    )
+  }
+}
+
+/**
  * An argument to an `Attribute`.
  */
 class AttributeArgument extends Element, @attribute_arg {

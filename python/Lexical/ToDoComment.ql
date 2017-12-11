@@ -19,6 +19,7 @@
  * @tags maintainability
  *       readability
  *       documentation
+ *       external/cwe/cwe-546
  * @problem.severity recommendation
  * @sub-severity low
  * @precision very-high

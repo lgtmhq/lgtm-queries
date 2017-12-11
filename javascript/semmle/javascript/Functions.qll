@@ -362,6 +362,24 @@ class Function extends @function, Parameterized, TypeParameterized, StmtContaine
   predicate isAbstract() {
       exists (MethodDeclaration md | this = md.getBody() | md.isAbstract())
   }
+
+  /**
+   * Holds if this function cannot be invoked using `new` because it
+   * is of the given `kind`.
+   */
+  predicate isNonConstructible(string kind) {
+    this instanceof Method and not this instanceof Constructor and
+    kind = "a method"
+    or
+    this instanceof ArrowFunctionExpr and
+    kind = "an arrow function"
+    or
+    isGenerator() and
+    kind = "a generator function"
+    or
+    isAsync() and
+    kind = "an async function"
+  }
 }
 
 /**

@@ -48,6 +48,16 @@ class Comment extends @comment, Locatable {
   override string toString() {
     comments(this, _, _, _, result)
   }
+
+  /** Holds if this comment spans lines `start` to `end` (inclusive) in file `f`. */
+  predicate onLines(File f, int start, int end) {
+    exists (Location loc | loc = getLocation() |
+      f = loc.getFile() and
+      start = loc.getStartLine() and
+      end = loc.getEndLine()
+    )
+  }
+
 }
 
 /** A line comment, that is, either an HTML comment or a `//` comment. */

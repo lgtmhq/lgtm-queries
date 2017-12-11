@@ -32,7 +32,7 @@ import Buffer
  * An access to a variable that is initialized by a constant
  * expression, and is never used as an lvalue anywhere else.
  */
-predicate isEffectivelyConstAccess(Access a)
+predicate isEffectivelyConstAccess(VariableAccess a)
 {
   exists(Variable v |
     a.getTarget() = v and
@@ -41,11 +41,11 @@ predicate isEffectivelyConstAccess(Access a)
   )
 }
 
-from FunctionCall fc, Access src
+from FunctionCall fc, VariableAccess src
 where fc.getTarget().hasName("strcat") and
       src = fc.getArgument(1) and
       not src.getType() instanceof ArrayType and
       not exists(BufferSizeExpr bse |
-        bse.getArg().(Access).getTarget() = src.getTarget()) and
+        bse.getArg().(VariableAccess).getTarget() = src.getTarget()) and
       not isEffectivelyConstAccess(src)
 select fc, "Always check the size of the source buffer when using strcat."

@@ -26,7 +26,7 @@
  */
 
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.DataFlow
 import semmle.code.java.security.XSS
 
 /**
@@ -39,14 +39,20 @@ class PrintStackTraceMethod extends Method {
   }
 }
 
+class ServletWriterSourceToPrintStackTraceMethodFlowConfig extends TaintTracking::Configuration {
+  ServletWriterSourceToPrintStackTraceMethodFlowConfig() { this = "StackTraceExposure::ServletWriterSourceToPrintStackTraceMethodFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof ServletWriterSource }
+  override predicate isSink(DataFlow::Node sink) { exists(MethodAccess ma | sink.asExpr() = ma.getAnArgument() and ma.getMethod() instanceof PrintStackTraceMethod) }
+}
+
 /**
  * A call that uses `Throwable.printStackTrace()` on a stream that is connected
  * to external output.
  */
 predicate printsStackToWriter(MethodAccess call) {
-  exists (ServletWriterSource writerSource, PrintStackTraceMethod printStackTrace |
+  exists (ServletWriterSourceToPrintStackTraceMethodFlowConfig writerSource, PrintStackTraceMethod printStackTrace |
     call.getMethod() = printStackTrace and
-    writerSource.flowsTo(call.getAnArgument())
+    writerSource.hasFlowToExpr(call.getAnArgument())
   )
 }
 
@@ -74,10 +80,10 @@ predicate stackTraceExpr(Expr exception, MethodAccess stackTraceString) {
   )
 }
 
-class StackTraceStringFlowSource extends FlowSource {
-  StackTraceStringFlowSource() {
-    stackTraceExpr(_, this)
-  }
+class StackTraceStringToXssSinkFlowConfig extends TaintTracking::Configuration2 {
+  StackTraceStringToXssSinkFlowConfig() { this = "StackTraceExposure::StackTraceStringToXssSinkFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { stackTraceExpr(_, src.asExpr()) }
+  override predicate isSink(DataFlow::Node sink) { sink instanceof XssSink }
 }
 
 /**
@@ -92,16 +98,16 @@ predicate printsStackExternally(MethodAccess call, Expr stackTrace) {
  * A stringified stack trace flows to an external sink.
  */
 predicate stringifiedStackFlowsExternally(XssSink externalExpr, Expr stackTrace) {
-  exists (StackTraceStringFlowSource stackTraceString |
+  exists (MethodAccess stackTraceString, StackTraceStringToXssSinkFlowConfig conf |
     stackTraceExpr(stackTrace, stackTraceString) and
-    stackTraceString.flowsTo(externalExpr)
+    conf.hasFlow(DataFlow::exprNode(stackTraceString), externalExpr)
   )
 }
 
-class GetMessageFlowSource extends FlowSource {
+class GetMessageFlowSource extends MethodAccess {
   GetMessageFlowSource() {
     exists (Method method |
-      method = this.(MethodAccess).getMethod() and
+      method = this.getMethod() and
       method.hasName("getMessage") and
       method.hasNoParameters() and
       method.getDeclaringType().hasQualifiedName("java.lang", "Throwable")
@@ -109,18 +115,24 @@ class GetMessageFlowSource extends FlowSource {
   }
 }
 
+class GetMessageFlowSourceToXssSinkFlowConfig extends TaintTracking::Configuration2 {
+  GetMessageFlowSourceToXssSinkFlowConfig() { this = "StackTraceExposure::GetMessageFlowSourceToXssSinkFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof GetMessageFlowSource }
+  override predicate isSink(DataFlow::Node sink) { sink instanceof XssSink }
+}
+
 /**
  * A call to `getMessage()` that then flows to a servlet response.
  */
 predicate getMessageFlowsExternally(XssSink externalExpr, GetMessageFlowSource getMessage) {
-  getMessage.flowsTo(externalExpr)
+  any(GetMessageFlowSourceToXssSinkFlowConfig conf).hasFlow(DataFlow::exprNode(getMessage), externalExpr)
 }
 
 from Expr externalExpr, Expr errorInformation
 where
   printsStackExternally(externalExpr, errorInformation) or
-  stringifiedStackFlowsExternally(externalExpr, errorInformation) or
-  getMessageFlowsExternally(externalExpr, errorInformation)
+  stringifiedStackFlowsExternally(DataFlow::exprNode(externalExpr), errorInformation) or
+  getMessageFlowsExternally(DataFlow::exprNode(externalExpr), errorInformation)
 select
   externalExpr, "$@ can be exposed to an external user.",
   errorInformation, "Error information"

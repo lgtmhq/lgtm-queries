@@ -82,5 +82,6 @@ where variables(v, name, scope)
   and isInScope(lit, scope)
   and usesTemplates(lit.getTopLevel())
   and not exists (ObjectExpr obj | providesTemplateVariablesFor(obj, lit))
+  and not lit.getStringValue() = "${" + name + "}"
 select lit, "This string is not a template literal, but appears to reference the variable $@.", 
     decl, v.getName()

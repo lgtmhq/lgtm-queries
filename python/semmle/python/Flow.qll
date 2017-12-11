@@ -15,6 +15,18 @@ import python
 import semmle.python.flow.NameNode
 private import semmle.python.pointsto.Final
 
+
+/* Note about matching parent and child nodes and CFG splitting:
+ *
+ * As a result of CFG splitting a single AST node may have multiple CFG nodes.
+ * Therefore, when matching CFG nodes to children, we need to make sure that 
+ * we don't match the child of one CFG node to the wrong parent.
+ * We do this by checking dominance. If the CFG node for the parent precedes that of
+ * the child, then he child node matches the parent node if it is dominated by it.
+ * Vice versa for child nodes that precede the parent.
+ */
+
+
 private predicate augstore(ControlFlowNode load, ControlFlowNode store) {
     exists(Expr load_store | exists(AugAssign aa | aa.getTarget() = load_store) |
         toAst(load) = load_store and
@@ -617,6 +629,11 @@ class BinaryExprNode extends ControlFlowNode {
         result.getBasicBlock().dominates(this.getBasicBlock()))
     }
 
+    /** Gets the operator of this binary expression node. */
+    Operator getOp() {
+        result = this.getNode().getOp()
+    }
+
 }
 
 /** A control flow node corresponding to a boolean shortcut (and/or) operation */
@@ -722,7 +739,11 @@ class TupleNode extends SequenceNode {
 
     ControlFlowNode getElement(int n) {
         exists(Tuple t | this.getNode() = t and result.getNode() = t.getElt(n)) and
-        result.getBasicBlock().dominates(this.getBasicBlock())
+        (
+            result.getBasicBlock().dominates(this.getBasicBlock())
+            or
+            this.getBasicBlock().dominates(result.getBasicBlock())
+        )
     }
 }
 
@@ -734,6 +755,33 @@ class ListNode extends SequenceNode {
 
     ControlFlowNode getElement(int n) {
         exists(List l | this.getNode() = l and result.getNode() = l.getElt(n)) and
+        (
+            result.getBasicBlock().dominates(this.getBasicBlock())
+            or
+            this.getBasicBlock().dominates(result.getBasicBlock())
+        )
+    }
+
+}
+
+/** A control flow node corresponding to a dictionary literal, such as `{ 'a': 1, 'b': 2 }` */
+class DictNode extends ControlFlowNode {
+
+    DictNode() {
+        toAst(this) instanceof Dict
+    }
+
+    /** Gets a key of this dictionary literal node, for those items that have keys
+     * E.g, in {'a':1, **b} this returns only 'a'
+     */
+    ControlFlowNode getAKey() {
+        exists(Dict d | this.getNode() = d and result.getNode() = d.getAKey()) and
+        result.getBasicBlock().dominates(this.getBasicBlock())
+    }
+
+    /** Gets a value of this dictionary literal node*/
+    ControlFlowNode getAValue() {
+        exists(Dict d | this.getNode() = d and result.getNode() = d.getAValue()) and
         result.getBasicBlock().dominates(this.getBasicBlock())
     }
 
@@ -847,7 +895,6 @@ class BasicBlock extends @py_flow_node {
         this.dominates(other.getAPredecessor()) and not this.strictlyDominates(other)
     }
 
-
     private ControlFlowNode firstNode() {
         result = this
     }
@@ -929,6 +976,8 @@ class BasicBlock extends @py_flow_node {
      */
     predicate unlikelySuccessor(BasicBlock succ) {
         this.getLastNode().(RaisingNode).unlikelySuccessor(succ.firstNode())
+        or
+        not end_bb_likely_reachable(this) and succ = this.getASuccessor()
     }
 
     /** Holds if this basic block strictly reaches the other. Is the start of other reachable from the end of this. */
@@ -954,7 +1003,7 @@ private predicate start_bb_likely_reachable(BasicBlock b) {
     exists(BasicBlock pred |
         pred = b.getAPredecessor() and
         end_bb_likely_reachable(pred) and
-        not pred.unlikelySuccessor(b)
+        not pred.getLastNode().(RaisingNode).unlikelySuccessor(b)
     )
 }
 
@@ -963,7 +1012,8 @@ private predicate end_bb_likely_reachable(BasicBlock b) {
     not exists(ControlFlowNode p, ControlFlowNode s |
         p.(RaisingNode).unlikelySuccessor(s) and
         p = b.getNode(_) and
-        s = b.getNode(_)
+        s = b.getNode(_) and
+        not p = b.getLastNode()
     )
 }
 

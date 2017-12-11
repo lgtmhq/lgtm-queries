@@ -18,6 +18,7 @@
  * @tags reliability
  *       maintainability
  *       convention
+ *       external/cwe/cwe-665
  * @problem.severity warning
  * @sub-severity high
  * @precision high

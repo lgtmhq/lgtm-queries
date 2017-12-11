@@ -24,7 +24,7 @@
  *       external/cwe/cwe-290
  */
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 
 class TypeShiroSubject extends RefType {
   TypeShiroSubject() {
@@ -76,6 +76,12 @@ class WCPermissionConstruction extends ClassInstanceExpr, PermissionsConstructio
   }
 }
 
-from UserInput u, PermissionsConstruction p
-where u.flowsTo(p.getInput())
+class TaintedPermissionsCheckFlowConfig extends TaintTracking::Configuration {
+  TaintedPermissionsCheckFlowConfig() { this = "TaintedPermissionsCheckFlowConfig" }
+  override predicate isSource(DataFlow::Node source) { source instanceof UserInput }
+  override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(PermissionsConstruction p).getInput() }
+}
+
+from UserInput u, PermissionsConstruction p, TaintedPermissionsCheckFlowConfig conf
+where conf.hasFlow(u, DataFlow::exprNode(p.getInput()))
 select p, "Permissions check uses user-controlled $@.", u, "data"

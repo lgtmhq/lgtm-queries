@@ -187,22 +187,23 @@ private cached module ControlFlowGraphImpl {
     t = n.(ThrowStmt).getThrownExceptionType() or
     exists (Call c | c = n |
       t = c.getCallee().getAThrownExceptionType() or
-      uncheckedExceptionFromCatch(n.getEnclosingStmt(), t) or
-      uncheckedExceptionFromFinally(n.getEnclosingStmt(), t)
+      uncheckedExceptionFromCatch(n, t) or
+      uncheckedExceptionFromFinally(n, t)
     ) or
     exists(CastExpr c | c = n |
       t instanceof TypeClassCastException and
-      uncheckedExceptionFromCatch(n.getEnclosingStmt(), t)
+      uncheckedExceptionFromCatch(n, t)
     )
   }
 
   /**
    * Bind `t` to an unchecked exception that may transfer control to a finally
-   * block inside which `s` is nested.
+   * block inside which `n` is nested.
    */
-  private predicate uncheckedExceptionFromFinally(Stmt s, ThrowableType t) {
+  private predicate uncheckedExceptionFromFinally(ControlFlowNode n, ThrowableType t) {
     exists (TryStmt try |
-      (s.getParent+() = try.getBlock() or s = try.getAResourceDecl()) and
+      n.getEnclosingStmt().getParent+() = try.getBlock() or
+      n.(Expr).getParent*() = try.getAResource() |
       exists(try.getFinally()) and
       (t instanceof TypeError or t instanceof TypeRuntimeException)
     )
@@ -210,24 +211,25 @@ private cached module ControlFlowGraphImpl {
 
   /**
    * Bind `t` to all unchecked exceptions that may be caught by some
-   * `try-catch` inside which `s` is nested.
+   * `try-catch` inside which `n` is nested.
    */
-  private predicate uncheckedExceptionFromCatch(Stmt s, ThrowableType t) {
+  private predicate uncheckedExceptionFromCatch(ControlFlowNode n, ThrowableType t) {
     exists (TryStmt try, UncheckedThrowableSuperType caught |
+      n.getEnclosingStmt().getParent+() = try.getBlock() or
+      n.(Expr).getParent*() = try.getAResource() |
       t = caught.getAnUncheckedSubtype() and
-      (s.getParent+() = try.getBlock() or s = try.getAResourceDecl()) and
       try.getACatchClause().getACaughtType() = caught
     )
   }
 
   /**
    * Get an exception type that may be thrown during execution of the
-   * body or the resource declarations (if any) of `try`.
+   * body or the resources (if any) of `try`.
    */
   private ThrowableType thrownInBody(TryStmt try) {
-    exists (ControlFlowNode n, Stmt s | mayThrow(n, result) and s = n.getEnclosingStmt() |
-      s.getParent+() = try.getBlock() or
-      s = try.getAResourceDecl()
+    exists (ControlFlowNode n | mayThrow(n, result) |
+      n.getEnclosingStmt().getParent+() = try.getBlock() or
+      n.(Expr).getParent*() = try.getAResource()
     )
   }
 
@@ -478,7 +480,7 @@ private cached module ControlFlowGraphImpl {
    */
   private predicate catchOrFinallyCompletion(TryStmt try, ControlFlowNode last, Completion completion) {
     last(try.getBlock(), last, completion) or
-    last(try.getAResourceDecl(), last, completion) and completion = ThrowCompletion(_)
+    last(try.getAResource(), last, completion) and completion = ThrowCompletion(_)
   }
 
   /**
@@ -782,15 +784,15 @@ private cached module ControlFlowGraphImpl {
     ) or
 
     // Resource declarations in a try-with-resources execute sequentially.
-    exists (TryStmt try, int i | last(try.getResourceDecl(i), n, completion) and completion = NormalCompletion() |
-      result = first(try.getResourceDecl(i+1)) or
-      not exists(try.getResourceDecl(i+1)) and result = first(try.getBlock())
+    exists (TryStmt try, int i | last(try.getResource(i), n, completion) and completion = NormalCompletion() |
+      result = first(try.getResource(i+1)) or
+      not exists(try.getResource(i+1)) and result = first(try.getBlock())
     ) or
 
     // After the last resource declaration, control transfers to the body.
     exists (TryStmt try | n = try and completion = NormalCompletion() |
-      result = first(try.getResourceDecl(0)) or
-      not exists(try.getAResourceDecl()) and result = first(try.getBlock())
+      result = first(try.getResource(0)) or
+      not exists(try.getAResource()) and result = first(try.getBlock())
     ) or
 
     // exceptional control flow

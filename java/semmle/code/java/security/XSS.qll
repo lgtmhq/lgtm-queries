@@ -12,29 +12,37 @@
 // permissions and limitations under the License.
 
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.frameworks.Servlets
+import semmle.code.java.frameworks.android.WebView
+import semmle.code.java.dataflow.TaintTracking
 
 /*
  * Definitions for XSS sinks
  */
 
-class XssSink extends Expr {
+class XssSink extends DataFlow::ExprNode {
   XssSink() {
     exists(HttpServletResponseSendErrorMethod m, MethodAccess ma |
       ma.getMethod() = m and
-      this = ma.getArgument(1)
+      this.getExpr() = ma.getArgument(1)
     )
-    or exists(ServletWriterSource writer, MethodAccess ma |
+    or exists(ServletWriterSourceToWritingMethodFlowConfig writer, MethodAccess ma |
       ma.getMethod() instanceof WritingMethod and
-      writer.flowsTo(ma.getQualifier()) and
-      this = ma.getArgument(_)
+      writer.hasFlowToExpr(ma.getQualifier()) and
+      this.getExpr() = ma.getArgument(_)
     ) or exists(Method m |
       m.getDeclaringType() instanceof TypeWebView and
-      (m.getAReference().getArgument(0) = this and m.getName() = "loadData" or
-      m.getAReference().getArgument(0) = this and m.getName() = "loadUrl" or
-      m.getAReference().getArgument(1) = this and m.getName() = "loadDataWithBaseURL")
+      (m.getAReference().getArgument(0) = this.getExpr() and m.getName() = "loadData" or
+      m.getAReference().getArgument(0) = this.getExpr() and m.getName() = "loadUrl" or
+      m.getAReference().getArgument(1) = this.getExpr() and m.getName() = "loadDataWithBaseURL")
     )
   }
+}
+
+class ServletWriterSourceToWritingMethodFlowConfig extends TaintTracking::Configuration {
+  ServletWriterSourceToWritingMethodFlowConfig() { this = "XSS::ServletWriterSourceToWritingMethodFlowConfig" }
+  override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof ServletWriterSource }
+  override predicate isSink(DataFlow::Node sink) { exists(MethodAccess ma | sink.asExpr() = ma.getQualifier() and ma.getMethod() instanceof WritingMethod) }
 }
 
 class WritingMethod extends Method {
@@ -48,12 +56,11 @@ class WritingMethod extends Method {
   }
 }
 
-
-class ServletWriterSource extends FlowSource {
+class ServletWriterSource extends MethodAccess {
   ServletWriterSource() {
-    this.(MethodAccess).getMethod() instanceof ServletResponseGetWriterMethod or
-    this.(MethodAccess).getMethod() instanceof ServletResponseGetOutputStreamMethod or
-    exists(Method m | m = this.(MethodAccess).getMethod() |
+    this.getMethod() instanceof ServletResponseGetWriterMethod or
+    this.getMethod() instanceof ServletResponseGetOutputStreamMethod or
+    exists(Method m | m = this.getMethod() |
       m.getDeclaringType().getQualifiedName() = "javax.servlet.jsp.JspContext" and
       m.getName() = "getOut"
     )

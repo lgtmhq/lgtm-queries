@@ -14,7 +14,7 @@
 import semmle.code.cpp.Location
 
 /**
- * A C/C++ element. This abstract class is the base class for all C/C++
+ * A C/C++ element. This class is the base class for all C/C++
  * elements, such as functions, classes, expressions, and so on.
  */
 class Element extends @element {

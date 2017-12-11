@@ -123,7 +123,6 @@ private predicate argumentPassing(CallSite invk, Expr arg, Function f, SimplePar
 private DataFlowNode getInitialUseOfParameter(SimpleParameter parm) {
   exists (SsaDefinition parmDef |
     parmDef.getAContributingVarDef() = parm and
-    parmDef.getContainer() = parm.getParent() and
     result = parmDef.getVariable().getAUse()
   )
 }
@@ -556,7 +555,6 @@ module TaintTracking {
           name = "fontsize" or
           name = "italics" or
           name = "link" or
-          name = "match" or
           name = "padEnd" or
           name = "padStart" or
           name = "repeat" or
@@ -589,14 +587,6 @@ module TaintTracking {
       exists (InvokeExpr invk, string gv |
         invk = this and invk.getCallee().accessesGlobal(gv) and result = invk.getArgument(0) |
         gv = "RegExp" or gv = "String"
-      )
-      or
-      // regular expression operations that propagate taint
-      exists (MethodCallExpr mce | mce = this |
-        // RegExp.prototype.exec: from first argument to call
-        mce.getReceiver().(DataFlowNode).getALocalSource() instanceof RegExpLiteral and
-        mce.getMethodName() = "exec" and
-        result = mce.getArgument(0)
       )
       or
       // String.fromCharCode and String.fromCodePoint

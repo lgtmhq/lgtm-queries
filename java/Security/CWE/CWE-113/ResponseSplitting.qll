@@ -13,34 +13,34 @@
 
 import java
 import semmle.code.java.frameworks.Servlets
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 
 /**
  * Header-splitting sinks. Expressions that end up in an HTTP header.
  */
-class HeaderSplittingSink extends Expr {
+class HeaderSplittingSink extends DataFlow::ExprNode {
   HeaderSplittingSink() {
     exists(ResponseAddCookieMethod m, MethodAccess ma |
       ma.getMethod() = m and
-      this = ma.getArgument(0)
+      this.getExpr() = ma.getArgument(0)
     )
     or exists(ResponseAddHeaderMethod m, MethodAccess ma |
       ma.getMethod() = m and
-      this = ma.getAnArgument()
+      this.getExpr() = ma.getAnArgument()
     )
     or exists(ResponseSetHeaderMethod m, MethodAccess ma |
       ma.getMethod() = m and
-      this = ma.getAnArgument()
+      this.getExpr() = ma.getAnArgument()
     )
     or exists(JaxRsResponseBuilder builder, Method m |
       m = builder.getAMethod() and m.getName() = "header" |
-      this = m.getAReference().getArgument(1)
+      this.getExpr() = m.getAReference().getArgument(1)
     )
   }
 }
 
 class WhitelistedSource extends RemoteUserInput {
   WhitelistedSource() {
-    this.(MethodAccess).getMethod() instanceof HttpServletRequestGetHeaderMethod
+    this.asExpr().(MethodAccess).getMethod() instanceof HttpServletRequestGetHeaderMethod
   }
 }

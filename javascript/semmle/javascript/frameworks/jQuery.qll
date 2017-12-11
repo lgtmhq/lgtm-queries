@@ -31,16 +31,25 @@ private predicate isJQueryRef(DataFlowNode nd) {
 }
 
 /**
- * Holds if `nd` may refer to a jQuery object.
+ * A node that may refer to a jQuery object.
  *
- * Note that this predicate is an over-approximation: `isJQueryObject(nd)`
+ * Note that this class is an over-approximation: `nd instanceof JQueryObject)`
  * may hold for nodes `nd` that cannot, in fact, refer to a jQuery object.
  */
-private predicate isJQueryObject(DataFlowNode nd) {
-  exists (JQueryMethodCall jq | jq = nd.getALocalSource() |
-    // `jQuery.val()` does _not_ return a jQuery object
-    jq.getMethodName() != "val"
-  )
+abstract class JQueryObject extends DataFlowNode {
+
+}
+
+/**
+ * A jQuery object created from a jQuery method.
+ */
+private class OrdinaryJQueryObject extends JQueryObject {
+  OrdinaryJQueryObject() {
+    exists (JQueryMethodCall jq | jq = this.getALocalSource() |
+      // `jQuery.val()` does _not_ return a jQuery object
+      jq.getMethodName() != "val"
+    )
+  }
 }
 
 /**
@@ -56,7 +65,7 @@ class JQueryMethodCall extends CallExpr {
       // initial call
       isJQueryRef(mce.getReceiver()) or
       // chained call
-      isJQueryObject(mce.getReceiver())
+      mce.getReceiver() instanceof JQueryObject
     )
   }
 
@@ -65,6 +74,28 @@ class JQueryMethodCall extends CallExpr {
    */
   string getMethodName() {
     result = name
+  }
+
+  /**
+   * Holds if this call interprets its arguments as HTML.
+   */
+  predicate interpretsArgumentsAsHtml() {
+      name = "addClass" or
+      name = "after" or
+      name = "append" or
+      name = "appendTo" or
+      name = "before" or
+      name = "html" or
+      name = "insertAfter" or
+      name = "insertBefore" or
+      name = "parseHTML" or
+      name = "prepend" or
+      name = "prependTo" or
+      name = "prop" or
+      name = "replaceWith" or
+      name = "wrap" or
+      name = "wrapAll" or
+      name = "wrapInner"
   }
 }
 
@@ -260,7 +291,7 @@ private class JQueryChainedElement extends DOM::Element {
   JQueryChainedElement() {
     exists (JQueryMethodCall jqmc | this = jqmc |
       jqmc.(MethodCallExpr).getReceiver() = inner and
-      isJQueryObject(this) and
+      this instanceof JQueryObject and
       defn = inner.getDefinition()
     )
   }

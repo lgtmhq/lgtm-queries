@@ -168,7 +168,7 @@ class NamespaceScope extends Scope, @namespacescope {
 }
 
 /** A variable declared in a scope. */
-class Variable extends @variable {
+class Variable extends @variable, LexicalName {
   /** Gets the name of this variable. */
   string getName() {
     variables(this, result, _)
@@ -223,15 +223,21 @@ class Variable extends @variable {
     result.getADecl().getBindingPattern().getAVariable() = this
   }
 
-  /** Gets an expression that is directly stored in this variable. */
+  /** DEPRECATED: Use `getAnAssignedExpr` instead. */
+  deprecated
   Expr getAnAssignedValue() {
+    result = getAnAssignedExpr()
+  }
+
+  /** Gets an expression that is directly stored in this variable. */
+  Expr getAnAssignedExpr() {
     // result is an expression that this variable is initialized to
     exists (VariableDeclarator vd |
       vd.getBindingPattern().(VarDecl).getVariable() = this |
       result = vd.getInit()
     ) or
     // if this variable represents a function binding, return the function
-    exists (Function fn | fn.getVariable() = this | result = fn) or
+    exists (FunctionExpr fn | fn.getVariable() = this | result = fn) or
     // there is an assignment to this variable
     exists (Assignment assgn | assgn.getLhs() = getAnAccess() and assgn.getRhs() = result)
   }
@@ -255,6 +261,10 @@ class Variable extends @variable {
   string toString() {
     result = getName()
   }
+
+  DeclarationSpace getDeclarationSpace() {
+      result = "variable"
+  }
 }
 
 /** An `arguments` variable of a function. */
@@ -274,9 +284,9 @@ class ArgumentsVariable extends Variable {
 }
 
 /** An identifier that refers to a variable, either in a declaration or in a variable access. */
-abstract class VarRef extends @varref, Identifier, BindingPattern {
+class VarRef extends @varref, Identifier, BindingPattern, LexicalRef {
   /** Gets the variable this identifier refers to. */
-  abstract Variable getVariable();
+  Variable getVariable() { none() } // Overriden in VarAccess and VarDecl
 
   override VarRef getABindingVarRef() { result = this }
 
@@ -284,7 +294,7 @@ abstract class VarRef extends @varref, Identifier, BindingPattern {
 }
 
 /** An identifier that refers to a variable in a non-declaring position. */
-class VarAccess extends @varaccess, VarRef {
+class VarAccess extends @varaccess, VarRef, LexicalAccess {
   /**
    * Gets the variable this identifier refers to.
    *
@@ -416,7 +426,7 @@ abstract class DestructuringPattern extends BindingPattern {
 }
 
 /** An identifier that declares a variable. */
-class VarDecl extends @vardecl, VarRef {
+class VarDecl extends @vardecl, VarRef, LexicalDecl {
   override Variable getVariable() {
     decl(this, result)
   }
@@ -750,3 +760,66 @@ class FieldParameter extends SimpleParameter {
   /** Gets the field induced by this parameter. */
   ParameterField getField() { result.getParameter() = this }
 }
+
+/**
+ * A string representing one of the three TypeScript declaration spaces: `variable`, `type`, or `namespace`.
+ */
+class DeclarationSpace extends string {
+  DeclarationSpace() {
+    this = "variable" or this = "type" or this = "namespace"
+  }
+}
+
+/**
+ * A name that is declared in a particular scope.
+ *
+ * This can be a variable or a local name for a TypeScript type or namespace.
+ */
+class LexicalName extends @lexical_name {
+  /** Gets the scope in which this name was declared. */
+  abstract Scope getScope();
+
+  /** Gets the name of this variable, type or namespace. */
+  abstract string getName();
+
+  /** Gets a string representation of this element. */
+  abstract string toString();
+
+  /**
+   * Gets the declaration space this name belongs to.
+   *
+   * This can be either `variable`, `type`, or `namespace`.
+   */
+  abstract DeclarationSpace getDeclarationSpace();
+}
+
+/**
+ * An identifier that refers to a variable, type, or namespace, or a combination of these.
+ */
+class LexicalRef extends Identifier, @lexical_ref {
+  /**
+   * Gets any of the names referenced by this identifier.
+   *
+   * Note that each identifier may reference up to one lexical name per declaration space.
+   * For example, a class name declares both a type and a variable.
+   */
+  LexicalName getALexicalName() {
+    bind(this, result) or
+    decl(this, result) or
+    typebind(this, result) or
+    typedecl(this, result) or
+    namespacebind(this, result) or
+    namespacedecl(this, result)
+  }
+}
+
+/**
+ * An identifier that declares a variable, type, or namespace, or a combination of these.
+ */
+class LexicalDecl extends LexicalRef, @lexical_decl {}
+
+/**
+ * An identifier that refers to a variable, type, or namespace, or a combination of these,
+ * in a non-declaring position.
+ */
+class LexicalAccess extends LexicalRef, @lexical_access {}

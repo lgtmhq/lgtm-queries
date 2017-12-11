@@ -18,6 +18,7 @@
 
 import java
 import semmle.code.java.dataflow.DataFlow
+import semmle.code.java.dataflow.DataFlow2
 private import SSA
 private import DefUse
 private import semmle.code.java.security.SecurityTests
@@ -43,6 +44,75 @@ module TaintTracking {
   abstract class Configuration extends DataFlow::Configuration {
     bindingset[this]
     Configuration() { any() }
+
+    /**
+     * Holds if `source` is a relevant taint source.
+     *
+     * The smaller this predicate is, the faster `hasFlow()` will converge.
+     */
+    // overridden to provide taint-tracking specific qldoc
+    abstract override predicate isSource(DataFlow::Node source);
+
+    /**
+     * Holds if `sink` is a relevant taint sink.
+     *
+     * The smaller this predicate is, the faster `hasFlow()` will converge.
+     */
+    // overridden to provide taint-tracking specific qldoc
+    abstract override predicate isSink(DataFlow::Node sink);
+
+    /** Holds if the intermediate node `node` is a taint sanitizer. */
+    predicate isSanitizer(DataFlow::Node node) { none() }
+
+    final
+    override predicate isBarrier(DataFlow::Node node) {
+      isSanitizer(node) or
+      // Ignore paths through test code.
+      node.getEnclosingCallable().getDeclaringType() instanceof NonSecurityTestClass or
+      exists(ValidatedVariable var | node.asExpr() = var.getAnAccess())
+    }
+
+    /**
+     * Holds if the additional taint propagation step from `node1` to `node2`
+     * must be taken into account in the analysis.
+     *
+     * `node1` and `node2` should belong to the same `Callable`.
+     */
+    predicate isAdditionalTaintStep(DataFlow::Node node1, DataFlow::Node node2) { none() }
+
+    final
+    override predicate isAdditionalFlowStep(DataFlow::Node node1, DataFlow::Node node2) {
+      isAdditionalTaintStep(node1, node2) or
+      localAdditionalTaintStep(node1, node2)
+    }
+
+    /**
+     * Holds if taint may flow from `source` to `sink` for this configuration.
+     */
+    // overridden to provide taint-tracking specific qldoc
+    override predicate hasFlow(DataFlow::Node source, DataFlow::Node sink) {
+      super.hasFlow(source, sink)
+    }
+  }
+
+  /**
+   * A taint tracking configuration.
+   *
+   * A taint tracking configuration is a special dataflow configuration
+   * (`DataFlow::Configuration`) that allows for flow through nodes that do not
+   * necessarily preserve values, but are still relevant from a taint tracking
+   * perspective. (For example, string concatenation, where one of the operands
+   * is tainted.)
+   *
+   * Each use of the taint tracking library must define its own unique extension
+   * of this abstract class. A configuration defines a set of relevant sources
+   * (`isSource`) and sinks (`isSink`), and may additionally treat intermediate
+   * nodes as "sanitizers" (`isSanitizer`) as well as add custom taint flow steps
+   * (`isAdditionalTaintStep()`).
+   */
+  abstract class Configuration2 extends DataFlow2::Configuration {
+    bindingset[this]
+    Configuration2() { any() }
 
     /**
      * Holds if `source` is a relevant taint source.

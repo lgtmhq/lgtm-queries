@@ -23,11 +23,11 @@
  */
 
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.StringFormat
 
 from RemoteUserInput source, StringFormat formatCall
-where source.flowsTo(formatCall.getFormatArgument())
+where source.flowsTo(DataFlow::exprNode(formatCall.getFormatArgument()))
 select formatCall.getFormatArgument(),
   "$@ flows to here and is used in a format string.",
   source, "User-provided value"

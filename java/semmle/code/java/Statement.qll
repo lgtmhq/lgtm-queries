@@ -332,6 +332,33 @@ class TryStmt extends Stmt,@trystmt {
     index = -3 - result.getIndex()
   }
 
+  /** Gets a resource expression, if any. */
+  VarAccess getAResourceExpr() {
+    result.getParent() = this and result.getIndex() <= -3
+  }
+
+  /** Gets the resource expression at the specified position in this `try` statement. */
+  VarAccess getResourceExpr(int index) {
+    result = this.getAResourceExpr() and
+    index = -3 - result.getIndex()
+  }
+
+  /** Gets a resource in this `try` statement, if any. */
+  ExprParent getAResource() {
+    result = getAResourceDecl() or result = getAResourceExpr()
+  }
+
+  /** Gets the resource at the specified position in this `try` statement. */
+  ExprParent getResource(int index) {
+    result = getResourceDecl(index) or result = getResourceExpr(index)
+  }
+
+  /** Gets a resource variable, if any, either from a resource variable declaration or resource expression. */
+  Variable getAResourceVariable() {
+    result = getAResourceDecl().getAVariable().getVariable() or
+    result = getAResourceExpr().getVariable()
+  }
+
   /** A printable representation of this statement. May include more detail than `toString()`. */
   string pp() {
     result = "try " + this.getBlock().pp() + " catch (...)"

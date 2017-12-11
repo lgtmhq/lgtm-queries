@@ -51,7 +51,7 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
     }
 
     override ControlFlowNode getAUse() {
-        result.(NameNode).uses(this)
+        result = this.getASourceUse()
         or
         result = this.implicitUseAtScopeExit()
         or
@@ -124,6 +124,10 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
         SsaSource::parameter_definition(this, def)
         or
         SsaSource::nonlocal_variable_entry_definition(this, def)
+        or
+        SsaSource::exception_capture(this, def)
+        or
+        SsaSource::with_definition(this, def)
     }
 
     override predicate hasDefiningEdge(BasicBlock pred, BasicBlock succ) {
@@ -154,7 +158,9 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
     }
 
     override ControlFlowNode getASourceUse() {
-        result = this.(Variable).getAUse()
+        result.(NameNode).uses(this)
+        or
+        result.(NameNode).deletes(this)
     }
 
 }
@@ -177,6 +183,21 @@ cached module SsaSource {
     /** Holds if `v` is defined by assignment at `defn` and given `value`. */
     cached predicate assignment_definition(Variable v, ControlFlowNode defn, ControlFlowNode value) {
         defn.(NameNode).defines(v) and defn.(DefinitionNode).getValue() = value
+    }
+
+    /** Holds if `v` is defined by assignment of the captured exception. */
+    cached predicate exception_capture(Variable v, NameNode defn) {
+        defn.defines(v) and
+        exists(ExceptFlowNode ex | ex.getName() = defn)
+    }
+
+    /** Holds if `v` is defined by a with statement. */
+    cached predicate with_definition(Variable v, ControlFlowNode defn) {
+        exists(With with, Name var | 
+            with.getOptionalVars() = var and
+            var.getAFlowNode() = defn |
+            var = v.getAStore()
+        )
     }
 
     /** Holds if `v` is defined by multiple assignment at `defn`. */

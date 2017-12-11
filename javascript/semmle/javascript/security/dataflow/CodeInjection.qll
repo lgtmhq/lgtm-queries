@@ -49,6 +49,7 @@ class CodeInjectionDataFlowConfiguration extends TaintTracking::Configuration {
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     isSafeLocationProperty(node) or
     node instanceof CodeInjectionSanitizer
   }
@@ -80,19 +81,7 @@ class LocationSource extends CodeInjectionSource {
  */
 class AngularJSExpressionSink extends CodeInjectionSink {
   AngularJSExpressionSink() {
-    // AngularJS expression arguments
-    exists(CallExpr ce, string methodName |
-      this = ce.getArgument(0) and methodName = ce.getCalleeName() |
-      methodName = "$watch" or
-      methodName = "$watchGroup" or
-      methodName = "$watchCollection" or
-      methodName = "$eval" or
-      methodName = "$evalAsync" or
-      methodName = "$applyAsync" or
-      methodName = "$compile" or
-      methodName = "$parse" or
-      methodName = "$interpolate"
-    )
+    any(AngularJS::AngularJSCall call).interpretsArgumentAsCode(this)
   }
 }
 

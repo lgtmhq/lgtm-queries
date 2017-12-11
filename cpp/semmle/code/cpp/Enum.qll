@@ -104,6 +104,10 @@ class EnumConstant extends @enumconstant, Declaration {
    */
   Enum getDeclaringEnum() { enumconstants(this,result,_,_,_,_) }
 
+  override Class getDeclaringType() {
+    result = this.getDeclaringEnum().getDeclaringType()
+  }
+
   /**
    * Gets the name of this enumerator.
    */

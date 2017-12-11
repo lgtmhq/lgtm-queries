@@ -51,11 +51,23 @@ private module MySql {
     nd.getALocalSource().(ModuleInstance).getPath() = "mysql"
   }
 
+  /** Gets a call to `mysql.createConnection`. */
+  CallExpr createConnection() {
+    exists (ModuleInstance mysql | mysql.getPath() = "mysql" |
+      result = mysql.getAMethodCall("createConnection")
+    )
+  }
+
+  /** Gets a call to `mysql.createPool`. */
+  CallExpr createPool() {
+    exists (ModuleInstance mysql | mysql.getPath() = "mysql" |
+      result = mysql.getAMethodCall("createPool")
+    )
+  }
+
   /** Holds if `nd` may contain a MySQL connection instance. */
   predicate isConnection(DataFlowNode nd) {
-    exists (ModuleInstance mysql | mysql.getPath() = "mysql" |
-      nd.getALocalSource() = mysql.getAMethodCall("createConnection")
-    )
+    nd.getALocalSource() = createConnection()
     or
     exists (DataFlowNode pool, MethodCallExpr getConn, Function cb |
       isPool(pool) and getConn.calls(pool, "getConnection") and
@@ -66,9 +78,7 @@ private module MySql {
 
   /** Holds if `nd` may contain a MySQL pool instance. */
   predicate isPool(DataFlowNode nd) {
-    exists (ModuleInstance mysql | mysql.getPath() = "mysql" |
-      nd.getALocalSource() = mysql.getAMethodCall("createPool")
-    )
+    nd.getALocalSource() = createPool()
   }
 
   /** An expression that is passed to the `query` method and hence interpreted as SQL. */
@@ -93,20 +103,46 @@ private module MySql {
       )
     }
   }
+
+  /** An expression that is passed as user name or password to `mysql.createConnection`. */
+  class Credentials extends CredentialsExpr {
+    string kind;
+
+    Credentials() {
+      exists (CallExpr call, string prop |
+        (call = createConnection() or call = createPool())
+        and
+        call.hasOptionArgument(0, prop, this)
+        and
+        (
+          prop = "user" and kind = "user name" or
+          prop = "password" and kind = prop
+        )
+      )
+    }
+
+    override string getCredentialsKind() {
+      result = kind
+    }
+  }
 }
 
 /**
  * Provides classes modelling the `pg` package.
  */
 private module Postgres {
-  /** Holds if `nd` may contain a Postgres client instance. */
-  predicate isClient(DataFlowNode nd) {
-    // new require('pg').Client()
+  /** Gets an expression of the form `new require('pg').Client()`. */
+  NewExpr newClient() {
     exists (ModuleInstance pg, PropReadNode pgClient |
       pg.getPath() = "pg" and
       pgClient.getBase().getALocalSource() = pg and pgClient.getPropertyName() = "Client" and
-      nd.getALocalSource().(NewExpr).getCallee().(DataFlowNode).getALocalSource() = pgClient
+      result.getCallee().(DataFlowNode).getALocalSource() = pgClient
     )
+  }
+
+  /** Holds if `nd` may contain a Postgres client instance. */
+  predicate isClient(DataFlowNode nd) {
+    nd.getALocalSource() = newClient()
     or
     // pool.connect(function(err, client) { ... })
     exists (DataFlowNode pool, MethodCallExpr getConn, Function cb |
@@ -116,20 +152,25 @@ private module Postgres {
     )
   }
 
-  /** Holds if `nd` may contain a Postgres pool instance. */
-  predicate isPool(DataFlowNode nd) {
+  /** Gets an expression that constructs a new connection pool. */
+  NewExpr newPool() {
     // new require('pg').Pool()
     exists (ModuleInstance pg, PropReadNode pgPool |
       pg.getPath() = "pg" and
       pgPool.getBase().getALocalSource() = pg and pgPool.getPropertyName() = "Pool" and
-      nd.getALocalSource().(NewExpr).getCallee().(DataFlowNode).getALocalSource() = pgPool
+      result.getCallee().(DataFlowNode).getALocalSource() = pgPool
     )
     or
     // new require('pg-pool')
     exists (ModuleInstance pgPool |
       pgPool.getPath() = "pg-pool" and
-      nd.getALocalSource().(NewExpr).getCallee().(DataFlowNode).getALocalSource() = pgPool
+      result.getCallee().(DataFlowNode).getALocalSource() = pgPool
     )
+  }
+
+  /** Holds if `nd` may contain a Postgres pool instance. */
+  predicate isPool(DataFlowNode nd) {
+    nd.getALocalSource() = newPool()
   }
 
   /** An expression that is passed to the `query` method and hence interpreted as SQL. */
@@ -139,6 +180,28 @@ private module Postgres {
         isClient(base) or isPool(base) |
         mce.calls(base, "query") and this = mce.getArgument(0)
       )
+    }
+  }
+
+  /** An expression that is passed as user name or password when creating a client or a pool. */
+  class Credentials extends CredentialsExpr {
+    string kind;
+
+    Credentials() {
+      exists (NewExpr call, string prop |
+        (call = newClient() or call = newPool())
+        and
+        call.hasOptionArgument(0, prop, this)
+        and
+        (
+          prop = "user" and kind = "user name" or
+          prop = "password" and kind = prop
+        )
+      )
+    }
+
+    override string getCredentialsKind() {
+      result = kind
     }
   }
 }
@@ -224,6 +287,97 @@ private module MsSql {
     QueryTemplateSanitizer() {
       isQueryTemplateElement(this) and
       input = this and output = this
+    }
+  }
+
+  /** An expression that is passed as user name or password when creating a client or a pool. */
+  class Credentials extends CredentialsExpr {
+    string kind;
+
+    Credentials() {
+      exists (DataFlowNode mssql, InvokeExpr call, string prop |
+        isMsSql(mssql)
+        and
+        (
+         call.(MethodCallExpr).calls(mssql, "connect")
+         or
+         call.(NewExpr).getCallee().(PropAccess).accesses(mssql, "ConnectionPool")
+        )
+        and
+        call.hasOptionArgument(0, prop, this)
+        and
+        (
+          prop = "user" and kind = "user name" or
+          prop = "password" and kind = prop
+        )
+      )
+    }
+
+    override string getCredentialsKind() {
+      result = kind
+    }
+  }
+}
+
+/**
+ * Provides classes modelling the `sequelize` package.
+ */
+private module Sequelize {
+  /** Holds if `nd` may contain a reference to the `sequelize` module. */
+  predicate isSequelize(DataFlowNode nd) {
+    nd.getALocalSource().(ModuleInstance).getPath() = "sequelize"
+  }
+
+  /** Gets an expression that creates an instance of the `Sequelize` class. */
+  NewExpr newSequelize() {
+    isSequelize(result.getCallee())
+  }
+
+  /** Holds if `nd` may contain an instance of the `Sequelize` class. */
+  predicate isSequelizeInstance(DataFlowNode nd) {
+    nd.getALocalSource() = newSequelize()
+  }
+
+  /** An expression that is passed as the first argument to `Sequelize.query`. */
+  class QueryString extends SQL::SqlString {
+    QueryString() {
+      exists (MethodCallExpr mce |
+        isSequelizeInstance(mce.getReceiver()) and
+        mce.getMethodName() = "query" and
+        this = mce.getArgument(0)
+      )
+    }
+  }
+
+  /**
+   * An expression that is passed as user name or password when creating an instance of the
+   * `Sequelize` class.
+   */
+  class Credentials extends CredentialsExpr {
+    string kind;
+
+    Credentials() {
+      exists (NewExpr ne, string prop |
+        ne = newSequelize()
+        and
+        (
+         this = ne.getArgument(1) and prop = "username"
+         or
+         this = ne.getArgument(2) and prop = "password"
+         or
+         ne.hasOptionArgument(ne.getNumArgument()-1, prop, this)
+        )
+        and
+        (
+         prop = "username" and kind = "user name"
+         or
+         prop = "password" and kind = prop
+        )
+      )
+    }
+
+    override string getCredentialsKind() {
+      result = kind
     }
   }
 }

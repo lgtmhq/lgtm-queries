@@ -28,6 +28,6 @@ import javascript
 import semmle.javascript.security.dataflow.Xss
 
 from XssDataFlowConfiguration xss, DataFlowNode source, DataFlowNode sink
-where xss.flowsTo(source, sink)
+where xss.flowsFrom(sink, source)
 select sink, "Cross-site scripting vulnerability due to $@.",
        source, "user-provided value"

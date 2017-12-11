@@ -28,6 +28,7 @@ module Templating {
     result = "<@" or result = "@>" or
     result = "<#" or result = "#>" or
     result = "{#" or result = "#}" or
+    result = "{$" or result = "$}" or
     result = "[%" or result = "%]" or
     result = "[[" or result = "]]" or
     result = "<?" or result = "?>"

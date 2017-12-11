@@ -20,6 +20,7 @@
  * @id cpp/file-intimacy
  * @tags maintainability
  *       modularity
+ *       statistical
  */
 import default
 

@@ -76,6 +76,20 @@ newtype TAbstractValue =
     exists(TAbstractModuleObject(m))
   }
   or
+  /** An abstract representation of all objects arising from an object literal expression. */
+  TAbstractObjectLiteral(ObjectExpr oe)
+  or
+  /**
+   * An abstract value representing all instances of a class or function `F`,
+   * as well as the default prototype of `F` (that is, the initial value of
+   * `F.prototype`).
+   */
+  TAbstractInstance(AbstractCallable ac) {
+    ac instanceof AbstractClass
+    or
+    exists (Function f | ac = TAbstractFunction(f) | not f.isNonConstructible(_))
+  }
+  or
   /** An abstract representation of an object not covered by the other abstract values. */
   TAbstractOtherObject()
   or

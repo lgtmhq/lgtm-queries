@@ -21,6 +21,7 @@
  * @tags testability
  *       readability
  *       maintainability
+ *       statistical
  */
 import default
 

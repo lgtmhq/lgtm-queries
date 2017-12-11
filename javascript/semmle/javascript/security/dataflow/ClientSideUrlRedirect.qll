@@ -51,6 +51,7 @@ class ClientSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configur
   }
 
   override predicate isSanitizer(DataFlowNode node) {
+    super.isSanitizer(node) or
     isSafeLocationProperty(node) or
     node instanceof ClientSideUrlRedirectSanitizer
   }
@@ -108,7 +109,7 @@ private class LocationHrefDataFlowConfiguration extends TaintTracking::Configura
 class LocationSearchSource extends ClientSideUrlRedirectSource {
   LocationSearchSource() {
     exists(LocationHrefDataFlowConfiguration cfg, DataFlowNode nd |
-      cfg.flowsTo(_, nd) and
+      cfg.flowsFrom(nd, _) and
       queryAccess(nd, this)
     )
   }
@@ -147,10 +148,9 @@ class LocationSink extends ClientSideUrlRedirectSink {
     )
     or
     // A redirection using the AngularJS `$location` service
-    exists (AngularJS::InjectedService location, MethodCallExpr mce |
-      location.getServiceName() = "$location" and
-      mce.calls(location.getAnAccess(), "url") and
-      this = mce.getArgument(0)
+    exists (AngularJS::ServiceReference service |
+      service.getName() = "$location" and
+      this = service.getAMethodCall("url").getArgument(0)
     )
   }
 }

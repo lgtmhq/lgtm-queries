@@ -332,6 +332,41 @@ class AbstractExportsObject extends DefiniteAbstractValue, TAbstractExportsObjec
 }
 
 /**
+ * An abstract value representing all objects arising from an object literal expression
+ * (allocation site abstraction).
+ */
+class AbstractObjectLiteral extends DefiniteAbstractValue, TAbstractObjectLiteral {
+  /** Gets the object expression this abstract value represents. */
+  ObjectExpr getObjectExpr() { this = TAbstractObjectLiteral(result) }
+  override boolean getBooleanValue() { result = true }
+  override InferredType getType() { result = TTObject() }
+  override predicate isCoercibleToNumber() { none() }
+  override PrimitiveAbstractValue toPrimitive() { result.getType() = TTString() }
+  override predicate hasLocationInfo(string path, int startline, int startcolumn, int endline, int endcolumn) {
+    getObjectExpr().getLocation().hasLocationInfo(path, startline, startcolumn, endline, endcolumn)
+  }
+  override string toString() { result = "object literal" }
+}
+
+/**
+ * An abstract value representing all instances of a class or function `F`,
+ * as well as the default prototype of `F` (that is, the initial value of
+ * `F.prototype`).
+ */
+class AbstractInstance extends DefiniteAbstractValue, TAbstractInstance {
+  /** Gets the constructor of this instance. */
+  AbstractCallable getConstructor() { this = TAbstractInstance(result) }
+  override boolean getBooleanValue() { result = true }
+  override InferredType getType() { result = TTObject() }
+  override predicate isCoercibleToNumber() { none() }
+  override PrimitiveAbstractValue toPrimitive() { result.getType() = TTString() }
+  override predicate hasLocationInfo(string path, int startline, int startcolumn, int endline, int endcolumn) {
+    getConstructor().hasLocationInfo(path, startline, startcolumn, endline, endcolumn)
+  }
+  override string toString() { result = "instance of " + getConstructor() }
+}
+
+/**
  * An abstract value representing an object not covered by the other abstract
  * values.
  */

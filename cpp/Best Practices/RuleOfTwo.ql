@@ -74,4 +74,5 @@ where (generatedCopyAssignment(f, msg) or
    // of the first character of the class name. Checking for
    // `isCompilerGenerated` will remove those results.
    and not f.isCompilerGenerated()
+   and not f.isDeleted()
 select f, msg

@@ -15,6 +15,7 @@
 
 import Modules
 import DataFlow
+private import FilesInternal
 
 /**
  * A Node.js module.
@@ -198,7 +199,8 @@ class Require extends CallExpr, Import {
    * using the root folder of priority `priority`.
    *
    * This predicate implements the specification of
-   * [`require.resolve`](https://nodejs.org/api/modules.html#modules_all_together).
+   * [`require.resolve`](https://nodejs.org/api/modules.html#modules_all_together),
+   * modified to allow additional JavaScript file extensions, such as `ts` and `jsx`.
    *
    * Module resolution order is modeled using the `priority` parameter as follows.
    *
@@ -217,26 +219,29 @@ class Require extends CallExpr, Import {
    *
    * To resolve an import of a path `p`, we consider each candidate folder `c` with
    * priority `r` and resolve the import to the following files if they exist
-   * (the scaling factor of 11 prevents results from different candidate folders
-   * from overlapping):
+   * (the scaling factor of `N` is large enough to prevent results from different
+   * candidate folders from overlapping):
    *
    * <ul>
-   * <li> the file `c/p`, with priority `11*r`;
-   * <li> the file `c/p.js`, with priority `11*r+1`;
-   * <li> the file `c/p.json`, with priority `11*r+2`;
-   * <li> the file `c/p.node`, with priority `11*r+3`;
+   * <li> the file `c/p`, with priority `N*r`;
+   * <li> the file `c/p.{tsx,ts,jsx,mjs}`, with priority `N*r+1` through `N*r+4`;
+   * <li> the file `c/p.js`, with priority `N*r+5`;
+   * <li> the file `c/p.json`, with priority `N*r+6`;
+   * <li> the file `c/p.node`, with priority `N*r+7`;
    * <li> if `c/p` is a folder:
    *      <ul>
    *      <li> if `c/p/package.json` exists and specifies a `main` module `m`:
    *        <ul>
-   *        <li> the file `c/p/m`, with priority `11*r+4`;
-   *        <li> the file `c/p/m.js`, with priority `11*r+5`;
-   *        <li> the file `c/p/m.json`, with priority `11*r+6`;
-   *        <li> the file `c/p/m.node`, with priority `11*r+7`;
+   *        <li> the file `c/p/m`, with priority `N*r+8`;
+   *        <li> the file `c/p/m.{tsx,ts,jsx,mjs}`, with priority `N*r+9` through `N*r+12`;
+   *        <li> the file `c/p/m.js`, with priority `N*r+13`;
+   *        <li> the file `c/p/m.json`, with priority `N*r+14`;
+   *        <li> the file `c/p/m.node`, with priority `N*r+15`;
    *        </ul>
-   *      <li> the file `c/p/index.js`, with priority `11*r+8`;
-   *      <li> the file `c/p/index.json`, with priority `11*r+9`;
-   *      <li> the file `c/p/index.node`, with priority `11*r+10`.
+   *      <li> the file `c/p/index.{tsx,ts,jsx,mjs}`, with priority `N*r+16` through `N*r+19`;
+   *      <li> the file `c/p/index.js`, with priority `N*r+20`;
+   *      <li> the file `c/p/index.json`, with priority `N*r+21`;
+   *      <li> the file `c/p/index.node`, with priority `N*r+22`.
    *      </ul>
    * </ul>
    *
@@ -247,10 +252,18 @@ class Require extends CallExpr, Import {
    */
   private File load(int priority) {
     exists (int r | getEnclosingModule().searchRoot(getImportedPath(), _, r) |
-      result = loadAsFile(this, r, priority-11*r) or
-      result = loadAsDirectory(this, r, priority-(11*r+4))
+      result = loadAsFile(this, r, priority - prioritiesPerCandidate() * r) or
+      result = loadAsDirectory(this, r, priority - (prioritiesPerCandidate() * r + numberOfExtensions() + 1))
     )
   }
+}
+
+private int prioritiesPerCandidate() {
+  result = 3 * (numberOfExtensions() + 1)
+}
+
+private int numberOfExtensions() {
+  result = count(getFileExtensionPriority(_))
 }
 
 /**
@@ -291,16 +304,15 @@ private File resolveMainModule(PackageJSON pkgjson, int priority) {
 
 /**
  * Gets a file in folder `dir` whose name is of the form `basename.extension`,
- * where `extension` has the given `priority` (0 for `js`, 1 for `json`, and
- * 2 for `node`).
+ * where `extension` has the given `priority`.
+ *
+ * This may resolve to an `mjs` file even though `require` will never find those files at runtime.
+ * We do this to handle the case where an `mjs` file is transpiled to `js`, and we want to find the
+ * original source file.
  */
 bindingset[basename]
 private File tryExtensions(Folder dir, string basename, int priority) {
-  exists (string ext | result = dir.getFile(basename, ext) |
-    ext = "js" and priority = 0 or
-    ext = "json" and priority = 1 or
-    ext = "node" and priority = 2
-  )
+  exists (string ext | result = dir.getFile(basename, ext) | priority = getFileExtensionPriority(ext))
 }
 
 /** A literal path expression appearing in a `require` import. */
