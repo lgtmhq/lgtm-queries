@@ -282,6 +282,10 @@ predicate definition(LocalScopeVariable v, Expr def) {
     def = crem and
     crem.getOperand() = v.getAnAccess())
   or
+  exists(AsmStmt asmStmt |
+    def = asmStmt.getAChild() and
+    def = v.getAnAccess().getParent*())
+  or
   definitionByReference(v.getAnAccess(), def)
 }
 

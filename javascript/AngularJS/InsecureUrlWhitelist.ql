@@ -27,15 +27,15 @@
 import javascript
 
 /**
- * Holds if `entry` is insecure to use in an URL pattern whitelist and `explanation` explains why it is insecure.
+ * Holds if `pattern` is insecure to use in an URL pattern whitelist and `explanation` explains why it is insecure.
  */
-predicate isInsecureWhitelistEntry(Expr urlExpr, string explanation) {
+bindingset[pattern] predicate isInsecureWhitelistEntry(string pattern, string explanation) {
   exists(string componentName, string component |
     exists(int componentNumber |
       (componentName = "scheme" and componentNumber = 1) or
       (componentName = "domain" and componentNumber = 2) or
       (componentName = "TLD" and componentNumber = 4) |
-      component = urlExpr.(ConstantString).getStringValue().regexpCapture("(.*?)://(.*?(\\.(.*?))?)(:\\d+)?(/.*)?", componentNumber)
+      component = pattern.regexpCapture("(.*?)://(.*?(\\.(.*?))?)(:\\d+)?(/.*)?", componentNumber)
     ) and
     explanation = "the " + componentName + " '" + component + "' is insecurely specified" |
     (componentName = "scheme" and component.matches("%*%")) or
@@ -49,5 +49,5 @@ where service.getName() = "$sceDelegateProvider" and
       setupCall = service.getAMethodCall("resourceUrlWhitelist") and
       list = setupCall.getArgument(0).(DataFlowNode).getALocalSource() and
       entry = list.getElement(_).(DataFlowNode).getALocalSource() and
-      isInsecureWhitelistEntry(entry, explanation)
+      isInsecureWhitelistEntry(entry.(ConstantString).getStringValue(), explanation)
 select setupCall, "'$@' is not a secure whitelist entry, because " + explanation + ".", entry, entry.toString()

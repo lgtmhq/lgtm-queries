@@ -21,8 +21,8 @@
  * @tags reliability
  *       correctness
  *       logic
-  *      external/cwe/cwe-193
-  * @precision medium
+ *       external/cwe/cwe-193
+ * @precision high
  */
 
 import javascript

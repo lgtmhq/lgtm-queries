@@ -114,12 +114,18 @@ class DomSink extends XssSink {
 
 /**
  * A React `dangerouslySetInnerHTML` attribute, viewed as an XSS sink.
+ *
+ * Any write to the `__html` property of an object assigned to this attribute
+ * is considered an XSS sink.
  */
 class DangerouslySetInnerHtmlSink extends XssSink {
   DangerouslySetInnerHtmlSink() {
-    exists (JSXAttribute attr |
+    exists (JSXAttribute attr, DataFlowNode valueSrc, PropWriteNode pwn |
       attr.getName() = "dangerouslySetInnerHTML" and
-      this = attr.getValue()
+      valueSrc = attr.getValue().(DataFlowNode).getALocalSource() and
+      pwn.getBase().getALocalSource() = valueSrc and
+      pwn.getPropertyName() = "__html" and
+      this = pwn.getRhs()
     )
   }
 }

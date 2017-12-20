@@ -18,7 +18,7 @@
  *              attacks.
  * @kind problem
  * @problem.severity error
- * @precision medium
+ * @precision high
  * @id js/redos
  * @tags security
  *       external/cwe/cwe-730
@@ -93,6 +93,47 @@ import javascript
  */
 
 /**
+ * A branch in a disjunction that is the root node in a literal, or a literal
+ * whose root node is not a disjunction.
+ */
+class RegExpRoot extends @regexpterm { // RegExpTerm is abstract, so do not extend it.
+  RegExpRoot() {
+    exists (RegExpLiteral literal, RegExpAlt alt | alt.getParent() = literal |
+      this = alt.getAChild())
+    or
+    exists (RegExpLiteral literal |
+      not exists (RegExpAlt alt | alt.getParent() = literal) and
+      this.(RegExpTerm).getParent() = literal)
+  }
+
+  predicate hasRepetition() {
+    exists (RegExpRepetition rep | getRoot(rep) = this)
+  }
+
+  string toString() { result = this.(RegExpTerm).toString() }
+}
+
+/**
+ * A term that matches repetitions of a given pattern, that is, `E*`, `E+`, or `E{n,m}`.
+ */
+class RegExpRepetition extends RegExpParent {
+  RegExpRepetition() {
+    this instanceof RegExpStar or
+    this instanceof RegExpPlus or
+    this instanceof RegExpRange
+  }
+}
+
+/**
+ * Gets the root containing the given term, that is, the root of the literal,
+ * or a branch of the root disjunction.
+ */
+RegExpRoot getRoot(RegExpTerm term) {
+  result = term or
+  result = getRoot(term.getParent())
+}
+
+/**
  * An abstract input symbol, representing a set of concrete characters.
  */
 newtype TInputSymbol =
@@ -104,7 +145,9 @@ newtype TInputSymbol =
    * (positive, non-universal) character class `recc`.
    */
   CharClass(RegExpCharacterClass recc) {
-    not recc.isInverted() and not isUniversalClass(recc)
+    getRoot(recc).hasRepetition() and
+    not recc.isInverted() and
+    not isUniversalClass(recc)
   }
   or
   /** An input symbol representing all characters matched by `.`. */
@@ -112,6 +155,10 @@ newtype TInputSymbol =
   or
   /** An input symbol representing all characters. */
   Any()
+  or
+  /** An epsilon transition in the automaton. */
+  Epsilon()
+
 
 /**
  * Holds if character class `cc` matches all characters.
@@ -133,6 +180,10 @@ predicate isUniversalClass(RegExpCharacterClass cc) {
  * An abstract input symbol, representing a set of concrete characters.
  */
 class InputSymbol extends TInputSymbol {
+  InputSymbol() {
+    not this instanceof Epsilon
+  }
+
   string toString() {
     this = Char(result) or
     result = any(RegExpCharacterClass recc | this = CharClass(recc)).toString() or
@@ -142,36 +193,74 @@ class InputSymbol extends TInputSymbol {
 }
 
 /**
- * Holds if `s` belongs to `l` and is of the form `[lo-hi]`, that is, a character
- * class containing exactly one range with lower bound `lo` and higher bound `hi`.
+ * Gets a lower bound on the characters matched by the given character class term.
  */
-predicate isRange(RegExpLiteral l, InputSymbol s, string lo, string hi) {
-  exists (RegExpCharacterClass cc, RegExpCharacterRange cr |
-    s = CharClass(cc) and cr = cc.getAChild() and cc.getNumChild() = 1 and
-    cr.isRange(lo, hi) and l = cc.getLiteral()
+string getCCLowerBound(RegExpTerm t) {
+  t.getParent() instanceof RegExpCharacterClass and
+  (
+    result = t.(RegExpConstant).getValue() or
+    t.(RegExpCharacterRange).isRange(result, _) or
+    exists (string name | name = t.(RegExpCharacterClassEscape).getValue() |
+      name = "w" and result = "0" or
+      name = "W" and result = "" or
+      name = "s" and result = "" or
+      name = "S" and result = "")
   )
 }
 
 /**
- * Holds if `s1` and `s2` have an empty intersection.
- *
- * This predicate is incomplete; it is only used for pruning the search space.
+ * The highest character used in a regular expression. Used to represent intervals without an upper bound.
  */
-predicate incompatible(InputSymbol s1, InputSymbol s2) {
-  exists (string c, string d |
-    s1 = Char(c) and s2 = Char(d) and c != d
-  ) or
-  s1 = Dot() and (s2 = Char("\n") or s2 = Char("\r")) or
-  s2 = Dot() and (s1 = Char("\n") or s1 = Char("\r")) or
-  exists (RegExpLiteral l, string b1, string b2 |
-    isRange(l, s1, _, b1) and isRange(l, s2, b2, _) and b1 < b2 or
-    isRange(l, s1, b1, _) and isRange(l, s2, _, b2) and b2 < b1
+string highestCharacter() { result = max(RegExpConstant c || c.getValue()) }
+
+/**
+ * Gets an upper bound on the characters matched by the given character class term.
+ */
+string getCCUpperBound(RegExpTerm t) {
+  t.getParent() instanceof RegExpCharacterClass and
+  (
+    result = t.(RegExpConstant).getValue() or
+    t.(RegExpCharacterRange).isRange(_, result) or
+    exists (string name | name = t.(RegExpCharacterClassEscape).getValue() |
+      name = "w" and result = "z" or
+      name = "W" and result = highestCharacter() or
+      name = "s" and result = highestCharacter() or
+      name = "S" and result = highestCharacter())
   )
 }
 
+/**
+ * Holds if `s` belongs to `l` and is a character class whose set of matched characters is contained
+ * in the interval `lo-hi`.
+ */
+predicate hasBounds(RegExpRoot l, InputSymbol s, string lo, string hi) {
+  exists (RegExpCharacterClass cc | s = CharClass(cc) |
+    l = getRoot(cc) and
+    lo = min(getCCLowerBound(cc.getAChild())) and
+    hi = max(getCCUpperBound(cc.getAChild())))
+}
+
+/**
+ * Holds if `s1` and `s2` possibly have a non-empty intersection.
+ *
+ * This predicate is over-approximate; it is only used for pruning the search space.
+ */
+predicate compatible(InputSymbol s1, InputSymbol s2) {
+  exists (RegExpRoot l, string lo1, string lo2, string hi1, string hi2 |
+    hasBounds(l, s1, lo1, hi1) and hasBounds(l, s2, lo2, hi2) and
+    max(string s | s = lo1 or s = lo2) <= min(string s | s = hi1 or s = hi2))
+  or
+  exists (intersect(s1, s2))
+}
+
 newtype TState =
-  Match(RegExpTerm t) or
-  Accept(RegExpLiteral l)
+  Match(RegExpTerm t) {
+    getRoot(t).hasRepetition()
+  }
+  or
+  Accept(RegExpRoot l) {
+    l.hasRepetition()
+  }
 
 /**
  * A state in the NFA corresponding to a regular expression.
@@ -190,32 +279,18 @@ class State extends TState {
 
   string toString() {
     result = "Match(" + (RegExpTerm)repr + ")" or
-    result = "Accept(" + (RegExpLiteral)repr + ")"
+    result = "Accept(" + (RegExpRoot)repr + ")"
   }
 
   Location getLocation() {
     result = repr.getLocation()
   }
-
-  /** Gets the regular expression this state is associated with. */
-  RegExpLiteral getLiteral() {
-    result = repr or
-    result = repr.(RegExpTerm).getLiteral()
-  }
 }
 
-/**
- * An edge label in the NFA, that is, either an input symbol or
- * the epsilon symbol.
- */
-newtype TEdgeLabel =
-  Epsilon() or
-  Consume(InputSymbol s)
-
-class EdgeLabel extends TEdgeLabel {
+class EdgeLabel extends TInputSymbol {
   string toString() {
     this = Epsilon() and result = "" or
-    exists (InputSymbol s | this = Consume(s) and result = s.toString())
+    exists (InputSymbol s | this = s and result = s.toString())
   }
 }
 
@@ -249,8 +324,8 @@ State after(RegExpTerm t) {
     result = after(opt)
   )
   or
-  exists (RegExpLiteral l | l = t.getParent() |
-    result = Accept(l)
+  exists (RegExpRoot root | t = root |
+    result = Accept(root)
   )
 }
 
@@ -259,16 +334,16 @@ State after(RegExpTerm t) {
  */
 predicate delta(State q1, EdgeLabel lbl, State q2) {
   exists (RegExpConstant s |
-    q1 = Match(s) and lbl = Consume(Char(s.getValue())) and q2 = after(s)
+    q1 = Match(s) and lbl = Char(s.getValue()) and q2 = after(s)
   )
   or
   exists (RegExpDot dot |
-    q1 = Match(dot) and lbl = Consume(Dot()) and q2 = after(dot)
+    q1 = Match(dot) and lbl = Dot() and q2 = after(dot)
   )
   or
   exists (RegExpCharacterClass cc |
-    isUniversalClass(cc) and q1 = Match(cc) and lbl = Consume(Any()) and q2 = after(cc) or
-    q1 = Match(cc) and lbl = Consume(CharClass(cc)) and q2 = after(cc)
+    isUniversalClass(cc) and q1 = Match(cc) and lbl = Any() and q2 = after(cc) or
+    q1 = Match(cc) and lbl = CharClass(cc) and q2 = after(cc)
   )
   or
   exists (RegExpAlt alt | lbl = Epsilon() |
@@ -318,20 +393,9 @@ State epsilonPred(State q) {
  * `q` to `q2` that consumes symbol `s`.
  */
 predicate deltaClosed(State q1, InputSymbol s, State q2) {
-  delta(epsilonSucc*(q1), Consume(s), q2)
+  delta(epsilonSucc*(q1), s, q2)
 }
 
-/**
- * Holds if `l` contains a repetition (star, plus or range) quantifier.
- */
-private predicate hasRepetition(RegExpLiteral l) {
-  exists (RegExpQuantifier q |
-    q instanceof RegExpStar or
-    q instanceof RegExpPlus or
-    q instanceof RegExpRange |
-    l = q.getLiteral()
-  )
-}
 
 /**
  * A state in the product automaton.
@@ -387,12 +451,15 @@ int statePairDist(StatePair q, StatePair r) =
  * that have at least one repetition quantifier in them (otherwise the
  * expression cannot be vulnerable to ReDoS attacks anyway).
  */
+pragma[noopt]
 predicate isFork(State q, InputSymbol s1, InputSymbol s2, State r1, State r2) {
-  hasRepetition(q.getLiteral()) and
   exists (State q1, State q2 |
-    q1 = epsilonSucc*(q) and delta(q1, Consume(s1), r1) and
-    q2 = epsilonSucc*(q) and delta(q2, Consume(s2), r2) and
-    not incompatible(s1, s2) |
+    q1 = epsilonSucc*(q) and delta(q1, s1, r1) and
+    q2 = epsilonSucc*(q) and delta(q2, s2, r2) and
+    // Use pragma[noopt] to prevent compatible(s1,s2) from being the starting point of the join.
+    // From (s1,s2) it would find a huge number of intermediate state pairs (q1,q2) originating from different literals,
+    // and discover at the end that no `q` can reach both `q1` and `q2` by epsilon transitions.
+    compatible(s1, s2) |
     s1 != s2 or
     r1 != r2 or
     r1 = r2 and q1 != q2
@@ -416,7 +483,7 @@ predicate step(StatePair q, InputSymbol s1, InputSymbol s2, StatePair r) {
 predicate step(StatePair q, InputSymbol s1, InputSymbol s2, State r1, State r2) {
   exists (State q1, State q2 | q = MkStatePair(q1, q2) |
     deltaClosed(q1, s1, r1) and deltaClosed(q2, s2, r2) and
-    not incompatible(s1, s2)
+    compatible(s1, s2)
   )
 }
 
@@ -514,7 +581,7 @@ predicate isReachableFromFork(State fork, StatePair r, Trace w, int rem) {
  */
 StatePair getAForkPair(State fork) {
   isFork(fork, _, _, _, _) and
-  result = mkStatePair(epsilonPred*(fork), epsilonPred*(fork))
+  result = MkStatePair(epsilonPred*(fork), epsilonPred*(fork))
 }
 
 /**

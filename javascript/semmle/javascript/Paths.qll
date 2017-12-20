@@ -165,6 +165,16 @@ abstract class PathString extends string {
 }
 
 /**
+ * Non-abstract base class for path expressions.
+ */
+private class PathExprBase extends Locatable {
+  // We must put getEnclosingModule here for it to be usable in the characteristic predicate of PathExprInModule
+
+  /** Gets the module containing this path expression, if any. */
+  Module getEnclosingModule() { result = this.(Expr).getTopLevel() or result = this.(Comment).getTopLevel() }
+}
+
+/**
  * An expression whose value represents a (relative or absolute) file system path.
  *
  * Each path expression is associated with one or more root folders, each of which
@@ -176,7 +186,7 @@ abstract class PathString extends string {
  * as their highest-priority root, with default library paths as additional roots
  * of lower priority.
  */
-abstract class PathExpr extends Expr {
+abstract class PathExpr extends PathExprBase {
   /** Gets the (unresolved) path represented by this expression. */
   abstract string getValue();
 

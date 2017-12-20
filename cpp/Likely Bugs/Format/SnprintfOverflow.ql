@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * @name Potentially Overflowing Call to Snprintf
+ * @name Potentially overflowing call to snprintf
  * @description Using the return value from snprintf without proper checks can cause overflow.
  *
  * @kind problem

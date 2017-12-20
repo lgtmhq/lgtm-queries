@@ -294,7 +294,7 @@ class SprintfBW extends BufferWriteCall
   {
     exists(FormatLiteral fl |
       (fl = this.(FormattingFunctionCall).getFormat())
-      and (result = fl.getMaxConvertedLengthAfterLimited(0) * getCharSize())
+      and (result = fl.getMaxConvertedLengthLimited() * getCharSize())
     )
   }
 }
@@ -396,7 +396,7 @@ class SnprintfBW extends BufferWriteCall
   {
     exists(FormatLiteral fl |
       (fl = this.(FormattingFunctionCall).getFormat())
-      and (result = fl.getMaxConvertedLengthAfterLimited(0) * getCharSize())
+      and (result = fl.getMaxConvertedLengthLimited() * getCharSize())
     )
   }
 }

@@ -15,7 +15,7 @@ import python
 
 // Helper predicates for multiple call to __init__/__del__ queries.
 
-/** Holds if `self.name` calls `multi` by mutliple paths, and thus calls it more than once */
+/** Holds if `self.name` calls `multi` by mutliple paths, and thus calls it more than once. */
 predicate multiple_calls_to_superclass_method(ClassObject self, FunctionObject multi, string name) {
     exists(FunctionInvocation top, FunctionInvocation i1, FunctionInvocation i2 |
         i1 != i2 and
@@ -28,22 +28,27 @@ predicate multiple_calls_to_superclass_method(ClassObject self, FunctionObject m
     )
 }
 
-/** Holds if `self.name` does not call `missing`, even though it is expected to */
+/** Holds if all attributes called `name` can be inferred to be methods. */
+private predicate named_attributes_not_method(ClassObject cls, string name) {
+    cls.declaresAttribute(name) and not cls.declaredAttribute(name) instanceof FunctionObject
+}
+
+/** Holds if `self.name` does not call `missing`, even though it is expected to. */
 predicate missing_call_to_superclass_method(ClassObject self, FunctionObject missing, string name) {
     missing = self.getASuperType().declaredAttribute(name) and
     exists(FunctionInvocation top |
-        top.runtime(self.lookupAttribute(name)) and
+        top.runtime(self.lookupAttribute(name)) |
         /* There is no call to missing originating from top */
-        not exists(FunctionInvocation i |
-            i = top.getACallee*() and
-            i.getFunction() = missing
-        )
+        forall(FunctionInvocation i | 
+        		i.getFunction() = missing |
+        		not top.getACallee*() = i
+    		)
     ) and
-    /* Make sure that all 'methods' are objects that we can understand */
-    forall(ClassObject sup |
+    /* Make sure that all named 'methods' are objects that we can understand. */
+    not exists(ClassObject sup |
         sup = self.getAnImproperSuperType() and
-        sup.declaresAttribute(name) |
-        sup.declaredAttribute(name) instanceof FunctionObject
+        named_attributes_not_method(sup, name)
     ) and
     not self.isAbstract()
 }
+

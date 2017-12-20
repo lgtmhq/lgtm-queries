@@ -27,8 +27,7 @@
 import javascript
 
 from AngularJS::InjectableFunction f1, AngularJS::InjectableFunction f2
-where f1.isDependencyInjected() and
-      f1.asFunction().getNumParameter() > 0 and
+where f1.asFunction().getNumParameter() > 0 and
       not exists(f1.getAnExplicitDependencyInjection()) and
 // ... but only if explicit dependencies are used somewhere else in the same file
       f1 != f2 and

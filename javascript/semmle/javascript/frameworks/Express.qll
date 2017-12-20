@@ -73,58 +73,64 @@ module Express {
   /**
    * A call to an Express method that sets up a route.
    */
-  class RouteSetup extends MethodCallExpr {
+  class RouteSetup extends HTTP::Servers::StandardRouteSetup, MethodCallExpr {
+
+    Expr parent;
+
     RouteSetup() {
+      parent = getReceiver() and
       exists (string methodName | methodName = getMethodName() |
-        (isRouter(getReceiver()) or isRoute(getReceiver()))
+        (isRouter(parent) or isRoute(parent))
         and
         (methodName = "all" or methodName = "use" or
          methodName = any(HTTP::RequestMethodName m).toLowerCase())
       )
+    }
+
+    override DataFlowNode getARouteHandler() {
+      result = getAnArgument().(DataFlowNode).getALocalSource()
+    }
+
+    override DataFlowNode getAServer() {
+      result.(Application).getARouteHandler() = getARouteHandler()
     }
   }
 
   /**
    * A function used as an Express route handler.
    */
-  class RouteHandler extends Function {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+
+    Function function;
+
     RouteHandler() {
-      this = any(RouteSetup s).getAnArgument().(DataFlowNode).getALocalSource()
+      function = this and
+      any(RouteSetup s).getARouteHandler() = this
     }
 
-    /**
-     * Gets the variable that contains the request object.
-     */
-    Variable getRequestVariable() {
-      result = getParameter(0).(SimpleParameter).getVariable()
-    }
-
-    /**
-     * Gets the variable that contains the response object.
-     */
-    Variable getResponseVariable() {
-      result = getParameter(1).(SimpleParameter).getVariable()
-    }
-  }
-
-  /**
-   * An Express route handler, viewed as an HTTP route handler.
-   */
-  private class ServerRouteHandler extends HTTP::RouteHandler {
-
-    RouteHandler handler;
-
-    ServerRouteHandler() {
-      handler = this
-    }
-
-    override HTTP::HeaderDefinition getAResponseHeader(string name) {
-      exists(ExplicitHeader h |
-        h.getResponse().(DataFlowNode).getALocalSource() = handler.getResponseVariable().getAnAccess() and
-        h.getAHeaderName() = name and
-        result = h
+    private DataFlowNode getALocalParameterUse(int paramIndex){
+      exists(SimpleParameter param |
+        param = function.getParameter(paramIndex) and
+        param.getAnInitialUse() = result.getALocalSource()
       )
     }
+
+    /**
+     * Gets an expression that contains the "request" object of
+     * a route handler invocation.
+     */
+    Expr getARequestExpr(){
+      result = getALocalParameterUse(0)
+    }
+
+    /**
+     * Gets an expression that contains the "response" object of
+     * a route handler invocation.
+     */
+    Expr getAResponseExpr(){
+      result = getALocalParameterUse(1)
+    }
+
   }
 
   /**
@@ -146,20 +152,14 @@ module Express {
    * Holds if `nd` is an HTTP request object.
    */
   predicate isRequest(DataFlowNode nd) {
-    exists (Variable req |
-      req.getADeclaration() = any(RouteHandler h).getParameter(0) and
-      nd.getALocalSource() = req.getAnAccess()
-    )
+    any(RouteHandler rh).getARequestExpr() = nd
   }
 
   /**
    * Holds if `nd` is an HTTP response object.
    */
   predicate isResponse(DataFlowNode nd) {
-    exists (Variable res |
-      res = any(RouteHandler h).getResponseVariable() and
-      nd.getALocalSource() = res.getAnAccess()
-    )
+    any(RouteHandler rh).getAResponseExpr() = nd
   }
 
   /**
@@ -203,6 +203,16 @@ module Express {
     }
   }
 
+  private class HeaderDefinition extends HTTP::Servers::StandardHeaderDefinition {
+    HeaderDefinition() {
+      isResponse(getReceiver())
+    }
+
+    override RouteHandler getARouteHandler() {
+      getReceiver() = result.getAResponseExpr()
+    }
+  }
+
   /**
    * An invocation of the `redirect` method of an HTTP response object.
    */
@@ -221,18 +231,11 @@ module Express {
    * An invocation of the `set` or `header` method on an HTTP response object that
    * sets a single header.
    */
-  private class SetOneHeader extends ExplicitHeader, MethodCallExpr {
+  private class SetOneHeader extends HeaderDefinition {
     SetOneHeader() {
-      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = any(string n | n = "set" or n = "header") and
       getNumArgument() = 2
     }
-
-    override predicate definesExplicitly(string headerName, Expr headerValue) {
-      headerName = getArgument(0).getStringValue() and
-      headerValue = getArgument(1)
-    }
-
   }
 
   /**
@@ -259,15 +262,9 @@ module Express {
   /**
    * An invocation of the `append` method on an HTTP response object.
    */
-  private class AppendHeader extends ExplicitHeader, MethodCallExpr {
+  private class AppendHeader extends HeaderDefinition {
     AppendHeader() {
-      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = "append"
-    }
-
-    override predicate definesExplicitly(string headerName, Expr headerValue) {
-      headerName = getArgument(0).getStringValue() and
-      headerValue = getArgument(1)
     }
   }
 
@@ -364,6 +361,34 @@ module Express {
     HTTP::RouteHandler getARouteHandler() {
       result = getARouteSetup().getAnArgument().(DataFlowNode).getALocalSource()
     }
+  }
+
+  /** An expression that is passed as `expressBasicAuth({ users: { <user>: <password> }})`. */
+  class Credentials extends CredentialsExpr {
+
+    string kind;
+
+    Credentials() {
+      exists (CallExpr call |
+        exists (ModuleInstance mod |
+          mod.getPath() = "express-basic-auth" |
+          call.getCallee().(DataFlowNode).getALocalSource() = mod
+        ) and
+        exists (DataFlowNode users, PropWriteNode pwn |
+          call.hasOptionArgument(0, "users", users) |
+          pwn.getBase().getALocalSource() = users.getALocalSource() and
+          (
+            (this = pwn and kind = "user name") or
+            (this = pwn.getRhs() and kind = "password")
+          )
+        )
+      )
+    }
+
+    override string getCredentialsKind() {
+      result = kind
+    }
+
   }
 
 }

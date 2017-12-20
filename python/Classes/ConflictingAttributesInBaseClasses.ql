@@ -44,6 +44,13 @@ predicate calls_super(FunctionObject f) {
     )
 }
 
+/** Holds if the given name is white-listed for some reason */
+predicate whitelisted(string name) {
+    /* The standard library specifically recommends this :(
+     * See https://docs.python.org/3/library/socketserver.html#asynchronous-mixins */
+    name = "process_request"
+}
+
 from ClassObject c, ClassObject b1, ClassObject b2, string name,
 int i1, int i2, Object o1, Object o2
 where c.getBaseType(i1) = b1 and
@@ -54,6 +61,7 @@ o2 = b2.lookupAttribute(name) and
 not name.matches("\\_\\_%\\_\\_") and
 not calls_super(o1) and
 not does_nothing(o2) and
+not whitelisted(name) and
 not o1.overrides(o2) and
 not o2.overrides(o1) and
 not c.declaresAttribute(name)

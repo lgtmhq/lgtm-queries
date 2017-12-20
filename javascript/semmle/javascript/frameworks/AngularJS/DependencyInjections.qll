@@ -33,21 +33,6 @@ private string getStringValue(DataFlowNode nd) {
   result = nd.getALocalSource().(Expr).getStringValue()
 }
 
-
-/**
- * Gets the argument position at which the method called `methodName`
- * from the Module API expects an injectable function.
- *
- * This method excludes the method names that are also present on the AngularJS '$provide' object.
- */
-private int injectableArgPos(string methodName) {
-  (methodName = "directive" or
-    methodName = "filter" or methodName = "controller" or
-    methodName = "animation") and result = 1
-  or
-  (methodName = "config" or methodName = "run") and result = 0
-}
-
 /**
  * Holds if `nd` is an `angular.injector()` value
  */
@@ -62,46 +47,28 @@ private predicate isAngularInjector(DataFlowNode nd) {
 /**
  * A call to `$angular.injector().invoke(...)`
  */
-class InjectorInvokeCall extends MethodCallExpr {
+class InjectorInvokeCall extends MethodCallExpr, DependencyInjection {
   InjectorInvokeCall() {
     isAngularInjector(this.getReceiver()) and
     this.getMethodName() = "invoke"
   }
 
-  Expr getInjectedArgument() {
+  override DataFlowNode getAnInjectableFunction() {
     result = getArgument(0)
   }
-}
-/**
- * Holds if `n` is an argument to a function that will dependency inject `n`.
- */
-private predicate isDependencyInjected(DataFlowNode n) {
-  exists (ModuleApiCall m |
-    n = m.getArgument(injectableArgPos(m.(MethodCallExpr).getMethodName())).(DataFlowNode).getALocalSource()
-  ) or
-  exists (InjectorInvokeCall invk |
-    n = invk.getInjectedArgument().(DataFlowNode).getALocalSource()
-  ) or
-  exists (RecipeDefinition d |
-    d.getMethodName() != "value" and
-    d.getMethodName() != "constant" and
-    n = d.getAServiceConstructor()
-  ) or
-  exists (ProviderRecipeDefinition d |
-    n = d.getAService()
-  )
+
 }
 
 /**
- * Holds if `n` may be dependency injected (an over-approximation of `isDependencyInjected`).
+ * Base class for expressions that dependency-inject some of their input with AngularJS dependency injection services.
  */
-private predicate dependencyInjectionCandidate(DataFlowNode n) {
-  isDependencyInjected(n) or
-  // other cases
-  exists (ValueProperty controller |
-    controller.getName() = "controller" and
-    n = controller.getInit().(DataFlowNode).getALocalSource()
-  )
+abstract class DependencyInjection extends Expr {
+
+  /**
+   * Gets a node that will be dependency-injected.
+   */
+  abstract DataFlowNode getAnInjectableFunction();
+
 }
 
 /**
@@ -140,13 +107,6 @@ abstract class InjectableFunction extends DataFlowNode {
   abstract ASTNode getAnExplicitDependencyInjection();
 
   /**
-   * Holds if this is an argument to a function that will dependency inject it.
-   */
-  predicate isDependencyInjected(){
-    isDependencyInjected(this)
-  }
-
-  /**
    * Gets a service corresponding to the dependency-injected `parameter`.
    */
   ServiceReference getAResolvedDependency(SimpleParameter parameter) {
@@ -176,7 +136,7 @@ abstract class InjectableFunction extends DataFlowNode {
  */
 private class FunctionWithImplicitDependencyAnnotation extends InjectableFunction, @function {
   FunctionWithImplicitDependencyAnnotation() {
-    dependencyInjectionCandidate(this) and
+    this = any(DependencyInjection d).getAnInjectableFunction().getALocalSource() and
     not exists(getAPropertyDependencyInjection(this))
   }
 
@@ -209,7 +169,7 @@ private class FunctionWithInjectProperty extends InjectableFunction, @function {
   ArrayExpr dependencies;
 
   FunctionWithInjectProperty() {
-    (dependencyInjectionCandidate(this) or
+    (this = any(DependencyInjection d).getAnInjectableFunction().getALocalSource() or
       exists(FunctionWithExplicitDependencyAnnotation f | f.asFunction() = this)
     ) and
     exists (PropWriteNode pwn |
@@ -243,7 +203,7 @@ private class FunctionWithExplicitDependencyAnnotation extends InjectableFunctio
   Function function;
 
   FunctionWithExplicitDependencyAnnotation() {
-    dependencyInjectionCandidate(this) and
+    this = any(DependencyInjection d).getAnInjectableFunction().getALocalSource() and
     exists (ArrayExpr ae | ae = this |
       function = ae.getElement(ae.getSize()-1).(DataFlowNode).getALocalSource()
     )

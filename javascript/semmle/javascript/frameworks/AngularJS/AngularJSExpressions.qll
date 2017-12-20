@@ -588,6 +588,20 @@ class NgCallExpr extends TNgCallExpr, NgExpr {
     (n = 1 and this = TNgCallExpr(_, _, _, result))
   }
 
+  /**
+   * Gets the callee expression of this call.
+   */
+  NgExpr getCallee() {
+    result = getChild(0)
+  }
+
+  /**
+   * Gets the `i`th argument expression of this call.
+   */
+  NgExpr getArgument(int i) {
+    result = getChild(1).(NgConsCallArgument).getElement(i)
+  }
+
 }
 
 
@@ -607,7 +621,7 @@ class NgString extends TNgString, NgExpr {
   }
 
   override string pp() {
-    result = getValue()
+    result = getRawValue()
   }
 
   override NgAstNode getChild(int n) {
@@ -615,12 +629,18 @@ class NgString extends TNgString, NgExpr {
   }
 
   /**
-   * Gets the string value of this expression.
+   * Gets the raw string value of this expression, including surrounding quotes.
    */
-  string getValue() {
+  string getRawValue() {
     stringToken.is(result)
   }
 
+  /**
+   * Gets the string value of this expression, excluding surrounding quotes.
+   */
+  string getStringValue() {
+    result = getRawValue().substring(1, getRawValue().length() - 1)
+  }
 }
 
 /**
@@ -700,6 +720,15 @@ class NgConsCallArgument extends TNgConsCallArgument, NgCallArguments {
     (n = 1 and this = TNgConsCallArgument(_, _, _, result))
   }
 
+  /**
+   * Gets the `i`th element of this entire cons-list.
+   */
+  NgExpr getElement(int i) {
+    if i = 0 then
+      result = getChild(0)
+    else
+      result = getChild(1).(NgConsCallArgument).getElement(i - 1)
+  }
 }
 
 /**

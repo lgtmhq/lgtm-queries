@@ -73,7 +73,7 @@ abstract class Module extends TopLevel {
    * overriding by subclasses.
    */
   predicate searchRoot(PathExpr path, Folder searchRoot, int priority) {
-    path.getTopLevel() = this and
+    path.getEnclosingModule() = this and
     priority = 0 and
     exists (string v | v = path.getValue() |
       // paths starting with a dot are resolved relative to the module's directory
@@ -94,7 +94,7 @@ abstract class Module extends TopLevel {
    * that file is the result.
    */
   File resolve(PathExpr path) {
-    path.getTopLevel() = this and
+    path.getEnclosingModule() = this and
     (
      // handle the case where the import path is complete
      exists (Container c | c = path.resolve() |
@@ -153,6 +153,15 @@ abstract class Import extends ASTNode {
   }
 
   /**
+   * Gets a module in a `node_modules/@types/` folder that matches the imported module name.
+   */
+  private Module resolveFromTypeRoot() {
+    result.getFile() = min(TypeRootFolder typeRoot ||
+      typeRoot.getModuleFile(getImportedPath().getValue())
+      order by typeRoot.getSearchPriority(getFile().getParentContainer()))
+  }
+
+  /**
    * Gets the module this import refers to.
    *
    * The result is either an externs module, or an actual source module;
@@ -165,7 +174,8 @@ abstract class Import extends ASTNode {
       result = resolveExternsImport()
     else
       (result = resolveAsProvidedModule() or
-       result = resolveImportedPath())
+       result = resolveImportedPath() or
+       result = resolveFromTypeRoot())
   }
 }
 
@@ -174,11 +184,11 @@ abstract class Import extends ASTNode {
  */
 abstract class PathExprInModule extends PathExpr {
   PathExprInModule() {
-    getTopLevel() instanceof Module
+    exists(getEnclosingModule())
   }
 
   override Folder getSearchRoot(int priority) {
-    getTopLevel().(Module).searchRoot(this, result, priority)
+    getEnclosingModule().searchRoot(this, result, priority)
   }
 }
 

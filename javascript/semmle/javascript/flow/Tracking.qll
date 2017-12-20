@@ -117,17 +117,6 @@ private predicate argumentPassing(CallSite invk, Expr arg, Function f, SimplePar
 }
 
 /**
- * Gets a use of `parm` that refers to its initial value as
- * passed in from the caller.
- */
-private DataFlowNode getInitialUseOfParameter(SimpleParameter parm) {
-  exists (SsaDefinition parmDef |
-    parmDef.getAContributingVarDef() = parm and
-    result = parmDef.getVariable().getAUse()
-  )
-}
-
-/**
  * Holds if `p` is a parameter of `f` that may be reached by
  * forward flow under `configuration`.
  */
@@ -147,7 +136,7 @@ private predicate forwardParameterFlow(Function f, SimpleParameter p,
                                 DataFlowNode sink, FlowTrackingConfiguration configuration) {
   hasForwardFlow(f, p, configuration) and
   (
-    p = f.getAParameter() and sink = getInitialUseOfParameter(p)
+    p = f.getAParameter() and sink = p.getAnInitialUse()
     or
     exists (DataFlowNode mid | forwardParameterFlow(f, p, mid, configuration) |
       mid = sink.localFlowPred()
@@ -206,7 +195,7 @@ private predicate forwardParameterReturn(Function f, SimpleParameter p, FlowTrac
  * under `configuration`, possibly through callees.
  */
 private predicate backwardParameterReturn(Function f, SimpleParameter p, FlowTrackingConfiguration configuration) {
-  backwardParameterFlow(f, getInitialUseOfParameter(p), f.getAReturnedExpr(), configuration)
+  backwardParameterFlow(f, p.getAnInitialUse(), f.getAReturnedExpr(), configuration)
 }
 
 /**
@@ -255,7 +244,7 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     // Flow into function
     exists (Expr arg, SimpleParameter parm |
       flowsTo(source, arg, configuration, _) and
-      argumentPassing(_, arg, _, parm) and sink = getInitialUseOfParameter(parm) and
+      argumentPassing(_, arg, _, parm) and sink = parm.getAnInitialUse() and
       stepIn = true
     )
     or
@@ -312,7 +301,7 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
     // This path is only enabled if the flow so far did not involve
     // any interprocedural steps from a `return` statement to the invocation site.
     exists (SimpleParameter p |
-      flowsFrom(getInitialUseOfParameter(p), sink, configuration, stepOut) and
+      flowsFrom(p.getAnInitialUse(), sink, configuration, stepOut) and
       stepOut = false and
       argumentPassing(_, source, _, p)
     )
@@ -459,11 +448,10 @@ module TaintTracking {
         this = efl.getAnIterationVariable().getAnAccess()
       )
       or
-      // arrays with tainted elements and objects with tainted properties are tainted
+      // arrays with tainted elements and objects with tainted property names are tainted
       this.(ArrayExpr).getAnElement() = result or
       exists (Property prop | this.(ObjectExpr).getAProperty() = prop |
-        prop.isComputed() and result = prop.getNameExpr() or
-        result = prop.getInit()
+        prop.isComputed() and result = prop.getNameExpr()
       )
       or
       // reading from a tainted object yields a tainted result
@@ -482,7 +470,7 @@ module TaintTracking {
         (i = 0 or i = 2) and
         f = m.getArgument(0).(DataFlowNode).getALocalSource() and
         p = f.getParameter(i) and
-        this = getInitialUseOfParameter(p) and
+        this = p.getAnInitialUse() and
         result = m.getReceiver()
       )
     }

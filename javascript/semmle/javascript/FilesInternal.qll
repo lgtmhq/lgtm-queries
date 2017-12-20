@@ -26,8 +26,10 @@ int getFileExtensionPriority(string ext) {
   ext = "tsx" and result = 0 or
   ext = "ts" and result = 1 or
   ext = "jsx" and result = 2 or
-  ext = "mjs" and result = 3 or
-  ext = "js" and result = 4 or
-  ext = "json" and result = 5 or
-  ext = "node" and result = 6
+  ext = "es6" and result = 3 or
+  ext = "es" and result = 4 or
+  ext = "mjs" and result = 5 or
+  ext = "js" and result = 6 or
+  ext = "json" and result = 7 or
+  ext = "node" and result = 8
 }

@@ -15,7 +15,7 @@
  * @name Self assignment
  * @description Assigning a variable to itself has no effect.
  * @kind problem
- * @problem.severity error
+ * @problem.severity warning
  * @id js/redundant-assignment
  * @tags reliability
  *       correctness
