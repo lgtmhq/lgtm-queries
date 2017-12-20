@@ -166,4 +166,74 @@ module HTTP {
     abstract HeaderDefinition getAResponseHeader(string name);
   }
 
+
+  /**
+   * Boiler-plate implementation of a `Server` and its associated classes.
+   * Made for easily defining new HTTP servers
+   */
+  module Servers {
+
+    /**
+     * A standard server.
+     */
+    abstract class StandardServer extends Server {
+
+      override RouteHandler getARouteHandler() {
+        result.(StandardRouteHandler).getAServer() = this
+      }
+
+    }
+
+    /**
+     * A standard route handler.
+     */
+    abstract class StandardRouteHandler extends RouteHandler {
+
+      override HeaderDefinition getAResponseHeader(string name) {
+        result.(StandardHeaderDefinition).getARouteHandler() = this and
+        result.getAHeaderName() = name
+      }
+
+      /**
+       * Gets a server this route handler is registered on.
+       */
+      DataFlowNode getAServer() {
+        result = any(StandardRouteSetup setup | setup.getARouteHandler() = this |
+          setup.getAServer())
+      }
+    }
+
+    /**
+     * A standard header definition.
+     */
+    abstract class StandardHeaderDefinition extends ExplicitHeaderDefinition, MethodCallExpr {
+
+      /**
+       * Gets a handler this definition occurs in.
+       */
+      abstract RouteHandler getARouteHandler();
+
+      override predicate definesExplicitly(string headerName, Expr headerValue) {
+        headerName = getArgument(0).(ConstantString).getStringValue() and
+        headerValue = getArgument(1)
+      }
+
+    }
+
+    /**
+     * A standard route setup on a server.
+     */
+    abstract class StandardRouteSetup extends Expr {
+
+      /**
+       * Gets a route handler that is defined by this setup.
+       */
+      abstract DataFlowNode getARouteHandler();
+
+      /**
+       * Gets a server that gets the a route handler of this setup.
+       */
+      abstract DataFlowNode getAServer();
+    }
+  }
 }

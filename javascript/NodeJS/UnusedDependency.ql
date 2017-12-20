@@ -37,7 +37,7 @@ predicate declaresDependency(NPMPackage pkg, string name, JSONValue dep) {
  * Gets a path expression in a module belonging to `pkg`.
  */
 PathExpr getAPathExpr(NPMPackage pkg) {
-  result.getTopLevel() = pkg.getAModule()
+  result.getEnclosingModule() = pkg.getAModule()
 }
 
 /**

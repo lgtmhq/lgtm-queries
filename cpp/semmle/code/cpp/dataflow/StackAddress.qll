@@ -60,7 +60,7 @@ predicate stackPointerFlowsToUse(
   // arithmetic is applied to the pointer.
   exists (ArrayType arrayType
   | stackReferenceFlowsToUse(use, arrayType, source, isLocal) and
-    useType = getExprPtrType(use.getFullyConverted()).getBaseType())
+    useType = getExprPtrType(use.getConversion()).getBaseType())
   or
   // Address of: &x
   stackReferenceFlowsToUse(
@@ -72,10 +72,8 @@ predicate stackPointerFlowsToUse(
     use.(PointerSubExpr).getLeftOperand(), useType, source, isLocal)
   or
   // Pointer add: if p is a pointer to a stack address, then p+1 is too.
-  exists (Expr child
-  | child = getPointerAddChild(use) and
-    getExprPtrType(use) = getExprPtrType(child) and
-    stackPointerFlowsToUse(child, useType, source, isLocal))
+  stackPointerFlowsToUse(
+    use.(PointerAddExpr).getAnOperand(), useType, source, isLocal)
   or
   // Indirect use of a stack address.
   exists (SsaDefinition def, LocalScopeVariable var
@@ -108,15 +106,6 @@ predicate stackPointerFlowsToUse(
  */
 cached private PointerType getExprPtrType(Expr use) {
   result = use.getType().getUnspecifiedType()
-}
-
-/**
- * Helper function for stackPointerFlowsToUse. Gets the child of a
- * PointerAddExpr and applies getFullyConverted so that we can see the type
- * that it has been promoted to.
- */
-cached private Expr getPointerAddChild(PointerAddExpr ptrOp) {
-  result = ptrOp.getAnOperand().getFullyConverted()
 }
 
 predicate stackReferenceFlowsToUse(

@@ -134,6 +134,22 @@ class Variable extends Declaration, @variable {
   }
 
   /**
+   * Gets an argument used to instantiate this variable from a template
+   * variable.
+   */
+  Type getATemplateArgument() {
+    exists(int i | this.getTemplateArgument(i) = result)
+  }
+
+  /**
+   * Gets a particular argument used to instantiate this variable from a
+   * template variable.
+   */
+  Type getTemplateArgument(int index) {
+    variable_template_argument(this, index, result)
+  }
+
+  /**
    * Holds if this is a compiler-generated variable. For example, a
    * [range-based for loop](http://en.cppreference.com/w/cpp/language/range-for)
    * typically has three compiler-generated variables, named `__range`,

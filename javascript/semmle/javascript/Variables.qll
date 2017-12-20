@@ -223,6 +223,11 @@ class Variable extends @variable, LexicalName {
     result.getADecl().getBindingPattern().getAVariable() = this
   }
 
+  /** Gets a definition for this variable. */
+  VarDef getADefinition() {
+    result.getAVariable() = this
+  }
+
   /** DEPRECATED: Use `getAnAssignedExpr` instead. */
   deprecated
   Expr getAnAssignedValue() {
@@ -742,6 +747,17 @@ class Parameter extends BindingPattern {
 /** A parameter declaration that is not an object or array pattern. */
 class SimpleParameter extends Parameter, VarDecl {
   override predicate isLValue() { Parameter.super.isLValue() }
+
+  /**
+   * Gets a use of this parameter that refers to its initial value as
+   * passed in from the caller.
+   */
+  VarUse getAnInitialUse() {
+    exists (SsaDefinition ssa |
+      ssa.getAContributingVarDef() = this and
+      result = ssa.getVariable().getAUse()
+    )
+  }
 }
 
 /**

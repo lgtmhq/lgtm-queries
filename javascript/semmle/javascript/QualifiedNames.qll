@@ -31,6 +31,11 @@ import javascript
  */
 private predicate isExportedStmt(Stmt stmt) {
   exists (ExportNamedDeclaration decl | decl.getOperand() = stmt)
+  or
+  // ambient namespaces implicitly export their members
+  stmt.getContainer().(NamespaceDeclaration).isAmbient()
+  or
+  stmt.getContainer().(ExternalModuleDeclaration).isAmbient()
 }
 
 /**
@@ -38,7 +43,9 @@ private predicate isExportedStmt(Stmt stmt) {
  */
 private newtype TNamespace =
   /** The root namespace of a module, containing its exported members. */
-  TNamespaceModuleRoot(Module mod)
+  TNamespaceModuleRoot(Module mod) {
+    not exists (getExternalModuleName(mod.getFile()))
+  }
   or
   /** A namespace defined locally. */
   TNamespaceLexicalRoot(LocalNamespaceName local) {
@@ -54,6 +61,13 @@ private newtype TNamespace =
       parent = getExportNamespace(def.getContainer()) and
       name = def.getName())
   }
+  or
+  /** A namespace induced by a an external module declaration, such as `declare module "X" {}`. */
+  TExternalModule(string name) {
+    name = any(ExternalModuleDeclaration decl).getName()
+    or
+    name = getExternalModuleName(_)
+  }
 
 /** Gets the namespace to which `export` statements in the given container should contribute. */
 private TNamespace getExportNamespace(StmtContainer container) {
@@ -61,22 +75,86 @@ private TNamespace getExportNamespace(StmtContainer container) {
     result = TNamespaceModuleRoot(mod))
   or
   exists (NamespaceDeclaration decl | container = decl |
-    if isExportedStmt(decl)
-    then result = TNamespaceMember(getExportNamespace(decl.getEnclosingContainer()), decl.getName())
-    else result = TNamespaceLexicalRoot(decl.getLocalNamespaceName()))
+    if hasReassignedExportTarget(decl) then
+      result = getReassignedExportTarget(decl)
+    else if isExportedStmt(decl) then
+      result = TNamespaceMember(getExportNamespace(decl.getEnclosingContainer()), decl.getName())
+    else
+      result = TNamespaceLexicalRoot(decl.getLocalNamespaceName()))
+  or
+  exists (ExternalModuleDeclaration decl | container = decl |
+    result = TExternalModule(decl.getName()))
+  or
+  result = TExternalModule(getExternalModuleName(container.(Module).getFile()))
+}
+
+/**
+ * If the given namespace is the target of an export-assign declaration, gets the container of
+ * the export-assign.
+ *
+ * This is often used to export the contents of a namespace in the enclosing module:
+ * ```
+ * export = MyLib
+ * declare namespace MyLib {}
+ * ```
+ *
+ * It is also used inside an external module declaration to export the contents
+ * of a proper namespace:
+ * ```
+ * declare namespace __MyLib {
+ *   interface I {...}
+ * }
+ * declare module "myLib" {
+ *   export = __MyLib;
+ * }
+ * ```
+ *
+ * This differs from a re-export in that declarations can be extended afterwards.
+ * Continuing the previous example:
+ * ```
+ * declare module "myLib" {
+ *   interface I {..} // extends previous definition of I
+ * }
+ * ```
+ * For this to work, the canonical name for `I` must be based on the external module
+ * `"myLib"`, as opposed to `__MyLib`.
+ */
+private Namespace getReassignedExportTarget(NamespaceDeclaration decl) {
+  exists (ExportAssignDeclaration exprt |
+    exprt.getExpression().(ExportVarAccess).getLocalNamespaceName() = decl.getLocalNamespaceName() and
+    result = getExportNamespace(exprt.getContainer()))
+}
+
+/**
+ * Like `exists(getReassignedExportTarget(decl))` but is not recursive.
+ */
+private predicate hasReassignedExportTarget(NamespaceDeclaration decl) {
+  exists (ExportAssignDeclaration exprt |
+    exprt.getExpression().(ExportVarAccess).getLocalNamespaceName() = decl.getLocalNamespaceName())
+}
+
+/**
+ * Gets the name of the external module for which the given file is an interface file, if any.
+ */
+private string getExternalModuleName(File file) {
+  exists (Folder nodeModules |
+    nodeModules.getBaseName() = "node_modules" and
+    nodeModules.getFolder("@types").getFolder(result).getFile("index.d.ts") = file)
 }
 
 /**
  * The canonical name of a namespace, representing a module or TypeScript namespace declaration.
  */
 class Namespace extends TNamespace {
-  /** Gets the unqualified name of this namespace, or the the file name it is the root namespace of a module. */
+  /** Gets the unqualified name of this namespace, or the file name it is the root namespace of a module. */
   string getName() {
-    exists (Module mod | this = TNamespaceModuleRoot(mod) | result = describeRootContainer(mod))
+    exists (Module mod | this = TNamespaceModuleRoot(mod) | result = describeRootScope(mod.getScope()))
     or
     exists (LocalNamespaceName local | this = TNamespaceLexicalRoot(local) | result = local.getName())
     or
     this = TNamespaceMember(_, result)
+    or
+    this = TExternalModule(result)
   }
 
   /** Gets the enclosing namespace, if any. */
@@ -132,27 +210,22 @@ class Namespace extends TNamespace {
   }
 
   /**
-   * Gets the outermost scope from which the namespace can be accessed by a qualified name (without using an `import`).
+   * Gets the outermost scope from which this namespace can be accessed by a qualified name (without using an `import`).
    *
    * This is typically the top-level of a module, but for locally declared namespaces, this is the container where the namespace is declared.
    *
-   * As a special rule, the root container of a module namespace is the top-level of that module,
+   * As a special rule, the root scope of a module namespace is the top-level of that module,
    * even though there is no qualified name associated with the module itself.
    * This means all namespaces have a unique root container.
    */
-  StmtContainer getRootContainer() {
-    this = TNamespaceModuleRoot(result)
+  Scope getRootScope() {
+    this = TNamespaceModuleRoot(result.getScopeElement())
     or
-    exists (LocalNamespaceName local | this = TNamespaceLexicalRoot(local) | result = local.getScope().getScopeElement())
+    exists (LocalNamespaceName local | this = TNamespaceLexicalRoot(local) | result = local.getScope())
     or
-    result = getParent().getRootContainer()
-  }
-
-  /**
-   * Gets the top-level in which this namespace is defined.
-   */
-  TopLevel getTopLevel() {
-    result = getRootContainer().getTopLevel()
+    result = getParent().getRootScope()
+    or
+    exists (ExternalModuleDeclaration decl | this = TExternalModule(decl.getName()) | result = decl.getScope())
   }
 
   /**
@@ -169,21 +242,26 @@ class Namespace extends TNamespace {
    * Holds if this is the export namespace of a module.
    */
   predicate isModuleRoot() {
-    this instanceof TNamespaceModuleRoot
+    this instanceof TNamespaceModuleRoot or
+    this instanceof TExternalModule
   }
 
   /**
    * Holds if this is the export namespace of the given module.
    */
-  predicate isModuleRoot(Module mod) {
+  predicate isModuleRoot(StmtContainer mod) {
     this = TNamespaceModuleRoot(mod)
+    or
+    this = TExternalModule(getExternalModuleName(mod.(Module).getFile()))
+    or
+    this = TExternalModule(mod.(ExternalModuleDeclaration).getName())
   }
 
   /**
    * Gets the module defining this namespace, if any.
    */
   Module getModule() {
-    result = getTopLevel()
+    result = getRootScope().getScopeElement().getTopLevel()
   }
 
   /**
@@ -202,6 +280,8 @@ class Namespace extends TNamespace {
       if parent.isModuleRoot()
       then result = name
       else result = parent.getQualifiedName() + "." + name)
+    or
+    this = TExternalModule(result)
   }
 
   /**
@@ -209,7 +289,7 @@ class Namespace extends TNamespace {
    * number information if the root container is not the top-level of the file.
    */
   string describeRoot() {
-    result = describeRootContainer(getRootContainer())
+    result = describeRootScope(getRootScope())
   }
 
   /**
@@ -225,10 +305,20 @@ class Namespace extends TNamespace {
 /**
  * Describes the root of a namespace.
  */
-private string describeRootContainer(StmtContainer container) {
-  if container instanceof Module
-  then result = container.getFile().getBaseName()
-  else result = container.getLocation().toString()
+private string describeRootScope(Scope scope) {
+  if scope instanceof ModuleScope
+  then exists (File file | file = scope.getScopeElement().(Module).getFile() |
+    if file.getBaseName() = "index.d.ts"
+    then result = "module " + file.getParentContainer().getBaseName()
+    else result = file.getBaseName())
+
+  else if scope instanceof ExternalModuleScope
+  then result = "module " + scope.getScopeElement().(ExternalModuleDeclaration).getName()
+
+  else if exists (scope.getScopeElement())
+  then result = scope.getScopeElement().getLocation().toString()
+
+  else result = "global scope"
 }
 
 /**
@@ -290,19 +380,19 @@ class TypeName extends TTypeName {
    * This is typically the top-level of a module, but for locally declared types (e.g. types declared inside a function),
    * this is the container where the type is declared.
    */
-  StmtContainer getRootContainer() {
+  Scope getRootScope() {
     exists (Namespace namespace | this = TExportedTypeName(namespace, _) |
-      result = namespace.getRootContainer())
+      result = namespace.getRootScope())
     or
     exists (LocalTypeName local | this = TLexicalTypeName(local) |
-      result = local.getScope().getScopeElement())
+      result = local.getScope())
   }
 
   /**
    * Gets a string constisting of the qualified name and a short description of the root container.
    */
   string toString() {
-    result = getQualifiedName() + " in " + describeRootContainer(getRootContainer())
+    result = getQualifiedName() + " in " + describeRootScope(getRootScope())
   }
 
   /**
@@ -333,9 +423,12 @@ module NameResolution {
    * Gets the namespace defined by the given namespace declaration or enum declaration.
    */
   Namespace getNamespaceFromDefinition(NamespaceDefinition def) {
-    if isExportedStmt(def)
-    then result = TNamespaceMember(getExportNamespace(def.getContainer()), def.getName())
-    else result = TNamespaceLexicalRoot(def.getId().(LocalNamespaceDecl).getLocalNamespaceName())
+    if hasReassignedExportTarget(def) then
+      result = getReassignedExportTarget(def)
+    else if isExportedStmt(def) then
+      result = TNamespaceMember(getExportNamespace(def.getContainer()), def.getName())
+    else
+      result = TNamespaceLexicalRoot(def.getId().(LocalNamespaceDecl).getLocalNamespaceName())
   }
 
   /**
@@ -356,6 +449,11 @@ module NameResolution {
       id = spec.getLocal() and
       spec = decl.getASpecifier() and
       result = getNamespaceFromImport(decl))
+    or
+    // import A = B
+    exists (ImportEqualsDeclaration decl |
+      id = decl.getId() and
+      result = getNamespaceFromExpr(decl.getImportedEntity()))
   }
 
   /**
@@ -363,6 +461,10 @@ module NameResolution {
    */
   Namespace getNamespaceFromImport(ImportDeclaration decl) {
     result.isModuleRoot(decl.getImportedModule())
+    or
+    exists (ExternalModuleDeclaration extern |
+      extern.getName() = decl.getImportedPath().getValue() and
+      result = getNamespaceFromContainer(extern))
   }
 
   /**
@@ -386,6 +488,10 @@ module NameResolution {
     exists (LocalNamespaceAccess local | local = access |
       result = getNamespaceFromLocalName(local.getLocalNamespaceName()))
     or
+    exists (LocalNamespaceAccess local | local = access |
+      not exists (local.getLocalNamespaceName()) and
+      result = getNamespaceFromGlobal(local.getName()))
+    or
     exists (QualifiedNamespaceAccess qualified | qualified = access |
       result = getNamespaceFromAccess(qualified.getQualifier()).getNamespaceMember(qualified.getIdentifier().getName()))
   }
@@ -398,12 +504,27 @@ module NameResolution {
    * export default A.B.C
    * ```
    */
-  Namespace getNamespaceFromExportExpr(Expr expr) {
+  Namespace getNamespaceFromExpr(Expr expr) {
     exists (ExportVarAccess access | access = expr |
       result = getNamespaceFromLocalName(access.getLocalNamespaceName()))
     or
     exists (PropAccess access | access = expr |
-      result = getNamespaceFromExportExpr(access.getBase()).getNamespaceMember(access.getPropertyName()))
+      result = getNamespaceFromExpr(access.getBase()).getNamespaceMember(access.getPropertyName()))
+  }
+
+  /**
+   * Gets the globally declared namespace of the given name, provided that this is declared in a `d.ts` file.
+   */
+  Namespace getNamespaceFromGlobal(string name) {
+    exists (NamespaceDefinition def |
+      def.getName() = name and
+      def.(Stmt).getContainer() = getAnAmbientGlobalContainer() and
+      not isExportedStmt(def) and
+      result = getNamespaceFromDefinition(def))
+    or
+    exists (ExportAsNamespaceDeclaration exprt |
+      name = exprt.getIdentifier().getName() and
+      result.isModuleRoot(exprt.getTopLevel()))
   }
 
   /**
@@ -430,7 +551,7 @@ module NameResolution {
     exists (ExportDefaultDeclaration decl |
       namespace.isModuleRoot(decl.getEnclosingModule()) and
       name = "default" and
-      result = getNamespaceFromExportExpr(decl.getOperand()))
+      result = getNamespaceFromExpr(decl.getOperand()))
   }
 
   /**
@@ -454,6 +575,10 @@ module NameResolution {
       id = spec.getLocal() and
       spec = decl.getASpecifier() and
       result = getNamespaceFromImport(decl).getTypeMember(spec.getImportedName()))
+    or
+    exists (ImportEqualsDeclaration decl |
+      id = decl.getId() and
+      result = getTypeNameFromExpr(decl.getImportedEntity()))
   }
 
   /**
@@ -470,18 +595,34 @@ module NameResolution {
     exists (LocalTypeAccess local | local = access |
       result = getTypeNameFromLocalName(local.getLocalTypeName()))
     or
+    exists (LocalTypeAccess local | local = access |
+      not exists (local.getLocalTypeName()) and
+      result = getTypeNameFromGlobal(local.getName()))
+    or
     exists (QualifiedTypeAccess qualified | qualified = access |
       result = getNamespaceFromAccess(qualified.getQualifier()).getTypeMember(qualified.getIdentifier().getName()))
   }
 
   /**
-   * Gets the type name referenced by an exported expression.
-   *
-   * Unlike namespaces, these cannot be qualified names.
+   * Gets the type name referenced by an expression, which can be an exported and imported expression.
    */
-  TypeName getTypeNameFromExportExpr(Expr expr) {
+  TypeName getTypeNameFromExpr(Expr expr) {
     exists (ExportVarAccess access | access = expr |
       result = getTypeNameFromLocalName(access.getLocalTypeName()))
+    or
+    exists (PropAccess access | access = expr |
+      result = getNamespaceFromExpr(access.getBase()).getTypeMember(access.getPropertyName()))
+  }
+
+  /**
+   * Gets the globally declared type of the given name, provided that this is declared in a `d.ts` file.
+   */
+  TypeName getTypeNameFromGlobal(string name) {
+    exists (TypeDefinition def |
+      def.getName() = name and
+      def.(Stmt).getContainer() = getAnAmbientGlobalContainer() and
+      not isExportedStmt(def) and
+      result = getTypeNameFromDefinition(def))
   }
 
   /**
@@ -498,7 +639,21 @@ module NameResolution {
     exists (ExportDefaultDeclaration decl |
       namespace.isModuleRoot(decl.getEnclosingModule()) and
       name = "default" and
-      result = getTypeNameFromExportExpr(decl.getOperand()))
+      result = getTypeNameFromExpr(decl.getOperand()))
+  }
+
+  /**
+   * Gets a statement that contributes ambient types and namespaces which should be available globally.
+   */
+  StmtContainer getAnAmbientGlobalContainer() {
+    result instanceof TopLevel and
+    not result instanceof Module and
+    result.getFile().getBaseName().matches("%.d.ts") and
+    exists (ReferenceImport im | result = im.getImportedTopLevel())
+    or
+    result instanceof GlobalAugmentationDeclaration and
+    result.getFile().getBaseName() = "index.d.ts"
+    or
+    result.(TopLevel).getFile().getBaseName() = "lib.d.ts"
   }
 }
-

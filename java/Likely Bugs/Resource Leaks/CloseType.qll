@@ -218,7 +218,7 @@ predicate closeCalled(Variable v) {
     or
     // The "close" call could happen indirectly inside a helper method of unknown name.
     exists(int i | exprs(v.getAnAccess(), _, _, e, i) |
-      exists(Parameter p, int j | params(p, _, _, j, e.getMethod(), _) |
+      exists(Parameter p, int j | params(p, _, j, e.getMethod(), _) |
         (closeCalled(p) and i = j) or
         // The helper method could be iterating over a varargs parameter.
         exists(EnhancedForStmt for | for.getExpr() = p.getAnAccess() |

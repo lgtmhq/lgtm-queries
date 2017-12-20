@@ -147,7 +147,7 @@ class Snprintf extends FormattingFunction {
   }
 
   /**
-   * Holds if this function returns the length of the formatting string
+   * Holds if this function returns the length of the formatted string
    * that would have been output, regardless of the amount of space
    * in the buffer.
    */
@@ -232,6 +232,10 @@ class AttributeFormattingFunction extends FormattingFunction {
   }
 }
 
+/**
+ * A standard function such as `vprintf` that has a format parameter
+ * and a variable argument list of type `va_arg`.
+ */
 predicate primitiveVariadicFormatter(TopLevelFunction f, int formatParamIndex, boolean wide) {
   f.getName().regexpMatch("_?_?va?[fs]?n?w?printf(_s)?(_p)?(_l)?")
   and (
@@ -250,6 +254,10 @@ predicate callsVariadicFormatter(Function f, int formatParamIndex, boolean wide)
   )
 }
 
+/**
+ * A function such as `vprintf` that has a format parameter
+ * and a variable argument list of type `va_arg`.  
+ */
 predicate variadicFormatter(Function f, int formatParamIndex, boolean wide) {
   primitiveVariadicFormatter(f, formatParamIndex, wide)
   or (
@@ -295,14 +303,14 @@ class FormattingFunctionCall extends Expr {
   }
 
   /**
-   * Get the formatting function being called.
+   * Gets the formatting function being called.
    */
   FormattingFunction getTarget() {
     result = this.(Call).getTarget()
   }
 
   /**
-   * Get the `i`th argument for this call.
+   * Gets the `i`th argument for this call.
    *
    * The range of `i` is from `0` to `getNumberOfArguments() - 1`.
    */
@@ -311,7 +319,7 @@ class FormattingFunctionCall extends Expr {
   }
 
   /**
-   * Get the number of actual parameters in this call; use
+   * Gets the number of actual parameters in this call; use
    * `getArgument(i)` with `i` between `0` and `result - 1` to
    * retrieve actuals.
    */
@@ -319,17 +327,23 @@ class FormattingFunctionCall extends Expr {
     result = this.(Call).getNumberOfArguments()
   }
 
-  /** the index at which the format string occurs in the argument list */
+  /**
+   * Gets the index at which the format string occurs in the argument list.
+   */
   int getFormatParameterIndex() {
     result = this.getTarget().(FormattingFunction).getFormatParameterIndex()
   }
 
-  /** the format expression used in this call */
+  /**
+   * Gets the format expression used in this call.
+   */
   Expr getFormat() {
     result = this.getArgument(this.getFormatParameterIndex())
   }
 
-  /** the nth argument to the format (including width and precision arguments) */
+  /**
+   * Gets the nth argument to the format (including width and precision arguments).
+   */
   Expr getFormatArgument(int n) {
     exists(int i |
       result = this.getArgument(i)
@@ -338,7 +352,9 @@ class FormattingFunctionCall extends Expr {
     )
   }
 
-  /** the argument corresponding to the nth conversion specifier */
+  /**
+   * Gets the argument corresponding to the nth conversion specifier
+   */
   Expr getConversionArgument(int n) {
     exists(FormatLiteral fl, int b, int o |
       fl = this.getFormat() and
@@ -348,8 +364,11 @@ class FormattingFunctionCall extends Expr {
       result = this.getFormatArgument(b+o-1))
   }
 
-  /** the argument corresponding to the nth conversion specifier's minimum field width
-      (fails if that conversion specifier has an explicit minimum field width) */
+  /**
+   * Gets the argument corresponding to the nth conversion specifier's
+   * minimum field width (has no result if that conversion specifier has
+   * an explicit minimum field width).
+   */
   Expr getMinFieldWidthArgument(int n) {
     exists(FormatLiteral fl, int b |
       fl = this.getFormat() and
@@ -358,8 +377,11 @@ class FormattingFunctionCall extends Expr {
       result = this.getFormatArgument(b))
   }
 
-  /** the argument corresponding to the nth conversion specifier's precision
-      (fails if that conversion specifier has an explicit precision) */
+  /**
+   * Gets the argument corresponding to the nth conversion specifier's
+   * precision (has no result if that conversion specifier has an explicit
+   * precision).
+   */
   Expr getPrecisionArgument(int n) {
     exists(FormatLiteral fl, int b, int o |
       fl = this.getFormat() and
@@ -369,7 +391,10 @@ class FormattingFunctionCall extends Expr {
       result = this.getFormatArgument(b+o))
   }
 
-  /** the number of arguments to this call that are parameters to the format string */
+  /**
+   * Gets the number of arguments to this call that are parameters to the
+   * format string.
+   */
   int getNumFormatArgument() {
     result = count(this.getFormatArgument(_))
   }
@@ -384,11 +409,17 @@ class FormatLiteral extends Expr {
     this.isConstant()
   }
 
-  /** the function call whether this format string is used */
+  /**
+   * Gets the function call where this format string is used.
+   */
   FormattingFunctionCall getUse() {
     result.getFormat() = this
   }
 
+  /**
+   * Holds if the default meaning of `%s` is a `wchar_t *`, rather than
+   * a `char *` (either way, `%S` will have the opposite meaning).
+   */
   predicate isWideCharDefault() {
     getUse().getTarget().(FormattingFunction).isWideCharDefault()
   }
@@ -401,46 +432,53 @@ class FormatLiteral extends Expr {
     getFile().compiledAsMicrosoft()
   }
 
-  /** the format string, with '%%' replaced by '_'
-      (to avoid processing '%%' as a format specifier)
-  */
+  /**
+   * Gets the format string, with '%%' replaced by '_' (to avoid processing
+   * '%%' as a format specifier).
+   */
   string getFormat() {
     result = this.getValue().replaceAll("%%", "_")
   }
 
-  /** Gets the number of conversion specifiers (not counting `%%`) */
+  /**
+   * Gets the number of conversion specifiers (not counting `%%`)
+   */
   int getNumConvSpec() {
     result = count(this.getFormat().indexOf("%"))
   }
 
-  /** the position in the string at which the nth conversion specifier starts */
+  /**
+   * Gets the position in the string at which the nth conversion specifier
+   * starts.
+   */
   int getConvSpecOffset(int n) {
        n = 0 and result = this.getFormat().indexOf("%", 0, 0)
     or n > 0 and exists(int p | n = p + 1 and result = this.getFormat().indexOf("%", 0, this.getConvSpecOffset(p)+2))
   }
 
-  /** regular expressions to match the individual parts of a conversion specifier */
-  string getFlagRegexp() {
+  // these predicates gets a regular expressions to match each individual
+  // parts of a conversion specifier.
+  private string getFlagRegexp() {
     if isMicrosoft() then (
       result = "[-+ #0']*"
     ) else (
       result = "[-+ #0'I]*"
     )
   }
-  string getFieldWidthRegexp() {
+  private string getFieldWidthRegexp() {
     result = "(?:[1-9][0-9]*|\\*|\\*[0-9]+\\$)?"
   }
-  string getPrecRegexp() {
+  private string getPrecRegexp() {
     result = "(?:\\.(?:[0-9]*|\\*|\\*[0-9]+\\$))?"
   }
-  string getLengthRegexp() {
+  private string getLengthRegexp() {
     if isMicrosoft() then (
       result = "(?:hh?|ll?|L|q|j|z|t|w|I32|I64|I)?"
     ) else (
       result = "(?:hh?|ll?|L|q|j|z|Z|t)?"
     )
   }
-  string getConvCharRegexp() {
+  private string getConvCharRegexp() {
     if isMicrosoft() then (
       result = "[aAcCdeEfFgGimnopsSuxXZ@]"
     ) else (
@@ -448,7 +486,9 @@ class FormatLiteral extends Expr {
     )
   }
 
-  /** the regular expression used for matching a whole conversion specifier */
+  /** 
+   * Gets a regular expression used for matching a whole conversion specifier.
+   */
   string getConvSpecRegexp() {
     // capture groups: 1 - entire conversion spec, including "%"
     //                 2 - flags
@@ -461,14 +501,16 @@ class FormatLiteral extends Expr {
                  "|\\%\\%).*"
   }
 
-  /** parse a conversion specifier
-    *  @param n which conversion specifier to parse
-    *  @param spec the whole conversion specifier
-    *  @param flags the flags of the conversion specifier (empty string if none are given)
-    *  @param width the minimum field width of the conversion specifier (empty string if none is given)
-    *  @param prec the precision of the conversion specifier (empty string if none is given)
-    *  @param len the length flag of the conversion specifier (empty string if none is given)
-    *  @param conv the conversion character of the conversion specifier ("%" for specifier "%%") */
+  /**
+   * Holds if the arguments are a parsing of a conversion specifier to this format string. 
+   *  @param n which conversion specifier to parse
+   *  @param spec the whole conversion specifier
+   *  @param flags the flags of the conversion specifier (empty string if none are given)
+   *  @param width the minimum field width of the conversion specifier (empty string if none is given)
+   *  @param prec the precision of the conversion specifier (empty string if none is given)
+   *  @param len the length flag of the conversion specifier (empty string if none is given)
+   *  @param conv the conversion character of the conversion specifier ("%" for specifier "%%")
+   */
   predicate parseConvSpec(int n, string spec, string flags, string width, string prec, string len, string conv) {
     exists(int offset, string fmt, string rst, string regexp |
       offset = this.getConvSpecOffset(n) and
@@ -491,7 +533,9 @@ class FormatLiteral extends Expr {
           conv = "%")))
   }
 
-  /** Gets the nth conversion specifier (including the initial `%`) */
+  /**
+   * Gets the nth conversion specifier (including the initial `%`).
+   */
   string getConvSpec(int n) {
     exists(int offset, string fmt, string rst, string regexp |
       offset = this.getConvSpecOffset(n) and
@@ -501,61 +545,101 @@ class FormatLiteral extends Expr {
       result  = rst.regexpCapture(regexp, 1))
   }
 
-  /** the flags of the nth conversion specifier */
+  /**
+   * Gets the flags of the nth conversion specifier.
+   */
   string getFlags(int n) {
     exists(string spec, string width, string prec, string len, string conv | this.parseConvSpec(n, spec, result, width, prec, len, conv))
   }
 
-  /** whether the nth conversion specifier has alternate flag ("#") */
+  /** 
+   * Holds if the nth conversion specifier has alternate flag ("#").
+   */
   predicate hasAlternateFlag(int n) { this.getFlags(n).matches("%#%") }
 
-  /** whether the nth conversion specifier has zero padding flag ("0") */
+  /**
+   * Holds if the nth conversion specifier has zero padding flag ("0").
+   */
   predicate isZeroPadded(int n) { this.getFlags(n).matches("%0%") and not this.isLeftAdjusted(n) }
 
-  /** whether the nth conversion specifier has flag left adjustment flag ("-")
-    * note that this overrides the zero padding flag */
+  /**
+   * Holds if the nth conversion specifier has flag left adjustment flag
+   * ("-").  Note that this overrides the zero padding flag.
+   */
   predicate isLeftAdjusted(int n) { this.getFlags(n).matches("%-%") }
 
-  /** whether the nth conversion specifier has the blank flag (" ") */
+  /**
+   * Holds if the nth conversion specifier has the blank flag (" ").
+   */
   predicate hasBlank(int n) { this.getFlags(n).matches("% %") }
 
-  /** whether the nth conversion specifier has the explicit sign flag ("+") */
+  /**
+   * Holds if the nth conversion specifier has the explicit sign flag ("+").
+   */
   predicate hasSign(int n) { this.getFlags(n).matches("%+%") }
 
-  /** whether the nth conversion specifier has the thousands grouping flag ("'") */
+  /**
+   * Holds if the nth conversion specifier has the thousands grouping flag ("'").
+   */
   predicate hasThousandsGrouping(int n) { this.getFlags(n).matches("%'%") }
 
-  /** whether the nth conversion specifier has the alternative digits flag ("I") */
+  /**
+   * Holds if the nth conversion specifier has the alternative digits flag ("I").
+   */
   predicate hasAlternativeDigits(int n) { this.getFlags(n).matches("%I%") }
 
-  /** the minimum field width of the nth conversion specifier (empty string if none is given) */
+  /**
+   * Gets the minimum field width of the nth conversion specifier
+   * (empty string if none is given).
+   */
   string getMinFieldWidthOpt(int n) { exists(string spec, string flags, string prec, string len, string conv | this.parseConvSpec(n, spec, flags, result, prec, len, conv)) }
 
-  /** whether the nth conversion specifier has a minimum field width */
+  /** 
+   * Holds if the nth conversion specifier has a minimum field width.
+   */
   predicate hasMinFieldWidth(int n) { this.getMinFieldWidthOpt(n) != "" }
 
-  /** whether the nth conversion specifier has an explicitly given minimum field width */
+  /**
+   * Holds if the nth conversion specifier has an explicitly given minimum
+   * field width.
+   */
   predicate hasExplicitMinFieldWidth(int n) { this.getMinFieldWidthOpt(n).regexpMatch("[0-9]+") }
 
-  /** whether the nth conversion specifier has an implicitly given minimum field width (either "*" or "*i$" for some number i) */
+  /**
+   * Holds if the nth conversion specifier has an implicitly given minimum
+   * field width (either "*" or "*i$" for some number i).
+   */
   predicate hasImplicitMinFieldWidth(int n) { this.getMinFieldWidthOpt(n).regexpMatch("\\*.*") }
 
-  /** the minimum field width of the nth conversion specifier */
+  /**
+   * Gets the minimum field width of the nth conversion specifier.
+   */
   int getMinFieldWidth(int n) { result = this.getMinFieldWidthOpt(n).toInt() }
 
-  /** the precision of the nth conversion specifier (empty string if none is given) */
+  /**
+   * Gets the precision of the nth conversion specifier (empty string if none is given).
+   */
   string getPrecisionOpt(int n) { exists(string spec, string flags, string width, string len, string conv | this.parseConvSpec(n, spec, flags, width, result, len, conv)) }
 
-  /** whether the nth conversion specifier has a precision */
+  /**
+   * Holds if the nth conversion specifier has a precision.
+   */
   predicate hasPrecision(int n) { this.getPrecisionOpt(n) != "" }
 
-   /** whether the nth conversion specifier has an explicitly given precision */
+  /**
+   * Holds if the nth conversion specifier has an explicitly given precision.
+   */
   predicate hasExplicitPrecision(int n) { this.getPrecisionOpt(n).regexpMatch("\\.[0-9]*") }
 
-  /** whether the nth conversion specifier has an implicitly given precision (either "*" or "*i$" for some number i) */
+  /**
+   * Holds if the nth conversion specifier has an implicitly given precision
+   * (either "*" or "*i$" for some number i).
+   */
   predicate hasImplicitPrecision(int n) { this.getPrecisionOpt(n).regexpMatch("\\.\\*.*") }
 
-  /** the precision of the nth conversion specifier */
+  /**
+   * Gets the precision of the nth conversion specifier.
+   */
   int getPrecision(int n) {
     if this.getPrecisionOpt(n) = "." then
       result = 0
@@ -563,39 +647,50 @@ class FormatLiteral extends Expr {
       result = this.getPrecisionOpt(n).regexpCapture("\\.([0-9]*)", 1).toInt()
   }
 
-  /** the length flag of the nth conversion specifier */
+  /**
+   * Gets the length flag of the nth conversion specifier.
+   */
   string getLength(int n) { exists(string spec, string flags, string width, string prec, string conv | this.parseConvSpec(n, spec, flags, width, prec, result, conv)) }
 
-  /** the conversion character of the nth conversion specifier */
+  /**
+   * Gets the conversion character of the nth conversion specifier.
+   */
   string getConversionChar(int n) { exists(string spec, string flags, string width, string prec, string len | this.parseConvSpec(n, spec, flags, width, prec, len, result)) }
 
-  int targetBitSize() { result = this.getFullyConverted().getType().getSize() }
+  /**
+   * Gets the size of pointers in the target this formatting function is
+   * compiled for. 
+   */
+  private int targetBitSize() { result = this.getFullyConverted().getType().getSize() }
 
-  LongType getLongType() {
+  private LongType getLongType() {
          if this.targetBitSize() = 4 then result.getSize() = min(LongType l | | l.getSize())
     else if this.targetBitSize() = 8 then result.getSize() = max(LongType l | | l.getSize())
     else any()
   }
 
-  Intmax_t getIntmax_t() {
+  private Intmax_t getIntmax_t() {
          if this.targetBitSize() = 4 then result.getSize() = min(Intmax_t l | | l.getSize())
     else if this.targetBitSize() = 8 then result.getSize() = max(Intmax_t l | | l.getSize())
     else any()
   }
 
-  Size_t getSize_t() {
+  private Size_t getSize_t() {
          if this.targetBitSize() = 4 then result.getSize() = min(Size_t l | | l.getSize())
     else if this.targetBitSize() = 8 then result.getSize() = max(Size_t l | | l.getSize())
     else any()
   }
 
-  Ptrdiff_t getPtrdiff_t() {
+  private Ptrdiff_t getPtrdiff_t() {
          if this.targetBitSize() = 4 then result.getSize() = min(Ptrdiff_t l | | l.getSize())
     else if this.targetBitSize() = 8 then result.getSize() = max(Ptrdiff_t l | | l.getSize())
     else any()
   }
 
-  /** the family of integral types required by the nth conversion specifier's length flag */
+  /**
+   * Gets the family of integral types required by the nth conversion
+   * specifier's length flag.
+   */
   Type getIntegralConversion(int n) {
     exists(string len | len = this.getLength(n) and
         ((len="hh" and result instanceof IntType)
@@ -619,7 +714,10 @@ class FormatLiteral extends Expr {
     ))
   }
 
-  /** the family of integral types output / displayed by the nth conversion specifier's length flag */
+  /**
+   * Gets the family of integral types output / displayed by the nth
+   * conversion specifier's length flag.
+   */
   IntegralType getIntegralDisplayType(int n) {
     exists(string len | len = this.getLength(n) and
         ((len="hh" and result instanceof CharType)
@@ -642,7 +740,10 @@ class FormatLiteral extends Expr {
       or (len=""  and result instanceof IntType)))
   }
 
-  /** the family of floating point types required by the nth conversion specifier's length flag */
+  /**
+   * Gets the family of floating point types required by the nth conversion
+   * specifier's length flag.
+   */
   FloatingPointType getFloatingPointConversion(int n) {
     exists(string len | len = this.getLength(n) and
       if len="L" then
@@ -651,7 +752,10 @@ class FormatLiteral extends Expr {
         result instanceof DoubleType)
   }
 
-  /** the family of pointer types required by the nth conversion specifier's length flag */
+  /**
+   * Gets the family of pointer types required by the nth conversion
+   * specifier's length flag.
+   */
   PointerType getStorePointerConversion(int n) {
     exists(IntegralType base |
       exists(string len | len = this.getLength(n) |
@@ -665,7 +769,9 @@ class FormatLiteral extends Expr {
     )
   }
 
-  /** the argument type required by the nth conversion specifier */
+  /**
+   * Gets the argument type required by the nth conversion specifier.
+   */
   Type getConversionType(int n) {
     result = getConversionType1(n) or
     result = getConversionType1b(n) or
@@ -806,7 +912,10 @@ class FormatLiteral extends Expr {
     )
   }
 
-  /** the number of arguments required by the nth conversion specifier of this format string */
+  /**
+   * Gets the number of arguments required by the nth conversion specifier
+   * of this format string.
+   */
   int getNumArgNeeded(int n) {
     exists(this.getConvSpecOffset(n)) and
     not this.getConversionChar(n) = "%" and
@@ -817,17 +926,27 @@ class FormatLiteral extends Expr {
       result = n1 + n2 + n3)
   }
 
-  /** the number of arguments needed by this format string */
+  /**
+   * Gets the number of arguments needed by this format string.
+   */
   int getNumArgNeeded() {
     result = sum(int n, int toSum | (toSum = this.getNumArgNeeded(n)) | toSum)
   }
 
+  /**
+   * Holds if all conversion specifiers of this format string have been
+   * parsed by the library (this does not hold if one or more unrecognized
+   * format specifiers are present in the format string). 
+   */
   predicate specsAreKnown() {
     this.getNumConvSpec() = count(int n | exists(this.getNumArgNeeded(n)))
   }
 
-  /** the maximum length of the string that can be produced by the nth conversion specifier of this format string;
-      fails if no estimate is possible (or implemented)  */
+  /**
+   * Gets the maximum length of the string that can be produced by the nth
+   * conversion specifier of this format string; has no result if this cannot
+   * be determined.
+   */
   int getMaxConvertedLength(int n) {
     exists(int len |
       (if this.hasExplicitMinFieldWidth(n) then
@@ -951,8 +1070,13 @@ class FormatLiteral extends Expr {
     )
   }
 
-  /** as getMaxConvertedLength, except that float to string conversions are assumed to be 8 characters.  This is helpful
-      for determining whether a buffer overflow is caused by long float to string conversions. */
+  /**
+   * Gets the maximum length of the string that can be produced by the nth
+   * conversion specifier of this format string, except that float to string
+   * conversions are assumed to be 8 characters.  This is helpful for
+   * determining whether a buffer overflow is caused by long float to string
+   * conversions.
+   */
   int getMaxConvertedLengthLimited(int n) {
     if this.getConversionChar(n).toLowerCase() = "f" then (
       result = getMaxConvertedLength(n).minimum(8)
@@ -961,10 +1085,14 @@ class FormatLiteral extends Expr {
     )
   }
 
-  /** the constant part of the format string just before the nth conversion specifier
-      if n is zero, this will be the constant prefix before the 0th specifier, otherwise it is the string between
-      the end of the n-1th specifier and the nth specifier
-      fails if n is negative or not strictly less than the number of conversion specifiers */
+  /**
+   * Gets the constant part of the format string just before the nth
+   * conversion specifier.  If `n` is zero, this will be the constant prefix
+   * before the 0th specifier, otherwise it is the string between the end
+   * of the n-1th specifier and the nth specifier.  Has no result if `n`
+   * is negative or not strictly less than the number of conversion
+   * specifiers.
+   */
   string getConstantPart(int n) {
     if n=0 then
       result = this.getFormat().substring(0, this.getConvSpecOffset(0))
@@ -972,7 +1100,10 @@ class FormatLiteral extends Expr {
       result = this.getFormat().substring(this.getConvSpecOffset(n-1)+this.getConvSpec(n-1).length(), this.getConvSpecOffset(n))
   }
 
-  /** the constant part of the format string after the last conversion specifier */
+  /**
+   * Gets the constant part of the format string after the last conversion
+   * specifier.
+   */
   string getConstantSuffix() {
     exists(int n | n = this.getNumConvSpec() and
       (if n > 0 then
@@ -981,21 +1112,35 @@ class FormatLiteral extends Expr {
         result = this.getFormat()))
   }
 
-  int getMaxConvertedLengthAfter(int n) {
+  private int getMaxConvertedLengthAfter(int n) {
     if n=this.getNumConvSpec() then
       result = this.getConstantSuffix().length() + 1
     else
       result = this.getConstantPart(n).length()+this.getMaxConvertedLength(n)+this.getMaxConvertedLengthAfter(n+1)
   }
 
-  int getMaxConvertedLengthAfterLimited(int n) {
+  private int getMaxConvertedLengthAfterLimited(int n) {
     if n=this.getNumConvSpec() then
       result = this.getConstantSuffix().length() + 1
     else
       result = this.getConstantPart(n).length()+this.getMaxConvertedLengthLimited(n)+this.getMaxConvertedLengthAfterLimited(n+1)
   }
 
+  /**
+   * Gets the maximum length of the string that can be produced by this format
+   * string.  Has no result if this cannot be determined.
+   */
   int getMaxConvertedLength() {
     result = this.getMaxConvertedLengthAfter(0)
+  }
+
+  /**
+   * Gets the maximum length of the string that can be produced by this format
+   * string, except that float to string conversions are assumed to be 8
+   * characters.  This is helpful for determining whether a buffer overflow
+   * is caused by long float to string conversions.
+   */
+  int getMaxConvertedLengthLimited() {
+    result = this.getMaxConvertedLengthAfterLimited(0)
   }
 }

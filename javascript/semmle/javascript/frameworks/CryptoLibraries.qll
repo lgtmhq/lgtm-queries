@@ -306,7 +306,7 @@ private module BrowserIdCrypto {
         keygen.getArgument(1).(DataFlowNode).getALocalSource() = callback and
         this = mod.getAMethodCall("sign") and
         mce.getArgument(0) = input and
-        callback.getParameter(1).getAVariable().getAnAccess() = keyPrn.getBase().(DataFlowNode).getALocalSource() and
+        callback.getParameter(1).(SimpleParameter).getAnInitialUse() = keyPrn.getBase().(DataFlowNode).getALocalSource() and
         keyPrn.getPropertyName() = "secretKey" and
         mce.getArgument(1).(DataFlowNode).getALocalSource() = keyPrn
       )

@@ -236,6 +236,13 @@ predicate isMultiLicenseBundle(TopLevel tl) {
 }
 
 /**
+ * Holds if this is a bundle with a "bundle" directive.
+ */
+predicate isDirectiveBundle(TopLevel tl) {
+  exists (BundleDirective d | d.getTopLevel() = tl)
+}
+
+/**
  * Holds if toplevel `tl` contains code that looks like the output of a module bundler.
  */
 predicate isBundle(TopLevel tl) {
@@ -244,5 +251,6 @@ predicate isBundle(TopLevel tl) {
     isWebpackBundle(e)
   ) or
   isMultiPartBundle(tl) or
-  isMultiLicenseBundle(tl)
+  isMultiLicenseBundle(tl) or
+  isDirectiveBundle(tl)
 }

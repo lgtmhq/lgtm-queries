@@ -29,67 +29,36 @@ module NodeJSLib {
     )
   }
 
-  private class RouteHandler extends HTTP::RouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
 
-    RequestListener function;
+    Function function;
 
     RouteHandler() {
-      function = this
+      function = this and
+      any(RouteSetup setup).getARouteHandler() = this
     }
 
-    override HTTP::HeaderDefinition getAResponseHeader(string name){
-      exists(SetHeader h |
-        h.getResponse().(DataFlowNode).getALocalSource() = this.getResponseVariable().getAnAccess() and
-        name = h.getAHeaderName() and
-        result = h)
-    }
-
-    /**
-    * Gets the variable that contains the request object.
-    */
-    Variable getRequestVariable(){
-      result = function.getParameter(0).(SimpleParameter).getVariable()
-    }
-
-    /**
-    * Gets the variable that contains the request object.
-    */
-    Variable getResponseVariable(){
-      result = function.
-      getParameter(1).(SimpleParameter).getVariable()
-    }
-
-    /**
-     * Gets a server this handler is registered on.
-     */
-    Server getAServer() {
-      result = function.getAServer()
-    }
-  }
-
-  /**
-   * An HTTP request listener.
-   */
-  class RequestListener extends Function {
-
-    Server server;
-
-    RequestListener() {
-      exists (MethodCallExpr mce |
-        this = mce.getLastArgument().(DataFlowNode).getALocalSource() |
-        server = mce // registration during server creation
-        or
-        server = mce.getReceiver().(DataFlowNode).getALocalSource() and
-        mce.getMethodName().regexpMatch("on(ce)?") and
-        mce.getArgument(0).getStringValue() = "request"
+    private DataFlowNode getALocalParameterUse(int paramIndex){
+      exists(SimpleParameter param |
+        param = function.getParameter(paramIndex) and
+        param.getAnInitialUse() = result.getALocalSource()
       )
     }
 
     /**
-     * Gets a server this listener is registered on.
-    */
-    Server getAServer() {
-      result = server
+     * Gets an expression that contains the "request" object of
+     * a route handler invocation.
+     */
+    Expr getARequestExpr(){
+      result = getALocalParameterUse(0)
+    }
+
+    /**
+     * Gets an expression that contains the "response" object of
+     * a route handler invocation.
+     */
+    Expr getAResponseExpr(){
+      result = getALocalParameterUse(1)
     }
   }
 
@@ -97,20 +66,42 @@ module NodeJSLib {
    * Holds if `nd` is an HTTP request object.
    */
   predicate isRequest(DataFlowNode nd) {
-    exists (Variable req |
-      req.getADeclaration() = any(RequestListener lr).getParameter(0) and
-      nd.getALocalSource() = req.getAnAccess()
-    )
+    any(RouteHandler rh).getARequestExpr() = nd
   }
 
   /**
    * Holds if `nd` is an HTTP response object.
    */
   predicate isResponse(DataFlowNode nd) {
-    exists (Variable res |
-      res.getADeclaration() = any(RequestListener h).getParameter(1) and
-      nd.getALocalSource() = res.getAnAccess()
-    )
+    any(RouteHandler rh).getAResponseExpr() = nd
+  }
+
+  class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
+
+    Expr server;
+
+    Expr handler;
+
+    RouteSetup() {
+      (server = this and
+        isCreateServer(server) and
+        handler = getArgument(0)) or
+        (server = getReceiver() and
+          server.(DataFlowNode).getALocalSource() instanceof Server and
+          getMethodName().regexpMatch("on(ce)?") and
+          getArgument(0).getStringValue() = "request" and
+          handler = getArgument(1)
+        )
+    }
+
+    override DataFlowNode getARouteHandler() {
+      result = handler.(DataFlowNode).getALocalSource()
+    }
+
+    override DataFlowNode getAServer() {
+      result = server.(DataFlowNode).getALocalSource()
+    }
+
   }
 
   /**
@@ -128,38 +119,31 @@ module NodeJSLib {
     }
   }
 
-  private abstract class HeaderDefinition extends HTTP::ExplicitHeaderDefinition {
-    Expr response;
+  private abstract class HeaderDefinition extends HTTP::Servers::StandardHeaderDefinition {
 
-    /**
-     * Gets the response object this set is set on.
-     */
-    Expr getResponse() {
-      result = response
+    HeaderDefinition(){
+      isResponse(getReceiver())
+    }
+
+    override RouteHandler getARouteHandler(){
+      getReceiver() = result.getAResponseExpr()
     }
   }
 
   /**
    * A call to the `setHeader` method of an HTTP response.
    */
-  private class SetHeader extends HeaderDefinition, MethodCallExpr {
+  private class SetHeader extends HeaderDefinition {
     SetHeader() {
-      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = "setHeader"
-    }
-
-    override predicate definesExplicitly(string headerName, Expr headerValue) {
-      headerName = getArgument(0).getStringValue() and
-      headerValue = getArgument(1)
     }
   }
 
   /**
    * A call to the `writeHead` method of an HTTP response.
    */
-  private class WriteHead extends HeaderDefinition, MethodCallExpr {
+  private class WriteHead extends HeaderDefinition {
     WriteHead() {
-      isResponse(getReceiver()) and response = getReceiver() and
       getMethodName() = "writeHead" and
       getNumArgument() > 1
     }
@@ -205,14 +189,28 @@ module NodeJSLib {
   /**
    * A Node.js server application.
    */
-  class Server extends HTTP::Server {
+  class Server extends HTTP::Servers::StandardServer {
     Server() {
       isCreateServer(this)
     }
-
-    override RouteHandler getARouteHandler() {
-      result.getAServer() = this
-    }
   }
 
- }
+  /** An expression that is passed as `http.request({ auth: <expr> }, ...)`. */
+  class Credentials extends CredentialsExpr {
+
+    Credentials() {
+      exists (CallExpr call |
+        exists (ModuleInstance http |
+          http.getPath() = "http" or http.getPath() = "https" |
+          call = http.getAMethodCall("request")
+        ) and
+        call.hasOptionArgument(0, "auth", this)
+      )
+    }
+
+    override string getCredentialsKind() {
+      result = "credentials"
+    }
+
+  }
+}

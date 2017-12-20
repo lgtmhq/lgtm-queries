@@ -262,12 +262,13 @@ cached module SsaSource {
     /** Holds if `v` is a parameter variable and `defn` is the CFG node for that parameter. */
     cached predicate parameter_definition(Variable v, ControlFlowNode defn) {
         exists(Function f, Name param |
-                f.getAnArg() = param or
-                f.getVararg() = param or
-                f.getKwarg() = param |
-                defn.getNode() = param and
-                param.getVariable() = v
-            )
+            f.getAnArg() = param or
+            f.getVararg() = param or
+            f.getKwarg() = param or
+            f.getKeywordOnlyArg(_) = param |
+            defn.getNode() = param and
+            param.getVariable() = v
+        )
     }
 
     /** Holds if `v` is deleted at `del`. */

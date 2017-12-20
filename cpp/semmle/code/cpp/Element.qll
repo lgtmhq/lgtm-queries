@@ -209,7 +209,8 @@ class Element extends @element {
     ) and (
       // instantiation is a template instantiation
       function_instantiation(instantiation, _) or
-      class_instantiation(instantiation, _)
+      class_instantiation(instantiation, _) or
+      variable_instantiation(instantiation, _)
     )
   }
 }

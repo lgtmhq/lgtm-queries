@@ -30,9 +30,11 @@ predicate hasName(Element e, string name) {
   fields(e,name,_,_,_) or
   packages(e,name) or
   files(e,_,name,_,_) or
-  exists(int pos | params(e,name,_,pos,_,_) |
-    not exists(string other | params(e,other,_,_,_,_) and other != name) or
-    exists(string other | params(e,other,_,_,_,_) and name != "p"+pos)
+  paramName(e,name) or
+  exists(int pos |
+    params(e,_,pos,_,_) and
+    not paramName(e,_) and
+    name = "p"+pos
   ) or
   localvars(e,name,_,_) or
   typeVars(e,name,_,_,_) or

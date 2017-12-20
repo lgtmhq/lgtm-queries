@@ -619,6 +619,24 @@ class StmtExpr extends Expr, @expr_stmt {
    * Gets the statement enclosed by this `StmtExpr`.
    */
   Stmt getStmt() { result.getParent() = this }
+
+  /**
+   * Gets the result expression of the enclosed statement. For example,
+   * `a+b` is the result expression in this example:
+   *
+   * ```
+   * x = ({ dosomething(); a+b; });
+   * ```
+   */
+  Expr getResultExpr() {
+    result = getStmtResultExpr(getStmt())
+  }
+}
+
+/** Get the result expression of a statement. (Helper function for StmtExpr.) */
+private Expr getStmtResultExpr(Stmt stmt) {
+  result = stmt.(ExprStmt).getExpr() or
+  result = getStmtResultExpr(stmt.(Block).getLastStmt())
 }
 
 /**

@@ -18,8 +18,7 @@ private import semmle.python.pointsto.Penultimate
 /*
  * A note on 'cost'. Cost doesn't represent the cost to compute,
  * but (a vague estimate of) the cost to compute per value gained.
- * Analysing the specified source code is more valuable than
- * analysing imported libraries.
+ * This is constantly evolving, so see the various cost functions below for more details.
  */
 
 private int given_cost() {
@@ -45,18 +44,11 @@ private int context_cost(TFinalContext ctx) {
     ctx = TCallContext(_, _, result)
 }
 
-private int function_cost(CallNode f) {
-    if f.getFunction().(AttrNode).getName() = "__init__" then
-        result = 0
-    else
-        result = 1
-}
-
 private int call_cost(CallNode call) {
     if call.getScope().inSource() then
-        result = 1
-    else
         result = 2
+    else
+        result = 3
 }
 
 private int incoming_calls_estimate(FunctionObject f) {
@@ -79,7 +71,25 @@ private int splay_cost(CallNode c) {
     ) and result = 0
 }
 
-private newtype TFinalContext =
+private predicate call_to_init_or_del(CallNode call) {
+    exists(string mname |
+        mname =  "__init__" or mname =  "__del__" |
+        mname = call.getFunction().(AttrNode).getName()
+    )
+}
+
+/** Total cost estimate */
+private int total_call_cost(CallNode call) {
+    /* We want to always follow __init__ and __del__ calls as they tell us about object construction,
+     * but we need to be aware of cycles, so they must have a non-zero cost.
+     */
+    if call_to_init_or_del(call) then
+        result = 1
+    else
+        result = call_cost(call) + splay_cost(call)
+}
+
+private cached newtype TFinalContext =
     TMainContext()
     or
     TRuntimeContext()
@@ -89,7 +99,7 @@ private newtype TFinalContext =
     TCallContext(ControlFlowNode call, FinalContext outerContext, int cost) {
         outerContext.appliesTo(call) and
         cost <= max_context_cost() and
-        cost = call_cost(call) + function_cost(call) + context_cost(outerContext) + splay_cost(call)
+        cost = total_call_cost(call) + context_cost(outerContext)
     }
 
 /** Points-to context. Context can be one of:
@@ -100,7 +110,7 @@ private newtype TFinalContext =
  */
 class FinalContext extends TFinalContext {
 
-    string toString() {
+    cached string toString() {
         this = TMainContext() and result = "main"
         or
         this = TRuntimeContext() and result = "runtime"
@@ -207,7 +217,8 @@ private predicate in_source(Scope s) {
  */
 predicate executes_in_runtime_context(Function f) {
     /* "Public" scope, i.e. functions whose name starts not with an underscore, or special methods */
-    (f.getName().charAt(0) != "_" or f.isSpecialMethod() or f.isInitMethod()) and
+    (f.getName().charAt(0) != "_" or f.isSpecialMethod() or f.isInitMethod()) 
+    and 
     in_source(f)
 }
 

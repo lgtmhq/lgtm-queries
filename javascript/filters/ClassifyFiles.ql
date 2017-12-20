@@ -53,6 +53,28 @@ predicate maybeCausedByTemplate(JSParseError e) {
   )
 }
 
+
+/**
+ * Holds if `e` is an expression in the form `o.p1.p2.p3....pn`.
+ */
+private predicate isNestedDotExpr(Expr e) {
+  e instanceof VarAccess or
+  isNestedDotExpr(e.(DotExpr).getBase())
+}
+
+/**
+ * Holds if `tl` only contains variable declarations and field reads.
+ */
+private predicate looksLikeExterns(TopLevel tl) {
+  forex (Stmt s | s.getParent() = tl |
+    exists (VarDeclStmt vds | vds = s |
+      forall (VariableDeclarator vd | vd = vds.getADecl() | not exists(vd.getInit()))
+    )
+    or
+    isNestedDotExpr(s.(ExprStmt).getExpr())
+  )
+}
+
 /**
  * Holds if `f` is classified as belonging to `category`.
  *
@@ -68,7 +90,7 @@ predicate classify(File f, string category) {
   or
   exists (Test t | t.getFile() = f | category = "test")
   or
-  f.getATopLevel().isExterns() and category = "externs"
+  (f.getATopLevel().isExterns() or looksLikeExterns(f.getATopLevel())) and category = "externs"
   or
   f.getATopLevel() instanceof FrameworkLibraryInstance and category = "library"
   or

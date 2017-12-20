@@ -36,6 +36,6 @@ where
     not missing = theObjectType().lookupAttribute("__init__") and
     not missing.neverReturns() and
     not self.failedInference() and
-    not missing.isC()
+    not missing.isBuiltin()
 select self, "Class " + self.getName() + " may not be initialized properly as $@ is not called from its $@.",
 missing, missing.descriptiveString(), initializer, "__init__ method"

@@ -14,7 +14,6 @@
 /** Provides classes for working with Node.js modules. */
 
 import Modules
-import DataFlow
 private import FilesInternal
 
 /**
@@ -105,7 +104,7 @@ class NodeModule extends Module {
   }
 
   override predicate searchRoot(PathExpr path, Folder searchRoot, int priority) {
-    path.getTopLevel() = this and
+    path.getEnclosingModule() = this and
     exists (string pathval | pathval = path.getValue() |
       // paths starting with `./` or `../` are resolved relative to the importing
       // module's folder
@@ -141,7 +140,7 @@ class NodeModule extends Module {
  * <tr><td><code>/node_modules</code></td><td>3</td></tr>
  * </table>
  */
-private predicate findNodeModulesFolder(Folder f, Folder nodeModules, int distance) {
+predicate findNodeModulesFolder(Folder f, Folder nodeModules, int distance) {
   nodeModules = f.getFolder("node_modules") and not f.getBaseName() = "node_modules" and distance = 0 or
   findNodeModulesFolder(f.getParentContainer(), nodeModules, distance-1)
 }
@@ -219,29 +218,28 @@ class Require extends CallExpr, Import {
    *
    * To resolve an import of a path `p`, we consider each candidate folder `c` with
    * priority `r` and resolve the import to the following files if they exist
-   * (the scaling factor of `N` is large enough to prevent results from different
-   * candidate folders from overlapping):
+   * (in order of priority):
    *
    * <ul>
-   * <li> the file `c/p`, with priority `N*r`;
-   * <li> the file `c/p.{tsx,ts,jsx,mjs}`, with priority `N*r+1` through `N*r+4`;
-   * <li> the file `c/p.js`, with priority `N*r+5`;
-   * <li> the file `c/p.json`, with priority `N*r+6`;
-   * <li> the file `c/p.node`, with priority `N*r+7`;
+   * <li> the file `c/p`;
+   * <li> the file `c/p.{tsx,ts,jsx,es6,es,mjs}`;
+   * <li> the file `c/p.js`;
+   * <li> the file `c/p.json`;
+   * <li> the file `c/p.node`;
    * <li> if `c/p` is a folder:
    *      <ul>
    *      <li> if `c/p/package.json` exists and specifies a `main` module `m`:
    *        <ul>
-   *        <li> the file `c/p/m`, with priority `N*r+8`;
-   *        <li> the file `c/p/m.{tsx,ts,jsx,mjs}`, with priority `N*r+9` through `N*r+12`;
-   *        <li> the file `c/p/m.js`, with priority `N*r+13`;
-   *        <li> the file `c/p/m.json`, with priority `N*r+14`;
-   *        <li> the file `c/p/m.node`, with priority `N*r+15`;
+   *        <li> the file `c/p/m`;
+   *        <li> the file `c/p/m.{tsx,ts,jsx,es6,es,mjs}`;
+   *        <li> the file `c/p/m.js`;
+   *        <li> the file `c/p/m.json`;
+   *        <li> the file `c/p/m.node`;
    *        </ul>
-   *      <li> the file `c/p/index.{tsx,ts,jsx,mjs}`, with priority `N*r+16` through `N*r+19`;
-   *      <li> the file `c/p/index.js`, with priority `N*r+20`;
-   *      <li> the file `c/p/index.json`, with priority `N*r+21`;
-   *      <li> the file `c/p/index.node`, with priority `N*r+22`.
+   *      <li> the file `c/p/index.{tsx,ts,jsx,es6,es,mjs}`;
+   *      <li> the file `c/p/index.js`;
+   *      <li> the file `c/p/index.json`;
+   *      <li> the file `c/p/index.node`.
    *      </ul>
    * </ul>
    *

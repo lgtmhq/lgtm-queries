@@ -1345,7 +1345,13 @@ module FinalPointsTo {
                 context.isRuntime() and context.appliesToScope(scope) and
                 scope.getScope() = cls.getPyClass() and
                 not PenultimatePointsTo::Types::abstract_class(cls) and
-                value = def.getDefiningNode() and origin = value
+                value = def.getDefiningNode() and origin = value and
+                /* We want to allow decorated function, otherwise we loose a lot of useful information.
+                 * However, we want to exclude any function whose arguments are permutated by the decorator.
+                 * In general we can't do that, but we can special case the most common ones.
+                 */
+                not PenultimatePointsTo::points_to(scope.getADecorator().getAFlowNode(), _, theStaticMethodType(), _, _) and
+                not PenultimatePointsTo::points_to(scope.getADecorator().getAFlowNode(), _, theClassMethodType(), _, _)
             )
             or
             exists(EssaVariable obj, FinalContext caller |

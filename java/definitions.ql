@@ -145,7 +145,7 @@ predicate dummyVarAccess(VarAccess va) {
 }
 
 predicate dummyTypeAccess(TypeAccess ta) {
-  exists(MemberRefExpr e | e.getAnonymousClass().getClassInstanceExpr().getTypeName() = ta)
+  exists(FunctionalExpr e | e.getAnonymousClass().getClassInstanceExpr().getTypeName() = ta)
 }
 
 from Element e, Element def, string kind

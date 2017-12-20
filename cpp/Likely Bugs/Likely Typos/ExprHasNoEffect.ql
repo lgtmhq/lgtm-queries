@@ -86,6 +86,7 @@ where // EQExprs are covered by CompareWhereAssignMeant.ql
       parent = peivc.getParent() and
       not parent.isInMacroExpansion() and
       not parent instanceof PureExprInVoidContext and
+      not peivc.getEnclosingFunction().isCompilerGenerated() and
       not peivc.getType() instanceof UnknownType and
       not containsDisabledCode(peivc.(FunctionCall).getTarget()) and
       if peivc instanceof FunctionCall then

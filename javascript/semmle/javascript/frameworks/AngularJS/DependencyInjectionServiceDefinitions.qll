@@ -98,6 +98,19 @@ class BuiltinServiceReference extends ServiceReference, MkBuiltinServiceReferenc
 }
 
 /**
+ * Holds if `nd` is a reference to the builtin service with the name `serviceName`.
+ *
+ * NB: Use `BuiltinServiceReference.getAnAccess` instead of this predicate when possible (they are semantically equivalent for builtin services).
+ * This predicate can avoid the non-monotonic recursion that `getAnAccess` can cause.
+ */
+private predicate isBuiltinServiceRef(DataFlowNode nd, string serviceName) {
+ exists(InjectableFunction f, BuiltinServiceReference service |
+   service.getName() = serviceName and
+   f.getDependencyParameter(serviceName).getAnInitialUse() = nd.getALocalSource()
+ )
+}
+
+/**
  * A reference to a custom service.
  */
 class CustomServiceReference extends ServiceReference, MkCustomServiceReference {
@@ -233,9 +246,31 @@ private string getBuiltinKind(string name) {
 }
 
 /**
- * A definition of a custom AngularJS dependency injection service.
+ * A custom AngularJS service, defined through `$provide.service`,
+ * `module.controller` or a similar method.
  */
-abstract class RecipeDefinition extends MethodCallExpr {
+abstract class CustomServiceDefinition extends Expr {
+
+  /** Gets a factory function used to create the defined service. */
+  abstract DataFlowNode getAFactoryFunction();
+
+  /** Gets a service defined by this definition. */
+  abstract DataFlowNode getAService();
+
+  /** Gets the name of the service defined by this definition. */
+  abstract string getName();
+
+  /** Gets the reference to the defined service. */
+  ServiceReference getServiceReference() {
+    result = MkCustomServiceReference(this)
+  }
+
+}
+
+/**
+ * A definition of a custom AngularJS dependency injection service using a "recipe".
+ */
+abstract class RecipeDefinition extends MethodCallExpr, CustomServiceDefinition, DependencyInjection {
 
   string methodName;
 
@@ -243,49 +278,135 @@ abstract class RecipeDefinition extends MethodCallExpr {
 
   RecipeDefinition() {
     (isModuleRef(getReceiver(), _) or
-      exists(InjectableFunction f |
-        f.getDependencyParameter("$provide").getAVariable().getAnAccess() = getReceiver()
-      )) and
+      isBuiltinServiceRef(getReceiver(), "$provide")
+      ) and
     methodName = getMethodName() and
     name = getStringValue(getArgument(0))
   }
 
-  /** Gets the name of the defined service. */
-  string getName() { result = name }
+  override string getName() { result = name }
 
-  /** Gets a value used for creating the service provided by this definition. */
-  DataFlowNode getAServiceConstructor() {
+  override DataFlowNode getAFactoryFunction() {
     result = getArgument(1).(DataFlowNode).getALocalSource()
   }
 
-  /** Gets a service created by `getAServiceConstructor`*/
-  abstract DataFlowNode getAService();
+  override DataFlowNode getAnInjectableFunction() {
+    methodName != "value" and
+    methodName != "constant" and
+    result = getAFactoryFunction()
+  }
+
+}
+
+
+/**
+ * A custom special AngularJS service, defined through
+ * `$controllerProvider.register`, `module.filter` or a similar method.
+ *
+ * Special services are those that have a meaning outside the AngularJS
+ * dependency injection system.
+ * This includes, filters (used in AngularJS expressions) and controllers
+ * (used through `ng-controller` directives).
+ */
+private abstract class CustomSpecialServiceDefinition extends CustomServiceDefinition, DependencyInjection {
+
+  override DataFlowNode getAnInjectableFunction() {
+    result = getAFactoryFunction()
+  }
+
 }
 
 /**
- * A custom AngularJS service, either defined through `$provide.service` or `module.service` or a similar method.
+ * Holds if `mce` defines a service of type `moduleMethodName` with name `serviceName` using the `factoryFunction` as the factory function.
  */
-class CustomServiceDefinition extends Expr {
+private predicate isCustomServiceDefinitionOnModule(MethodCallExpr mce, string moduleMethodName, string serviceName, DataFlowNode factoryFunction) {
+  isModuleRef(mce.getReceiver(), _) and
+  (moduleMethodName = "controller" or moduleMethodName = "filter") and
+  mce.getMethodName() = moduleMethodName and
+  serviceName = getStringValue(mce.getArgument(0)) and
+  factoryFunction = mce.getArgument(1).(DataFlowNode).getALocalSource()
+}
 
-  RecipeDefinition def;
+private predicate isCustomServiceDefinitionOnProvider(MethodCallExpr mce, string providerName, string providerMethodName, string serviceName, DataFlowNode factoryFunction) {
+  isBuiltinServiceRef(mce.getReceiver(), providerName) and
+  mce.getMethodName() = providerMethodName and
+  ((
+    mce.getNumArgument() = 1 and
+    mce.hasOptionArgument(0, serviceName, factoryFunction)
+  ) or (
+    mce.getNumArgument() = 2 and
+    serviceName = getStringValue(mce.getArgument(0)) and
+    factoryFunction = mce.getArgument(1).(DataFlowNode).getALocalSource()
+  ))
+}
 
-  CustomServiceDefinition() {
-    def = this
+/**
+ * A controller defined with `module.controller` or `$controllerProvider.register`.
+ */
+class ControllerDefinition extends CustomSpecialServiceDefinition {
+
+  string name;
+
+  DataFlowNode factoryFunction;
+
+  ControllerDefinition() {
+    isCustomServiceDefinitionOnModule(this, "controller", name, factoryFunction) or
+    isCustomServiceDefinitionOnProvider(this, "$controllerProvider", "register", name, factoryFunction)
   }
 
-  string getName() {
-    result = def.getName()
+  override string getName() {
+    result = name
   }
 
-  /** Gets a service defined by this definition. */
-  DataFlowNode getAService() {
-    result = def.getAService()
+  override DataFlowNode getAService() {
+    result = factoryFunction
   }
 
-  /** Gets the reference to the defined service. */
-  ServiceReference getServiceReference() {
-    result = MkCustomServiceReference(this)
+  override DataFlowNode getAFactoryFunction() {
+    result = factoryFunction
   }
+
+}
+
+/**
+ * A filter defined with `module.filter` or `$filterProvider.register`.
+ */
+class FilterDefinition extends CustomSpecialServiceDefinition {
+
+  string name;
+
+  DataFlowNode factoryFunction;
+
+  FilterDefinition() {
+    isCustomServiceDefinitionOnModule(this, "filter", name, factoryFunction) or
+    isCustomServiceDefinitionOnProvider(this, "$filterProvider", "register", name, factoryFunction)
+  }
+
+  override string getName() {
+    result = name
+  }
+
+  override DataFlowNode getAService() {
+    result = factoryFunction
+  }
+
+  override DataFlowNode getAFactoryFunction() {
+    result = factoryFunction
+  }
+
+}
+
+/**
+ * A service defined with `module.factory`.
+ *
+ * DEPREACTED: use AngularJS::FactoryRecipeDefinition instead.
+ */
+deprecated class ServiceDefinition extends Expr {
+
+  ServiceDefinition() {
+    this instanceof FactoryRecipeDefinition
+  }
+
 }
 
 /**
@@ -321,7 +442,7 @@ private class LinkFunctionWithScopeInjection extends ServiceRequest {
 
   override DataFlowNode getAnAccess(ServiceReference service) {
     service instanceof ScopeServiceReference and
-    result = this.(LinkFunction).getScopeParameter().getAVariable().getAnAccess()
+    result = this.(LinkFunction).getScopeParameter().getAnInitialUse()
   }
 
 }
@@ -335,9 +456,6 @@ class InjectableFunctionServiceRequest extends ServiceRequest {
   InjectableFunction injectedFunction;
 
   InjectableFunctionServiceRequest() {
-    if(exists(injectedFunction.getAnExplicitDependencyInjection())) then
-    this = injectedFunction.getAnExplicitDependencyInjection()
-    else
     this = injectedFunction
   }
 
@@ -366,7 +484,7 @@ class InjectableFunctionServiceRequest extends ServiceRequest {
   override DataFlowNode getAnAccess(ServiceReference service) {
     exists(SimpleParameter param |
       service = injectedFunction.getAResolvedDependency(param) and
-      result = param.getVariable().getAnAccess()
+      result = param.getAnInitialUse()
     )
   }
 
@@ -374,7 +492,7 @@ class InjectableFunctionServiceRequest extends ServiceRequest {
 
 private DataFlowNode getFactoryFunctionResult(RecipeDefinition def) {
   exists(Function factoryFunction |
-    factoryFunction = def.getAServiceConstructor().(InjectableFunction).asFunction() and
+    factoryFunction = def.getAFactoryFunction().(InjectableFunction).asFunction() and
     result = factoryFunction.getAReturnedExpr().(DataFlowNode).getALocalSource()
   )
 }
@@ -434,7 +552,7 @@ class ServiceRecipeDefinition extends RecipeDefinition {
     arguments, which represent dependencies needed by the instance
     of this type. */
 
-    result = getAServiceConstructor().(InjectableFunction).asFunction()
+    result = getAFactoryFunction().(InjectableFunction).asFunction()
   }
 }
 
@@ -448,7 +566,7 @@ class ValueRecipeDefinition extends RecipeDefinition {
   }
 
   override DataFlowNode getAService() {
-    result = getAServiceConstructor()
+    result = getAFactoryFunction()
   }
 }
 
@@ -462,7 +580,7 @@ class ConstantRecipeDefinition extends RecipeDefinition {
   }
 
   override DataFlowNode getAService() {
-    result = getAServiceConstructor()
+    result = getAFactoryFunction()
   }
 }
 
@@ -489,13 +607,26 @@ class ProviderRecipeDefinition extends RecipeDefinition {
     under the hood.  */
 
     exists(Function enclosing, PropWriteNode prop |
-      enclosing = getAServiceConstructor().(InjectableFunction).asFunction() and
+      enclosing = getAFactoryFunction().(InjectableFunction).asFunction() and
       enclosing = prop.(Expr).getEnclosingFunction() and
       prop.getBase() instanceof ThisExpr and
       prop.getPropertyName() = "$get" and
-      result = prop.getRhs().(DataFlowNode).getALocalSource()
+      result = prop.getRhs().getALocalSource()
     )
   }
+
+}
+
+private class ProviderRecipeServiceInjection extends DependencyInjection {
+
+  ProviderRecipeServiceInjection() {
+    this instanceof ProviderRecipeDefinition
+  }
+
+  override DataFlowNode getAnInjectableFunction() {
+    result = this.(ProviderRecipeDefinition).getAService()
+  }
+
 }
 
 /**

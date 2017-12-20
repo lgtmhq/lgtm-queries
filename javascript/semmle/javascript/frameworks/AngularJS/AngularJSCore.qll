@@ -134,7 +134,7 @@ predicate isModuleRef(DataFlowNode nd, AngularModule m) {
 /**
  * A call to a method from the `angular.Module` API.
  */
-class ModuleApiCall extends @callexpr {
+class ModuleApiCall extends @callexpr, DependencyInjection {
   /** The module on which the method is called. */
   AngularModule mod;
 
@@ -159,6 +159,24 @@ class ModuleApiCall extends @callexpr {
    * Gets a textual representation of this method call.
    */
   string toString() { result = this.(CallExpr).toString() }
+
+  /**
+   * Gets the argument position for this method call that expects an injectable function.
+   *
+   * This method excludes the method names that are also present on the AngularJS '$provide' object.
+   */
+  private int injectableArgPos() {
+    (methodName = "directive" or
+      methodName = "filter" or methodName = "controller" or
+      methodName = "animation") and result = 1
+      or
+      (methodName = "config" or methodName = "run") and result = 0
+  }
+
+  override DataFlowNode getAnInjectableFunction() {
+    result = getArgument(injectableArgPos())
+  }
+
 }
 
 /**
@@ -190,6 +208,22 @@ class DirectiveDefinition extends ModuleApiCall {
   string toString() { result = name }
 }
 
+private class DirectiveControllerDependencyInjection extends DependencyInjection {
+
+  DirectiveControllerDependencyInjection() {
+    this instanceof DirectiveDefinition
+  }
+
+  override DataFlowNode getAnInjectableFunction() {
+    exists (GeneralDirective d |
+      d.getDefinition() = this and
+      // NB: can not use `.getController` here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
+      result = d.getMember("controller")
+    )
+  }
+
+}
+
 /**
  * An AngularJS component definition, that is, a method call of the form
  * `module.component("name", config)`.
@@ -217,6 +251,21 @@ class ComponentDefinition extends ModuleApiCall {
 
   /** Gets a textual representation of this component definition. */
   string toString() { result = name }
+}
+
+private class ComponentControllerDependencyInjection extends DependencyInjection {
+
+  ComponentControllerDependencyInjection() {
+    this instanceof ComponentDefinition
+  }
+
+  override DataFlowNode getAnInjectableFunction() {
+    exists (ComponentDirective d |
+      d.getDefinition() = this and
+      result = d.getMember("controller")
+    )
+  }
+
 }
 
 /**
@@ -316,6 +365,14 @@ class DirectiveInstance extends TDirectiveInstance {
 
   /** Gets a textual representation of this directive. */
   string toString() { result = getName() }
+
+  /**
+   * Gets a scope object for this directive.
+   */
+  AngularScope getAScope() {
+    result.mayApplyTo(getAMatchingElement())
+  }
+
 }
 
 /**
@@ -365,6 +422,38 @@ abstract class CustomDirective extends DirectiveInstance {
   string getTemplateUrl() {
     result = getStringValue(getMember("templateUrl"))
   }
+
+  /**
+   * Gets a template file for this directive, if any.
+   */
+  HTMLFile getATemplateFile() {
+    result.getAbsolutePath().regexpMatch(".*/\\Q" + getTemplateUrl() + "\\E")
+  }
+
+  /**
+   * Gets a scope object for this directive.
+   */
+  AngularScope getAScope() {
+    if hasIsolateScope() then
+      result = MkIsolateScope(this)
+    else
+      result = DirectiveInstance.super.getAScope()
+  }
+
+  private string getRestrictionString() {
+    result = getMember("restrict").(ConstantString).getStringValue()
+  }
+
+  private predicate hasTargetType(DirectiveTargetType type) {
+    not exists(getRestrictionString()) or
+    getRestrictionString().indexOf(type.toString()) != -1
+  }
+
+  override DirectiveTarget getATarget() {
+    result = DirectiveInstance.super.getATarget() and
+    hasTargetType(result.getType())
+  }
+
 }
 
 /**
@@ -510,93 +599,6 @@ class ComponentDirective extends CustomDirective, MkCustomComponent {
   }
 }
 
-/**
- * An AngularJS service definition, that is, a method call of the form
- * `module.factory("name", factoryFunction)`.
- */
-class ServiceDefinition extends ModuleApiCall {
-  /** The name of the defined service. */
-  string name;
-
-  /** The factory function for the service. */
-  InjectableFunction factoryFunction;
-
-  ServiceDefinition() {
-    methodName = "factory" and
-    name = getStringValue(getArgument(0)) and
-    factoryFunction = getArgument(1).(DataFlowNode).getALocalSource()
-  }
-
-  /** Gets the name of the defined service. */
-  string getName() { result = name }
-
-  /** Gets the factory function creating the service instance. */
-  InjectableFunction getFactoryFunction() {
-    result = factoryFunction
-  }
-
-  /** Gets a textual representation of this service definition. */
-  string toString() { result = name }
-}
-
-/**
- * An AngularJS filter definition, that is, a method call of the form
- * `module.filter("name", factoryFunction)`.
- */
-class FilterDefinition extends ModuleApiCall {
-  /** The name of the defined filter. */
-  string name;
-
-  /** The factory function for the filter. */
-  InjectableFunction factoryFunction;
-
-  FilterDefinition() {
-    methodName = "filter" and
-    name = getStringValue(getArgument(0)) and
-    factoryFunction = getArgument(1).(DataFlowNode).getALocalSource()
-  }
-
-  /** Gets the name of the defined filter. */
-  string getName() { result = name }
-
-  /** Gets the factory function creating the filter instance. */
-  InjectableFunction getFactoryFunction() {
-    result = factoryFunction
-  }
-
-  /** Gets a textual representation of this filter definition. */
-  string toString() { result = name }
-}
-
-/**
- * An AngularJS controller definition, that is, a method call of the form
- * `module.controller("name", factoryFunction)`.
- */
-class ControllerDefinition extends ModuleApiCall {
-  /** The name of the defined controller. */
-  string name;
-
-  /** The factory function for the controller. */
-  InjectableFunction factoryFunction;
-
-  ControllerDefinition() {
-    methodName = "controller" and
-    name = getStringValue(getArgument(0)) and
-    factoryFunction = getArgument(1).(DataFlowNode).getALocalSource()
-  }
-
-  /** Gets the name of the defined controller. */
-  string getName() { result = name }
-
-  /** Gets the factory function for creating controller instances. */
-  InjectableFunction getFactoryFunction() {
-    result = factoryFunction
-  }
-
-  /** Gets a textual representation of this controller definition. */
-  string toString() { result = name }
-}
-
 private newtype TDirectiveTargetType = E() or A() or C() or M()
 
 /**
@@ -669,7 +671,7 @@ private class DomAttributeAsElement extends DirectiveTarget {
  * is stripped, then the `:`, `-` or `_`-delimited name is converted to
  * camel case.
  */
-private class DirectiveTargetName extends string {
+class DirectiveTargetName extends string {
   DirectiveTargetName() {
     this = any(DirectiveTarget e).getName()
   }
@@ -779,7 +781,7 @@ private class JQLiteObject extends JQueryObject {
         param = d.getMember("template").(Function).getParameter(0) or
         param = d.getMember("templateUrl").(Function).getParameter(0)
       ) |
-      this = param.getVariable().getAnAccess()
+      this = param.getAnInitialUse()
     ) or
     exists(ServiceReference element |
       element.getName() = "$rootElement" or
@@ -960,4 +962,112 @@ class LinkFunction extends Function {
   SimpleParameter getTranscludeFnParameter() {
     result = getParameter(4)
   }
+}
+
+/**
+ * An abstract representation of a set of AngularJS scope objects.
+ */
+private newtype TAngularScope =
+  MkHtmlFileScope(HTMLFile file) {
+    any(DirectiveInstance d).getAMatchingElement().getFile() = file or
+    any(CustomDirective d).getATemplateFile() = file
+  } or
+  MkIsolateScope(CustomDirective dir) {
+    dir.hasIsolateScope()
+  } or
+  MkElementScope(DOM::ElementDefinition elem) {
+    any(DirectiveInstance d | not d.(CustomDirective).hasIsolateScope()).getAMatchingElement() = elem
+  }
+
+
+/**
+ * An abstract representation of a set of AngularJS scope objects.
+ */
+class AngularScope extends TAngularScope {
+
+  /** Gets a textual representation of this element. */
+  abstract string toString();
+
+  /**
+   * Gets an access to this scope object.
+   */
+  DataFlowNode getAnAccess() {
+    exists (CustomDirective d |
+      this = d.getAScope() |
+      exists (SimpleParameter p |
+        p = d.getController().getDependencyParameter("$scope") or
+        p = d.getALinkFunction().getParameter(0) |
+        result.getALocalSource() = p.getAnInitialUse()
+      ) or
+      exists (ThisExpr dis |
+        result.getALocalSource() = dis and
+        dis.getBinder() = d.getController().asFunction() and
+        d.bindsToController()
+      )
+    )
+  }
+
+  /**
+   * Holds if this scope may be the scope object of `elt`, i.e. the value of `angular.element(elt).scope()`.
+   */
+  predicate mayApplyTo(DOM::ElementDefinition elt) {
+    exists (DirectiveInstance d |
+      d.getATarget().getElement() = elt and
+      this = d.getAScope()
+    ) or
+    elt instanceof HTMLElement and
+    this = MkHtmlFileScope(elt.getFile())
+  }
+}
+
+/**
+ * An abstract representation of all the AngularJS scope objects in an HTML file.
+ */
+class HtmlFileScope extends AngularScope, MkHtmlFileScope {
+
+  HTMLFile f;
+
+  HtmlFileScope() { this = MkHtmlFileScope(f) }
+
+  override string toString() {
+    result = "scope in " + f.getBaseName()
+  }
+
+}
+
+/**
+ * An abstract representation of the AngularJS isolate scope of a directive.
+ */
+class IsolateScope extends AngularScope, MkIsolateScope {
+
+  CustomDirective dir;
+
+  IsolateScope() { this = MkIsolateScope(dir) }
+
+  override string toString() {
+    result = "isolate scope for " + dir.getName()
+  }
+
+  /**
+   * Gets the directive of this isolate scope.
+   */
+  CustomDirective getDirective(){
+    result = dir
+  }
+
+}
+
+/**
+ * An abstract representation of all the AngularJS scope objects for a DOM element.
+ */
+class ElementScope extends AngularScope, MkElementScope {
+
+  DOM::ElementDefinition elem;
+
+  ElementScope() { this = MkElementScope(elem) }
+
+  override string toString() {
+    result = "scope for " + elem
+  }
+
 }

@@ -178,10 +178,10 @@ class Callable extends StmtParent, Member, @callable {
   Parameter getAParameter() { result.getCallable() = this }
 
   /** The formal parameter at the specified (zero-based) position. */
-  Parameter getParameter(int n) { params(result, _, _, n, this, _) }
+  Parameter getParameter(int n) { params(result, _, n, this, _) }
 
   /** The type of the formal parameter at the specified (zero-based) position. */
-  Type getParameterType(int n) { params(_, _, result, n, this, _) }
+  Type getParameterType(int n) { params(_, result, n, this, _) }
 
   /**
    * The signature of this callable, including its name and the types of all its parameters,

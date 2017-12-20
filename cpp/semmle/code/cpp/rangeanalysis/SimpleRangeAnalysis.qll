@@ -119,6 +119,8 @@ predicate analyzableExpr(Expr e) {
    (e instanceof SubExpr) or
    (e instanceof CrementOperation) or
    (e instanceof RemExpr) or
+   (e instanceof CommaExpr) or
+   (e instanceof StmtExpr) or
 
    // A conversion is analyzable, provided that its child has an arithmetic
    // type. (Sometimes the child is a reference type, and so does not get
@@ -219,6 +221,14 @@ predicate exprDependsOnDef(
   exists (RemExpr remExpr
   | e = remExpr
   | exprDependsOnDef(remExpr.getAnOperand(), srcDef, srcVar))
+  or
+  exists (CommaExpr commaExpr
+  | e = commaExpr
+  | exprDependsOnDef(commaExpr.getRightOperand(), srcDef, srcVar))
+  or
+  exists (StmtExpr stmtExpr
+  | e = stmtExpr
+  | exprDependsOnDef(stmtExpr.getResultExpr(), srcDef, srcVar))
   or
   exists (Conversion convExpr
   | e = convExpr
@@ -572,6 +582,14 @@ float getLowerBoundsImpl(Expr expr) {
       | rhsUB = getFullyConvertedUpperBounds(remExpr.getRightOperand())
       | result = -rhsUB)))
   or
+  exists (CommaExpr commaExpr
+  | expr = commaExpr and
+    result = getFullyConvertedLowerBounds(commaExpr.getRightOperand()))
+  or
+  exists (StmtExpr stmtExpr
+  | expr = stmtExpr and
+    result = getFullyConvertedLowerBounds(stmtExpr.getResultExpr()))
+  or
   // If the conversion is to an arithmetic type then we just return the
   // lower bound of the child. We do not need to handle truncation and
   // overflow here, because that is done in `getTruncatedLowerBounds`.
@@ -681,6 +699,14 @@ float getUpperBoundsImpl(Expr expr) {
     | rhsLB = getFullyConvertedLowerBounds(remExpr.getAnOperand()) and
       not (rhsLB >= 0)
     | result = -rhsLB))
+  or
+  exists (CommaExpr commaExpr
+  | expr = commaExpr and
+    result = getFullyConvertedUpperBounds(commaExpr.getRightOperand()))
+  or
+  exists (StmtExpr stmtExpr
+  | expr = stmtExpr and
+    result = getFullyConvertedUpperBounds(stmtExpr.getResultExpr()))
   or
   // If the conversion is to an arithmetic type then we just return the
   // upper bound of the child. We do not need to handle truncation and

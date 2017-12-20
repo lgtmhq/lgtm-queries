@@ -192,9 +192,9 @@ class ScanfFormatLiteral extends Expr {
   }
 
   /** regular expressions to match the individual parts of a conversion specifier */
-  string getMaxWidthRegexp() { result = "(?:[1-9][0-9]*)?" }
-  string getLengthRegexp() { result = "(?:hh?|ll?|L|q|j|z|t)?" }
-  string getConvCharRegexp() { result = "[aAcCdeEfFgGimnopsSuxX]" }
+  private string getMaxWidthRegexp() { result = "(?:[1-9][0-9]*)?" }
+  private string getLengthRegexp() { result = "(?:hh?|ll?|L|q|j|z|t)?" }
+  private string getConvCharRegexp() { result = "[aAcCdeEfFgGimnopsSuxX]" }
 
   /** the regular expression used for matching a whole conversion specifier */
   string getConvSpecRegexp() {

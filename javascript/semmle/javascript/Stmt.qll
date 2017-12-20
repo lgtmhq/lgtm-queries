@@ -253,6 +253,11 @@ class SystemJSDepsDirective extends KnownDirective {
   }
 }
 
+/** A `bundle` directive. */
+class BundleDirective extends KnownDirective {
+  BundleDirective() { getDirectiveText() = "bundle" }
+}
+
 /** An `if` statement. */
 class IfStmt extends @ifstmt, ControlStmt {
   /** Gets the condition of this `if` statement. */

@@ -413,6 +413,17 @@ abstract class ReExportDeclaration extends ExportDeclaration {
   /** Gets the module from which this declaration re-exports. */
   ES2015Module getImportedModule() {
     result.getFile() = getEnclosingModule().resolve(getImportedPath().(PathExpr))
+    or
+    result = resolveFromTypeRoot()
+  }
+
+  /**
+   * Gets a module in a `node_modules/@types/` folder that matches the imported module name.
+   */
+  private Module resolveFromTypeRoot() {
+    result.getFile() = min(TypeRootFolder typeRoot ||
+      typeRoot.getModuleFile(getImportedPath().getStringValue())
+      order by typeRoot.getSearchPriority(getFile().getParentContainer()))
   }
 }
 

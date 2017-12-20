@@ -29,7 +29,7 @@ from AngularJS::ServiceReference compile, SimpleParameter elem, CallExpr c
 where compile.getName() = "$compile" and
       elem = any(AngularJS::CustomDirective d).getALinkFunction().(AngularJS::LinkFunction).getElementParameter() and
       c = compile.getACall() and
-      c.getArgument(0).(DataFlowNode).getALocalSource() = elem.getVariable().getAnAccess() and
+      c.getArgument(0).(DataFlowNode).getALocalSource() = elem.getAnInitialUse() and
       // don't flag $compile calls that specify a `maxPriority`
       c.getNumArgument() < 3
 select c, "This call to $compile may cause double compilation of '" + elem + "'."

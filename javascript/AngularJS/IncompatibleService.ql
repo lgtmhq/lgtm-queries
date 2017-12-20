@@ -29,9 +29,10 @@ import AngularJS
  */
 predicate isServiceDirectiveOrFilterFunction(InjectableFunctionServiceRequest request) {
   exists(InjectableFunction f | f = request.getAnInjectedFunction() |
-    exists(ServiceDefinition def | def.getFactoryFunction() = f) or
+    exists(ServiceRecipeDefinition def | def.getAFactoryFunction() = f) or
+    exists(FactoryRecipeDefinition def | def.getAFactoryFunction() = f) or
     exists(DirectiveDefinition def | def.getFactoryFunction() = f) or
-    exists(FilterDefinition def | def.getFactoryFunction() = f)
+    exists(FilterDefinition def | def.getAFactoryFunction() = f)
   )
 }
 
@@ -40,7 +41,7 @@ predicate isServiceDirectiveOrFilterFunction(InjectableFunctionServiceRequest re
  */
 predicate isControllerFunction(InjectableFunctionServiceRequest request) {
   exists(InjectableFunction f | f = request.getAnInjectedFunction() |
-    exists(ControllerDefinition def | def.getFactoryFunction() = f)
+    exists(ControllerDefinition def | def.getAFactoryFunction() = f)
   )
 }
 

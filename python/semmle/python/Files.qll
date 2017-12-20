@@ -81,6 +81,14 @@ class File extends Container {
         result = this.getParent().getImportRoot(n)
     }
 
+    /** Gets the contents of this file as a string.
+     * This will only work for those non-python files that
+     * are specified to be extracted.
+     */
+    string getContents() {
+        file_contents(this, result)
+    }
+
 }
 
 private predicate occupied_line(File f, int n) {

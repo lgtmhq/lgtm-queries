@@ -187,6 +187,31 @@ class ExternalModuleDeclaration extends Stmt, StmtContainer, @externalmoduledecl
   override predicate isAmbient() { any() }
 }
 
+/**
+ * A TypeScript declaration of form `declare global {...}`.
+ */
+class GlobalAugmentationDeclaration extends Stmt, StmtContainer, @globalaugmentationdeclaration {
+  /** Gets the `i`th statement in this namespace. */
+  Stmt getStmt(int i) {
+    i >= 0 and
+    result = getChild(i)
+  }
+
+  /** Gets a statement in this namespace. */
+  Stmt getAStmt() {
+    result = getStmt(_)
+  }
+
+  /** Gets the number of statements in this namespace. */
+  int getNumStmt() {
+    result = count(getAStmt())
+  }
+
+  override StmtContainer getEnclosingContainer() { result = this.getContainer() }
+
+  override predicate isAmbient() { any() }
+}
+
 /** A TypeScript "import-equals" declaration. */
 class ImportEqualsDeclaration extends Stmt, @importequalsdeclaration {
   /** Gets the name under which the imported entity is imported. */
@@ -382,6 +407,7 @@ class TypeDecl extends Identifier, TypeRef, LexicalDecl {
     this = any(ClassOrInterface ci).getIdentifier() or
     this = any(TypeParameter tp).getIdentifier() or
     this = any(ImportSpecifier im | not im instanceof ImportNamespaceSpecifier).getLocal() or
+    this = any(ImportEqualsDeclaration im).getId() or
     this = any(TypeAliasDeclaration td).getIdentifier() or
     this = any(EnumDeclaration ed).getIdentifier() or
     this = any(EnumMember member).getIdentifier()
@@ -1465,5 +1491,132 @@ class EnumScope extends @enumscope, Scope {
 class ExternalModuleScope extends @externalmodulescope, Scope {
   override string toString() {
     result = "external module scope"
+  }
+}
+
+/**
+ * A TypeScript comment of one of the two forms:
+ * ```
+ * /// <reference path="FILE.d.ts"/>
+ * /// <reference types="NAME"/>
+ * ```
+ */
+class ReferenceImport extends LineComment {
+  string attribute;
+  string value;
+
+  ReferenceImport() {
+    getFile().getFileType().isTypeScript() and
+    exists (string regex | regex = "/\\s*<reference\\s+([a-z]+)\\s*=\\s*[\"']([^\"']*)[\"']\\s*/>\\s*" |
+      attribute = getText().regexpCapture(regex, 1) and
+      value = getText().regexpCapture(regex, 2)) and
+    (attribute = "path" or attribute = "types")
+  }
+
+  /**
+   * Gets the value of `path` or `types` attribute.
+   */
+  string getAttributeValue() { result = value }
+
+  /**
+   * Gets the name of the attribute, i.e. "`path`" or "`types`".
+   */
+  string getAttributeName() { result = attribute }
+
+  /**
+   * Gets the file referenced by this import.
+   */
+  File getImportedFile() { none() } // Overridden in subtypes.
+
+  /**
+   * Gets the top-level of the referenced file.
+   */
+  TopLevel getImportedTopLevel() { result.getFile() = getImportedFile() }
+}
+
+/**
+ * A TypeScript comment of the form:
+ * ```
+ * /// <reference path="FILE.d.ts"/>
+ * ```
+ */
+class ReferencePathImport extends ReferenceImport {
+  ReferencePathImport() {
+    attribute = "path"
+  }
+
+  override File getImportedFile() {
+    result = this.(PathExpr).resolve()
+  }
+}
+
+/**
+ * Treats reference imports comments as path expressions without exposing
+ * the methods from `PathExpr` on `ReferenceImport`.
+ */
+private class ReferenceImportAsPathExpr extends PathExpr {
+  ReferenceImport reference;
+
+  ReferenceImportAsPathExpr() { this = reference }
+
+  override string getValue() { result = reference.getAttributeValue() }
+
+  override Folder getSearchRoot(int priority) {
+    result = reference.getFile().getParentContainer() and priority = 0
+  }
+}
+
+/**
+ * A TypeScript comment of the form:
+ * ```
+ * /// <reference types="NAME" />
+ * ```
+ */
+class ReferenceTypesImport extends ReferenceImport {
+  ReferenceTypesImport() {
+    attribute = "types"
+  }
+
+  override File getImportedFile() {
+    result = min (Folder nodeModules, int distance |
+      findNodeModulesFolder(getFile().getParentContainer(), nodeModules, distance) |
+      nodeModules.getFolder("@types").getFolder(value).getFile("index.d.ts")
+      order by distance)
+  }
+}
+
+/**
+ * A folder where TypeScript finds declaration files for imported modules.
+ *
+ * Currently, this is any folder whose path ends with `node_modules/@types`.
+ */
+class TypeRootFolder extends Folder {
+  TypeRootFolder() {
+    exists (Folder nodeModules |
+      nodeModules.getBaseName() = "node_modules" and
+      nodeModules.getFolder("@types") = this)
+  }
+
+  /**
+   * Gets the enclosing `node_modules` folder.
+   */
+  Folder getNodeModulesFolder() {
+    result = getParentContainer()
+  }
+
+  /**
+   * Gets the `d.ts` file correspnding to the given module name.
+   *
+   * Concretely, this is the file at `node_modules/@types/<moduleName>/index.d.ts` if it exists.
+   */
+  File getModuleFile(string moduleName) {
+    result = getFolder(moduleName).getFile("index.d.ts")
+  }
+
+  /**
+   * Gets the priority with which this type root folder should be used from within the given search root.
+   */
+  int getSearchPriority(Folder searchRoot) {
+    findNodeModulesFolder(searchRoot, getNodeModulesFolder(), result)
   }
 }
