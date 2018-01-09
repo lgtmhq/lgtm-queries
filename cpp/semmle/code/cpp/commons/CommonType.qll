@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,36 +54,51 @@ class Size_t extends Type {
 /**
  * The C/C++ ssize_t type.
  */
-class Ssize_t extends IntegralType {
-  Ssize_t() { this.hasName("ssize_t") }
+class Ssize_t extends Type {
+  Ssize_t() {
+    this.getUnderlyingType() instanceof IntegralType and
+    this.hasName("ssize_t")
+  }
 }
 
 /**
  * The C/C++ ptrdiff_t type.
  */
-class Ptrdiff_t extends IntegralType {
-  Ptrdiff_t() { this.hasName("ptrdiff_t") }
+class Ptrdiff_t extends Type {
+  Ptrdiff_t() {
+    this.getUnderlyingType() instanceof IntegralType and
+    this.hasName("ptrdiff_t")
+  }
 }
 
 /**
  * The C/C++ intmax_t type.
  */
-class Intmax_t extends IntegralType {
-  Intmax_t() { this.hasName("intmax_t") }
+class Intmax_t extends Type {
+  Intmax_t() {
+    this.getUnderlyingType() instanceof IntegralType and
+    this.hasName("intmax_t")
+  }
 }
 
 /**
  * The C/C++ uintmax_t type.
  */
-class Uintmax_t extends IntegralType {
-  Uintmax_t() { this.hasName("uintmax_t") }
+class Uintmax_t extends Type {
+  Uintmax_t() {
+    this.getUnderlyingType() instanceof IntegralType and
+    this.hasName("uintmax_t")
+  }
 }
 
 /**
  * The C/C++ wchar_t type.
  */
-class Wchar_t extends IntegralType {
-  Wchar_t() { this.hasName("wchar_t") }
+class Wchar_t extends Type {
+  Wchar_t() {
+    this.getUnderlyingType() instanceof IntegralType and
+    this.hasName("wchar_t")
+  }
 }
 
 /**

@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,13 +32,22 @@ private predicate isPointerType(Type t) {
 }
 
 private Type baseType(Type t) {
-  exists (DerivedType dt
-  | dt = t.getUnspecifiedType() and
-    isPointerType(dt) and
-    result = dt.getBaseType().getUnspecifiedType())
-
-  // Make sure that the type has a size and that it isn't ambiguous.
+  (
+    exists (PointerType dt
+    | dt = t.getUnspecifiedType() and
+      result = dt.getBaseType().getUnspecifiedType()) or
+    exists (ArrayType at
+    | at = t.getUnspecifiedType() and
+      (not at.getBaseType().getUnspecifiedType() instanceof ArrayType) and
+      result = at.getBaseType().getUnspecifiedType()) or
+    exists (ArrayType at, ArrayType at2
+    | at = t.getUnspecifiedType() and
+      at2 = at.getBaseType().getUnspecifiedType() and
+      result = baseType(at2))
+  )
+  // Make sure that the type has a size and that it isn't ambiguous.  
   and strictcount(result.getSize()) = 1
+    
 }
 
 /**

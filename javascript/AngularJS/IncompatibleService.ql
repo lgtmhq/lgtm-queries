@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ predicate isServiceDirectiveOrFilterFunction(InjectableFunctionServiceRequest re
   exists(InjectableFunction f | f = request.getAnInjectedFunction() |
     exists(ServiceRecipeDefinition def | def.getAFactoryFunction() = f) or
     exists(FactoryRecipeDefinition def | def.getAFactoryFunction() = f) or
-    exists(DirectiveDefinition def | def.getFactoryFunction() = f) or
+    exists(DirectiveDefinition def | def.getAFactoryFunction() = f) or
     exists(FilterDefinition def | def.getAFactoryFunction() = f)
   )
 }

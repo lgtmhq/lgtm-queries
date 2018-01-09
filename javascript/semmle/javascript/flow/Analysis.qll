@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1161,7 +1161,7 @@ class AnalyzedRequireCall extends AnalyzedPropertyRead, @callexpr {
 /**
  * Flow analysis for (non-numeric) property read accesses.
  */
-private class AnalyzedPropertyAccess extends AnalyzedPropertyRead, @propaccess {
+class AnalyzedPropertyAccess extends AnalyzedPropertyRead, @propaccess {
   AnalyzedFlowNode baseNode;
   string propName;
 
@@ -1188,7 +1188,7 @@ private predicate isTrackedPropertyName(string prop) {
 /**
  * Flow analysis for property writes.
  */
-private class AnalyzedPropertyWrite extends DataFlowNode {
+class AnalyzedPropertyWrite extends DataFlowNode {
   AnalyzedFlowNode baseNode;
   string prop;
   AnalyzedFlowNode rhs;

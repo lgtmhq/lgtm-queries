@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +49,12 @@ predicate inVoidContext(Expr e) {
     e = seq.getOperand(i) and
     n = seq.getNumOperands() |
     i < n-1 or inVoidContext(seq)
-  )
+  ) or
+  exists (ForStmt stmt | e = stmt.getUpdate()) or
+  exists (ForStmt stmt | e = stmt.getInit() |
+    // Allow the pattern `for(i; i < 10; i++)`
+    not e instanceof VarAccess) or
+  exists (LogicalBinaryExpr logical | e = logical.getRightOperand() and inVoidContext(logical))
 }
 
 /**
@@ -117,8 +122,26 @@ predicate isReceiverSuppressingCall(CallExpr c, Expr dummy, PropAccess callee) {
   )
 }
 
+/**
+ * Holds if evaluating `e` has no side effects (except potentially allocating
+ * and initializing a new object).
+ *
+ * For calls, we do not check whether their arguments have any side effects:
+ * even if they do, the call itself is useless and should be flagged by this
+ * query.
+ */
+predicate noSideEffects(Expr e) {
+  e.isPure()
+  or
+  // `new Error(...)`, `new SyntaxError(...)`, etc.
+  e instanceof NewExpr and
+  forex (Function f | f = e.(CallSite).getACallee() |
+    f.(ExternalType).getASupertype*().getName() = "Error"
+  )
+}
+
 from Expr e
-where e.isPure() and inVoidContext(e) and
+where noSideEffects(e) and inVoidContext(e) and
       // disregard pure expressions wrapped in a void(...)
       not e instanceof VoidExpr and
       // filter out directives (unknown directives are handled by UnknownDirective.ql)

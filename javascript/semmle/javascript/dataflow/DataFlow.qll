@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -278,6 +278,8 @@ module DataFlow {
       predExpr = succExpr.(ConditionalExpr).getABranch()
       or
       predExpr = succExpr.(TypeAssertion).getExpression()
+      or
+      predExpr = succExpr.(NonNullAssertion).getExpression()
       or
       predExpr = succExpr.(ExpressionWithTypeArguments).getExpression()
       or

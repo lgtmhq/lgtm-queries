@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,6 +50,14 @@ predicate accessWithConversions(Expr e, Variable v) {
 }
 
 /**
+ * A comment containing the word "NaN".
+ */
+predicate isNaNComment(Comment c, string filePath, int startLine) {
+  c.getText().matches("%NaN%") and
+  c.getLocation().hasLocationInfo(filePath, startLine, _, _, _)
+}
+
+/**
  * Holds if the equality test `eq` looks like a NaN check.
  *
  * In order to qualify as a NaN check, both sides of the equality have
@@ -74,11 +82,9 @@ predicate isNaNCheck(EqualityTest eq) {
     ) or
 
     // there is a comment containing the word "NaN" next to the comparison
-    exists (int eqLine, Comment c |
-      eqLine = eq.getLocation().getStartLine() and
-      c.getFile() = eq.getFile() and
-      c.getLocation().getStartLine() in [eqLine-1..eqLine+1] and
-      c.getText().matches("%NaN%")
+    exists (string f, int l |
+      eq.getLocation().hasLocationInfo(f, l, _, _, _) and
+      isNaNComment(_, f, [l-1..l+1])
     )
   )
 }

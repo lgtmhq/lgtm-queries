@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -199,20 +199,25 @@ class Element extends @element {
    * the template itself).
    */
   predicate isFromTemplateInstantiation(Element instantiation) {
-    (
-      // instantiation is an enclosing Element
-      instantiation = getEnclosingElement*() or
-      exists(Declaration d |
-        this.(DeclarationEntry).getDeclaration() = d and
-        instantiation = d.getEnclosingElement*()
-      )
-    ) and (
-      // instantiation is a template instantiation
-      function_instantiation(instantiation, _) or
-      class_instantiation(instantiation, _) or
-      variable_instantiation(instantiation, _)
+    exists(Element e |
+      isFromTemplateInstantiationRec(e, instantiation) |
+      this = e or
+      this.(DeclarationEntry).getDeclaration() = e
     )
   }
+}
+
+private predicate isFromTemplateInstantiationRec(Element e, Element instantiation) {
+  function_instantiation(instantiation, _) and
+  e = instantiation
+  or
+  class_instantiation(instantiation, _) and
+  e = instantiation
+  or
+  variable_instantiation(instantiation, _) and
+  e = instantiation
+  or
+  isFromTemplateInstantiationRec(e.getEnclosingElement(), instantiation)
 }
 
 /**

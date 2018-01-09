@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,5 +26,7 @@
 import semmle.javascript.frameworks.React
 
 from PropWriteNode pwn, ReactComponent c
-where pwn.getBase() = c.getAStateAccess()
+where pwn.getBase() = c.getAStateAccess() and
+      // writes in constructors are ok
+      not pwn.(Expr).getEnclosingFunction() instanceof Constructor
 select pwn, "Use `setState` instead of directly modifying component state."

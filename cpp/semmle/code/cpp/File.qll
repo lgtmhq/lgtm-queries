@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -131,11 +131,9 @@ class File extends @file {
   Folder getParent() { containerparent(result,this) }
 
   /**
-   * Holds if this file may be from source.
-   *
-   * Note: this predicate is provided for consistency with the libraries
-   * for other languages, such as Java and Python. In C++, all files are
-   * classified as source files, so this predicate is always true.
+   * Holds if this file may be from source. This predicate holds for all files
+   * except the dummy file, whose name is the empty string, which contains
+   * declarations that are built into the compiler.
    */
   predicate fromSource() { numlines(this,_,_,_) }
 

@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,6 +76,34 @@ predicate containsDisabledCode(Function f) {
   )
 }
 
+
+/**
+ * Holds if the function `f`, or a function called by it, is inside a
+ * preprocessor branch that may have code in another arm
+ */
+predicate definedInIfDef(Function f) {
+  exists(PreprocessorBranchDirective pbd, string file, int pbdStartLine, int pbdEndLine, int fBlockStartLine, int fBlockEndLine  |
+    functionLocation(f, file, fBlockStartLine, fBlockEndLine) and
+    pbdLocation(pbd, file, pbdStartLine) and
+    pbdLocation(pbd.getNext(), file, pbdEndLine) and
+    pbdStartLine <= fBlockStartLine and
+    pbdEndLine >= fBlockEndLine and
+    // pbd is a preprocessor branch where multiple branches exist
+    (
+      pbd.getNext() instanceof PreprocessorElse or
+      pbd instanceof PreprocessorElse or
+      pbd.getNext() instanceof PreprocessorElif or
+      pbd instanceof PreprocessorElif
+    )
+  ) or
+
+  // recurse into function calls
+  exists(FunctionCall fc |
+    fc.getEnclosingFunction() = f and
+    definedInIfDef(fc.getTarget())
+  )
+}
+
 from PureExprInVoidContext peivc, Locatable parent,
   Locatable info, string info_text, string tail
 where // EQExprs are covered by CompareWhereAssignMeant.ql
@@ -89,6 +117,7 @@ where // EQExprs are covered by CompareWhereAssignMeant.ql
       not peivc.getEnclosingFunction().isCompilerGenerated() and
       not peivc.getType() instanceof UnknownType and
       not containsDisabledCode(peivc.(FunctionCall).getTarget()) and
+      not definedInIfDef(peivc.(FunctionCall).getTarget()) and
       if peivc instanceof FunctionCall then
         exists(Function target |
           target = peivc.(FunctionCall).getTarget() and

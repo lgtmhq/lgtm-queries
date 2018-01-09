@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,6 +91,10 @@ class ClassDef extends Assign {
             this.getValue() = c or this.getValue() = c.getADecoratorCall() | 
             result = c.getInnerScope()
         )
+    }
+
+    Stmt getLastStatement() {
+        result = this.getDefinedClass().getLastStatement()
     }
 
 }

@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -134,7 +134,7 @@ predicate isModuleRef(DataFlowNode nd, AngularModule m) {
 /**
  * A call to a method from the `angular.Module` API.
  */
-class ModuleApiCall extends @callexpr, DependencyInjection {
+class ModuleApiCall extends @callexpr {
   /** The module on which the method is called. */
   AngularModule mod;
 
@@ -161,6 +161,26 @@ class ModuleApiCall extends @callexpr, DependencyInjection {
   string toString() { result = this.(CallExpr).toString() }
 
   /**
+   * Gets the name of the invoked method.
+   */
+  string getMethodName() {
+    result = methodName
+  }
+
+}
+
+class ModuleApiCallDependencyInjection extends DependencyInjection {
+
+  ModuleApiCall call;
+
+  string methodName;
+
+  ModuleApiCallDependencyInjection() {
+    this = call and
+    methodName = call.getMethodName()
+  }
+
+  /**
    * Gets the argument position for this method call that expects an injectable function.
    *
    * This method excludes the method names that are also present on the AngularJS '$provide' object.
@@ -174,96 +194,7 @@ class ModuleApiCall extends @callexpr, DependencyInjection {
   }
 
   override DataFlowNode getAnInjectableFunction() {
-    result = getArgument(injectableArgPos())
-  }
-
-}
-
-/**
- * An AngularJS directive definition, that is, a method call of the form
- * `module.directive("name", factoryFunction)`.
- */
-class DirectiveDefinition extends ModuleApiCall {
-  /** The name of this directive. */
-  string name;
-
-  /** The factory function of this directive. */
-  InjectableFunction factoryFunction;
-
-  DirectiveDefinition() {
-    methodName = "directive" and
-    name = getStringValue(getArgument(0)) and
-    factoryFunction = getArgument(1).(DataFlowNode).getALocalSource()
-  }
-
-  /** Gets the name of this directive. */
-  string getName() { result = name }
-
-  /** Gets the factory function of this directive. */
-  InjectableFunction getFactoryFunction() {
-    result = factoryFunction
-  }
-
-  /** Gets a textual representation of this directive. */
-  string toString() { result = name }
-}
-
-private class DirectiveControllerDependencyInjection extends DependencyInjection {
-
-  DirectiveControllerDependencyInjection() {
-    this instanceof DirectiveDefinition
-  }
-
-  override DataFlowNode getAnInjectableFunction() {
-    exists (GeneralDirective d |
-      d.getDefinition() = this and
-      // NB: can not use `.getController` here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
-      result = d.getMember("controller")
-    )
-  }
-
-}
-
-/**
- * An AngularJS component definition, that is, a method call of the form
- * `module.component("name", config)`.
- */
-class ComponentDefinition extends ModuleApiCall {
-  /** The name of the defined component. */
-  string name;
-
-  /** The configuration object for the component. */
-  ObjectExpr config;
-
-  ComponentDefinition() {
-    methodName = "component" and
-    name = getStringValue(getArgument(0)) and
-    config = getArgument(1).(DataFlowNode).getALocalSource()
-  }
-
-  /** Gets the name of the defined component. */
-  string getName() { result = name }
-
-  /** Gets the configuration object for the defined component. */
-  ObjectExpr getConfig() {
-    result = config
-  }
-
-  /** Gets a textual representation of this component definition. */
-  string toString() { result = name }
-}
-
-private class ComponentControllerDependencyInjection extends DependencyInjection {
-
-  ComponentControllerDependencyInjection() {
-    this instanceof ComponentDefinition
-  }
-
-  override DataFlowNode getAnInjectableFunction() {
-    exists (ComponentDirective d |
-      d.getDefinition() = this and
-      result = d.getMember("controller")
-    )
+    result = call.getArgument(injectableArgPos())
   }
 
 }
@@ -413,6 +344,9 @@ abstract class CustomDirective extends DirectiveInstance {
   /** Holds if this directive introduces an isolate scope. */
   abstract predicate hasIsolateScope();
 
+  /** Gets a node that contributes to the return value of the factory function. */
+  abstract DataFlowNode getAnInstantiation();
+
   /** Gets the controller function of this directive, if any. */
   InjectableFunction getController() {
     result = getMember("controller")
@@ -476,9 +410,9 @@ class GeneralDirective extends CustomDirective, MkCustomDirective {
   }
 
   /** Gets a node that contributes to the return value of the factory function. */
-  private DataFlowNode getAnInstantiation() {
+  override DataFlowNode getAnInstantiation() {
     exists (Function factory |
-      factory = definition.getFactoryFunction().asFunction() and
+      factory = definition.getAFactoryFunction().(InjectableFunction).asFunction() and
       result = factory.getAReturnedExpr().(DataFlowNode).getALocalSource()
     )
   }
@@ -597,6 +531,11 @@ class ComponentDirective extends CustomDirective, MkCustomComponent {
   override predicate hasIsolateScope() {
     any()
   }
+
+  override DataFlowNode getAnInstantiation() {
+    result = comp.getConfig()
+  }
+
 }
 
 private newtype TDirectiveTargetType = E() or A() or C() or M()
@@ -661,6 +600,7 @@ private class DomAttributeAsElement extends DirectiveTarget {
   override string getName() { result = attr.getName() }
   override DOM::ElementDefinition getElement() { result = attr.getElement() }
   override DirectiveTargetType getType() { result = A() }
+  DOM::AttributeDefinition asAttribute() { result = attr }
 }
 
 /**
@@ -1068,6 +1008,164 @@ class ElementScope extends AngularScope, MkElementScope {
 
   override string toString() {
     result = "scope for " + elem
+  }
+
+}
+
+/**
+ * Holds if `nd` is a reference to the `$routeProvider` service, that is,
+ * it is either an access of `$routeProvider`, or a chained method call on
+ * `$routeProvider`.
+ */
+predicate isRouteProviderRef(DataFlowNode nd) {
+  isBuiltinServiceRef(nd, "$routeProvider") or
+  exists (MethodCallExpr mce |
+    mce.getMethodName() = "when" or
+    mce.getMethodName() = "otherwise" |
+    isRouteProviderRef(mce.getReceiver()) and
+    nd.getALocalSource() = mce
+  )
+}
+
+/**
+ * A setup of an AngularJS "route", using the `$routeProvider` API.
+ */
+class RouteSetup extends MethodCallExpr, DependencyInjection {
+
+  int optionsArgumentIndex;
+
+  RouteSetup() {
+    exists (string methodName |
+      isRouteProviderRef(getReceiver()) and
+      methodName = getMethodName() |
+      (methodName = "otherwise" and optionsArgumentIndex = 0) or
+      (methodName = "when" and optionsArgumentIndex = 1)
+    )
+  }
+
+  /**
+   * Gets the value of property `name` of the params-object provided to this call.
+   */
+  DataFlowNode getRouteParam(string name) {
+    exists(DataFlowNode nd |
+      hasOptionArgument(optionsArgumentIndex, name, nd) and
+      result = nd.getALocalSource()
+    )
+  }
+
+  /**
+   * Gets the "controller" value of this call, possibly resolving a service name.
+   */
+  InjectableFunction getController() {
+    exists(DataFlowNode controllerProperty |
+      // NB: can not use `.getController` here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
+      controllerProperty = getRouteParam("controller") |
+      result = controllerProperty or
+      exists(ControllerDefinition def |
+        def.getName() = controllerProperty.(ConstantString).getStringValue() |
+        result = def.getAService()
+      )
+    )
+  }
+
+  override DataFlowNode getAnInjectableFunction() {
+    result = getRouteParam("controller")
+  }
+
+}
+
+/**
+ * An AngularJS controller instance.
+ */
+abstract class Controller extends DataFlowNode {
+
+  /**
+   * Holds if this controller is bound to `elem`.
+   */
+  abstract predicate boundTo(DOM::ElementDefinition elem);
+
+  /**
+   * Holds if this controller is bound to `elem` as `alias`.
+   */
+  abstract predicate boundToAs(DOM::ElementDefinition elem, string alias);
+
+  /**
+   * Gets the factory function of this controller.
+   */
+  abstract InjectableFunction getFactoryFunction();
+
+}
+
+/**
+ * A controller instantiated through a directive, e.g. `<div ngController="myController"/>`.
+ */
+private class DirectiveController extends Controller {
+
+  ControllerDefinition def;
+
+  DirectiveController() {
+    this = def
+  }
+
+  private predicate boundAnonymously(DOM::ElementDefinition elem) {
+    exists (DirectiveInstance instance, DomAttributeAsElement attr |
+      instance.getName() = "ngController" and
+      instance.getATarget() = attr and
+      elem = attr.getElement() and
+      attr.asAttribute().getStringValue() = def.getName()
+    )
+  }
+
+  override predicate boundTo(DOM::ElementDefinition elem) {
+    boundAnonymously(elem) or boundToAs(elem, _)
+  }
+
+  override predicate boundToAs(DOM::ElementDefinition elem, string alias) {
+    exists (DirectiveInstance instance, DomAttributeAsElement attr |
+      instance.getName() = "ngController" and
+      instance.getATarget() = attr and
+      elem = attr.getElement() and
+      exists(string attributeValue, string pattern |
+        attributeValue = attr.asAttribute().getStringValue() and
+        pattern = "([^ ]+) +as +([^ ]+)" |
+        attributeValue.regexpCapture(pattern, 1) = def.getName() and
+        attributeValue.regexpCapture(pattern, 2) = alias
+      )
+    )
+  }
+
+  override InjectableFunction getFactoryFunction() {
+    result = def.getAFactoryFunction()
+  }
+
+}
+
+/**
+ * A controller instantiated through routes, e.g. `$routeProvider.otherwise({controller: ...})`.
+ */
+private class RouteInstantiatedController extends Controller {
+
+  RouteSetup setup;
+
+  RouteInstantiatedController() {
+    this = setup
+  }
+
+  override InjectableFunction getFactoryFunction() {
+    result = setup.getController()
+  }
+
+  override predicate boundTo(DOM::ElementDefinition elem) {
+    exists (string url, HTMLFile template |
+      url = setup.getRouteParam("templateUrl").(ConstantString).getStringValue() and
+      template.getAbsolutePath().regexpMatch(".*\\Q" + url + "\\E") and
+      elem.getFile() = template
+    )
+  }
+
+  override predicate boundToAs(DOM::ElementDefinition elem, string name) {
+    boundTo(elem) and
+    name = setup.getRouteParam("controllerAs").(ConstantString).getStringValue()
   }
 
 }

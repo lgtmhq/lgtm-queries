@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -221,6 +221,42 @@ private predicate backwardFlowThroughCall(Expr arg, InvokeExpr invk, FlowTrackin
 }
 
 /**
+ * Holds if the value of `source` may flow into an assignment to property
+ * `prop` of an object represented by `obj` under the given `configuration`.
+ *
+ * The parameter `stepIn` indicates whether steps from arguments to
+ * parameters are necessary to derive this flow.
+ */
+pragma[noinline]
+private predicate forwardReachableProperty(DataFlowNode source,
+                                           AbstractObjectLiteral obj, string prop,
+                                           FlowTrackingConfiguration configuration,
+                                           boolean stepIn) {
+  exists (AnalyzedPropertyWrite pw, DataFlowNode mid |
+    flowsTo(source, mid, configuration, stepIn) and
+    pw.writes(obj, prop, mid)
+  )
+}
+
+/**
+ * Holds if the value of property `prop` of an object represented by `obj`
+ * may flow into `sink` under the given `configuration`.
+ *
+ * The parameter `stepOut` indicates whether steps from `return` statements to
+ * invocation sites are necessary to derive this flow.
+ */
+pragma[noinline]
+private predicate backwardReachableProperty(AbstractObjectLiteral obj, string prop,
+                                            DataFlowNode sink,
+                                            FlowTrackingConfiguration configuration,
+                                            boolean stepOut) {
+  exists (AnalyzedPropertyAccess pr |
+    pr.reads(obj, prop) and
+    flowsFrom(pr, sink, configuration, stepOut)
+  )
+}
+
+/**
  * Holds if `source` can flow to `sink` under the given `configuration`
  * in zero or more steps.
  *
@@ -239,6 +275,13 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     exists (DataFlowNode mid |
       flowsTo(source, mid, configuration, stepIn) and
       mid = sink.localFlowPred()
+    )
+    or
+    // Flow through properties of object literals
+    exists (AbstractObjectLiteral obj, string prop, AnalyzedPropertyAccess read |
+      forwardReachableProperty(source, obj, prop, configuration, stepIn) and
+      read.reads(obj, prop) and
+      sink = read
     )
     or
     // Flow into function
@@ -295,6 +338,12 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
     exists (DataFlowNode mid |
       flowsFrom(mid, sink, configuration, stepOut) and
       source = mid.localFlowPred()
+    )
+    or
+    // Flow through properties of object literals
+    exists (AbstractObjectLiteral obj, string prop, AnalyzedPropertyWrite pw |
+      backwardReachableProperty(obj, prop, sink, configuration, stepOut) and
+      pw.writes(obj, prop, source)
     )
     or
     // Flow into function

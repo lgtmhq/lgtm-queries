@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,12 @@
 // permissions and limitations under the License.
 
 /**
- * Provides classes for working with the AngularJS `$provide` methods: `service`, `factory`, etc..
+ * Provides classes for working with the definitions of AngularJS services.
  *
- * Supports registration and lookup of dependency injection services.
+ * Supports registration and lookup of AngularJS services:
+ *
+ * - dependency injection services, such as `factory` and `provider`
+ * - special AngularJS services, such as `filter` and `controller`
  *
  * INTERNAL: Do not import this module directly, import `AngularJS` instead.
  *
@@ -86,6 +89,11 @@ abstract class ServiceReference extends TServiceReference {
     result.getPropertyName() = propertyName
   }
 
+  /**
+   * Holds if the service is available for dependency injection.
+   */
+  abstract predicate isInjectable();
+
 }
 
 /**
@@ -95,6 +103,10 @@ class BuiltinServiceReference extends ServiceReference, MkBuiltinServiceReferenc
   override string getName() {
     this = MkBuiltinServiceReference(result)
   }
+
+  override predicate isInjectable() {
+    any()
+  }
 }
 
 /**
@@ -103,23 +115,33 @@ class BuiltinServiceReference extends ServiceReference, MkBuiltinServiceReferenc
  * NB: Use `BuiltinServiceReference.getAnAccess` instead of this predicate when possible (they are semantically equivalent for builtin services).
  * This predicate can avoid the non-monotonic recursion that `getAnAccess` can cause.
  */
-private predicate isBuiltinServiceRef(DataFlowNode nd, string serviceName) {
+predicate isBuiltinServiceRef(DataFlowNode nd, string serviceName) {
  exists(InjectableFunction f, BuiltinServiceReference service |
    service.getName() = serviceName and
    f.getDependencyParameter(serviceName).getAnInitialUse() = nd.getALocalSource()
  )
+
 }
 
 /**
  * A reference to a custom service.
  */
 class CustomServiceReference extends ServiceReference, MkCustomServiceReference {
-  override string getName() {
-    exists(CustomServiceDefinition def |
-      this = MkCustomServiceReference(def) and
-      result = def.getName()
-    )
+
+  CustomServiceDefinition def;
+
+  CustomServiceReference() {
+    this = MkCustomServiceReference(def)
   }
+
+  override string getName() {
+    result = def.getName()
+  }
+
+  override predicate isInjectable() {
+    def instanceof RecipeDefinition
+  }
+
 }
 
 /**
@@ -321,7 +343,13 @@ private abstract class CustomSpecialServiceDefinition extends CustomServiceDefin
  */
 private predicate isCustomServiceDefinitionOnModule(MethodCallExpr mce, string moduleMethodName, string serviceName, DataFlowNode factoryFunction) {
   isModuleRef(mce.getReceiver(), _) and
-  (moduleMethodName = "controller" or moduleMethodName = "filter") and
+  (
+    moduleMethodName = "controller" or
+    moduleMethodName = "filter" or
+    moduleMethodName = "directive" or
+    moduleMethodName = "component" or
+    moduleMethodName = "animation"
+  ) and
   mce.getMethodName() = moduleMethodName and
   serviceName = getStringValue(mce.getArgument(0)) and
   factoryFunction = mce.getArgument(1).(DataFlowNode).getALocalSource()
@@ -388,6 +416,118 @@ class FilterDefinition extends CustomSpecialServiceDefinition {
 
   override DataFlowNode getAService() {
     result = factoryFunction
+  }
+
+  override DataFlowNode getAFactoryFunction() {
+    result = factoryFunction
+  }
+
+}
+
+/**
+ * A directive defined with `module.directive` or `$compileProvider.directive`.
+ */
+class DirectiveDefinition extends CustomSpecialServiceDefinition {
+
+  string name;
+
+  DataFlowNode factoryFunction;
+
+  DirectiveDefinition() {
+    isCustomServiceDefinitionOnModule(this, "directive", name, factoryFunction) or
+    isCustomServiceDefinitionOnProvider(this, "$compileProvider", "directive", name, factoryFunction)
+  }
+
+  override string getName() {
+    result = name
+  }
+
+  override DataFlowNode getAService() {
+    exists (CustomDirective d |
+      d.getDefinition() = this and
+      result = d.getAnInstantiation()
+    )
+  }
+
+  override DataFlowNode getAFactoryFunction() {
+    result = factoryFunction
+  }
+
+}
+
+private class CustomDirectiveControllerDependencyInjection extends DependencyInjection {
+
+  CustomDirectiveControllerDependencyInjection() {
+    this instanceof DirectiveDefinition or
+    this instanceof ComponentDefinition
+  }
+
+  override DataFlowNode getAnInjectableFunction() {
+    exists (CustomDirective d |
+      d.getDefinition() = this and
+      // NB: can not use `.getController` here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
+      result = d.getMember("controller")
+    )
+  }
+
+}
+
+/**
+ * A component defined with `module.component` or `$compileProvider.component`.
+ */
+class ComponentDefinition extends CustomSpecialServiceDefinition {
+
+  string name;
+
+  DataFlowNode config;
+
+  ComponentDefinition() {
+    isCustomServiceDefinitionOnModule(this, "component", name, config) or
+    isCustomServiceDefinitionOnProvider(this, "$compileProvider", "component", name, config)
+  }
+
+  override string getName() {
+    result = name
+  }
+
+  override DataFlowNode getAService() {
+    exists (CustomDirective d |
+      d.getDefinition() = this and
+      result = d.getAnInstantiation()
+    )
+  }
+
+  override DataFlowNode getAFactoryFunction() {
+    none()
+  }
+
+  /** Gets the configuration object for the defined component. */
+  ObjectExpr getConfig() {
+    result = config
+  }
+
+}
+
+/**
+ * An animation defined with `module.animation` or `$animationProvider.register`.
+ */
+class AnimationDefinition extends CustomSpecialServiceDefinition {
+
+  string name;
+
+  DataFlowNode factoryFunction;
+
+  AnimationDefinition() {
+    isCustomServiceDefinitionOnModule(this, "animation", name, factoryFunction) or
+    isCustomServiceDefinitionOnProvider(this, "$animateProvider", "register", name, factoryFunction)
+  }
+
+  override string getName() {
+    result = name
+  }
+
+  override DataFlowNode getAService() {
+     result = factoryFunction.(InjectableFunction).asFunction().getAReturnedExpr().(DataFlowNode).getALocalSource()
   }
 
   override DataFlowNode getAFactoryFunction() {
@@ -478,7 +618,8 @@ class InjectableFunctionServiceRequest extends ServiceRequest {
    * (implementation detail: all services are in the global namespace)
    */
   ServiceReference getAServiceDefinition(string name) {
-    result.getName() = name
+    result.getName() = name and
+    result.isInjectable()
   }
 
   override DataFlowNode getAnAccess(ServiceReference service) {

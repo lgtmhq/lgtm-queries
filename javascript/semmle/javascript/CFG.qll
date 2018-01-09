@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -374,6 +374,8 @@ class ControlFlowNode extends @cfg_node, Locatable {
   string describeControlFlowNode() {
     if this = any(MethodDeclaration mem).getBody()
     then result = "function in " + any(MethodDeclaration mem | mem.getBody() = this)
+    else if this instanceof @decorator_list
+    then result = "parameter decorators of " + this.(ASTNode).getParent().(Function).describe()
     else result = toString()
   }
 }

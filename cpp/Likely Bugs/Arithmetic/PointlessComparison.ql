@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
  */
 import cpp
 private import semmle.code.cpp.rangeanalysis.PointlessComparison
+private import semmle.code.cpp.rangeanalysis.RangeAnalysisUtils
 import UnsignedGEZero
 
 // Trivial comparisons of the form 1 > 0 are usually due to macro expansion.
@@ -43,6 +44,12 @@ where
   not cmp.isInMacroExpansion() and
   reachablePointlessComparison(cmp, left, right, value, ss) and
 
+  // a comparison between an enum and zero is always valid because whether
+  // the underlying type of an enum is signed is compiler-dependent
+  not exists (Expr e, ConstantZero z
+      | relOpWithSwap(cmp, e, z, _, _) and
+        e.getUnderlyingType() instanceof Enum) and
+  
   // Construct a reason for the message. Something like: x >= 5 and 3 >= y.
   exists (string cmpOp, string leftReason, string rightReason
   | ((ss = LeftIsSmaller()  and cmpOp = " <= ") or

@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,6 +63,13 @@ class Stmt extends Stmt_, AstNode {
         exists(While whilestmt | 
             whilestmt.getTest().(ImmutableLiteral).booleanValue() = false and whilestmt.getBody().contains(this)
         )
+    }
+
+    /** Gets the final statement in this statement, ordered by location.
+     * Will be this statement if not a compound statement.
+     */
+    Stmt getLastStatement() {
+        result = this
     }
 
 }
@@ -164,6 +171,10 @@ class ExceptStmt extends ExceptStmt_ {
         result = this.getAStmt()
     }
 
+    override Stmt getLastStatement() {
+        result = this.getBody().getLastItem().getLastStatement()
+    }
+
 }
 
 /** An assert statement, such as `assert a == b, "A is not equal to b"` */
@@ -243,6 +254,11 @@ class For extends For_ {
         result = this.getTarget() or
         result = this.getIter()
     }
+
+    override Stmt getLastStatement() {
+        result = this.getBody().getLastItem().getLastStatement()
+    }
+
 }
 
 /** A global statement, such as `global var` */
@@ -294,6 +310,13 @@ class If extends If_ {
             i.getOrelse(0) = this and
             this.getLocation().getStartColumn() = i.getLocation().getStartColumn()
         )
+    }
+
+    override Stmt getLastStatement() {
+        result = this.getOrelse().getLastItem().getLastStatement()
+        or
+        not exists(this.getOrelse()) and
+        result = this.getBody().getLastItem().getLastStatement()
     }
 
 }
@@ -413,6 +436,19 @@ class Try extends Try_ {
         result = Try_.super.getAHandler()
     }
 
+    override Stmt getLastStatement() {
+        result = this.getFinalbody().getLastItem().getLastStatement()
+        or
+        not exists(this.getFinalbody()) and
+        result = this.getOrelse().getLastItem().getLastStatement()
+        or
+        not exists(this.getFinalbody()) and not exists(this.getOrelse()) and
+        result = this.getHandlers().getLastItem().getLastStatement()
+        or
+        not exists(this.getFinalbody()) and not exists(this.getOrelse()) and not exists(this.getHandlers()) and
+        result = this.getBody().getLastItem().getLastStatement()
+    }
+
 }
 
 /** A while statement, such as `while parrot_resting():` */
@@ -425,6 +461,13 @@ class While extends While_ {
     Stmt getASubStatement() {
         result = this.getAStmt() or
         result = this.getAnOrelse()
+    }
+
+    override Stmt getLastStatement() {
+        result = this.getOrelse().getLastItem().getLastStatement()
+        or
+        not exists(this.getOrelse()) and
+        result = this.getBody().getLastItem().getLastStatement()
     }
 
 }
@@ -440,6 +483,10 @@ class With extends With_ {
     Stmt getASubStatement() {
         result = this.getAStmt()
      }
+
+    override Stmt getLastStatement() {
+        result = this.getBody().getLastItem().getLastStatement()
+    }
 
 }
 
