@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,20 +25,6 @@
  */
 
 import default
-
-/**
- * A `char`, `signed char` or `unsigned char`.
- * 
- * Used to avoid reporting conflicts between a char
- * pointer type with specified signedness and an unspecified
- * char pointer (whose signedness is compiler-dependent).
- */
-class SignedOrUnsignedCharPointerType extends CharPointerType {
-  SignedOrUnsignedCharPointerType() {
-    this.getBaseType().(CharType).isUnsigned() or
-    this.getBaseType().(CharType).isSigned()
-  }
-}
 
 /**
  * A type that's either:
@@ -128,14 +114,12 @@ predicate trivialConversion(Type expected, Type actual) {
         expected instanceof IntegralType and actualU instanceof Enum
       ) or (
         // allow any `char *` type to be displayed with `%s`
-        expected instanceof CharPointerType and actualU instanceof SignedOrUnsignedCharPointerType
+        expected instanceof CharPointerType and actualU instanceof CharPointerType
       ) or (
         // allow any `wchar_t *` type (even a pointer to a typedef called `wchar_t`) to be displayed
         // with `%ws`
         expected.(PointerType).getBaseType().hasName("wchar_t") and
         actual.(PointerType).getBaseType() instanceof EffectiveWchar_t
-      ) or (
-        expected instanceof SignedOrUnsignedCharPointerType and actualU instanceof CharPointerType
       ) or (
         // allow an `int` (or anything promoted to `int`) to be displayed with `%c`
         expected instanceof CharType and actualU instanceof IntType

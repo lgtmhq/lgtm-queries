@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ where misleadingIndentationCandidate(ctrl, s1, s2) and
       // `ctrl`, `s1` and `s2` all have the same indentation character
       f.hasIndentation(ctrlStartLine, indent, _) and
       f.hasIndentation(startLine1, indent, _) and
-      f.hasIndentation(startLine2, indent, _)
+      f.hasIndentation(startLine2, indent, _) and
+      not s2 instanceof EmptyStmt
 select (FirstLineOf)s2, "The indentation of this statement suggests that it is controlled by $@, while in fact it is not.",
             (FirstLineOf)ctrl, "this statement"

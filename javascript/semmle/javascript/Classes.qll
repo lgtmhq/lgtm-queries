@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -585,7 +585,7 @@ class ConstructorSignature extends ConstructorDeclaration, MethodSignature {}
  */
 class SyntheticConstructor extends Function {
   SyntheticConstructor() {
-    this = any(ConstructorDefinition cd | cd.isSynthetic() | cd.getBody())
+    this = any(ConstructorDeclaration cd | cd.isSynthetic() | cd.getBody())
   }
 }
 

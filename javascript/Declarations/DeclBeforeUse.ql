@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,5 +35,11 @@ where // the first reference to `var` in `sc` is `acc` (that is, an access, not 
         glob.declaresGlobalForAccess(acc)
       ) and
       // exclude declarations in synthetic constructors
-      not acc.getEnclosingFunction() instanceof SyntheticConstructor
+      not acc.getEnclosingFunction() instanceof SyntheticConstructor and
+      // exclude results in ambient contexts
+      not acc.isAmbient() and
+      // a class may be referenced in its own decorators
+      not exists (ClassDefinition cls |
+        decl = cls.getIdentifier() and
+        acc.getParent*() = cls.getADecorator())
 select acc, "Variable '" + acc.getName() + "' is used before its $@.", decl, "declaration"

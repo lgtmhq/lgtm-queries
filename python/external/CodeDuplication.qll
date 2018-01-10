@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -143,10 +143,11 @@ predicate duplicateStatement(Scope scope1, Scope scope2, Stmt stmt1, Stmt stmt2)
 
 private
 predicate duplicateCoversStatement(int equivstart, int equivend, int first, int last, Stmt stmt) {
-    exists(DuplicateBlock b1, DuplicateBlock b2, Location loc |
-        stmt.getLocation() = loc and
-        first = b1.tokenStartingAt(loc) and
-        last = b2.tokenEndingAt(loc) and
+    exists(DuplicateBlock b1, DuplicateBlock b2, Location startloc, Location endloc |
+        stmt.getLocation() = startloc and
+        stmt.getLastStatement().getLocation() = endloc and
+        first = b1.tokenStartingAt(startloc) and
+        last = b2.tokenEndingAt(endloc) and
         b1.getEquivalenceClass() = equivstart and
         b2.getEquivalenceClass() = equivend and
         duplicate_extension(b1, _, b2, _, equivstart, equivend)
@@ -185,10 +186,11 @@ predicate similarStatement(Scope scope1, Scope scope2, Stmt stmt1, Stmt stmt2) {
 
 private
 predicate similarCoversStatement(int equivstart, int equivend, int first, int last, Stmt stmt) {
-    exists(SimilarBlock b1, SimilarBlock b2, Location loc |
-        stmt.getLocation() = loc and
-        first = b1.tokenStartingAt(loc) and
-        last = b2.tokenEndingAt(loc) and
+    exists(SimilarBlock b1, SimilarBlock b2, Location startloc, Location endloc |
+        stmt.getLocation() = startloc and
+        stmt.getLastStatement().getLocation() = endloc and
+        first = b1.tokenStartingAt(startloc) and
+        last = b2.tokenEndingAt(endloc) and
         b1.getEquivalenceClass() = equivstart and
         b2.getEquivalenceClass() = equivend and
         similar_extension(b1, _, b2, _, equivstart, equivend)

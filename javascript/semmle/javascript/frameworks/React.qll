@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -130,6 +130,12 @@ class ES2015Component extends ReactComponent, ClassDefinition {
       not mem instanceof ConstructorDefinition
     )
   }
+
+  override ThisExpr getAThisAccess() {
+    result = ReactComponent.super.getAThisAccess() or
+    result.getBinder() = getConstructor().getInit()
+  }
+
 }
 
 /**

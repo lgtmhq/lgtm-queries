@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -179,6 +179,10 @@ class Scope extends Scope_ {
      */
     predicate inSource() {
         exists(this.getEnclosingModule().getFile().getRelativePath())
+    }
+
+    Stmt getLastStatement() {
+        result = this.getBody().getLastItem().getLastStatement()
     }
 
 }

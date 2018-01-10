@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 
 module AngularJS {
   import AngularJS.AngularJSCore
-  import AngularJS.DependencyInjectionServiceDefinitions
+  import AngularJS.ServiceDefinitions
   import AngularJS.DependencyInjections
   import AngularJS.AngularJSExpressions
 }

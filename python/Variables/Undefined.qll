@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,3 +102,27 @@ class UnitializedSanitizer extends Sanitizer {
     }
 
 }
+
+/* Holds if `call` is a call of the form obj.method_name(...) and 
+ * there is a function called `method_name` that can exit the program.
+ */
+private predicate maybe_call_to_exiting_function(CallNode call) {
+    exists(FunctionObject exits, string name |
+        call.getFunction().(AttrNode).getName() = name and
+        exits.neverReturns() and exits.isNormalMethod() and
+        exits.getName() = name
+    )
+}
+
+/** Prune edges where the predecessor block looks like it might contain a call to an exit function. */
+class ExitFunctionGuardedEdge extends DataFlowExtension::DataFlowVariable {
+
+    predicate prunedSuccessor(EssaVariable succ) {
+        exists(CallNode exit_call |
+            succ.(PhiFunction).getInput(exit_call.getBasicBlock()) = this and
+            maybe_call_to_exiting_function(exit_call)
+        )
+    }
+
+}
+

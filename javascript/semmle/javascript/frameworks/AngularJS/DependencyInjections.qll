@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 import javascript
 
 private import AngularJS
-private import DependencyInjectionServiceDefinitions
+private import ServiceDefinitions
 
 /**
  * Gets a string value that may flow into `nd`.

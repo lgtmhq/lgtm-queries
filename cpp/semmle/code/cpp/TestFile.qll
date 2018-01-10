@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 import semmle.code.cpp.File
 
 /**
- * A `gtest/gtest.h` file.
+ * The `gtest/gtest.h` file.
  */
 private class GoogleTestHeader extends File {
   GoogleTestHeader() {
@@ -24,7 +24,7 @@ private class GoogleTestHeader extends File {
 }
 
 /**
- * A test from the Google Test library.
+ * A test using the Google Test library.
  */
 private class GoogleTest extends MacroInvocation {
   GoogleTest() {
@@ -44,7 +44,7 @@ private class BoostTestFolder extends Folder {
 }
 
 /**
- * A test from the Boost Test library.
+ * A test using the Boost Test library.
  */
 private class BoostTest extends MacroInvocation {
   BoostTest() {
@@ -54,11 +54,49 @@ private class BoostTest extends MacroInvocation {
 }
 
 /**
+ * The `cppunit` directory.
+ */
+private class CppUnitFolder extends Folder {
+  CppUnitFolder() {
+    getShortName() = "cppunit"
+  }
+}
+
+/**
+ * A class from the `cppunit` directory.
+ */
+private class CppUnitClass extends Class {
+  CppUnitClass() {
+    getFile().getParent().getParent*() instanceof CppUnitFolder and
+    getNamespace().getParentNamespace*().getName() = "CppUnit"
+  }
+}
+
+/**
+ * A test using the CppUnit library.
+ */
+private class CppUnitTest extends Element {
+  CppUnitTest() {
+    (
+      // class with a base class from cppunit. 
+      this.(Class).getABaseClass*() instanceof CppUnitClass and
+
+      // class itself is not a part of cppunit.
+      not this instanceof CppUnitClass
+    ) or (
+      // any member function of a test is also test code
+      this.(Function).getDeclaringType() instanceof CppUnitTest
+    )
+  }
+}
+
+/**
  * A file that contains one or more test cases.
  */
 class TestFile extends File {
   TestFile() {
     exists(GoogleTest test | test.getFile() = this) or
-    exists(BoostTest test | test.getFile() = this)
+    exists(BoostTest test | test.getFile() = this) or
+    exists(CppUnitTest test | test.getFile() = this)
   }
 }

@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,9 +57,9 @@ predicate maybeCausedByTemplate(JSParseError e) {
 /**
  * Holds if `e` is an expression in the form `o.p1.p2.p3....pn`.
  */
-private predicate isNestedDotExpr(Expr e) {
-  e instanceof VarAccess or
-  isNestedDotExpr(e.(DotExpr).getBase())
+private predicate isNestedDotExpr(DotExpr e) {
+  e.getBase() instanceof VarAccess or
+  isNestedDotExpr(e.getBase())
 }
 
 /**

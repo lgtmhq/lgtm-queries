@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -245,6 +245,11 @@ class RegExpLiteral extends @regexpliteral, Literal, RegExpParent {
   /** Holds if this regular expression has an `i` flag. */
   predicate isIgnoreCase() {
     getFlags().matches("%i%")
+  }
+
+  /** Holds if this regular expression has an `s` flag. */
+  predicate isDotAll() {
+    getFlags().matches("%s%")
   }
 }
 

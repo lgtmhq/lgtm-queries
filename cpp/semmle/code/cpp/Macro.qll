@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -131,10 +131,10 @@ class MacroAccess extends Locatable, @macroinvocation {
    * If `this` has no parent, the result will be `this` itself.
    */
   MacroAccess getOutermostMacroAccess() {
-    // Because of the return type of `getParentInvocation`, the following line
-    // is NOT equivalent to `result = this.getParentInvocation*()`.
-    (result = this or result = this.getParentInvocation+()) and
-    not exists(result.getParentInvocation())
+    if (not exists(this.getParentInvocation())) then
+      result = this
+    else
+      result = this.getParentInvocation().getOutermostMacroAccess()
   }
 
   override string toString() { result = this.getMacro().getHead() }

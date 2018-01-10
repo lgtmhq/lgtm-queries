@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -264,6 +264,13 @@ private class ParExprFlow extends DataFlowNode, @parexpr {
 private class TypeAssertionFlow extends DataFlowNode, @typeassertion {
   override DataFlowNode localFlowPred() {
     result = this.(TypeAssertion).getExpression()
+  }
+}
+
+/** A non-null assertion, `E!` viewed as a data flow node. */
+private class NonNullAssertionFlow extends DataFlowNode, @non_null_assertion {
+  override DataFlowNode localFlowPred() {
+    result = this.(NonNullAssertion).getExpression()
   }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -634,7 +634,14 @@ abstract class EnhancedForLoop extends LoopStmt {
 class ForInStmt extends @forinstmt, EnhancedForLoop {}
 
 /** A `for`-`of` loop. */
-class ForOfStmt extends @forofstmt, EnhancedForLoop {}
+class ForOfStmt extends @forofstmt, EnhancedForLoop {
+  /**
+   * Holds if this is a `for-await-of` statement.
+   */
+  predicate isAwait() {
+    isForAwaitOf(this)
+  }
+}
 
 /** A `for each`-`in` loop. */
 class ForEachStmt extends @foreachstmt, EnhancedForLoop {}

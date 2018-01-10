@@ -1,4 +1,4 @@
-// Copyright 2017 Semmle Ltd.
+// Copyright 2018 Semmle Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1204,6 +1204,18 @@ class AsTypeAssertion extends TypeAssertion, @astypeassertion {}
  * A type assertion specifically of the form `<T> E` (as opposed to the `E as T` syntax).
  */
 class PrefixTypeAssertion extends TypeAssertion, @prefixtypeassertion {}
+
+/**
+ * A TypeScript expression of form `E!`, asserting that `E` is not null.
+ */
+class NonNullAssertion extends Expr, @non_null_assertion {
+  /** Gets the expression whose type to assert. */
+  Expr getExpression() { result = getChildExpr(0) }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getExpression().getFirstControlFlowNode()
+  }
+}
 
 /**
  * A possibly qualified identifier that refers to or declares a local name for a namespace.
