@@ -1105,7 +1105,7 @@ module PenultimatePointsTo {
         predicate scope_entry_value_transfer(EssaVariable pred_var, PenultimateContext pred_context, ScopeEntryDefinition succ_def, PenultimateContext succ_context) {
             scope_entry_value_transfer_from_earlier(pred_var, pred_context, succ_def, succ_context)
             or
-            scope_entry_value_transfer_at_callsite(pred_var, pred_context, succ_def, succ_context)
+            callsite_entry_value_transfer(pred_var, pred_context, succ_def, succ_context)
             or
             pred_context.isImport() and pred_context = succ_context and
             class_entry_value_transfer(pred_var, succ_def)
@@ -1128,13 +1128,12 @@ module PenultimatePointsTo {
         /** Helper for `scope_entry_value_transfer`.
          * Transfer of values from the callsite to the callee, for enclosing variables, but not arguments/parameters. */
         pragma [noinline]
-        private predicate scope_entry_value_transfer_at_callsite(EssaVariable pred_var, PenultimateContext pred_context, ScopeEntryDefinition succ_def, PenultimateContext succ_context) {
+        private predicate callsite_entry_value_transfer(EssaVariable caller_var, PenultimateContext caller_context, ScopeEntryDefinition entry_def, PenultimateContext callee_context) {
             exists(CallNode callsite, FunctionObject f |
-                Layer0PointsTo::get_a_call(f, _) = callsite and
-                succ_context.fromCall(callsite, f, pred_context) and
-                pred_var.getSourceVariable() = succ_def.getSourceVariable() and
-                pred_var.getAUse() = callsite and
-                succ_def.getDefiningNode() = f.getFunction().getEntryNode()
+                callee_context.fromCall(callsite, f, caller_context) and
+                caller_var.getSourceVariable() = entry_def.getSourceVariable() and
+                caller_var.getAUse() = callsite and
+                entry_def.getDefiningNode() = f.getFunction().getEntryNode()
             )
         }
 
@@ -1422,8 +1421,19 @@ module PenultimatePointsTo {
                 ssa_variable_points_to(var, callee, value, cls, origin)
             )
             or
-            not Layer0PointsTo::get_a_call(_, _) = def.getDefiningNode() and
-            ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+            ssa_variable_points_to(def.getInput(), context, value, cls, origin) and
+            (
+                // There is no identifiable callee
+                not Layer0PointsTo::get_a_call(_, _) = def.getDefiningNode() or
+                // An identifiable callee is a builtin
+                exists(BuiltinCallable opaque | Layer0PointsTo::get_a_call(opaque, _) = def.getDefiningNode()) or
+                // An identifiable callee is a Python function, that is not tracked and does not obviously modify the variable
+                context.untrackableCall(def.getCall()) and not
+                exists(PyFunctionObject modifier |
+                    Layer0PointsTo::get_a_call(modifier, _) = def.getDefiningNode() and
+                    modifier.getFunction().getBody().contains(def.getSourceVariable().(Variable).getAStore())
+                )
+            )
         }
 
         /** Pass through for `self` for the implicit re-definition of `self` in `self.foo()`. */
@@ -1589,6 +1599,7 @@ module PenultimatePointsTo {
 
         /** Gets the (temporally) preceding variable for `self`, e.g. `def` is in method `foo()` and `result` is in `__init__()`.  */
         private EssaVariable preceding_self_variable(ParameterDefinition def) {
+            def.isSelf() and
             exists(Function preceding, Function method |
                 method = def.getScope() and
                 // Only methods

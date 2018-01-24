@@ -65,16 +65,11 @@ newtype TAbstractValue =
   /** An abstract representation of the global object. */
   TAbstractGlobalObject()
   or
-  /** An abstract representation of a CommonJS `module` object. */
-  TAbstractModuleObject(Module m) {
-    // only interesting for modules that are imported somewhere
-    m = any(Require r).getImportedModule()
-  }
+  /** An abstract representation of a `module` object. */
+  TAbstractModuleObject(Module m)
   or
-  /** An abstract representation of a CommonJS `exports` object. */
-  TAbstractExportsObject(Module m) {
-    exists(TAbstractModuleObject(m))
-  }
+  /** An abstract representation of a `exports` object. */
+  TAbstractExportsObject(Module m)
   or
   /** An abstract representation of all objects arising from an object literal expression. */
   TAbstractObjectLiteral(ObjectExpr oe)

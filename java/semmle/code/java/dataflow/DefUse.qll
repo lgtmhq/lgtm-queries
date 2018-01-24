@@ -20,36 +20,6 @@ import java
 private import SSA
 
 /**
- * An assignment to a variable or an initialization of the variable.
- */
-class VariableAssign extends VariableUpdate {
-  VariableAssign() {
-    this instanceof AssignExpr or
-    this instanceof LocalVariableDeclExpr
-  }
-
-  Expr getSource() {
-    result = this.(AssignExpr).getSource() or
-    result = this.(LocalVariableDeclExpr).getInit()
-  }
-}
-
-/** An update of a variable or an initialization of the variable. */
-class VariableUpdate extends Expr {
-  VariableUpdate() {
-    this.(Assignment).getDest() instanceof VarAccess or
-    this instanceof LocalVariableDeclExpr or
-    this.(UnaryAssignExpr).getExpr() instanceof VarAccess
-  }
-
-  Variable getDestVar() {
-    result.getAnAccess() = this.(Assignment).getDest() or
-    result = this.(LocalVariableDeclExpr).getVariable() or
-    result.getAnAccess() = this.(UnaryAssignExpr).getExpr()
-  }
-}
-
-/**
  * Holds if `use1` and `use2` form a use-use-pair of the same SSA variable,
  * that is, the value read in `use1` can reach `use2` without passing through
  * any SSA definition of the variable.

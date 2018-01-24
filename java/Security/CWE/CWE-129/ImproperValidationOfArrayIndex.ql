@@ -24,7 +24,6 @@
 
 import java
 import ArraySizing
-import semmle.code.java.dataflow.DefUse
 
 from RemoteUserInput source, CheckableArrayAccess arrayAccess
 where arrayAccess.canThrowOutOfBounds(source)

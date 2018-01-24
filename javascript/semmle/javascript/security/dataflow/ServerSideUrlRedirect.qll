@@ -29,8 +29,10 @@ abstract class ServerSideUrlRedirectSource extends DataFlowNode { }
  * A data flow sink for unvalidated URL redirect vulnerabilities.
  */
 abstract class ServerSideUrlRedirectSink extends DataFlowNode {
-  ServerSideUrlRedirectSink() {
-    // it's only a sink if we cannot prove that this is a local redirect
+  /**
+   * Holds if this sink may redirect to a non-local URL.
+   */
+  predicate maybeNonLocal() {
     exists (DataFlowNode prefix | prefix = getAPrefix(this) |
       not exists(prefix.(Expr).getStringValue())
       or
@@ -75,12 +77,16 @@ class ServerSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configur
   }
 
   override predicate isSink(DataFlowNode sink) {
-    sink instanceof ServerSideUrlRedirectSink
+    sink.(ServerSideUrlRedirectSink).maybeNonLocal()
   }
 
   override predicate isSanitizer(DataFlowNode node) {
     super.isSanitizer(node) or
     node instanceof ServerSideUrlRedirectSanitizer
+  }
+
+  override predicate isSanitizer(DataFlowNode source, DataFlowNode sink) {
+    sanitizingPrefixEdge(source, sink)
   }
 }
 
@@ -100,16 +106,6 @@ class RedirectSink extends ServerSideUrlRedirectSink {
 class LocationHeaderSink extends ServerSideUrlRedirectSink {
   LocationHeaderSink() {
     any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("Location", this)
-  }
-}
-
-/**
- * A string concatenation containing the character `?` or `#`,
- * considered as a sanitizer for `ServerSideUrlRedirectDataFlowConfiguration`.
- */
-class ConcatenationSanitizer extends ServerSideUrlRedirectSanitizer {
-  ConcatenationSanitizer() {
-    this instanceof UrlQueryStringConcat
   }
 }
 

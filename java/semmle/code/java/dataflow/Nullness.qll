@@ -49,7 +49,6 @@
 import java
 private import SSA
 private import Guards
-private import DefUse
 private import RangeUtils
 private import IntegerGuards
 private import NullGuards

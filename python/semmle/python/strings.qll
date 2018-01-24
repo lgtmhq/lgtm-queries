@@ -33,7 +33,7 @@ TYPE = "[diouxXeEfFgGcrs%]"
 private
 string conversion_specifier_string(StrConst e, int number, int position) {
 	exists(string s, string REGEX | s = e.getText() |
-		REGEX = "%(\\([^)]*\\))?[#0\\- +]*(\\*|[0-9]*)(\\.(\\*|[0-9]*))?(h|H|l|L)?[diouxXeEfFgGcrs%]" and
+		REGEX = "%(\\([^)]*\\))?[#0\\- +]*(\\*|[0-9]*)(\\.(\\*|[0-9]*))?(h|H|l|L)?[adiouxXeEfFgGcrs%]" and
 		result = s.regexpFind(REGEX, number, position))
 }
 

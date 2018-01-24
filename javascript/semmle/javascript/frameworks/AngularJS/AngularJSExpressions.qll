@@ -125,10 +125,13 @@ private class HtmlAttributeAsPlainNgSourceProvider extends HtmlAttributeAsNgSour
   HtmlAttributeAsPlainNgSourceProvider() {
     exists(AngularJS::DirectiveInstance d |
       d.getATarget() = this and
-      not ( // builtins that uses interpolation
+      not (
+        // builtins that uses interpolation
         d.getName() = "ngHref" or
         d.getName() = "ngSrc" or
-        d.getName() = "ngSrcset"
+        d.getName() = "ngSrcset" or
+        // string of the form: `<Ident>( as <Ident>)?`
+        d.getName() = "ngController"
       )
     )
   }
@@ -462,9 +465,24 @@ class NgFilterChain extends TNgFilterChain, NgAstNode {
   }
 
   override NgAstNode getChild(int n) {
-    (n = 0 and this = TNgFilterChain(_, _, result, _)) or
-    (n = 1 and this = TNgFilterChain(_, _, _, result))
+    (n = 0 and result = getExpr()) or
+    (n = 1 and result = getFilter())
   }
+
+  /**
+   * Gets the leading expression of this filter chain.
+   */
+  NgExpr getExpr() {
+    this = TNgFilterChain(_, _, result, _)
+  }
+
+  /**
+   * Gets the filter of this filter chain.
+   */
+  NgFilter getFilter() {
+    this = TNgFilterChain(_, _, _, result)
+  }
+
 }
 
 /**
@@ -475,31 +493,73 @@ abstract class NgMaybeFilter extends NgAstNode {}
 /**
  * A filter node.
  *
- * Example: `filter1:arg1:arg2 | filter2`
+ * Example: `filter1 ... | filter2`
  */
 class NgFilter extends TNgFilter, NgMaybeFilter {
   override predicate at(NgToken start, NgToken end) {
-    this = TNgFilter(start, end, _, _, _)
+    this = TNgFilter(start, end, _, _)
+  }
+
+  override string pp() {
+    result = "(NgFilter: " + ppChildren() + ")"
+  }
+
+  override NgAstNode getChild(int n) {
+    (n = 0 and result = getHeadFilter()) or
+    (n = 1 and result = getTailFilter())
+  }
+
+  /**
+   * Gets the successor filter of this filter, if any.
+   */
+  NgSingleFilter getHeadFilter() {
+    this = TNgFilter(_, _, result, _)
+  }
+
+  /**
+   * Gets the tail filter of this filter, if any.
+   */
+  NgFilter getTailFilter() {
+    this = TNgFilter(_, _, _, result)
+  }
+
+}
+
+/**
+ * A single filter node.
+ *
+ * Example: `filter1:arg1:arg2`
+ */
+class NgSingleFilter extends TNgSingleFilter, NgAstNode {
+  override predicate at(NgToken start, NgToken end) {
+    this = TNgSingleFilter(start, end, _, _)
   }
 
   override string pp() {
     exists(string sep |
       (if forall(NgAstNode child | child = getChild(_) | child instanceof Empty) then sep = "" else sep = " ") and
-      result = "(NgFilter: " + getName() + sep + ppChildren() + ")"
+      result = "(NgSingleFilter: " + getName() + sep + ppChildren() + ")"
     )
   }
 
   override NgAstNode getChild(int n) {
-    (n = 0 and this = TNgFilter(_, _, _, result, _)) or
-    (n = 1 and this = TNgFilter(_, _, _, _, result))
+    n = 0 and this = TNgSingleFilter(_, _, _, result)
   }
 
   /**
    * Gets the name of the referenced filter.
    */
   string getName() {
-    this = TNgFilter(_, _, result, _, _)
+    this = TNgSingleFilter(_, _, result, _)
   }
+
+  /**
+   * Gets the `i`th argument expression of this filter call.
+   */
+  NgExpr getArgument(int i) {
+    result = getChild(1).(NgFilterArgument).getElement(i)
+  }
+
 }
 
 /**
@@ -646,11 +706,11 @@ class NgString extends TNgString, NgExpr {
 /**
  * A number expression node.
  */
-class Number extends TNgNumber, NgExpr {
+class NgNumber extends TNgNumber, NgExpr {
 
   NgNumToken numberToken;
 
-  Number() {
+  NgNumber() {
     this = TNgNumber(numberToken)
   }
 
@@ -694,6 +754,16 @@ class NgFilterArgument extends TNgFilterArgument, NgMaybeFilterArgument {
   override NgAstNode getChild(int n) {
     (n = 0 and this = TNgFilterArgument(_, _, result, _)) or
     (n = 1 and this = TNgFilterArgument(_, _, _, result))
+  }
+
+  /**
+   * Gets the `i`th element of this entire cons-list.
+   */
+  NgExpr getElement(int i) {
+    if i = 0 then
+      result = getChild(0)
+    else
+      result = getChild(1).(NgFilterArgument).getElement(i - 1)
   }
 
 }
@@ -809,11 +879,14 @@ private module Parser {
       f = maybeFilter(mid, end)
     )
   } or
-  TNgFilter(NgToken start, NgToken end, string name, NgMaybeFilterArgument a, NgMaybeFilter f) {
+  TNgSingleFilter(NgToken start, NgToken end, string name, NgMaybeFilterArgument a) {
+    start.(NgIdentToken).is(name) and
+    a = maybeFilterArgument(start, end)
+  } or
+  TNgFilter(NgToken start, NgToken end, NgSingleFilter head, NgMaybeFilter tail) {
     exists(NgToken endArgs |
-      start.(NgIdentToken).is(name) and
-      a = maybeFilterArgument(start, endArgs) and
-      f = maybeFilter(endArgs, end)
+      head.at(start, endArgs) and
+      tail = maybeFilter(endArgs, end)
     )
   } or
   TNgFilterArgument(NgToken start, NgToken end, NgExpr base, NgMaybeFilterArgument a) {

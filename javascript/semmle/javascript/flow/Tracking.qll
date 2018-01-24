@@ -32,7 +32,7 @@ import semmle.javascript.flow.CallGraph
  * of this abstract class. A configuration defines a set of relevant sources
  * (`isSource`) and sinks (`isSink`), and may additionally
  * define additional edges beyond the standard data flow edges (`isAdditionalFlowStep`)
- * and prohibit intermediate flow nodes (`isBarrier`).
+ * and prohibit intermediate flow nodes and edges (`isBarrier`).
  */
 abstract class FlowTrackingConfiguration extends string {
   bindingset[this]
@@ -60,10 +60,13 @@ abstract class FlowTrackingConfiguration extends string {
 
   /**
    * Holds if the intermediate flow node `node` is prohibited.
-   *
-   * Note that flow through standard data flow edges cannot be prohibited.
    */
   predicate isBarrier(DataFlowNode node) { none() }
+
+  /**
+   * Holds if flow from `src` to `trg` is prohibited.
+   */
+  predicate isBarrier(DataFlowNode src, DataFlowNode trg) { none() }
 
   /**
    * Holds if `source` flows to `sink`.
@@ -105,6 +108,18 @@ private predicate calls(InvokeExpr invk, Function f) {
 }
 
 /**
+ * Holds if data can flow in one step from `src` to `trg`,  taking
+ * additional steps and barriers from the configuration into account.
+ */
+pragma[inline]
+private predicate localFlowStep(DataFlowNode src, DataFlowNode trg,
+                                FlowTrackingConfiguration configuration) {
+  (src = trg.localFlowPred() or configuration.isAdditionalFlowStep(src, trg)) and
+  not configuration.isBarrier(src, trg)
+}
+
+
+/**
  * Holds if `arg` is passed as an argument into parameter `parm`
  * through invocation `invk` of function `f`.
  */
@@ -139,11 +154,10 @@ private predicate forwardParameterFlow(Function f, SimpleParameter p,
     p = f.getAParameter() and sink = p.getAnInitialUse()
     or
     exists (DataFlowNode mid | forwardParameterFlow(f, p, mid, configuration) |
-      mid = sink.localFlowPred()
+      localFlowStep(mid, sink, configuration)
       or
-      configuration.isAdditionalFlowStep(mid, sink)
-      or
-      forwardFlowThroughCall(mid, sink, configuration)
+      forwardFlowThroughCall(mid, sink, configuration) and
+      not configuration.isBarrier(mid, sink)
     )
   ) and
   not configuration.isBarrier(sink)
@@ -172,11 +186,10 @@ private predicate backwardParameterFlow(Function f, DataFlowNode source,
     sink = f.getAReturnedExpr() and source = sink
     or
     exists (DataFlowNode mid | backwardParameterFlow(f, mid, sink, configuration) |
-      source = mid.localFlowPred()
+      localFlowStep(source, mid, configuration)
       or
-      configuration.isAdditionalFlowStep(source, mid)
-      or
-      backwardFlowThroughCall(source, mid, configuration)
+      backwardFlowThroughCall(source, mid, configuration) and
+      not configuration.isBarrier(source, mid)
     )
   ) and
   not configuration.isBarrier(source)
@@ -263,6 +276,7 @@ private predicate backwardReachableProperty(AbstractObjectLiteral obj, string pr
  * The parameter `stepIn` indicates whether steps from arguments to
  * parameters are necessary to derive this flow.
  */
+pragma[nomagic]
 private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
                           FlowTrackingConfiguration configuration, boolean stepIn) {
   (
@@ -274,7 +288,7 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     // Local flow
     exists (DataFlowNode mid |
       flowsTo(source, mid, configuration, stepIn) and
-      mid = sink.localFlowPred()
+      localFlowStep(mid, sink, configuration)
     )
     or
     // Flow through properties of object literals
@@ -288,28 +302,26 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     exists (Expr arg, SimpleParameter parm |
       flowsTo(source, arg, configuration, _) and
       argumentPassing(_, arg, _, parm) and sink = parm.getAnInitialUse() and
+      not configuration.isBarrier(arg, sink) and
       stepIn = true
     )
     or
     // Flow through a function that returns a value that depends on one of its arguments
     exists(Expr arg |
       flowsTo(source, arg, configuration, stepIn) and
-      forwardFlowThroughCall(arg, sink, configuration)
+      forwardFlowThroughCall(arg, sink, configuration) and
+      not configuration.isBarrier(arg, sink)
     )
     or
     // Flow out of function
     // This path is only enabled if the flow so far did not involve
     // any interprocedural steps from an argument to a caller.
-    exists (InvokeExpr invk, Function f |
-      flowsTo(source, f.getAReturnedExpr(), configuration, stepIn) and stepIn = false and
+    exists (InvokeExpr invk, Function f, Expr ret |
+      ret = f.getAReturnedExpr() and
+      flowsTo(source, ret, configuration, stepIn) and stepIn = false and
       calls(invk, f) and
-      sink = invk
-    )
-    or
-    // Extra flow
-    exists(DataFlowNode mid |
-      flowsTo(source, mid, configuration, stepIn) and
-      configuration.isAdditionalFlowStep(mid, sink)
+      sink = invk and
+      not configuration.isBarrier(ret, sink)
     )
   )
   and
@@ -326,6 +338,7 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
  * Unlike `flowsTo`, this predicate searches backwards from the sink
  * to the source.
  */
+pragma[nomagic]
 private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
                             FlowTrackingConfiguration configuration, boolean stepOut) {
   (
@@ -337,7 +350,7 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
     // Local flow
     exists (DataFlowNode mid |
       flowsFrom(mid, sink, configuration, stepOut) and
-      source = mid.localFlowPred()
+      localFlowStep(source, mid, configuration)
     )
     or
     // Flow through properties of object literals
@@ -349,16 +362,19 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
     // Flow into function
     // This path is only enabled if the flow so far did not involve
     // any interprocedural steps from a `return` statement to the invocation site.
-    exists (SimpleParameter p |
-      flowsFrom(p.getAnInitialUse(), sink, configuration, stepOut) and
+    exists (SimpleParameter p, VarUse initialUse |
+      initialUse = p.getAnInitialUse() and
+      flowsFrom(initialUse, sink, configuration, stepOut) and
       stepOut = false and
-      argumentPassing(_, source, _, p)
+      argumentPassing(_, source, _, p) and
+      not configuration.isBarrier(source, initialUse)
     )
     or
     // Flow through a function that returns a value that depends on one of its arguments
     exists(InvokeExpr invk |
       flowsFrom(invk, sink, configuration, stepOut) and
-      backwardFlowThroughCall(source, invk, configuration)
+      backwardFlowThroughCall(source, invk, configuration) and
+      not configuration.isBarrier(source, invk)
     )
     or
     // Flow out of function
@@ -366,13 +382,8 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
       flowsFrom(invk, sink, configuration, _) and
       calls(invk, f) and
       source = f.getAReturnedExpr() and
+      not configuration.isBarrier(source, invk) and
       stepOut = true
-    )
-    or
-    // Extra flow
-    exists (DataFlowNode mid |
-      flowsFrom(mid, sink, configuration, stepOut) and
-      configuration.isAdditionalFlowStep(source, mid)
     )
   )
   and
@@ -415,8 +426,18 @@ module TaintTracking {
       sanitizedByGuard(this, node)
     }
 
+    /** Holds if the edge from `source` to `sink` is a taint sanitizer. */
+    predicate isSanitizer(DataFlowNode source, DataFlowNode sink) {
+      none()
+    }
+
     final
     override predicate isBarrier(DataFlowNode node) { isSanitizer(node) }
+
+    final
+    override predicate isBarrier(DataFlowNode source, DataFlowNode sink) {
+      isSanitizer(source, sink)
+    }
 
     /**
      * Holds if the additional taint propagation step from `pred` to `succ`

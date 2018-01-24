@@ -48,8 +48,7 @@ module Connect {
      * a route handler invocation.
      */
     Expr getAResponseExpr() {
-      function.getParameter(1).(SimpleParameter).getAnInitialUse() =
-      result.(DataFlowNode).getALocalSource()
+      result.mayReferToParameter(function.getParameter(1))
     }
   }
 

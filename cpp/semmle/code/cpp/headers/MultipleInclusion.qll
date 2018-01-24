@@ -83,8 +83,8 @@ class EmptyFile extends IncludeGuardedHeader {
   }
 }
 
-private predicate hasMacro(HeaderFile hf, string head, Macro define) {
-  define.getFile() = hf and define.getHead() = head
+private predicate hasMacro(HeaderFile hf, string name, Macro define) {
+  define.getFile() = hf and define.getName() = name
 }
 
 /**
@@ -152,8 +152,17 @@ predicate endsWithEndif(HeaderFile hf, PreprocessorEndif endif) {
 
 private predicate includeGuardRelevantLine(HeaderFile hf, int line) {
   exists(Location l | l.getFile() = hf and line = l.getStartLine() |
+    // any declaration
     exists(Declaration d | l = d.getADeclarationLocation()) or
-    exists(PreprocessorDirective p | l = p.getLocation())
+
+    // most preprocessor directives
+    exists(PreprocessorDirective p |
+      l = p.getLocation() and
+
+      // included files may be outside the include guards, as they
+      // should contain an include guarding mechanism of their own.
+      not p instanceof Include
+    )
   )
 }
 

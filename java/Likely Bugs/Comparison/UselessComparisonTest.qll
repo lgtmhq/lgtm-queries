@@ -13,7 +13,6 @@
 
 import java
 import semmle.code.java.comparison.Comparison
-import semmle.code.java.dataflow.DefUse
 import semmle.code.java.dataflow.Guards
 
 /**

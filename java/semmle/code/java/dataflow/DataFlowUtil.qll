@@ -16,7 +16,6 @@
  */
 import java
 private import SSA
-private import DefUse
 
   private newtype TNode =
     TExprNode(Expr e) or

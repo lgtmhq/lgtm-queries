@@ -45,6 +45,12 @@ predicate canValueFlow(Expr fromExpr, Expr toExpr)
  */
 class AnalysedString extends Expr
 {
+  AnalysedString()
+  {
+    this.getType().getUnspecifiedType() instanceof ArrayType or
+    this.getType().getUnspecifiedType() instanceof PointerType
+  }
+
   int getMaxLength()
   {
     // otherwise, take the longest AnalysedString it's value could 'flow' from; however if even one doesn't

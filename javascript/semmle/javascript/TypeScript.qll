@@ -301,6 +301,10 @@ class TypeAliasDeclaration extends @typealiasdeclaration, TypeParameterized, Stm
   override string describe() {
     result = "type alias " + getName()
   }
+
+  override predicate isAmbient() {
+    any()
+  }
 }
 
 /**

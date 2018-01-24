@@ -63,10 +63,9 @@ module XML {
       kind = InternalEntity()
       or
       // other entities are only resolved if the configuration option `noent` is set to `true`
-      exists (js::PropWriteNode pwn |
-        getArgument(1).(js::DataFlowNode).getALocalSource() = pwn.getBase() and
-        pwn.getPropertyName() = "noent" and
-        pwn.getRhs().getALocalSource().(js::BooleanLiteral).getValue() = "true"
+      exists (js::Expr noent |
+        hasOptionArgument(1, "noent", noent) and
+        noent.mayHaveBooleanValue(true)
       )
     }
   }
@@ -151,7 +150,7 @@ module XML {
         recv.getALocalSource() = newDOMParser and
         this.(js::MethodCallExpr).calls(recv, "parseFromString") and
         // type contains the string `xml`, that is, it's not `text/html`
-        getArgument(1).(js::StringLiteral).getValue().matches("%xml%")
+        getArgument(1).mayHaveStringValue(any(string tp | tp.matches("%xml%")))
       )
     }
 
@@ -171,7 +170,7 @@ module XML {
     IELegacyXmlParserInvocation() {
       exists (js::NewExpr activeXObject, string activeXType, js::DataFlowNode recv |
         activeXObject.getCallee().accessesGlobal("ActiveXObject") and
-        activeXType = activeXObject.getArgument(0).(js::StringLiteral).getValue() and
+        activeXObject.getArgument(0).mayHaveStringValue(activeXType) and
         activeXType.regexpMatch("Microsoft\\.XMLDOM|Msxml.*\\.DOMDocument.*") and
         recv.getALocalSource() = activeXObject and
         this.(js::MethodCallExpr).calls(recv, "loadXML")

@@ -55,6 +55,10 @@ class ClientSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configur
     isSafeLocationProperty(node) or
     node instanceof ClientSideUrlRedirectSanitizer
   }
+
+  override predicate isSanitizer(DataFlowNode source, DataFlowNode sink) {
+    sanitizingPrefixEdge(source, sink)
+  }
 }
 
 /**
@@ -155,16 +159,6 @@ class LocationSink extends ClientSideUrlRedirectSink {
   }
 }
 
-
-/**
- * A string concatenation containing the character `?` or `#`,
- * considered as a sanitizer for `ClientSideUrlRedirectDataFlowConfiguration`.
- */
-class ConcatenationSanitizer extends ClientSideUrlRedirectSanitizer {
-  ConcatenationSanitizer() {
-    this instanceof UrlQueryStringConcat
-  }
-}
 
 /**
  * An expression that may be interpreted as the URL of a script.

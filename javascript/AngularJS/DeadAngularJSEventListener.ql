@@ -64,14 +64,14 @@ predicate isABuiltinEventName(string name) {
 predicate isAUserDefinedEventName(string name) {
   exists (string methodName, MethodCallExpr mce |
     methodName = "$emit" or methodName = "$broadcast" |
-    name = mce.getArgument(0).(DataFlowNode).getALocalSource().(ConstantString).getStringValue() and
+    mce.getArgument(0).mayHaveStringValue(name) and
     (
       // dataflow based scope resolution
       mce = any(AngularJS::ScopeServiceReference scope).getAMethodCall(methodName) or
       // heuristic scope resolution: assume parameters like `$scope` or `$rootScope` are AngularJS scope objects
       exists(SimpleParameter param |
         param.getName() = any(AngularJS::ScopeServiceReference scope).getName() and
-        mce.getReceiver().(DataFlowNode).getALocalSource() = param.getAnInitialUse() and
+        mce.getReceiver().mayReferToParameter(param) and
         mce.getMethodName() = methodName
       ) or
       // a call in an AngularJS expression
@@ -83,10 +83,9 @@ predicate isAUserDefinedEventName(string name) {
   )
 }
 
-from AngularJS::ScopeServiceReference scope, MethodCallExpr mce, DataFlowNode event, string eventName
+from AngularJS::ScopeServiceReference scope, MethodCallExpr mce, string eventName
 where mce = scope.getAMethodCall("$on") and
-      event = mce.getArgument(0).(DataFlowNode).getALocalSource() and
-      eventName = event.(ConstantString).getStringValue() and
+      mce.getArgument(0).mayHaveStringValue(eventName) and
       not (
         isAUserDefinedEventName(eventName) or
         isABuiltinEventName(eventName) or

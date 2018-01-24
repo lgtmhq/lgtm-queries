@@ -741,6 +741,28 @@ private class AnalyzedVariableImport extends AnalyzedImport {
 }
 
 /**
+ * Flow analysis for `module` and `exports` parameters of AMD modules.
+ */
+private class AnalyzedAmdParameter extends AnalyzedVarDef {
+  AbstractValue implicitInitVal;
+
+  AnalyzedAmdParameter() {
+    exists (AMDModule m, AMDModuleDefinition mdef | mdef = m.getDefine() |
+      this = mdef.getModuleParameter() and
+      implicitInitVal = TAbstractModuleObject(m)
+      or
+      this = mdef.getExportsParameter() and
+      implicitInitVal = TAbstractExportsObject(m)
+    )
+  }
+
+  override AbstractValue getAnAssignedValue() {
+    result = super.getAnAssignedValue() or
+    result = implicitInitVal
+  }
+}
+
+/**
  * Flow analysis for SSA definitions.
  */
 abstract class AnalyzedSsaDefinition extends SsaDefinition {
@@ -896,38 +918,15 @@ private predicate guaranteedToBeInitialized(LocalVariable v) {
 }
 
 /**
- * Gets the abstract value of the `module` object for `m`, which is either
- * `TAbstractModuleObject(m)` if exports of `m` are tracked, or `TAbstractOtherObject()`
- * if not.
- */
-private AbstractValue getAbstractModuleObject(Module m) {
-  result = TAbstractModuleObject(m)
-  or
-  not exists(TAbstractModuleObject(m)) and result = TAbstractOtherObject()
-}
-
-
-/**
- * Gets the abstract value of the `exports` object for `m`, which is either
- * `TAbstractExportsObject(m)` if exports of `m` are tracked, or `TAbstractOtherObject()`
- * if not.
- */
-private AbstractValue getAbstractExportsObject(Module m) {
-  result = TAbstractExportsObject(m)
-  or
-  not exists(TAbstractExportsObject(m)) and result = TAbstractOtherObject()
-}
-
-/**
  * Holds if `av` represents an initial value of CommonJS variable `var`.
  */
 private predicate nodeBuiltins(Variable var, AbstractValue av) {
   exists (Module m, string name | var = m.getScope().getVariable(name) |
     name = "require" and av = TIndefiniteAbstractValue("heap")
     or
-    name = "module" and av = getAbstractModuleObject(m)
+    name = "module" and av = TAbstractModuleObject(m)
     or
-    name = "exports" and av = getAbstractExportsObject(m)
+    name = "exports" and av = TAbstractExportsObject(m)
     or
     name = "arguments" and av = TAbstractOtherObject()
     or
@@ -1178,11 +1177,11 @@ class AnalyzedPropertyAccess extends AnalyzedPropertyRead, @propaccess {
 }
 
 /**
- * Holds if there is an abstract property named `prop`.
+ * Holds if properties named `prop` should be tracked.
  */
 pragma[noinline]
 private predicate isTrackedPropertyName(string prop) {
-  exists(MkAbstractProperty(_, prop))
+  exists (MkAbstractProperty(_, prop))
 }
 
 /**
@@ -1209,7 +1208,8 @@ class AnalyzedPropertyWrite extends DataFlowNode {
   predicate writes(AbstractValue baseVal, string propName, AnalyzedFlowNode source) {
     baseVal = baseNode.getALocalValue() and
     propName = prop and
-    source = rhs
+    source = rhs and
+    shouldTrackProperties(baseVal)
   }
 }
 
@@ -1234,6 +1234,13 @@ private AbstractValue getAnInitialPropertyValue(DefiniteAbstractValue baseVal, s
       baseVal = TAbstractClass(c)
     else
       baseVal = TAbstractInstance(TAbstractClass(c))
+  )
+  or
+  // object properties
+  exists (ValueProperty p |
+    baseVal.(AbstractObjectLiteral).getObjectExpr() = p.getObjectExpr() and
+    propertyName = p.getName() and
+    result = p.getInit().(AnalyzedFlowNode).getALocalValue()
   )
   or
   // `f.prototype` for functions `f` that are instantiated
@@ -1268,7 +1275,13 @@ private newtype TAbstractProperty =
   MkAbstractProperty(AbstractValue base, string prop) {
     any(AnalyzedPropertyRead apr).reads(base, prop) and shouldTrackProperties(base)
     or
+    any(AnalyzedPropertyWrite apw).writes(base, prop, _)
+    or
     exists(getAnInitialPropertyValue(base, prop))
+    or
+    // make sure `__proto__` properties exist for all instance values
+    base instanceof AbstractInstance and
+    prop = "__proto__"
   }
 
 /**
@@ -1304,15 +1317,8 @@ class AbstractProperty extends TAbstractProperty {
   /**
    * Gets a value that is explicitly assigned to this property.
    */
-  pragma[noopt]
   private DefiniteAbstractValue getAnAssignedValue() {
-    exists (AbstractValue b, string p, AnalyzedPropertyWrite apw, AnalyzedFlowNode afn |
-      apw.writes(b, p, afn) and
-      this = MkAbstractProperty(b, p) and
-      this instanceof AbstractProperty and
-      result = afn.getALocalValue() and
-      result instanceof DefiniteAbstractValue
-    )
+    result = getAnAssignedValue(base, prop)
   }
 
   /**
@@ -1337,6 +1343,55 @@ class AbstractProperty extends TAbstractProperty {
    */
   string toString() {
     result = "property " + prop + " of " + base
+  }
+}
+
+/**
+ * Gets a value that is explicitly assigned to property `p` of abstract value `b`.
+ *
+ * This auxiliary predicate is necessary to enforce a better join order, and it
+ * has to be toplevel predicate to avoid a spurious type join with `AbstractProperty`,
+ * which in turn introduces a materialization.
+ */
+pragma[noopt]
+private DefiniteAbstractValue getAnAssignedValue(AbstractValue b, string p) {
+  exists (AnalyzedPropertyWrite apw, AnalyzedFlowNode afn |
+    apw.writes(b, p, afn) and
+    result = afn.getALocalValue() and
+    result instanceof DefiniteAbstractValue
+  )
+}
+
+/**
+ * An abstract representation of the `__proto__` property of a function or
+ * class instance.
+ */
+class AbstractProtoProperty extends AbstractProperty {
+  AbstractProtoProperty() {
+    prop = "__proto__"
+  }
+
+  override AbstractValue getAValue() {
+    result = super.getAValue() and
+    (
+     not result instanceof PrimitiveAbstractValue or
+     result instanceof AbstractNull
+    )
+    or
+    exists (AbstractCallable ctor | base = TAbstractInstance(ctor) |
+      // the value of `ctor.prototype`
+      exists (AbstractProperty prototype |
+        prototype = MkAbstractProperty((AbstractFunction)ctor, "prototype") and
+        result = prototype.getALocalValue()
+      )
+      or
+      // instance of super class
+      exists (ClassDefinition cd, AbstractCallable superCtor |
+        cd = ctor.(AbstractClass).getClass() and
+        superCtor = cd.getSuperClass().(AnalyzedFlowNode).getALocalValue() and
+        result = TAbstractInstance(superCtor)
+      )
+    )
   }
 }
 
@@ -1435,27 +1490,89 @@ private AbstractValue getDefaultReturnValue(ImmediatelyInvokedFunctionExpr f) {
 }
 
 /**
- * Flow analysis for `this` in functions or methods.
+ * Flow analysis for `this` expressions inside functions.
  */
-private class AnalyzedThisExpr extends AnalyzedFlowNode, @thisexpr {
-  AbstractValue val;
+private abstract class AnalyzedThisExpr extends AnalyzedFlowNode, @thisexpr {
+  Function binder;
 
   AnalyzedThisExpr() {
-    exists (Function binder | binder = this.(ThisExpr).getBinder() |
-      val = TAbstractInstance(TAbstractFunction(binder))
-      or
-      exists (ClassDefinition c, MemberDefinition m |
-        m = c.getAMember() and binder = c.getAMember().getInit() |
-        if m.isStatic() then
-          val = TAbstractClass(c)
-        else
-          val = TAbstractInstance(TAbstractClass(c))
-      )
+    binder = this.(ThisExpr).getBinder()
+  }
+}
+
+/**
+ * Flow analysis for `this` expressions inside a function that is instantiated.
+ *
+ * These expressions are assumed to refer to an instance of that function. Since
+ * this is only a heuristic, however, we additionally still infer an indefinite
+ * abstract value.
+ */
+private class AnalyzedThisInConstructorFunction extends AnalyzedThisExpr {
+  AbstractValue value;
+
+  AnalyzedThisInConstructorFunction() {
+    value = TAbstractInstance(TAbstractFunction(binder))
+  }
+
+  override AbstractValue getALocalValue() {
+    result = value or
+    result = AnalyzedThisExpr.super.getALocalValue()
+  }
+}
+
+/**
+ * Flow analysis for `this` expressions inside an instance member of a class.
+ *
+ * These expressions are assumed to refer to an instance of that class. This
+ * is a safe assumption in practice, but to guard against corner cases we still
+ * additionally infer an indefinite abstract value.
+ */
+private class AnalyzedThisInInstanceMember extends AnalyzedThisExpr {
+  ClassDefinition c;
+
+  AnalyzedThisInInstanceMember() {
+    exists (MemberDefinition m |
+      m = c.getAMember() and
+      not m.isStatic() and
+      binder = c.getAMember().getInit()
     )
   }
 
   override AbstractValue getALocalValue() {
-    result = val or
-    result = AnalyzedFlowNode.super.getALocalValue()
+    result = TAbstractInstance(TAbstractClass(c)) or
+    result = AnalyzedThisExpr.super.getALocalValue()
+  }
+}
+
+/**
+ * Flow analysis for `this` expressions inside a function that is assigned to a property.
+ *
+ * These expressions are assumed to refer to the object to whose property the function
+ * is assigned. Since this is only a heuristic, however, we additionally still infer an
+ * indefinite abstract value.
+ *
+ * The following code snippet shows an example:
+ *
+ * ```
+ * var o = {
+ *   p: function() {
+ *     this;  // assumed to refer to object literal `o`
+ *   }
+ * };
+ * ```
+ */
+private class AnalyzedThisInPropertyFunction extends AnalyzedThisExpr {
+  AnalyzedFlowNode base;
+
+  AnalyzedThisInPropertyFunction() {
+    exists (PropWriteNode pwn |
+      pwn.getRhs() = binder and
+      base = pwn.getBase()
+    )
+  }
+
+  override AbstractValue getALocalValue() {
+    result = base.getALocalValue() or
+    result = AnalyzedThisExpr.super.getALocalValue()
   }
 }

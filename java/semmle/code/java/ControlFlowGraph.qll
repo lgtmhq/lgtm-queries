@@ -515,6 +515,10 @@ private cached module ControlFlowGraphImpl {
     last(try.getACatchClause(), last, completion)
   }
 
+  private predicate lastInFinally(TryStmt try, ControlFlowNode last) {
+    last(try.getFinally(), last, NormalCompletion())
+  }
+
   /**
    * Bind `last` to a cfg node nested inside `n` (or, indeed, `n` itself) such
    * that `last` may be the last node during an execution of `n` and finish
@@ -610,15 +614,16 @@ private cached module ControlFlowGraphImpl {
     // `try` statements are a bit more complicated:
     exists (TryStmt try | try = n |
       // the last node in a `try` is the last node in its `finally` block
-      exists (Completion finallyCompletion | last(try.getFinally(), last, finallyCompletion) |
-        // if the `finally` block completes normally, it resumes any completion that
-        // was current before the `finally` block was entered
-        if finallyCompletion = NormalCompletion() then
-          finallyPred(try, _, completion)
-        else
-          // otherwise, just take the completion of the `finally` block itself
-          completion = finallyCompletion
-      ) or
+
+      // if the `finally` block completes normally, it resumes any completion that
+      // was current before the `finally` block was entered
+      lastInFinally(try, last) and
+      finallyPred(try, _, completion)
+      or
+      // otherwise, just take the completion of the `finally` block itself
+      last(try.getFinally(), last, completion) and
+      completion != NormalCompletion()
+      or
 
       // if there is no `finally` block, take the last node of the body or
       // any of the `catch` clauses
@@ -880,10 +885,6 @@ private cached module ControlFlowGraphImpl {
   private Completion resumption(ControlFlowNode n) {
     exists (TryStmt try | lastInFinally(try, n) and finallyPred(try, _, result)) or
     not lastInFinally(_, n) and result = NormalCompletion()
-  }
-
-  private predicate lastInFinally(TryStmt try, ControlFlowNode n) {
-    last(try.getFinally(), n, NormalCompletion())
   }
 
   /**

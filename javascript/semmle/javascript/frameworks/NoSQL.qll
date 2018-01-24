@@ -44,11 +44,11 @@ private module MongoDB {
   /**
    * Gets an expression that may refer to a MongoDB database connection.
    */
-  private DataFlowNode getAMongoDb() {
+  private Expr getAMongoDb() {
     exists (MethodCallExpr connect, Function cb |
       connect.calls(getAMongoClient(), "connect") and
       cb = connect.getArgument(1).(DataFlowNode).getALocalSource() and
-      result.getALocalSource().(VarAccess).getVariable() = cb.getParameter(1).(SimpleParameter).getVariable()
+      result.mayReferToParameter(cb.getParameter(1))
     )
   }
 
@@ -68,7 +68,7 @@ private module MongoDB {
         or
         exists (Function cb |
           cb = collection.getArgument(1).(DataFlowNode).getALocalSource() and
-          this.getALocalSource().(VarAccess).getVariable() = cb.getParameter(1).(SimpleParameter).getVariable()
+          this.(Expr).mayReferToParameter(cb.getParameter(1))
         )
       )
     }

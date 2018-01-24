@@ -101,6 +101,7 @@ predicate inWeakCheck(Expr e) {
 // Ignore cases where the variable has been checked somehow,
 // but allow some particularly obviously bad cases.
 predicate guarded(VarAccess e) {
+  exists(PathCreation p | e = p.getInput()) and
   exists(ConditionBlock cb, Expr c |
     cb.getCondition().getAChildExpr*() = c and
     c = e.getVariable().getAnAccess() and

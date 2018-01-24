@@ -17,7 +17,6 @@
 
 import java
 private import SSA
-private import DefUse
 private import Guards
 
 /** An expression that always has the same integer value. */

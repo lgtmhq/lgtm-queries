@@ -18,7 +18,6 @@
 
 import java
 private import SSA
-private import DefUse
 private import semmle.code.java.dispatch.VirtualDispatch
 
 module DataFlow2 {

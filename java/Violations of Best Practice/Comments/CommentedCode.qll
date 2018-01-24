@@ -80,10 +80,16 @@ private predicate javadocLines(Javadoc j, File f, int start, int end) {
   end = j.getLocation().getEndLine()
 }
 
+private class JavadocFirst extends Javadoc {
+  JavadocFirst() {
+    not exists(Javadoc prev | this = getNextComment(prev))
+  }
+}
+
 /**
  * The number of lines that look like code in the comment `first`, or ones that follow it.
  */
-private int codeCount(Javadoc first) {
+private int codeCount(JavadocFirst first) {
   result = sum(Javadoc following |
     following = getNextComment*(first) and not hasCodeTags(following) |
     count(JavadocText line | line = following.getAChild() and looksLikeCode(line))
@@ -93,7 +99,7 @@ private int codeCount(Javadoc first) {
 /**
  * The number of lines in the comment `first`, or ones that follow it.
  */
-private int anyCount(Javadoc first) {
+private int anyCount(JavadocFirst first) {
   result = sum(Javadoc following |
     following = getNextComment*(first) and not hasCodeTags(following) |
     count(JavadocText line | line = following.getAChild() and
@@ -108,9 +114,8 @@ private int anyCount(Javadoc first) {
 /**
  * A piece of commented-out code, identified using heuristics.
  */
-class CommentedOutCode extends Javadoc {
+class CommentedOutCode extends JavadocFirst {
   CommentedOutCode() {
-    not exists(Javadoc prev | this = getNextComment(prev)) and
     anyCount(this) > 0 and
     ((float)codeCount(this))/((float)anyCount(this)) > 0.5 and
     not this instanceof JSNIComment and

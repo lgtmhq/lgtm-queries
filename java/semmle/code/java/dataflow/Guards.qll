@@ -12,7 +12,6 @@
 // permissions and limitations under the License.
 
 import java
-private import DefUse
 private import semmle.code.java.controlflow.Dominance
 
 /**

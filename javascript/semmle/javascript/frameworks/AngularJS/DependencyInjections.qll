@@ -27,13 +27,6 @@ private import AngularJS
 private import ServiceDefinitions
 
 /**
- * Gets a string value that may flow into `nd`.
- */
-private string getStringValue(DataFlowNode nd) {
-  result = nd.getALocalSource().(Expr).getStringValue()
-}
-
-/**
  * Holds if `nd` is an `angular.injector()` value
  */
 private predicate isAngularInjector(DataFlowNode nd) {
@@ -179,14 +172,14 @@ private class FunctionWithInjectProperty extends InjectableFunction, @function {
   }
 
   override SimpleParameter getDependencyParameter(string name) {
-    exists (int i | getStringValue(dependencies.getElement(i)) = name |
+    exists (int i | dependencies.getElement(i).mayHaveStringValue(name) |
       result = asFunction().getParameter(i)
     )
   }
 
   override ASTNode getDependencyDeclaration(int i, string name) {
     result = dependencies.getElement(i) and
-    getStringValue(result) = name
+    result.(Expr).mayHaveStringValue(name)
   }
 
   override Function asFunction() { result = this }
@@ -210,14 +203,14 @@ private class FunctionWithExplicitDependencyAnnotation extends InjectableFunctio
   }
 
   override SimpleParameter getDependencyParameter(string name) {
-    exists (int i | name = getStringValue(this.(ArrayExpr).getElement(i)) |
+    exists (int i | this.(ArrayExpr).getElement(i).mayHaveStringValue(name) |
       result = asFunction().getParameter(i)
     )
   }
 
   override ASTNode getDependencyDeclaration(int i, string name) {
     result = this.(ArrayExpr).getElement(i) and
-    getStringValue(result) = name
+    result.(Expr).mayHaveStringValue(name)
   }
 
   override Function asFunction() { result = function }

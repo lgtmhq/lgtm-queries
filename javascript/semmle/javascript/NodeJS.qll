@@ -45,7 +45,12 @@ class NodeModule extends Module {
     result = getAnImport().getImportedModule()
   }
 
-  /** Gets an expression whose value flows into `module.exports`. */
+  /**
+   * DEPRECATED: Use `getAModuleExportsValue` instead.
+   *
+   * Gets an expression whose value flows into `module.exports`.
+   */
+  deprecated
   DataFlowNode getAnExportedExpr() {
     result = getAnExportsAccess() or
     exists (Assignment assgn, PropAccess lhs |
@@ -54,6 +59,18 @@ class NodeModule extends Module {
       lhs = getAnExportsAccess() and
       // the result is an expression that may flow into the right hand side
       result = assgn.getRhs().(DataFlowNode).getALocalSource()
+    )
+  }
+
+  /**
+   * Gets an abstract value representing one or more values that may flow
+   * into this module's `module.exports` property.
+   */
+  DefiniteAbstractValue getAModuleExportsValue() {
+    exists (AbstractProperty moduleExports |
+      moduleExports.getBase().(AbstractModuleObject).getModule() = this and
+      moduleExports.getPropertyName() = "exports" |
+      result = moduleExports.getAValue()
     )
   }
 
@@ -66,12 +83,12 @@ class NodeModule extends Module {
   override predicate exports(string name, ASTNode export) {
     // a property write whose base is `exports` or `module.exports`
     exists (PropWriteNode pwn | export = pwn |
-      pwn.getBase().getALocalSource() = getAnExportedExpr() and
+      pwn.getBase().(AnalyzedFlowNode).getAValue() = getAModuleExportsValue() and
       name = pwn.getPropertyName()
     ) or
     // an externs definition (where appropriate)
     exists (PropAccess pacc | export = pacc |
-      pacc.getBase().(DataFlowNode).getALocalSource() = getAnExportedExpr() and
+      pacc.getBase().(AnalyzedFlowNode).getAValue() = getAModuleExportsValue() and
       name = pacc.getPropertyName() and
       isExterns() and exists(pacc.getDocumentation())
     )
@@ -91,10 +108,10 @@ class NodeModule extends Module {
 
   /** Gets an externs declaration of the prototype object of a value exported by this module. */
   private ExternalConstructor getPrototypeOfExportedExpr() {
-    exists (DataFlowNode exported | exported = getAnExportedExpr() |
+    exists (AbstractValue exported | exported = getAModuleExportsValue() |
       result instanceof ObjectExternal or
-      exported instanceof Function and result instanceof FunctionExternal or
-      exported instanceof ArrayExpr and result instanceof ArrayExternal
+      exported instanceof AbstractFunction and result instanceof FunctionExternal or
+      exported instanceof AbstractOtherObject and result instanceof ArrayExternal
     )
   }
 

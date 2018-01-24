@@ -35,6 +35,15 @@ predicate typing_import(ImportingStmt is) {
     )
 }
 
+/** Holds if `s` contains the only `yield` in scope */
+predicate unique_yield(Stmt s) {
+    exists(Yield y | s.contains(y)) and
+    exists(Function f |
+        f = s.getScope() and
+        strictcount(Yield y | f.containsInScope(y)) = 1
+    )
+}
+
 predicate reportable_unreachable(Stmt s) {
     s.isUnreachable() and
     not typing_import(s) and
@@ -44,7 +53,8 @@ predicate reportable_unreachable(Stmt s) {
         exists(StmtList l, int i, int j | 
             l.getItem(i) = other and l.getItem(j) = s and i < j
         )
-    )
+    ) and
+    not unique_yield(s)
 }
 
 from Stmt s

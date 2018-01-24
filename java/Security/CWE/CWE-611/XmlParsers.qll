@@ -19,7 +19,6 @@ import semmle.code.java.dataflow.DataFlow2
 import semmle.code.java.dataflow.DataFlow3
 import semmle.code.java.dataflow.DataFlow4
 private import semmle.code.java.dataflow.SSA
-private import semmle.code.java.dataflow.DefUse
 
 /*
  * Various XML parsers in Java.

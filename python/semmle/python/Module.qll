@@ -179,6 +179,11 @@ class Module extends Module_, Scope, AstNode {
         this.inStdLib(_, _)
     }
 
+    override
+    predicate containsInScope(AstNode inner) {
+        Scope.super.containsInScope(inner)
+    }
+
 }
 
 private predicate hasInit(Folder f) {

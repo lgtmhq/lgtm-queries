@@ -17,7 +17,6 @@
 
 import java
 private import SSA
-private import DefUse
 private import RangeUtils
 private import RangeAnalysis
 

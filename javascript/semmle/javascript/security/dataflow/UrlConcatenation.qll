@@ -29,33 +29,27 @@ private predicate hasSanitizingSubstring(DataFlowNode nd) {
     hasSanitizingSubstring(src.(Expr).getAChildExpr())
     or
     src.(Expr).getStringValue().regexpMatch(".*[?#].*")
+    or
+    src.isIncomplete(_)
   )
 }
 
 /**
- * Holds if a string value containing `?` or `#` may precede
- * `nd` in a string concatenation.
+ * Holds if data that flows from `source` to `sink` may have a string
+ * containing the character `?` or `#` prepended to it.
+ *
+ * This is considered as a sanitizing edge for the URL redirection queries.
  */
-private predicate hasSanitizingPrefix(DataFlowNode nd) {
-  exists (AddExpr add | nd = add.getRightOperand() |
+predicate sanitizingPrefixEdge(DataFlowNode source, DataFlowNode sink) {
+  exists (AddExpr add |
+    source = add.getRightOperand() and
+    sink = add and
     hasSanitizingSubstring(add.getLeftOperand())
-  ) or
-  exists (ParExpr pe | nd = pe.getExpression() |
-    hasSanitizingPrefix(pe)
-  ) or
-  exists (TemplateLiteral tl, int i | nd = tl.getElement(i) |
+  )
+  or
+  exists (TemplateLiteral tl, int i |
+    source = tl.getElement(i) and
+    sink = tl and
     hasSanitizingSubstring(tl.getElement([0..i-1]))
   )
-}
-
-/**
- * An expression to which a string containing the character `?` or `#`
- * is prepended.
- *
- * This is considered as a sanitizer for the URL redirection queries.
- */
-class UrlQueryStringConcat extends Expr {
-  UrlQueryStringConcat() {
-    hasSanitizingPrefix(this)
-  }
 }

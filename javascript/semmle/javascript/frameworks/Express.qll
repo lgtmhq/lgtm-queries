@@ -108,10 +108,10 @@ module Express {
       any(RouteSetup s).getARouteHandler() = this
     }
 
-    private DataFlowNode getALocalParameterUse(int paramIndex){
+    private Expr getALocalParameterUse(int paramIndex){
       exists(SimpleParameter param |
         param = function.getParameter(paramIndex) and
-        param.getAnInitialUse() = result.getALocalSource()
+        result.mayReferToParameter(param)
       )
     }
 

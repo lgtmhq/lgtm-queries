@@ -72,7 +72,7 @@ private module MySql {
     exists (DataFlowNode pool, MethodCallExpr getConn, Function cb |
       isPool(pool) and getConn.calls(pool, "getConnection") and
       cb = getConn.getArgument(0).(DataFlowNode).getALocalSource() and
-      nd.getALocalSource() = cb.getParameter(1).(SimpleParameter).getAnInitialUse()
+      nd.(Expr).mayReferToParameter(cb.getParameter(1))
     )
   }
 
@@ -148,7 +148,7 @@ private module Postgres {
     exists (DataFlowNode pool, MethodCallExpr getConn, Function cb |
       isPool(pool) and getConn.calls(pool, "connect") and
       cb = getConn.getArgument(0).(DataFlowNode).getALocalSource() and
-      nd.getALocalSource() = cb.getParameter(1).(SimpleParameter).getAnInitialUse()
+      nd.(Expr).mayReferToParameter(cb.getParameter(1))
     )
   }
 

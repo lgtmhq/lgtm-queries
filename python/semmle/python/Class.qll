@@ -198,7 +198,7 @@ class Class extends Class_, Scope, AstNode {
     Expr getABase() {
         result = this.getParent().getABase()
     }
-    
+
     /** Gets the metrics for this class */
     ClassMetrics getMetrics() {
         result = this
@@ -216,6 +216,11 @@ class Class extends Class_, Scope, AstNode {
             enclosing_name = this.getScope().(Class).getQualifiedName() |
             result = enclosing_name + "." + this.getName()
         )
+    }
+
+    override
+    predicate containsInScope(AstNode inner) {
+        Scope.super.containsInScope(inner)
     }
 
 }
