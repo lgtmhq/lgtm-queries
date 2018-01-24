@@ -96,6 +96,30 @@ class AbstractValue extends TAbstractValue {
   }
 
   /**
+   * Gets an abstract value that represents a prototype object of this value.
+   *
+   * We currently model three sources of prototypes:
+   *
+   *   - direct assignments to `o.__proto__` are tracked;
+   *
+   *   - for an instance `o` of a function `f`, any value that can be shown to flow into
+   *     `f.prototype` is considered a prototype object of `o`;
+   *
+   *   - for an instance of a class `C`, any instance of a function or class that can be
+   *     shown to flow into the `extends` clause of `C` is considered a prototype object
+   *     of `o`.
+   *
+   * In all cases, purely local flow tracking is used to find prototype objects, so
+   * this predicate cannot be relied on to compute all possible prototype objects.
+   */
+  AbstractValue getAPrototype() {
+    exists (AbstractProtoProperty proto |
+      proto.getBase() = this and
+      result = proto.getAValue()
+    )
+  }
+
+  /**
    * Holds if this element is at the specified location.
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `f`.

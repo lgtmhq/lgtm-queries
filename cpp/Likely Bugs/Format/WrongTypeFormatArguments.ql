@@ -27,28 +27,6 @@
 import default
 
 /**
- * A type that's either:
- *  - the built-in `wchar_t`.
- *  - a user type called "wchar_t" (for example a `typedef`).
- *  - a typedef or specified type that resolves to either of the
- *    above.
- * 
- * Note that simply writing `.getUnspecifiedType().hasName("wchar_t")`
- * would not match a typedef called "wchar_t" because
- * `.getUnspecifiedType()` skips past it.
- */
-class EffectiveWchar_t extends Type {
-  EffectiveWchar_t() {
-    (
-      this instanceof WideCharType or
-      this.(UserType).hasGlobalName("wchar_t")
-    ) or
-    this.(TypedefType).getBaseType() instanceof EffectiveWchar_t or
-    this.(SpecifiedType).getBaseType() instanceof EffectiveWchar_t
-  }
-}
-
-/**
  * Holds if the argument corresponding to the `pos` conversion specifier
  * of `ffc` is expected to have type `expected`. 
  */
@@ -66,26 +44,62 @@ private predicate formattingFunctionCallExpectedType(FormattingFunctionCall ffc,
 /**
  * Holds if the argument corresponding to the `pos` conversion specifier
  * of `ffc` is expected to have type `expected` and the corresponding
- * argument `arg` has type `actual` (after all conversions).
+ * argument `arg` has type `actual`.
  */
 pragma[noopt]
 predicate formatArgType(FormattingFunctionCall ffc, int pos, Type expected, Expr arg, Type actual) {
-  formattingFunctionCallExpectedType(ffc, pos, expected) and
-  ffc.getConversionArgument(pos) = arg and
-  actual = arg.getActualType()
+  exists(Expr argConverted |
+    formattingFunctionCallExpectedType(ffc, pos, expected) and
+    ffc.getConversionArgument(pos) = arg and
+    argConverted = arg.getFullyConverted() and
+    actual = argConverted.getType()
+  )
 }
 
 /**
  * Holds if the argument corresponding to the `pos` conversion specifier
  * of `ffc` is expected to have a width or precision argument of type
- * `expected` and the corresponding argument `arg` has type `actual`
- * (after all conversions).
+ * `expected` and the corresponding argument `arg` has type `actual`.
  */
 pragma[noopt]
 predicate formatOtherArgType(FormattingFunctionCall ffc, int pos, Type expected, Expr arg, Type actual) {
-  (arg = ffc.getMinFieldWidthArgument(pos) or arg = ffc.getPrecisionArgument(pos)) and
-  actual = arg.getActualType() and
-  exists(IntType it | it instanceof IntType and it.isImplicitlySigned() and expected = it)
+  exists(Expr argConverted |
+    (arg = ffc.getMinFieldWidthArgument(pos) or arg = ffc.getPrecisionArgument(pos)) and
+    argConverted = arg.getFullyConverted() and
+    actual = argConverted.getType() and
+    exists(IntType it | it instanceof IntType and it.isImplicitlySigned() and expected = it)
+  )
+}
+
+/**
+ * A type that may be expected by a printf format parameter, or that may
+ * be pointed to by such a type (e.g. `wchar_t`, from `wchar_t *`).
+ */
+class ExpectedType extends Type
+{
+  ExpectedType() {
+    formatArgType(_, _, this, _, _) or
+    formatOtherArgType(_, _, this, _, _) or
+    exists(ExpectedType t |
+      this = t.(PointerType).getBaseType()
+    )
+  }
+}
+
+/**
+ * Gets an 'interesting' type that can be reached from `t` by removing
+ * typedefs and specifiers.  Note that this does not always mean removing
+ * all typedefs and specifiers as `Type.getUnspecifiedType()` would, for
+ * example if the interesting type is itself a typedef.
+ */
+ExpectedType getAnUnderlyingExpectedType(Type t) {
+  (
+    result = t
+  ) or (
+    result = getAnUnderlyingExpectedType(t.(TypedefType).getBaseType())
+  ) or (
+    result = getAnUnderlyingExpectedType(t.(SpecifiedType).getBaseType())
+  )
 }
 
 /**
@@ -97,7 +111,7 @@ predicate formatOtherArgType(FormattingFunctionCall ffc, int pos, Type expected,
  * are promoted to `int` (or `unsigned int`, as appropriate) and `float`s
  * are converted to `double`.
  */
-predicate trivialConversion(Type expected, Type actual) {
+predicate trivialConversion(ExpectedType expected, Type actual) {
   formatArgType(_, _, expected, _, actual) and
 
   exists(Type actualU |
@@ -119,7 +133,7 @@ predicate trivialConversion(Type expected, Type actual) {
         // allow any `wchar_t *` type (even a pointer to a typedef called `wchar_t`) to be displayed
         // with `%ws`
         expected.(PointerType).getBaseType().hasName("wchar_t") and
-        actual.(PointerType).getBaseType() instanceof EffectiveWchar_t
+        getAnUnderlyingExpectedType(actual.(PointerType).getBaseType()) instanceof Wchar_t
       ) or (
         // allow an `int` (or anything promoted to `int`) to be displayed with `%c`
         expected instanceof CharType and actualU instanceof IntType
@@ -131,7 +145,7 @@ predicate trivialConversion(Type expected, Type actual) {
       ) or (
         expected.(IntegralType).getSize() = actualU.(IntegralType).getSize()
       ) or (
-        expected = actualU
+        expected = getAnUnderlyingExpectedType(actual)
       )
     )
   )
@@ -144,7 +158,7 @@ int sizeof_IntType() {
   exists(IntType it | result = it.getSize())
 }
 
-from FormattingFunctionCall ffc, int n, Expr arg, Type expected, Type actual
+from FormattingFunctionCall ffc, int n, Expr arg, ExpectedType expected, Type actual
 where (
         (
           formatArgType(ffc, n, expected, arg, actual) and
@@ -153,7 +167,7 @@ where (
         or
         (
           formatOtherArgType(ffc, n, expected, arg, actual) and
-          not actual.(IntegralType).getSize() = sizeof_IntType()
+          not actual.getUnderlyingType().(IntegralType).getSize() = sizeof_IntType()
         )
       )
       and not arg.isAffectedByMacro()

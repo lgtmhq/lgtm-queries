@@ -61,7 +61,7 @@ private int incoming_calls_estimate(FunctionObject f) {
  * in the number of contexts while retaining good results.
  */
 private int splay_cost(CallNode c) {
-    exists(FunctionObject func | 
+    exists(PyFunctionObject func | 
         PenultimatePointsTo::get_a_call(func, _) = c and
         result = incoming_calls_estimate(func).log(2).floor()
     )
@@ -89,6 +89,11 @@ private int total_call_cost(CallNode call) {
         result = call_cost(call) + splay_cost(call)
 }
 
+private int total_cost(CallNode call, FinalContext outerContext) {
+    outerContext.appliesTo(call) and
+    result = total_call_cost(call) + context_cost(outerContext)
+}
+
 private cached newtype TFinalContext =
     TMainContext()
     or
@@ -97,9 +102,8 @@ private cached newtype TFinalContext =
     TImportContext()
     or
     TCallContext(ControlFlowNode call, FinalContext outerContext, int cost) {
-        outerContext.appliesTo(call) and
-        cost <= max_context_cost() and
-        cost = total_call_cost(call) + context_cost(outerContext)
+        total_cost(call, outerContext) = cost and
+        cost <= max_context_cost()
     }
 
 /** Points-to context. Context can be one of:
@@ -205,6 +209,11 @@ class FinalContext extends TFinalContext {
         result = context_cost(this)
     }
 
+    /** Holds if a call would be too expensive to create a new context for */
+    predicate untrackableCall(CallNode call) {
+        total_cost(call, this) > max_context_cost()
+    }
+
 }
 
 private predicate in_source(Scope s) {
@@ -285,6 +294,9 @@ class ThisContext extends int {
 
     int getDepth() { result = 0 }
 
+    /** Holds if a call would be too expensive to create a new context for */
+    predicate untrackableCall(CallNode call) { none() }
+
 }
 
 
@@ -333,6 +345,9 @@ class Layer0Context extends int {
         none()
     }
 
+    /** Holds if a call would be too expensive to create a new context for */
+    predicate untrackableCall(CallNode call) { none() }
+
 }
 
 class PenultimateContext extends int {
@@ -378,5 +393,8 @@ class PenultimateContext extends int {
          */
         none()
     }
+
+    /** Holds if a call would be too expensive to create a new context for */
+    predicate untrackableCall(CallNode call) { none() }
 
 }

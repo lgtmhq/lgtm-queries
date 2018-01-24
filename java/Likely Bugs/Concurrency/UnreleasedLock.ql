@@ -27,7 +27,6 @@
 import java
 import semmle.code.java.dataflow.Guards
 import semmle.code.java.dataflow.SSA
-import semmle.code.java.dataflow.DefUse
 import semmle.code.java.frameworks.Mockito
 
 class LockType extends RefType {

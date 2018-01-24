@@ -110,10 +110,10 @@ class AMDModuleDefinition extends CallExpr {
    * parameters `pdep1` and `pdep2` correspond to dependencies
    * `dep1` and `dep2`.
    */
-  private Variable getDependencyParameter(string name) {
-    exists (PathExpr dep, SimpleParameter p | dependencyParameter(dep, p) |
-      dep.getValue() = name and
-      result = p.getVariable()
+  private SimpleParameter getDependencyParameter(string name) {
+    exists (PathExpr dep |
+      dependencyParameter(dep, result) and
+      dep.getValue() = name
     )
   }
 
@@ -127,35 +127,40 @@ class AMDModuleDefinition extends CallExpr {
   /**
    * Gets the parameter corresponding to the pseudo-dependency `require`.
    */
-  private Variable getRequireParameter() {
+  SimpleParameter getRequireParameter() {
     result = getDependencyParameter("require") or
     // if no dependencies are listed, the first parameter is assumed to be `require`
-    not exists(getDependencies()) and result = getFactoryParameter(0).getVariable()
+    not exists(getDependencies()) and result = getFactoryParameter(0)
+  }
+
+  pragma[noinline]
+  private Variable getRequireVariable() {
+    result = getRequireParameter().getVariable()
   }
 
   /**
    * Gets the parameter corresponding to the pseudo-dependency `exports`.
    */
-  private Variable getExportsParameter() {
+  SimpleParameter getExportsParameter() {
     result = getDependencyParameter("exports") or
     // if no dependencies are listed, the second parameter is assumed to be `exports`
-    not exists(getDependencies()) and result = getFactoryParameter(1).getVariable()
+    not exists(getDependencies()) and result = getFactoryParameter(1)
   }
 
   /**
    * Gets the parameter corresponding to the pseudo-dependency `module`.
    */
-  private Variable getModuleParameter() {
+  SimpleParameter getModuleParameter() {
     result = getDependencyParameter("module") or
     // if no dependencies are listed, the third parameter is assumed to be `module`
-    not exists(getDependencies()) and result = getFactoryParameter(2).getVariable()
+    not exists(getDependencies()) and result = getFactoryParameter(2)
   }
 
   /**
    * Gets an access to this module's `module` parameter, if any.
    */
   private VarAccess getAModuleAccess() {
-    result = getModuleParameter().getAnAccess()
+    result = getModuleParameter().getVariable().getAnAccess()
   }
 
   /**
@@ -163,7 +168,7 @@ class AMDModuleDefinition extends CallExpr {
    * parameter or through `module.exports`.
    */
   private Expr getAnExportsAccess() {
-    result = getExportsParameter().getAnAccess() or
+    result = getExportsParameter().getVariable().getAnAccess() or
     exists (PropAccess pacc | result = pacc |
       pacc.getBase().(DataFlowNode).getALocalSource() = getAModuleAccess() and
       pacc.getPropertyName() = "exports"
@@ -171,12 +176,15 @@ class AMDModuleDefinition extends CallExpr {
   }
 
   /**
+   * DEPRECATED: Use `getAModuleExportsValue` instead.
+   *
    * Gets an expression that may be exported by this module.
    *
    * This includes both expressions returned from the factory function and expressions
    * assigned to `module.exports`. The `exports` parameter itself is always implicitly
    * exported.
    */
+  deprecated
   DataFlowNode getAnExportedExpr() {
     result = getModuleExpr() or
     result = getAnExportsAccess() or
@@ -188,10 +196,27 @@ class AMDModuleDefinition extends CallExpr {
   }
 
   /**
+   * Gets an abstract value representing one or more values that may flow
+   * into this module's `module.exports` property.
+   */
+  DefiniteAbstractValue getAModuleExportsValue() {
+    // implicit exports: anything that is returned from the factory function
+    result = getModuleExpr().(AnalyzedFlowNode).getAValue()
+    or
+    // explicit exports: anything assigned to `module.exports`
+    exists (AbstractProperty moduleExports, AMDModule m |
+      this = m.getDefine() and
+      moduleExports.getBase().(AbstractModuleObject).getModule() = m and
+      moduleExports.getPropertyName() = "exports" |
+      result = moduleExports.getAValue()
+    )
+  }
+
+  /**
    * Gets a call to `require` inside this module.
    */
   CallExpr getARequireCall() {
-    result.getCallee().stripParens() = getRequireParameter().getAnAccess()
+    result.getCallee().stripParens() = getRequireVariable().getAnAccess()
   }
 }
 
@@ -240,8 +265,8 @@ class AMDModule extends Module {
   }
 
   override predicate exports(string name, ASTNode export) {
-    exists (PropWriteNode pwn | pwn = export |
-      pwn.getBase() = getDefine().getAnExportedExpr() and
+    exists (PropWriteNode pwn | export = pwn |
+      pwn.getBase().(AnalyzedFlowNode).getAValue() = getDefine().getAModuleExportsValue() and
       name = pwn.getPropertyName()
     )
   }

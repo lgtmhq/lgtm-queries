@@ -133,6 +133,7 @@ private predicate catchallType(BoundedType type) {
  * In the case that `X` is a bounded type with an upper bound, and that upper bound is `Object` or
  * `Serializable`, we return no sub-types.
  */
+pragma[nomagic]
 private Type parameterForSubTypes(ParameterizedType type) {
   (
     type instanceof TypeClass or type instanceof TypeConstructor

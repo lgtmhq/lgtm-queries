@@ -56,6 +56,7 @@ import semmle.javascript.frameworks.jQuery
 import semmle.javascript.frameworks.HttpFrameWorks
 import semmle.javascript.frameworks.NoSQL
 import semmle.javascript.frameworks.PkgCloud
+import semmle.javascript.frameworks.React
 import semmle.javascript.frameworks.Request
 import semmle.javascript.frameworks.SQL
 import semmle.javascript.frameworks.xUnit

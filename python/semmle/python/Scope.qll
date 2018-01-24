@@ -185,4 +185,10 @@ class Scope extends Scope_ {
         result = this.getBody().getLastItem().getLastStatement()
     }
 
+    /** Whether this contains `inner` syntactically and `inner` has the same scope as `this` */
+    predicate containsInScope(AstNode inner) {
+        this.getBody().contains(inner) and
+        this = inner.getScope()
+    }
+
 }

@@ -141,6 +141,30 @@ class Expr extends @expr, ExprOrStmt, ExprOrType {
       this.(DataFlowNode).getALocalSource() = gv.getAnAccess()
     )
   }
+
+  /**
+   * Holds if this expression may evaluate to `s`.
+   */
+  predicate mayHaveStringValue(string s) {
+    s = this.(DataFlowNode).getALocalSource().(ConstantString).getStringValue()
+  }
+
+  /**
+   * Holds if this expression may evaluate to `b`.
+   */
+  predicate mayHaveBooleanValue(boolean b) {
+    exists (string v | v = this.(DataFlowNode).getALocalSource().(BooleanLiteral).getValue() |
+      v = "true" and b = true or
+      v = "false" and b = false
+    )
+  }
+
+  /**
+   * Holds if this expression may refer to the initial value of parameter `p`.
+   */
+  cached predicate mayReferToParameter(SimpleParameter p) {
+    this.(DataFlowNode).getALocalSource() = p.getAnInitialUse()
+  }
 }
 
 /** An identifier. */

@@ -18,7 +18,6 @@
 import java
 import SSA
 private import Guards
-private import DefUse
 private import RangeUtils
 private import IntegerGuards
 

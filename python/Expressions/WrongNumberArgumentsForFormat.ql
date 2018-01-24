@@ -37,12 +37,13 @@ predicate string_format(BinaryExpr operation, StrConst str, Object args, AstNode
 
 int sequence_length(Object args) {
     /* Guess length of sequence */
-    exists(Tuple seq | 
-        seq = args.getOrigin() | 
-        result = strictcount(seq.getAnElt())
+    exists(Tuple seq |
+        seq = args.getOrigin() |
+        result = strictcount(seq.getAnElt()) and
+        not seq.getAnElt() instanceof Starred
     )
     or
-    exists(ImmutableLiteral i | 
+    exists(ImmutableLiteral i |
         i.getLiteralObject() = args |
         result = 1
     )

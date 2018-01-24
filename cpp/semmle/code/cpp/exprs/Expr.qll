@@ -11,6 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+
 import semmle.code.cpp.Element
 
 /**
@@ -65,7 +66,7 @@ class Expr extends StmtParent, @expr {
    * As the type of an expression can sometimes be a TypedefType, calling getUnderlyingType()
    * is often more useful than calling this predicate.
    */
-  Type getType() { expr_types(this,result) }
+  Type getType() { expr_types(this,result,_) }
 
   /**
    * Gets the type of this expression after typedefs have been resolved.
@@ -129,6 +130,68 @@ class Expr extends StmtParent, @expr {
   }
 
   /**
+   * Holds if this expression is an lvalue. An lvalue is an expression that
+   * represents a location, rather than a value.
+   * See [basic.lval] for more about lvalues.
+   */
+  predicate isLValueCategory() {
+    expr_types(this, _, 3)
+  }
+
+  /**
+   * Holds if this expression is an xvalue. An xvalue is a location whose
+   * lifetime is about to end (e.g. an rvalue reference returned from a function
+   * call).
+   * See [basic.lval] for more about xvalues.
+   */
+  predicate isXValueCategory() {
+    expr_types(this, _, 2)
+  }
+
+  /**
+   * Holds if this expression is a prvalue. A prvalue is an expression that
+   * represents a value, rather than a location.
+   * See [basic.lval] for more about prvalues.
+   */
+  predicate isPRValueCategory() {
+    expr_types(this, _, 1)
+  }
+
+  /**
+   * Holds if this expression is a glvalue. A glvalue is either an lvalue or an
+   * xvalue.
+   */
+  predicate isGLValueCategory() {
+    isLValueCategory() or isXValueCategory()
+  }
+
+  /**
+   * Holds if this expression is an rvalue. An rvalue is either a prvalue or an
+   * xvalue.
+   */
+  predicate isRValueCategory() {
+    isPRValueCategory() or isXValueCategory()
+  }
+  
+  /**
+   * Holds if this expression has undergone an lvalue-to-rvalue conversion to
+   * extract its value.
+   * for example:
+   * ```
+   *  y = x;
+   * ```
+   * The VariableAccess for `x` is a prvalue, and hasLValueToRValueConversion()
+   * holds because the value of `x` was loaded from the location of `x`.
+   * The VariableAccess for `y` is an lvalue, and hasLValueToRValueConversion()
+   * does not hold because the value of `y` was not extracted.
+   *
+   * See [conv.lval] for more about the lvalue-to-rvalue conversion
+   */
+  predicate hasLValueToRValueConversion() {
+    expr_isload(this)
+  }
+
+  /**
    * Holds if this expression is an LValue, in the sense of having an address.
    *
    * Being an LValue is best approximated as having an address.
@@ -169,7 +232,7 @@ class Expr extends StmtParent, @expr {
     or this instanceof Assignment /* C++ n3337 - 5.17 clause 1 */
     or this.(CommaExpr).getRightOperand().isLValue() /* C++ n3337 - 5.18 clause 1 */
   }
- 
+
   /**
    * Gets the precedence of the main operator of this expression;
    * higher precedence binds tighter.

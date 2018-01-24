@@ -27,13 +27,6 @@ import javascript
 private import AngularJS
 
 /**
- * Gets a string value that may flow into `nd`.
- */
-private string getStringValue(DataFlowNode nd) {
-  result = nd.getALocalSource().(Expr).getStringValue()
-}
-
-/**
  * Holds if `nd` is a reference to the `angular` variable.
  */
 predicate isAngularRef(DataFlowNode nd) {
@@ -51,7 +44,7 @@ predicate isAngularRef(DataFlowNode nd) {
 private predicate isAngularModuleCall(MethodCallExpr m, string name) {
   isAngularRef(m.getReceiver()) and
   m.getMethodName() = "module" and
-  name = getStringValue(m.getArgument(0))
+  m.getArgument(0).mayHaveStringValue(name)
 }
 
 /**
@@ -100,7 +93,7 @@ class AngularModule extends TAngularModule {
    * Gets another module that this module lists as a dependency.
    */
   AngularModule getADependency() {
-    result.getName() = getStringValue(getDependencyArray().getAnElement())
+    getDependencyArray().getAnElement().mayHaveStringValue(result.getName())
   }
 
   /**
@@ -354,7 +347,7 @@ abstract class CustomDirective extends DirectiveInstance {
 
   /** Gets the template URL of this directive, if any. */
   string getTemplateUrl() {
-    result = getStringValue(getMember("templateUrl"))
+    getMember("templateUrl").(Expr).mayHaveStringValue(result)
   }
 
   /**
@@ -375,7 +368,7 @@ abstract class CustomDirective extends DirectiveInstance {
   }
 
   private string getRestrictionString() {
-    result = getMember("restrict").(ConstantString).getStringValue()
+    getMember("restrict").(Expr).mayHaveStringValue(result)
   }
 
   private predicate hasTargetType(DirectiveTargetType type) {
@@ -485,7 +478,7 @@ class GeneralDirective extends CustomDirective, MkCustomDirective {
   }
 
   override predicate bindsToController() {
-    getMember("bindToController").(BooleanLiteral).getValue() = "true"
+    getMember("bindToController").(Expr).mayHaveBooleanValue(true)
   }
 
   predicate hasIsolateScope() {
@@ -853,7 +846,7 @@ private class ServiceMethodCall extends AngularJSCall {
       // `$filter('orderBy')(collection, expression)`
       service.getName() = "$filter" and
       filter = service.getACall() and
-      filter.getArgument(0).(DataFlowNode).getALocalSource().(ConstantString).getStringValue() = "orderBy" and
+      filter.getArgument(0).mayHaveStringValue("orderBy") and
       filterInvocation.getCallee() = filter and
       e = filterInvocation.getArgument(1)
     )
@@ -937,13 +930,20 @@ class AngularScope extends TAngularScope {
       exists (SimpleParameter p |
         p = d.getController().getDependencyParameter("$scope") or
         p = d.getALinkFunction().getParameter(0) |
-        result.getALocalSource() = p.getAnInitialUse()
+        result.(Expr).mayReferToParameter(p)
       ) or
       exists (ThisExpr dis |
         result.getALocalSource() = dis and
         dis.getBinder() = d.getController().asFunction() and
         d.bindsToController()
-      )
+      ) or
+      d.hasIsolateScope() and result = d.getMember("scope")
+    ) or
+    exists (DirectiveController c, DOM::ElementDefinition elem, SimpleParameter p |
+      c.boundTo(elem) and
+      this.mayApplyTo(elem) and
+      p = c.getFactoryFunction().getDependencyParameter("$scope") and
+      result.(Expr).mayReferToParameter(p)
     )
   }
 
@@ -951,12 +951,9 @@ class AngularScope extends TAngularScope {
    * Holds if this scope may be the scope object of `elt`, i.e. the value of `angular.element(elt).scope()`.
    */
   predicate mayApplyTo(DOM::ElementDefinition elt) {
-    exists (DirectiveInstance d |
-      d.getATarget().getElement() = elt and
-      this = d.getAScope()
-    ) or
-    elt instanceof HTMLElement and
-    this = MkHtmlFileScope(elt.getFile())
+    this = MkIsolateScope(any(CustomDirective d | d.getAMatchingElement() = elt)) or
+    this = MkElementScope(elt) or
+    this = MkHtmlFileScope(elt.getFile()) and elt instanceof HTMLElement
   }
 }
 
@@ -1062,7 +1059,7 @@ class RouteSetup extends MethodCallExpr, DependencyInjection {
       controllerProperty = getRouteParam("controller") |
       result = controllerProperty or
       exists(ControllerDefinition def |
-        def.getName() = controllerProperty.(ConstantString).getStringValue() |
+        controllerProperty.(Expr).mayHaveStringValue(def.getName()) |
         result = def.getAService()
       )
     )
@@ -1157,7 +1154,7 @@ private class RouteInstantiatedController extends Controller {
 
   override predicate boundTo(DOM::ElementDefinition elem) {
     exists (string url, HTMLFile template |
-      url = setup.getRouteParam("templateUrl").(ConstantString).getStringValue() and
+      setup.getRouteParam("templateUrl").(Expr).mayHaveStringValue(url) and
       template.getAbsolutePath().regexpMatch(".*\\Q" + url + "\\E") and
       elem.getFile() = template
     )
@@ -1165,7 +1162,23 @@ private class RouteInstantiatedController extends Controller {
 
   override predicate boundToAs(DOM::ElementDefinition elem, string name) {
     boundTo(elem) and
-    name = setup.getRouteParam("controllerAs").(ConstantString).getStringValue()
+    setup.getRouteParam("controllerAs").(Expr).mayHaveStringValue(name)
+  }
+
+}
+
+/**
+ * Dataflow for the arguments of AngularJS dependency-injected functions.
+ */
+private class DependencyInjectedArgumentInitializer extends AnalyzedSsaDefinition, SsaExplicitDefinition {
+
+  override AbstractValue getAnRhsValue() {
+    exists (AngularJS::InjectableFunction f, SimpleParameter param, AngularJS::CustomServiceDefinition def, DataFlowNode service |
+      this.getDef() = param and
+      def.getServiceReference() = f.getAResolvedDependency(param) and
+      service = def.getAService() and
+      result = service.(AnalyzedFlowNode).getALocalValue()
+    )
   }
 
 }

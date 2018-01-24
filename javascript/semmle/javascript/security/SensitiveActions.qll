@@ -55,7 +55,7 @@ class SensitiveCall extends SensitiveExpr, InvokeExpr {
     this.getCalleeName() instanceof SensitiveDataFunctionName or
     // This is particularly to pick up methods with an argument like "password", which
     // may indicate a lookup.
-    exists(string s | this.getAnArgument().getStringValue() = s |
+    exists(string s | this.getAnArgument().mayHaveStringValue(s) |
       s.regexpMatch(suspicious()) and
       not s.regexpMatch(nonSuspicious())
     )
@@ -129,8 +129,10 @@ private module CleartextPasswords {
       this.getCalleeName() instanceof CleartextPasswordDataFunctionName or
       // This is particularly to pick up methods with an argument like "password", which
       // may indicate a lookup.
-      isCleartextPasswordIndicator(this.getAnArgument().(DataFlowNode).getALocalSource().(ConstantString).getStringValue())
-
+      exists (string s |
+        this.getAnArgument().mayHaveStringValue(s) and
+        isCleartextPasswordIndicator(s)
+      )
     }
   }
 

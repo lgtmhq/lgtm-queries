@@ -81,8 +81,7 @@ module Koa {
      */
     Expr getAContextExpr() {
       // param-access
-      function.getParameter(0).(SimpleParameter).getAnInitialUse() =
-      result.(DataFlowNode).getALocalSource()
+      result.mayReferToParameter(function.getParameter(0))
       or
       // this-access
       result.(ThisExpr).getEnclosingFunction().getThisBinder() = function

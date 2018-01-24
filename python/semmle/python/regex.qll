@@ -296,7 +296,7 @@ abstract class RegexString extends Expr {
     private predicate group_start(int start, int end) {
         this.non_capturing_group_start(start, end)
         or
-        this.flag_group_start(start, end)
+        this.flag_group_start(start, end, _)
         or
         this.named_group_start(start, end)
         or
@@ -348,18 +348,38 @@ abstract class RegexString extends Expr {
         end = min(int i | i > start+4 and this.getChar(i) = "?")
     }
 
-    private predicate flag_group_start(int start, int end) {
+    private predicate flag_group_start(int start, int end, string c) {
         this.isGroupStart(start) and
         this.getChar(start+1) = "?" and
         end = start+3 and
-        exists(string c |
-            c = this.getChar(start+2) |
+        c = this.getChar(start+2) and
+        (
             c = "i" or
             c = "L" or
             c = "m" or
             c = "s" or
             c = "u" or
             c = "x"
+        )
+    }
+
+    /** Gets the mode of this regular expression string if
+     * it is defined by a prefix.
+     */
+    string getModeFromPrefix() {
+        exists(string c |
+            this.flag_group_start(_, _, c) |
+            c = "i" and result = "IGNORECASE"
+            or
+            c = "L" and result = "LOCALE"
+            or
+            c = "m" and result = "MULTILINE"
+            or
+            c = "s" and result = "DOTALL"
+            or
+            c = "u" and result = "UNICODE" 
+            or
+            c = "x" and result = "VERBOSE"
         )
     }
 
@@ -695,6 +715,8 @@ class Regex extends RegexString {
     string getAMode() {
         result != "None" and
         used_as_regex(this, result)
+        or
+        result = this.getModeFromPrefix()
     }
 
 }

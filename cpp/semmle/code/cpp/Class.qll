@@ -364,6 +364,17 @@ class Class extends UserType {
   }
 
   /**
+   * Gets the offset of virtual base class subobject `base` within a
+   * most-derived object of class `this`. The virtual base can be a direct or
+   * indirect virtual base of `this`. Does not hold if `this` is an
+   * uninstantiated template.
+   * See `ClassDerivation.getOffset` for offsets of non-virtual base classes.
+   */
+  int getVirtualBaseClassOffset(Class base) {
+    virtual_base_offsets(this, base, result)
+  }
+
+  /**
    * Holds if this class has a private class derivation, for example the
    * "private B" in "class D : private B { ... };".
    */
@@ -643,6 +654,17 @@ class ClassDerivation extends Locatable,  @derivation {
   /** Gets the location of the derivation. */
   override Location getLocation() {
     derivations(this,_,_,_,result)
+  }
+
+  /**
+   * Gets the offset of the base class subobject relative to the start of the
+   * derived class object. Only holds for non-virtual bases, since the offset
+   * of a virtual base class is not a constant. Does not hold if the derived
+   * class is an uninstantiated template.
+   * See `Class.getVirtualBaseClassOffset` for offsets of virtual base classes.
+   */
+  int getOffset() {
+    direct_base_offsets(this, result)
   }
 
   override string toString() {

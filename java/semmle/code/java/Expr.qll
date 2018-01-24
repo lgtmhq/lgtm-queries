@@ -991,6 +991,43 @@ class LocalVariableDeclExpr extends Expr,@localvariabledeclexpr {
   string toString() { result = this.getName() }
 }
 
+/** An update of a variable or an initialization of the variable. */
+class VariableUpdate extends Expr {
+  VariableUpdate() {
+    this.(Assignment).getDest() instanceof VarAccess or
+    this instanceof LocalVariableDeclExpr or
+    this.(UnaryAssignExpr).getExpr() instanceof VarAccess
+  }
+
+  /** Gets the destination of this variable update. */
+  Variable getDestVar() {
+    result.getAnAccess() = this.(Assignment).getDest() or
+    result = this.(LocalVariableDeclExpr).getVariable() or
+    result.getAnAccess() = this.(UnaryAssignExpr).getExpr()
+  }
+}
+
+/**
+ * An assignment to a variable or an initialization of the variable.
+ */
+class VariableAssign extends VariableUpdate {
+  VariableAssign() {
+    this instanceof AssignExpr or
+    this instanceof LocalVariableDeclExpr
+  }
+
+  /**
+   * Gets the source of this assignment, if any.
+   *
+   * An initialization in a `CatchClause` or `EnhancedForStmt` is implicit and
+   * does not have a source.
+   */
+  Expr getSource() {
+    result = this.(AssignExpr).getSource() or
+    result = this.(LocalVariableDeclExpr).getInit()
+  }
+}
+
 /** A type literal. For example, `String.class`. */
 class TypeLiteral extends Expr,@typeliteral {
   /** The access to the type whose class is accessed. */

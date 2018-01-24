@@ -56,5 +56,12 @@ where maybeMissingThis(call, intendedTarget, gv)
         or
         // externs declaration for the variable
         exists (ExternalGlobalDecl egd | egd.getName() = call.getCalleeName())
+        or
+        // variable available through a namespace
+        exists (Variable decl |
+          decl.getName() = gv.getName() and
+          decl.isNamespaceExport() and
+          call.getContainer().getEnclosingContainer*() instanceof NamespaceDeclaration
+        )
       )
 select call, "This call refers to a global function, and not the local method $@.", intendedTarget, intendedTarget.getName()

@@ -43,19 +43,44 @@ predicate comparisonOperands(ASTNode nd, Expr left, Expr right) {
 }
 
 /**
- * Gets a type that `operand`, which is an operand of comparison `parent`,
- * could be converted to at runtime.
+ * Holds if `av` may have a `toString` or `valueOf` method.
  */
-InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
+predicate hasImplicitConversionMethod(DefiniteAbstractValue av) {
+  // look for assignments to `toString` or `valueOf` on `av` or its prototypes
+  exists (AnalyzedPropertyWrite apw, string p | p = "toString" or p = "valueOf" |
+    apw.writes(av.getAPrototype*(), p, _)
+  )
+}
+
+/**
+ * Gets a type of `operand`, which is an operand of the strict equality test `eq`.
+ */
+InferredType strictEqualityOperandType(ASTNode eq, AnalyzedFlowNode operand) {
   // strict equality tests do no conversion at all
-  operand = parent.(StrictEqualityTest).getAChildExpr() and result = operand.getAType() or
+  operand = eq.(StrictEqualityTest).getAChildExpr() and result = operand.getAType() or
 
   // switch behaves like a strict equality test
-  exists (SwitchStmt switch | switch = parent |
+  exists (SwitchStmt switch | switch = eq |
     (operand = switch.getExpr() or operand = switch.getACase().getExpr()) and
     result = operand.getAType()
-  ) or
+  )
+}
 
+/**
+ * Holds if `operand` is an operand of the non-strict equality test or relational
+ * operator `parent`, and may have a `toString` or `valueOf` method.
+ */
+predicate implicitlyConvertedOperand(ASTNode parent, AnalyzedFlowNode operand) {
+  (parent instanceof NonStrictEqualityTest or parent instanceof RelationalComparison) and
+  operand = parent.getAChildExpr() and
+  hasImplicitConversionMethod(operand.getAValue())
+}
+
+/**
+ * Gets a type of `operand`, which is an operand of the non-strict equality test or
+ * relational operator `parent`.
+ */
+InferredType nonStrictOperandType(ASTNode parent, AnalyzedFlowNode operand) {
   // non-strict equality tests perform conversions
   operand = parent.(NonStrictEqualityTest).getAChildExpr() and
   exists (InferredType tp | tp = operand.getAValue().getType() |
@@ -79,14 +104,29 @@ InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
     or
     // `undefined` and `null` are equated
     tp = TTUndefined() and result = TTNull()
-  ) or
-
+  )
+  or
   // relational operators convert their operands to numbers or strings
   operand = parent.(RelationalComparison).getAChildExpr() and
   exists (AbstractValue v | v = operand.getAValue() |
-    result = v.getType() or
+    result = v.getType()
+    or
     v.isCoercibleToNumber() and result = TTNumber()
   )
+}
+
+/**
+ * Gets a type that `operand`, which is an operand of comparison `parent`,
+ * could be converted to at runtime.
+ */
+InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
+  result = strictEqualityOperandType(parent, operand)
+  or
+  // if `operand` might have `toString`/`valueOf`, just assume it could
+  // convert to any type at all
+  implicitlyConvertedOperand(parent, operand)
+  or
+  result = nonStrictOperandType(parent, operand)
 }
 
 /**

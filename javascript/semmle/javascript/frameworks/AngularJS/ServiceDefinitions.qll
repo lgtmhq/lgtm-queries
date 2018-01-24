@@ -31,13 +31,6 @@ import javascript
 private import AngularJS
 
 /**
- * Gets a string value that may flow into `nd`.
- */
-private string getStringValue(DataFlowNode nd) {
-  result = nd.getALocalSource().(Expr).getStringValue()
-}
-
-/**
  * A reference to a service.
  */
 private newtype TServiceReference =
@@ -62,8 +55,8 @@ abstract class ServiceReference extends TServiceReference {
   /**
    * Gets an access to the referenced service.
    */
-  DataFlowNode getAnAccess() {
-    result.(DataFlowNode).getALocalSource() = any(ServiceRequest request).getAnAccess(this)
+  Expr getAnAccess() {
+    result.mayReferToParameter(any(ServiceRequest request).getDependencyParameter(this))
   }
 
   /**
@@ -110,15 +103,15 @@ class BuiltinServiceReference extends ServiceReference, MkBuiltinServiceReferenc
 }
 
 /**
- * Holds if `nd` is a reference to the builtin service with the name `serviceName`.
+ * Holds if `ref` is a reference to the builtin service with the name `serviceName`.
  *
  * NB: Use `BuiltinServiceReference.getAnAccess` instead of this predicate when possible (they are semantically equivalent for builtin services).
  * This predicate can avoid the non-monotonic recursion that `getAnAccess` can cause.
  */
-predicate isBuiltinServiceRef(DataFlowNode nd, string serviceName) {
+predicate isBuiltinServiceRef(Expr ref, string serviceName) {
  exists(InjectableFunction f, BuiltinServiceReference service |
    service.getName() = serviceName and
-   f.getDependencyParameter(serviceName).getAnInitialUse() = nd.getALocalSource()
+   ref.mayReferToParameter(f.getDependencyParameter(serviceName))
  )
 
 }
@@ -303,7 +296,7 @@ abstract class RecipeDefinition extends MethodCallExpr, CustomServiceDefinition,
       isBuiltinServiceRef(getReceiver(), "$provide")
       ) and
     methodName = getMethodName() and
-    name = getStringValue(getArgument(0))
+    getArgument(0).mayHaveStringValue(name)
   }
 
   override string getName() { result = name }
@@ -351,7 +344,7 @@ private predicate isCustomServiceDefinitionOnModule(MethodCallExpr mce, string m
     moduleMethodName = "animation"
   ) and
   mce.getMethodName() = moduleMethodName and
-  serviceName = getStringValue(mce.getArgument(0)) and
+  mce.getArgument(0).mayHaveStringValue(serviceName) and
   factoryFunction = mce.getArgument(1).(DataFlowNode).getALocalSource()
 }
 
@@ -363,7 +356,7 @@ private predicate isCustomServiceDefinitionOnProvider(MethodCallExpr mce, string
     mce.hasOptionArgument(0, serviceName, factoryFunction)
   ) or (
     mce.getNumArgument() = 2 and
-    serviceName = getStringValue(mce.getArgument(0)) and
+    mce.getArgument(0).mayHaveStringValue(serviceName) and
     factoryFunction = mce.getArgument(1).(DataFlowNode).getALocalSource()
   ))
 }
@@ -415,7 +408,7 @@ class FilterDefinition extends CustomSpecialServiceDefinition {
   }
 
   override DataFlowNode getAService() {
-    result = factoryFunction
+    result = factoryFunction.(InjectableFunction).asFunction().getAReturnedExpr().(DataFlowNode).getALocalSource()
   }
 
   override DataFlowNode getAFactoryFunction() {
@@ -565,9 +558,9 @@ BuiltinServiceReference getBuiltinServiceOfKind(string kind) {
 abstract class ServiceRequest extends Expr {
 
   /**
-   * Gets an access to `service` from this request.
+   * Gets the parameter of this request into which `service` is injected.
    */
-  abstract DataFlowNode getAnAccess(ServiceReference service);
+  abstract SimpleParameter getDependencyParameter(ServiceReference service);
 
 }
 
@@ -580,9 +573,9 @@ private class LinkFunctionWithScopeInjection extends ServiceRequest {
     this instanceof LinkFunction
   }
 
-  override DataFlowNode getAnAccess(ServiceReference service) {
+  override SimpleParameter getDependencyParameter(ServiceReference service) {
     service instanceof ScopeServiceReference and
-    result = this.(LinkFunction).getScopeParameter().getAnInitialUse()
+    result = this.(LinkFunction).getScopeParameter()
   }
 
 }
@@ -622,11 +615,8 @@ class InjectableFunctionServiceRequest extends ServiceRequest {
     result.isInjectable()
   }
 
-  override DataFlowNode getAnAccess(ServiceReference service) {
-    exists(SimpleParameter param |
-      service = injectedFunction.getAResolvedDependency(param) and
-      result = param.getAnInitialUse()
-    )
+  override SimpleParameter getDependencyParameter(ServiceReference service) {
+    service = injectedFunction.getAResolvedDependency(result)
   }
 
 }

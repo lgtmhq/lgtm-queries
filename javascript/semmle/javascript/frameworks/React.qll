@@ -18,6 +18,16 @@
 import javascript
 
 /**
+ * Holds if `nd` may refer to the 'React' object.
+ */
+predicate isReactRef(DataFlowNode nd) {
+  exists (Expr src | src = nd.getALocalSource() |
+    src.accessesGlobal("React") or
+    src.(ModuleInstance).getPath() = "react"
+  )
+}
+
+/**
  * A React component.
  */
 abstract class ReactComponent extends ASTNode {
@@ -85,6 +95,14 @@ abstract class ReactComponent extends ASTNode {
       pwn.getPropertyName() = "defaultProps"
     )
   }
+
+  /**
+   * Gets the render method of this component.
+   */
+  Function getRenderMethod() {
+    result = getInstanceMethod("render")
+  }
+
 }
 
 /**
@@ -144,7 +162,7 @@ class ES2015Component extends ReactComponent, ClassDefinition {
 class ES5Component extends ReactComponent, ObjectExpr {
   ES5Component() {
     exists (MethodCallExpr create |
-      create.getReceiver().(VarAccess).getName() = "React" and
+      isReactRef(create.getReceiver()) and
       create.getMethodName() = "createClass" and
       create.getArgument(0).(DataFlowNode).getALocalSource() = this
     )
@@ -157,4 +175,60 @@ class ES5Component extends ReactComponent, ObjectExpr {
   override predicate hasDefaultProps() {
     exists (getInstanceMethod("getDefaultProps"))
   }
+}
+
+/**
+ * A DOM element created by a React function.
+ */
+private abstract class ReactElementDefinition extends DOM::ElementDefinition {
+
+  override DOM::ElementDefinition getParent() {
+    none()
+  }
+
+}
+
+/**
+ * A DOM element created by the `React.createElement` function.
+ */
+private class CreateElementDefinition extends ReactElementDefinition {
+
+  string tagName;
+
+  CreateElementDefinition() {
+    exists (MethodCallExpr mce |
+      mce = this and
+      isReactRef(mce.getReceiver()) and
+      mce.getMethodName() = "createElement" and
+      mce.getArgument(0).mayHaveStringValue(tagName)
+    )
+  }
+
+  override string getName() {
+    result = tagName
+  }
+
+}
+
+/**
+ * A DOM element created by the (legacy) `React.createFactory` function.
+ */
+private class FactoryDefinition extends ReactElementDefinition {
+
+  string tagName;
+
+  FactoryDefinition() {
+    exists (MethodCallExpr mce, CallExpr call |
+      call = this and
+      isReactRef(mce.getReceiver()) and
+      mce.getMethodName() = "createFactory" and
+      mce.getArgument(0).mayHaveStringValue(tagName) and
+      call.getCallee().(DataFlowNode).getALocalSource() = mce
+    )
+  }
+
+  override string getName() {
+    result = tagName
+  }
+
 }

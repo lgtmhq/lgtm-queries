@@ -25,7 +25,6 @@
  */
 
 import java
-private import DefUse
 private import semmle.code.java.dispatch.VirtualDispatch
 private import semmle.code.java.dispatch.WrappedInvocation
 

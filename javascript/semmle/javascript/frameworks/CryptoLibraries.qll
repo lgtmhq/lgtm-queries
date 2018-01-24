@@ -96,6 +96,13 @@ private module AlgorithmNames {
   bindingset[name] string normalizeName(string name) {
     result = name.toUpperCase().regexpReplaceAll("[-_ ]", "")
   }
+
+  predicate mayHaveNormalizedStringValue(Expr e, string name) {
+    exists (string s |
+      e.mayHaveStringValue(s) and
+      name = normalizeName(s)
+    )
+  }
 }
 private import AlgorithmNames
 
@@ -298,15 +305,15 @@ private module BrowserIdCrypto {
       ```
        */
       this = mce and
-      exists(ModuleInstance mod, DataFlowNode algorithmNameNode, MethodCallExpr keygen, Function callback, PropReadNode keyPrn |
+      exists(ModuleInstance mod, Expr algorithmNameNode, MethodCallExpr keygen, Function callback, PropReadNode keyPrn |
         mod.getPath() = "browserid-crypto" and
         keygen = mod.getAMethodCall("generateKeypair") and
         keygen.hasOptionArgument(0,  "algorithm", algorithmNameNode) and
-        algorithm.getName() = normalizeName(algorithmNameNode.getALocalSource().(ConstantString).getStringValue()) and
+        mayHaveNormalizedStringValue(algorithmNameNode, algorithm.getName()) and
         keygen.getArgument(1).(DataFlowNode).getALocalSource() = callback and
         this = mod.getAMethodCall("sign") and
         mce.getArgument(0) = input and
-        callback.getParameter(1).(SimpleParameter).getAnInitialUse() = keyPrn.getBase().(DataFlowNode).getALocalSource() and
+        keyPrn.getBase().(Expr).mayReferToParameter(callback.getParameter(1)) and
         keyPrn.getPropertyName() = "secretKey" and
         mce.getArgument(1).(DataFlowNode).getALocalSource() = keyPrn
       )
@@ -362,7 +369,7 @@ private module NodeJSCrypto  {
         createSuffix = "Cipher" |
         mod.getPath() = "crypto" and
         createCall = mod.getAMethodCall("create" + createSuffix) and
-        algorithm.getName() = normalizeName(createCall.getArgument(0).(DataFlowNode).getALocalSource().(ConstantString).getStringValue()) and
+        mayHaveNormalizedStringValue(createCall.getArgument(0), algorithm.getName()) and
         mce.getReceiver().(DataFlowNode).getALocalSource() = createCall and
         (mce.getMethodName() = "update" or mce.getMethodName() = "write") and
         mce.getArgument(0) = input
@@ -605,7 +612,7 @@ private module Forge  {
           // `require('forge').cipher.createCipher("3DES-CBC").update("secret");`
           cipher.getReceiver() = mod.getAPropertyRead("cipher") and
           cipher.getMethodName() = "createCipher" and
-          cipher.getArgument(0).(DataFlowNode).getALocalSource().(ConstantString).getStringValue() = cipherName and
+          cipher.getArgument(0).mayHaveStringValue(cipherName) and
           cipherName = cipherPrefix + "-" + cipherSuffix and
           (
             cipherSuffix = "CBC" or
@@ -740,13 +747,13 @@ private module Hasha  {
     Apply() {
       // `require('hasha')('unicorn', { algorithm: "md5" });`
       this = call and
-      exists(ModuleInstance mod, string algorithmName, DataFlowNode algorithmNameNode |
+      exists(ModuleInstance mod, string algorithmName, Expr algorithmNameNode |
         mod.getPath() = "hasha" and
         call.getCallee().(DataFlowNode).getALocalSource() = mod and
         call.getArgument(0) = input and
         algorithm.getName() = normalizeName(algorithmName) and
         call.hasOptionArgument(1, "algorithm", algorithmNameNode) and
-        algorithmName = algorithmNameNode.getALocalSource().(ConstantString).getStringValue()
+        algorithmNameNode.mayHaveStringValue(algorithmName)
       )
     }
 

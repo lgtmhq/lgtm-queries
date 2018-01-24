@@ -36,5 +36,7 @@ where // `s` is unreachable in the CFG
       // allow a spurious 'break' statement at the end of a switch-case
       not exists(Case c, int i | i = c.getNumBodyStmt() | (BreakStmt)s = c.getBodyStmt(i-1)) and
       // ignore ambient statements
-      not s.isAmbient()
+      not s.isAmbient() and
+      // ignore empty statements
+      not s instanceof EmptyStmt
 select (FirstLineOf)s, "This statement is unreachable."

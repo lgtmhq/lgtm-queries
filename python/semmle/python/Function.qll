@@ -112,9 +112,10 @@ class Function extends Function_, Scope, AstNode {
     		result.getOrigin() = this.getDefinition()
     }
 
-    /** Whether this function is a procedure, that is, it has no explicit return statement and is not a generator function */
+    /** Whether this function is a procedure, that is, it has no explicit return statement and always returns None.
+     * Note that generator and async functions are not procedures as they return generators and coroutines respectively. */
     predicate isProcedure() {
-        not exists(this.getReturnNode()) and exists(this.getFallthroughNode()) and not this.isGenerator()
+        not exists(this.getReturnNode()) and exists(this.getFallthroughNode()) and not this.isGenerator() and not this.isAsync()
     }
 
     /** Gets the number of positional parameters */
@@ -174,6 +175,11 @@ class Function extends Function_, Scope, AstNode {
         not exists(Comp comp | comp.getFunction() = this) and result = this
         or 
         major_version() = 3 and result = this
+    }
+
+    override
+    predicate containsInScope(AstNode inner) {
+        Scope.super.containsInScope(inner)
     }
 
 }

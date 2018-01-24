@@ -47,8 +47,7 @@ module Hapi {
      * a route handler invocation.
      */
     Expr getARequestExpr() {
-      function.getParameter(0).(SimpleParameter).getAnInitialUse() =
-      result.(DataFlowNode).getALocalSource()
+      result.mayReferToParameter(function.getParameter(0))
     }
 
   }

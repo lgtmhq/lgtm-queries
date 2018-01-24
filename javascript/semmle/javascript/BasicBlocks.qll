@@ -36,9 +36,22 @@ private predicate succBB(BasicBlock bb, BasicBlock succ) {
   succ = bb.getLastNode().getASuccessor()
 }
 
+/**
+ * Holds if the first node of basic block `bb` is a control flow
+ * successor of the last node of basic block `pre`.
+ */
+private predicate predBB(BasicBlock bb, BasicBlock pre) {
+  succBB(pre, bb)
+}
+
 /** Holds if `bb` is an entry basic block. */
 private predicate entryBB(BasicBlock bb) {
   bb.getFirstNode() instanceof ControlFlowEntryNode
+}
+
+/** Holds if `bb` is an exit basic block. */
+private predicate exitBB(BasicBlock bb) {
+  bb.getLastNode() instanceof ControlFlowExitNode
 }
 
 private cached module Internal {
@@ -59,10 +72,6 @@ private cached module Internal {
   cached predicate bbIndex(BasicBlock bb, ControlFlowNode nd, int i) =
     shortestDistances(startsBB/1, intraBBSucc/2)(bb, nd, i)
 
-  /** Holds if `dom` is an immediate dominator of `bb`. */
-  cached predicate bbIDominates(BasicBlock dom, BasicBlock bb) =
-    idominance(entryBB/1, succBB/2)(_, dom, bb)
-
   cached predicate useAt(BasicBlock bb, int i, Variable v, VarUse u) {
     v = u.getVariable() and bbIndex(bb, u, i)
   }
@@ -72,6 +81,14 @@ private cached module Internal {
   }
 }
 private import Internal
+
+/** Holds if `dom` is an immediate dominator of `bb`. */
+private cached predicate bbIDominates(BasicBlock dom, BasicBlock bb) =
+  idominance(entryBB/1, succBB/2)(_, dom, bb)
+
+/** Holds if `dom` is an immediate post-dominator of `bb`. */
+private cached predicate bbIPostDominates(BasicBlock dom, BasicBlock bb) =
+  idominance(exitBB/1, predBB/2)(_, dom, bb)
 
 /**
  * A basic block, that is, a maximal straight-line sequence of control flow nodes
@@ -297,6 +314,25 @@ class ReachableBasicBlock extends BasicBlock {
     bb = this or
     strictlyDominates(bb)
   }
+
+  /**
+   * Holds if this basic block strictly post-dominates `bb`.
+   */
+  cached
+  predicate strictlyPostDominates(ReachableBasicBlock bb) {
+    bbIPostDominates+(this, bb)
+  }
+
+  /**
+   * Holds if this basic block post-dominates `bb`.
+   *
+   * This predicate is reflexive: each reachable basic block post-dominates itself.
+   */
+  predicate postDominates(ReachableBasicBlock bb) {
+    bb = this or
+    strictlyPostDominates(bb)
+  }
+
 }
 
 /**
