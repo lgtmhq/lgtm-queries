@@ -371,12 +371,17 @@ class SsaVariable extends TSsaDefinition {
     result = this
   }
 
-  /** Gets a use that refers to this SSA variable. */
-  VarUse getAUse() {
-    exists (ReachableBasicBlock bb, int i, SsaSourceVariable v |
+  /** Gets a use in basic block `bb` that refers to this SSA variable. */
+  VarUse getAUseIn(ReachableBasicBlock bb) {
+    exists (int i, SsaSourceVariable v |
       v = getSourceVariable() |
       bb.useAt(i, v, result) and this = getDefinition(bb, i, v)
     )
+  }
+
+  /** Gets a use that refers to this SSA variable. */
+  VarUse getAUse() {
+    result = getAUseIn(_)
   }
 
   /** Gets a textual representation of this element. */

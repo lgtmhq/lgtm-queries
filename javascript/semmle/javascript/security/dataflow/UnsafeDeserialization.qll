@@ -21,17 +21,17 @@ import semmle.javascript.security.dataflow.RemoteFlowSources
 /**
  * A data flow source for unsafe deserialization vulnerabilities.
  */
-abstract class UnsafeDeserializationSource extends DataFlowNode { }
+abstract class UnsafeDeserializationSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for unsafe deserialization vulnerabilities.
  */
-abstract class UnsafeDeserializationSink extends DataFlowNode { }
+abstract class UnsafeDeserializationSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for unsafe deserialization vulnerabilities.
  */
-abstract class UnsafeDeserializationSanitizer extends DataFlowNode { }
+abstract class UnsafeDeserializationSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about unsafe deserialization.
@@ -39,16 +39,16 @@ abstract class UnsafeDeserializationSanitizer extends DataFlowNode { }
 class UnsafeDeserializationTrackingConfig extends TaintTracking::Configuration {
   UnsafeDeserializationTrackingConfig() { this = "UnsafeDeserializationTrackingConfig" }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof UnsafeDeserializationSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof UnsafeDeserializationSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof UnsafeDeserializationSanitizer
   }
@@ -62,14 +62,14 @@ class JsYamlUnsafeLoad extends UnsafeDeserializationSink {
     exists (ModuleInstance mi | mi.getPath() = "js-yaml" |
       // the first argument to a call to `load` or `loadAll`
       exists (string n | n = "load" or n = "loadAll" |
-        this = mi.getAMethodCall(n).getArgument(0)
+        this.asExpr() = mi.getAMethodCall(n).getArgument(0)
       )
       or
       // the first argument to a call to `safeLoad` or `safeLoadAll` where
       // the schema is specified to be `DEFAULT_FULL_SCHEMA`
       exists (string n, CallExpr c, DataFlowNode fullSchema | n = "safeLoad" or n = "safeLoadAll" |
         c = mi.getAMethodCall(n) and
-        this = c.getArgument(0) and
+        this.asExpr() = c.getArgument(0) and
         c.hasOptionArgument(c.getNumArgument()-1, "schema", fullSchema) and
         fullSchema.getALocalSource() = mi.getAPropertyRead("DEFAULT_FULL_SCHEMA")
       )

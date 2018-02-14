@@ -21,19 +21,19 @@ private import semmle.javascript.security.SensitiveActions
 /**
  * A data flow source for hardcoded credentials.
  */
-abstract class HardcodedCredentialsSource extends DataFlowNode { }
+abstract class HardcodedCredentialsSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for hardcoded credentials.
  */
-abstract class HardcodedCredentialsSink extends DataFlowNode {
+abstract class HardcodedCredentialsSink extends DataFlow::Node {
   abstract string getKind();
 }
 
 /**
  * A sanitizer for hardcoded credentials.
  */
-abstract class HardcodedCredentialsSanitizer extends DataFlowNode { }
+abstract class HardcodedCredentialsSanitizer extends DataFlow::Node { }
 
 /**
  * A data flow tracking configuration for hardcoded credentials.
@@ -44,13 +44,13 @@ class HardcodedCredentialsTrackingConfiguration extends FlowTrackingConfiguratio
   }
 
   override
-  predicate isSource(DataFlowNode source) {
+  predicate isSource(DataFlow::Node source) {
     source instanceof HardcodedCredentialsSource or
-    source instanceof ConstantString
+    source.asExpr() instanceof ConstantString
   }
 
   override
-  predicate isSink(DataFlowNode sink) {
+  predicate isSink(DataFlow::Node sink) {
     sink instanceof HardcodedCredentialsSink
   }
 }
@@ -61,10 +61,10 @@ class HardcodedCredentialsTrackingConfiguration extends FlowTrackingConfiguratio
  */
 class DefaultCredentialsSink extends HardcodedCredentialsSink {
   DefaultCredentialsSink() {
-    this instanceof CredentialsExpr
+    this.asExpr() instanceof CredentialsExpr
   }
 
   override string getKind() {
-    result = this.(CredentialsExpr).getCredentialsKind()
+    result = this.asExpr().(CredentialsExpr).getCredentialsKind()
   }
 }

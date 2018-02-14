@@ -131,11 +131,11 @@ cached private module Dispatch {
       // If we have a qualifier, then we track it through variable assignments
       // and take the type of the assigned value.
       exists(RefType srctype | srctype = src.getType() |
-        exists(TypeVariable v | v = srctype |
-          t = v.getAnUltimatelySuppliedType() or
-          not exists(v.getAnUltimatelySuppliedType()) and t = ma.getMethod().getDeclaringType()
+        exists(BoundedType bd | bd = srctype |
+          t = bd.getAnUltimateUpperBoundType() or
+          not exists(bd.getAnUltimateUpperBoundType()) and t = ma.getMethod().getDeclaringType()
         ) or
-        t = srctype and not srctype instanceof TypeVariable
+        t = srctype and not srctype instanceof BoundedType
       ) and
       // If we have a class instance expression, then we know the exact type.
       // This is an important improvement in precision.
@@ -169,7 +169,7 @@ cached private module Dispatch {
 
   private predicate hasSrcMethod(SrcRefType t, Method impl) {
     exists(Method m |
-      t.hasMethod(m, _) and impl = m.getSourceDeclaration()
+      t.hasMethod(m, _, _) and impl = m.getSourceDeclaration()
     )
   }
 

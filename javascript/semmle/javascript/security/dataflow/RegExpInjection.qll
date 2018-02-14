@@ -17,21 +17,22 @@
  */
 
 import javascript
+private import semmle.javascript.flow.InferredTypes
 
 /**
  * A data flow source for untrusted user input used to construct regular expressions.
  */
-abstract class RegExpInjectionSource extends DataFlowNode { }
+abstract class RegExpInjectionSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for untrusted user input used to construct regular expressions.
  */
-abstract class RegExpInjectionSink extends DataFlowNode { }
+abstract class RegExpInjectionSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for untrusted user input used to construct regular expressions.
  */
-abstract class RegExpInjectionSanitizer extends DataFlowNode { }
+abstract class RegExpInjectionSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for untrusted user input used to construct regular expressions.
@@ -41,16 +42,16 @@ class RegExpInjectionTaintTrackingConfiguration extends TaintTracking::Configura
     this = "RegExpInjection"
   }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof RemoteFlowSource or
     source instanceof RegExpInjectionSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof RegExpInjectionSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof RegExpInjectionSanitizer
   }
@@ -59,23 +60,39 @@ class RegExpInjectionTaintTrackingConfiguration extends TaintTracking::Configura
 /**
  * The first argument to an invocation of `RegExp` (with or without `new`).
  */
-class RegExpObjectCreationSink extends RegExpInjectionSink {
+class RegExpObjectCreationSink extends RegExpInjectionSink, DataFlow::ValueNode {
   RegExpObjectCreationSink() {
     exists (InvokeExpr invk |
       invk.getCallee().accessesGlobal("RegExp") and
-      this = invk.getArgument(0)
+      astNode = invk.getArgument(0)
     )
   }
+}
+
+/**
+ * The argument of a call that coerces the argument to a regular expression.
+ */
+class RegExpObjectCoercionSink extends RegExpInjectionSink {
+
+  RegExpObjectCoercionSink() {
+    exists (MethodCallExpr mce, string methodName |
+      any(AnalyzedFlowNode n | n.asExpr() = mce.getReceiver()).getAType() = TTString() and
+      mce.getMethodName() = methodName |
+      (methodName = "match" and this.asExpr() = mce.getArgument(0) and mce.getNumArgument() = 1) or
+      (methodName = "search" and this.asExpr() = mce.getArgument(0) and mce.getNumArgument() = 1)
+    )
+  }
+
 }
 
 /**
  * A call to a function whose name suggests that it escapes regular
  * expression meta-characters.
  */
-class RegExpSanitizationCall extends RegExpInjectionSanitizer, @callexpr {
+class RegExpSanitizationCall extends RegExpInjectionSanitizer, DataFlow::ValueNode {
   RegExpSanitizationCall() {
     exists (string calleeName, string sanitize, string regexp |
-      calleeName = this.(CallExpr).getCalleeName() and
+      calleeName = astNode.(CallExpr).getCalleeName() and
       sanitize = "(?:escape|saniti[sz]e)" and regexp = "regexp?" |
       calleeName.regexpMatch("(?i)(" + sanitize + regexp + ")" +
                                 "|(" + regexp + sanitize + ")")

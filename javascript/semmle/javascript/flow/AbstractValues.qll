@@ -91,7 +91,7 @@ class AbstractValue extends TAbstractValue {
    * Holds if this abstract value is an indefinite value arising from the
    * incompleteness `cause`.
    */
-  predicate isIndefinite(DataFlowIncompleteness cause) {
+  predicate isIndefinite(DataFlow::Incompleteness cause) {
     none()
   }
 
@@ -410,11 +410,11 @@ class IndefiniteFunctionOrClass extends AbstractValue, TIndefiniteFunctionOrClas
   override InferredType getType() { result = TTFunction() or result = TTClass() }
   override predicate isCoercibleToNumber() { none() }
   override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
-  override predicate isIndefinite(DataFlowIncompleteness cause) {
+  override predicate isIndefinite(DataFlow::Incompleteness cause) {
     this = TIndefiniteFunctionOrClass(cause)
   }
   override string toString() {
-    exists (DataFlowIncompleteness cause | isIndefinite(cause) |
+    exists (DataFlow::Incompleteness cause | isIndefinite(cause) |
       result = "indefinite function or class (" + cause + ")"
     )
   }
@@ -430,11 +430,11 @@ class IndefiniteObject extends AbstractValue, TIndefiniteObject {
   override PrimitiveAbstractValue toPrimitive() {
     result.getType() = TTString() or result.getType() = TTNumber()
   }
-  override predicate isIndefinite(DataFlowIncompleteness cause) {
+  override predicate isIndefinite(DataFlow::Incompleteness cause) {
     this = TIndefiniteObject(cause)
   }
   override string toString() {
-    exists (DataFlowIncompleteness cause | isIndefinite(cause) |
+    exists (DataFlow::Incompleteness cause | isIndefinite(cause) |
       result = "indefinite object (" + cause + ")"
     )
   }
@@ -448,11 +448,11 @@ class IndefiniteAbstractValue extends AbstractValue, TIndefiniteAbstractValue {
   override InferredType getType() { any() }
   override predicate isCoercibleToNumber() { any() }
   override PrimitiveAbstractValue toPrimitive() { any() }
-  override predicate isIndefinite(DataFlowIncompleteness cause) {
+  override predicate isIndefinite(DataFlow::Incompleteness cause) {
     this = TIndefiniteAbstractValue(cause)
   }
   override string toString() {
-    exists (DataFlowIncompleteness cause | isIndefinite(cause) |
+    exists (DataFlow::Incompleteness cause | isIndefinite(cause) |
       result = "indefinite value (" + cause + ")"
     )
   }

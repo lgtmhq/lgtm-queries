@@ -31,6 +31,41 @@ module Restify {
   }
 
   /**
+   * A NodeJS HTTP response provided by Restify.
+   */
+  private class ResponseExpr extends NodeJSLib::ResponseExpr {
+
+    RouteHandler rh;
+
+    ResponseExpr() {
+      this = rh.getAResponseExpr()
+    }
+
+    override RouteHandler getARouteHandler() {
+      result = rh
+    }
+
+  }
+
+  /**
+   * A NodeJS HTTP response provided by Restify.
+   */
+  private class RequestExpr extends NodeJSLib::RequestExpr {
+
+    RouteHandler rh;
+
+    RequestExpr() {
+      this = rh.getARequestExpr()
+    }
+
+    override RouteHandler getARouteHandler() {
+      result = rh
+    }
+
+  }
+
+
+  /**
    * A Restify route handler.
    */
   private class RouteHandler extends HTTP::Servers::StandardRouteHandler {
@@ -49,6 +84,62 @@ module Restify {
     Expr getAResponseExpr() {
       result.mayReferToParameter(function.getParameter(1))
     }
+
+    /**
+     * Gets an expression that contains the "request" object of
+     * a route handler invocation.
+     */
+    Expr getARequestExpr() {
+      result.mayReferToParameter(function.getParameter(0))
+    }
+
+  }
+
+  /**
+   * An access to a user-controlled Restify request input.
+   */
+  private class RequestInputAccess extends HTTP::RequestInputAccess {
+
+    string kind;
+
+    RequestInputAccess() {
+      exists (RequestExpr request |
+        exists (MethodCallExpr query |
+          // `request.getQuery().<name>`
+          kind = "parameter" and
+          query.calls(request, "getQuery") and
+          this.asExpr().(PropAccess).accesses(query, _)
+        )
+        or
+        exists (string methodName |
+          // `request.href()` or `request.getPath()`
+          kind = "url" and
+          this.asExpr().(MethodCallExpr).calls(request, methodName) |
+          methodName = "href" or
+          methodName = "getPath"
+        )
+        or
+        exists (string methodName |
+          // `request.getContentType()`, `request.userAgent()`, `request.trailer(...)`, `request.header(...)`
+          kind = "header" and
+          this.asExpr().(MethodCallExpr).calls(request, methodName) |
+          methodName = "getContentType" or
+          methodName = "userAgent" or
+          methodName = "trailer" or
+          methodName = "header"
+        )
+        or
+        // `req.cookies
+        kind = "cookie" and
+        this.asExpr().(PropAccess).accesses(request, "cookies")
+      )
+
+    }
+
+    override string getKind() {
+      result = kind
+    }
+
   }
 
   /**
@@ -58,7 +149,7 @@ module Restify {
 
     HeaderDefinition() {
       // response.header('Cache-Control', 'no-cache')
-      getReceiver() = any(RouteHandler rh).getAResponseExpr() and
+      getReceiver() instanceof ResponseExpr and
       getMethodName() = "header"
     }
 

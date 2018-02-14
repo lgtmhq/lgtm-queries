@@ -23,17 +23,17 @@ import UrlConcatenation
 /**
  * A data flow source for unvalidated URL redirect vulnerabilities.
  */
-abstract class ClientSideUrlRedirectSource extends DataFlowNode { }
+abstract class ClientSideUrlRedirectSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for unvalidated URL redirect vulnerabilities.
  */
-abstract class ClientSideUrlRedirectSink extends DataFlowNode { }
+abstract class ClientSideUrlRedirectSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for unvalidated URL redirect vulnerabilities.
  */
-abstract class ClientSideUrlRedirectSanitizer extends DataFlowNode { }
+abstract class ClientSideUrlRedirectSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about unvalidated URL redirections.
@@ -41,22 +41,22 @@ abstract class ClientSideUrlRedirectSanitizer extends DataFlowNode { }
 class ClientSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configuration {
   ClientSideUrlRedirectDataFlowConfiguration() { this = "ClientSideUrlRedirectDataFlowConfiguration" }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof ClientSideUrlRedirectSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof ClientSideUrlRedirectSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
-    isSafeLocationProperty(node) or
+    isSafeLocationProperty(node.asExpr()) or
     node instanceof ClientSideUrlRedirectSanitizer
   }
 
-  override predicate isSanitizer(DataFlowNode source, DataFlowNode sink) {
+  override predicate isSanitizer(DataFlow::Node source, DataFlow::Node sink) {
     sanitizingPrefixEdge(source, sink)
   }
 }
@@ -65,14 +65,14 @@ class ClientSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configur
  * Holds if `queryAccess` is an expression that may access the query string
  * of a URL that flows into `nd` (that is, the part after the `?`).
  */
-private predicate queryAccess(DataFlowNode nd, DataFlowNode queryAccess) {
+private predicate queryAccess(DataFlow::Node nd, DataFlow::Node queryAccess) {
   exists (string propertyName |
-    queryAccess.(PropAccess).accesses(nd, propertyName) |
+    queryAccess.asExpr().(PropAccess).accesses(nd.asExpr(), propertyName) |
     propertyName = "search" or propertyName = "hash"
   )
   or
   exists (MethodCallExpr mce, string methodName |
-    mce = queryAccess and mce.calls(nd, methodName) |
+    mce = queryAccess.asExpr() and mce.calls(nd.asExpr(), methodName) |
     methodName = "split" and
     // exclude `location.href.split('?')[0]`, which can never refer to the query string
     not exists (PropAccess pacc | mce = pacc.getBase() | pacc.getPropertyName() = "0")
@@ -84,9 +84,9 @@ private predicate queryAccess(DataFlowNode nd, DataFlowNode queryAccess) {
   )
   or
   exists (MethodCallExpr mce |
-    queryAccess = mce and
+    queryAccess.asExpr() = mce and
     mce.calls(any(RegExpLiteral re), "exec") and
-    nd = mce.getArgument(0)
+    nd.asExpr() = mce.getArgument(0)
   )
 }
 
@@ -98,11 +98,11 @@ private class LocationHrefDataFlowConfiguration extends TaintTracking::Configura
     this = "LocationHrefDataFlowConfiguration"
   }
 
-  override predicate isSource(DataFlowNode source) {
-    isDocumentURL(source)
+  override predicate isSource(DataFlow::Node source) {
+    isDocumentURL(source.asExpr())
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     queryAccess(sink, _)
   }
 }
@@ -112,7 +112,7 @@ private class LocationHrefDataFlowConfiguration extends TaintTracking::Configura
  */
 class LocationSearchSource extends ClientSideUrlRedirectSource {
   LocationSearchSource() {
-    exists(LocationHrefDataFlowConfiguration cfg, DataFlowNode nd |
+    exists(LocationHrefDataFlowConfiguration cfg, DataFlow::Node nd |
       cfg.flowsFrom(nd, _) and
       queryAccess(nd, this)
     )
@@ -122,39 +122,40 @@ class LocationSearchSource extends ClientSideUrlRedirectSource {
 /**
  * A sink which is used to set the window location.
  */
-class LocationSink extends ClientSideUrlRedirectSink {
+class LocationSink extends ClientSideUrlRedirectSink, DataFlow::ValueNode {
   LocationSink() {
     // A call to a `window.navigate` or `window.open`
     exists (CallExpr windowCall, string name |
       windowCall.getCallee().accessesGlobal(name) and
-      this = windowCall.getArgument(0) |
+      astNode = windowCall.getArgument(0) |
       name = "navigate" or name = "open" or
       name = "openDialog" or name = "showModalDialog"
     )
     or
     // A call to `location.replace` or `location.assign`
     exists (MethodCallExpr locationCall, string name |
-      isLocation(locationCall.getReceiver()) and name = locationCall.getMethodName() and
-      this = locationCall.getArgument(0) |
+      isLocation(locationCall.getReceiver()) and
+      name = locationCall.getMethodName() and
+      astNode = locationCall.getArgument(0) |
       name = "replace" or name = "assign"
     )
     or
     // An assignment to `location`
     exists (Assignment assgn |
-      isLocation(assgn.getTarget()) and this = assgn.getRhs()
+      isLocation(assgn.getTarget()) and astNode = assgn.getRhs()
     )
     or
     // An assignment to `location.href`, `location.protocol` or `location.hostname`
     exists(PropWriteNode pw, string propName |
       isLocation(pw.getBase()) and propName = pw.getPropertyName() and
-      this = pw.getRhs() |
+      astNode = pw.getRhs() |
       propName = "href" or propName = "protocol" or propName = "hostname"
     )
     or
     // A redirection using the AngularJS `$location` service
     exists (AngularJS::ServiceReference service |
       service.getName() = "$location" and
-      this = service.getAMethodCall("url").getArgument(0)
+      this.asExpr() = service.getAMethodCall("url").getArgument(0)
     )
   }
 }
@@ -170,11 +171,11 @@ abstract class ScriptUrlSink extends ClientSideUrlRedirectSink {
  * An argument expression to `new Worker(...)`, viewed as
  * a `ScriptUrlSink`.
  */
-class WebWorkerScriptUrlSink extends ScriptUrlSink {
+class WebWorkerScriptUrlSink extends ScriptUrlSink, DataFlow::ValueNode {
   WebWorkerScriptUrlSink() {
     exists (NewExpr new |
       new.getCallee().accessesGlobal("Worker") and
-      this = new.getArgument(0)
+      astNode = new.getArgument(0)
     )
   }
 }
@@ -182,13 +183,13 @@ class WebWorkerScriptUrlSink extends ScriptUrlSink {
 /**
  * A script or iframe `src` attribute, viewed as a `ScriptUrlSink`.
  */
-class SrcAttributeUrlSink extends ScriptUrlSink {
+class SrcAttributeUrlSink extends ScriptUrlSink, DataFlow::ValueNode {
   SrcAttributeUrlSink() {
     exists (DOM::AttributeDefinition attr, string eltName |
       attr.getElement().getName() = eltName and
       (eltName = "script" or eltName = "iframe") and
       attr.getName() = "src" and
-      this = attr.getValueNode()
+      astNode = attr.getValueNode()
     )
   }
 }

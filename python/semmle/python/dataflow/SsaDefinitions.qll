@@ -149,11 +149,11 @@ private class PythonSsaSourceVariable extends SsaSourceVariable {
         and
         /* There is a store to this variable -- We don't want to refine builtins */
         exists(this.(Variable).getAStore()) and
-        /* There is at least one use or definition of the variable that is controlled by the test */
+        /* There is at least one use or definition of the variable that is reachable by the test */
         exists(ControlFlowNode n |
             n = this.getAUse() or
             this.hasDefiningNode(n) |
-            pred.(ConditionBlock).controls(n.getBasicBlock(), _)
+            pred.(ConditionBlock).strictlyReaches(n.getBasicBlock())
         )
     }
 

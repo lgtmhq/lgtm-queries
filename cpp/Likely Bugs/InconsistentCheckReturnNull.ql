@@ -24,6 +24,7 @@
  * @tags reliability
  *       correctness
  *       statistical
+ *       non-attributable
  *       external/cwe/cwe-476
  */
 import default

@@ -28,12 +28,12 @@ import javascript
 private import semmle.javascript.security.dataflow.HardcodedCredentials
 
 from HardcodedCredentialsTrackingConfiguration cfg,
-     DataFlowNode source, HardcodedCredentialsSink sink,
+     DataFlow::Node source, HardcodedCredentialsSink sink,
      string value
 where cfg.flowsFrom(sink, source) and
       // use source value in message if it's available
-      if source instanceof ConstantString then
-        value = "The hard-coded value \"" + source.(ConstantString).getStringValue() + "\""
+      if source.asExpr() instanceof ConstantString then
+        value = "The hard-coded value \"" + source.asExpr().(ConstantString).getStringValue() + "\""
       else
         value = "This hard-coded value"
 select source, value + " is used as $@.", sink, sink.getKind()

@@ -26,7 +26,7 @@ import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.security.dataflow.BrokenCryptoAlgorithm
 import semmle.javascript.security.SensitiveActions
 
-from BrokenCryptoAlgorithmDataFlowConfiguration brokenCrypto, DataFlowNode source, DataFlowNode sink
+from BrokenCryptoAlgorithmDataFlowConfiguration brokenCrypto, DataFlow::Node source, DataFlow::Node sink
 where brokenCrypto.flowsFrom(sink, source) and
-      not source instanceof CleartextPasswordExpr // flagged by js/insufficient-password-hash
+      not source.asExpr() instanceof CleartextPasswordExpr // flagged by js/insufficient-password-hash
 select sink, "Sensitive data from $@ is used in a broken or weak cryptographic algorithm.", source , source.toString()

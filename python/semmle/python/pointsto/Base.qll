@@ -534,7 +534,7 @@ predicate test_contains(ControlFlowNode expr, ControlFlowNode use) {
     expr.getAChild*() = use
 }
 
-/** Holds if `testr` is a test (a branch), `use` is within that test and `def` is an edge from that test with `sense` */
+/** Holds if `test` is a test (a branch), `use` is within that test and `def` is an edge from that test with `sense` */
 predicate refinement_test(ControlFlowNode test, ControlFlowNode use, boolean sense, PyEdgeRefinement def) {
     /* Because calls such as `len` may create a new variable, we need to go via the source variable
      * That is perfectly safe as we are only dealing with calls that do not mutate their arguments.

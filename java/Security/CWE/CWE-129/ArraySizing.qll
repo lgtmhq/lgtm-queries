@@ -12,13 +12,14 @@
 // permissions and limitations under the License.
 
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.DataFlow
+import semmle.code.java.dataflow.DefUse
 private import BoundingChecks
 
 /**
  * If the `Array` accessed by the `ArrayAccess` is a fixed size, return the array size.
  */
-private int fixedArraySize(ArrayAccess arrayAccess) {
+int fixedArraySize(ArrayAccess arrayAccess) {
   result = arrayAccess.getArray().(VarAccess).getVariable().getAnAssignedValue()
                       .(ArrayCreationExpr).getFirstDimensionSize()
 }
@@ -88,33 +89,24 @@ class CheckableArrayAccess extends ArrayAccess {
   }
 
   /**
-   * Holds if we believe this indexing expression will throw an `ArrayIndexOutOfBoundsException` due
-   * to the index flowing from `source` being out of bounds.
+   * Holds if we believe this indexing expression can throw an `ArrayIndexOutOfBoundsException`.
    */
-  predicate canThrowOutOfBounds(FlowSource source) {
-    source.flowsTo(getIndexExpr()) and source != getIndexExpr() and
+  predicate canThrowOutOfBounds(Expr index) {
+    index = getIndexExpr() and
     not (
-      (
-        // The input has a lower bound.
-        source.(BoundedFlowSource).lowerBound() >= 0 or
-        // There is a condition dominating this expression ensuring that the index is >= 0.
-        lowerBound(getIndexExpr()) >= 0
-      )
+      // There is a condition dominating this expression ensuring that the index is >= 0.
+      lowerBound(index) >= 0
       and
-      (
-        // The input has an upper bound, and the array has a fixed size, and that fixed size is less.
-        source.(BoundedFlowSource).upperBound() < fixedArraySize(this) or
-        // There is a condition dominating this expression that ensures the index is less than the length.
-        lessthanLength(this)
-      )
+      // There is a condition dominating this expression that ensures the index is less than the length.
+      lessthanLength(this)
     )
   }
 
   /**
-   * Holds if we believe this indexing expression will throw an `ArrayIndexOutOfBoundsException` due
-   * to the array being initialized with a size flowing from `source`, which may be zero.
+   * Holds if we believe this indexing expression can throw an `ArrayIndexOutOfBoundsException` due
+   * to the array being initialized with `sizeExpr`, which may be zero.
    */
-  predicate canThrowOutOfBoundsDueToEmptyArray(FlowSource source, ArrayCreationExpr arrayCreation) {
+  predicate canThrowOutOfBoundsDueToEmptyArray(Expr sizeExpr, ArrayCreationExpr arrayCreation) {
     /*
      * Find an `ArrayCreationExpr` for the array used in this indexing operation.
      */
@@ -128,29 +120,17 @@ class CheckableArrayAccess extends ArrayAccess {
      */
     not lessthanLength(this) and
     /*
-     * Determine if the size expression for the `ArrayCreationExpr` flows from the source, and is
-     * not, itself, checked to be greater than zero.
+     * Verify that the size expression is never checked to be greater than 0.
      */
-    exists(Expr sizeExpr |
-      /*
-       * Find a case where an array is constructed where the size of the first dimension is determined by
-       * some `UserInput`. If this size hasn't been verified, then it could be zero.
-       */
-      sizeExpr = arrayCreation.getDimension(0) and source.flowsTo(sizeExpr) and
-      /*
-       * Verify that the size expression is never checked to be greater than 0.
-       */
-      not lowerBound(sizeExpr) > 0 and
-      // There is not a fixed lower bound which is greater than zero.
-      not source.(BoundedFlowSource).lowerBound() > 0
-    )
+    sizeExpr = arrayCreation.getDimension(0) and
+    not lowerBound(sizeExpr) > 0
   }
 }
 
 /**
  * A source of "flow" which has an upper or lower bound.
  */
-abstract class BoundedFlowSource extends FlowSource {
+abstract class BoundedFlowSource extends DataFlow::Node {
 
   /**
    * Return a lower bound for the input, if possible.
@@ -161,23 +141,6 @@ abstract class BoundedFlowSource extends FlowSource {
    * Return an upper bound for the input, if possible.
    */
   abstract int upperBound();
-
-  /**
-   * Flow sources with an upper or lower bound are generally harder to track accurately through
-   * possible modifications, so specifically exclude "modifying" `FlowExpr`s from the flow graph.
-   */
-  predicate isExcluded(FlowExpr flowExpr) {
-    flowExpr instanceof AddExpr or
-    flowExpr instanceof LogicExpr or
-    flowExpr instanceof BitwiseExpr or
-    /*
-     * Also ignore expressions which stash values into a store, as we don't track which index
-     * the values are read from.
-     */
-    flowExpr instanceof ArrayCreationExpr or
-    flowExpr instanceof ArrayInit or
-    flowExpr instanceof ArrayAccess
-  }
 
   /**
    * Return a description for this flow source, suitable for putting in an alert message.
@@ -194,14 +157,14 @@ class RandomValueFlowSource extends BoundedFlowSource {
       random.hasQualifiedName("java.util", "Random") |
       nextAccess.getCallee().getDeclaringType().getAnAncestor() = random and
       nextAccess.getCallee().getName().matches("next%") and
-      nextAccess = this
+      nextAccess = this.asExpr()
     )
   }
 
   int lowerBound() {
     // If this call is to `nextInt()`, the lower bound is zero.
-    this.(MethodAccess).getCallee().hasName("nextInt") and
-    this.(MethodAccess).getNumArgument() = 1 and
+    this.asExpr().(MethodAccess).getCallee().hasName("nextInt") and
+    this.asExpr().(MethodAccess).getNumArgument() = 1 and
     result = 0
   }
 
@@ -210,9 +173,9 @@ class RandomValueFlowSource extends BoundedFlowSource {
      * If this call specified an argument to `nextInt()`, and that argument is a compile time constant,
      * it forms the upper bound.
      */
-    this.(MethodAccess).getCallee().hasName("nextInt") and
-    this.(MethodAccess).getNumArgument() = 1 and
-    result = this.(MethodAccess).getArgument(0).(CompileTimeConstantExpr).getIntValue()
+    this.asExpr().(MethodAccess).getCallee().hasName("nextInt") and
+    this.asExpr().(MethodAccess).getNumArgument() = 1 and
+    result = this.asExpr().(MethodAccess).getArgument(0).(CompileTimeConstantExpr).getIntValue()
   }
 
   string getDescription() {
@@ -225,19 +188,18 @@ class RandomValueFlowSource extends BoundedFlowSource {
  */
 class NumericLiteralFlowSource extends BoundedFlowSource {
   NumericLiteralFlowSource() {
-    this instanceof CompileTimeConstantExpr and
-    exists(this.(CompileTimeConstantExpr).getIntValue())
+    exists(this.asExpr().(CompileTimeConstantExpr).getIntValue())
   }
 
   int lowerBound() {
-    result = this.(CompileTimeConstantExpr).getIntValue()
+    result = this.asExpr().(CompileTimeConstantExpr).getIntValue()
   }
 
   int upperBound() {
-    result = this.(CompileTimeConstantExpr).getIntValue()
+    result = this.asExpr().(CompileTimeConstantExpr).getIntValue()
   }
 
   string getDescription() {
-    result = "Literal value " + this.(CompileTimeConstantExpr).getIntValue()
+    result = "Literal value " + this.asExpr().(CompileTimeConstantExpr).getIntValue()
   }
 }

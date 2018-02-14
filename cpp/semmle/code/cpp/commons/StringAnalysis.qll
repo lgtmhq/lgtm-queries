@@ -21,7 +21,7 @@ predicate canValueFlow(Expr fromExpr, Expr toExpr)
 {
   (
     // value propagated via a definition use pair
-    exists(Variable v, SsaDefinition def | fromExpr = def.getAnUltimateDefinition(v) |
+    exists(Variable v, SsaDefinition def | fromExpr = def.getAnUltimateDefiningValue(v) |
       toExpr = def.getAUse(v)
     )
   ) or (

@@ -282,6 +282,28 @@ private predicate user_tainted_def(TaintedDefinition def, TaintFlow::TTrackedTai
     )
 }
 
+/* Allow users to define parameters as sources of taint.
+ * The class adds a flow step from parameter CFG node to Parameter ESSA definition.
+ */
+private class ParameterTaintedDefinition extends TaintedDefinition {
+
+    TaintSource src;
+
+    ParameterTaintedDefinition() {
+        src = this.getDefiningNode()
+    }
+
+    string toString() {
+        result = src.toString()
+    }
+
+    predicate isSourceOf(TaintKind kind, Context context) {
+        src.isSourceOf(kind, context)
+    }
+
+}
+
+
 /** A tainted data flow graph node.
  * This is a triple of `(CFG node, data-flow context, taint)`
  */

@@ -60,7 +60,16 @@ predicate alwaysLE(ComparisonOperation cmp, float left, float right, SmallSide s
   ss = LeftIsSmaller() and
   left = upperBoundFC(cmp.getLeftOperand()) and
   right = lowerBoundFC(cmp.getRightOperand()) and
-  left <= right
+  left <= right and
+
+  // Range analysis is not able to precisely represent large 64 bit numbers,
+  // because it stores the range as a `float`, which only has a 53 bit mantissa.
+  // For example, the number `2^64-1` is rounded to `2^64`. This means that we
+  // cannot trust the result if the numbers are large. Note: there is only
+  // a risk of a rounding error causing an incorrect result if `left == right`.
+  // If `left` is strictly less than `right` then there is enough of a gap
+  // that we don't need to worry about rounding errors.
+  left.ulp() <= 1
 }
 
 /**
@@ -94,7 +103,16 @@ predicate alwaysGE(ComparisonOperation cmp, float left, float right, SmallSide s
   ss = RightIsSmaller() and
   left = lowerBoundFC(cmp.getLeftOperand()) and
   right = upperBoundFC(cmp.getRightOperand()) and
-  left >= right
+  left >= right and
+
+  // Range analysis is not able to precisely represent large 64 bit numbers,
+  // because it stores the range as a `float`, which only has a 53 bit mantissa.
+  // For example, the number 2^64-1 is rounded to 2^64. This means that we
+  // cannot trust the result if the numbers are large. Note: there is only
+  // a risk of a rounding error causing an incorrect result if `left == right`.
+  // If `left` is strictly less than `right` then there is enough of a gap
+  // that we don't need to worry about rounding errors.
+  left.ulp() <= 1
 }
 
 /**

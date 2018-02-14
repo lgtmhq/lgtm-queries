@@ -661,8 +661,8 @@ private class LocationFlowSource extends RemoteFlowSource {
   LocationFlowSource() {
     exists (ServiceReference service, MethodCallExpr mce, string m, int n |
       service.getName() = "$location" and
-      this = mce and
-      mce =  service.getAMethodCall(m) and
+      this.asExpr() = mce and
+      mce = service.getAMethodCall(m) and
       n = mce.getNumArgument() |
       m = "search" and n < 2 or
       m = "hash" and n = 0
@@ -684,7 +684,7 @@ private class RouteParamSource extends RemoteFlowSource {
   RouteParamSource() {
     exists (ServiceReference service |
       service.getName() = "$routeParams" and
-      this = service.getAPropertyAccess(_)
+      this.asExpr() = service.getAPropertyAccess(_)
     )
   }
 
@@ -1170,15 +1170,20 @@ private class RouteInstantiatedController extends Controller {
 /**
  * Dataflow for the arguments of AngularJS dependency-injected functions.
  */
-private class DependencyInjectedArgumentInitializer extends AnalyzedSsaDefinition, SsaExplicitDefinition {
+private class DependencyInjectedArgumentInitializer extends AnalyzedFlowNode {
+  AnalyzedFlowNode service;
 
-  override AbstractValue getAnRhsValue() {
-    exists (AngularJS::InjectableFunction f, SimpleParameter param, AngularJS::CustomServiceDefinition def, DataFlowNode service |
-      this.getDef() = param and
+  DependencyInjectedArgumentInitializer() {
+    exists (AngularJS::InjectableFunction f, SimpleParameter param,
+            AngularJS::CustomServiceDefinition def |
+      this.asExpr() = param.getAnInitialUse() and
       def.getServiceReference() = f.getAResolvedDependency(param) and
-      service = def.getAService() and
-      result = service.(AnalyzedFlowNode).getALocalValue()
+      service.asExpr() = def.getAService()
     )
   }
 
+  override AbstractValue getAValue() {
+    result = AnalyzedFlowNode.super.getAValue() or
+    result = service.getALocalValue()
+  }
 }

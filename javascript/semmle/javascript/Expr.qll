@@ -20,7 +20,7 @@ import AST
 import Regexp
 
 /** A program element that is either an expression or a type annotation. */
-class ExprOrType extends @exprortype, ASTNode {
+class ExprOrType extends @exprortype, Documentable {
   /** Gets the statement in which this expression or type appears. */
   Stmt getEnclosingStmt() {
     enclosingStmt(this, result)
@@ -42,7 +42,7 @@ class ExprOrType extends @exprortype, ASTNode {
   /**
    * Gets the JSDoc comment associated with this expression or type or its parent statement, if any.
    */
-  JSDoc getDocumentation() {
+  override JSDoc getDocumentation() {
     result = getOwnDocumentation() or
     // if there is no JSDoc for the expression itself, check the enclosing property or statement
     (not exists(getOwnDocumentation()) and
@@ -373,7 +373,7 @@ class ObjectExpr extends @objexpr, Expr {
  * A property definition in an object literal, which may be either
  * a value property, a property getter, or a property setter.
  */
-class Property extends @property, ASTNode {
+class Property extends @property, Documentable {
   Property() {
     // filter out property patterns and JSX attributes
     exists (ObjectExpr obj | properties(this, obj, _, _, _))
@@ -424,11 +424,6 @@ class Property extends @property, ASTNode {
   /** Gets the (0-based) index at which this property appears in its enclosing literal. */
   int getIndex() {
     this = getObjectExpr().getProperty(result)
-  }
-
-  /** Gets the JSDoc comment for this property, if any. */
-  JSDoc getDocumentation() {
-    result.getComment().getNextToken() = getFirstToken()
   }
 
   /** Gets the function or toplevel in which this property occurs. */
@@ -536,11 +531,6 @@ class FunctionExpr extends @functionexpr, Expr, Function {
     exists (PropertyAccessor acc | acc.getInit() = this)
   }
 
-  /** Gets the JSDoc documentation for this function, if any. */
-  override JSDoc getDocumentation() {
-    result = Expr.super.getDocumentation()
-  }
-
   /** Gets the statement in which this function expression appears. */
   override Stmt getEnclosingStmt() {
     result = Expr.super.getEnclosingStmt()
@@ -564,11 +554,6 @@ class ArrowFunctionExpr extends @arrowfunctionexpr, Expr, Function {
 
   override StmtContainer getEnclosingContainer() {
     result = Expr.super.getContainer()
-  }
-
-  /** Gets the JSDoc documentation for this function, if any. */
-  override JSDoc getDocumentation() {
-    result = Expr.super.getDocumentation()
   }
 
   override predicate isImpure() {
@@ -784,6 +769,15 @@ class PropAccess extends @propaccess, Expr {
   /** Gets the base expression on which the property is accessed. */
   Expr getBase() {
     result = getChildExpr(0)
+  }
+
+  /**
+   * Gets the expression specifying the name of the property being
+   * read or written. For dot expressions, this is an identifier; for
+   * index expressions it can be an arbitrary expression.
+   */
+  Expr getPropertyNameExpr() {
+    result = getChildExpr(1)
   }
 
   /** Gets the name of the accessed property, if it can be determined. */
@@ -1434,14 +1428,15 @@ class ForInComprehensionBlock extends @forincomprehensionblock, ComprehensionBlo
 class ForOfComprehensionBlock extends @forofcomprehensionblock, ComprehensionBlock {
 }
 
-/** A binary arithmetic expression using `+`, `-`, `/`, or `%`. */
+/** A binary arithmetic expression using `+`, `-`, `/`, `%` or `**`. */
 class ArithmeticExpr extends BinaryExpr {
   ArithmeticExpr() {
     this instanceof AddExpr or
     this instanceof SubExpr or
     this instanceof MulExpr or
     this instanceof DivExpr or
-    this instanceof ModExpr
+    this instanceof ModExpr or
+    this instanceof ExpExpr
   }
 }
 

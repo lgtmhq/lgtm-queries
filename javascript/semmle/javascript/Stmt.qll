@@ -19,7 +19,7 @@ import Variables
 import Tokens
 
 /** A statement. */
-class Stmt extends @stmt, ExprOrStmt {
+class Stmt extends @stmt, ExprOrStmt, Documentable {
   /** Gets the statement container (toplevel, function or namespace) to which this statement belongs. */
   override StmtContainer getContainer() {
     stmtContainers(this, result)
@@ -45,11 +45,6 @@ class Stmt extends @stmt, ExprOrStmt {
    */
   int getKind() {
     stmts(this, result, _, _, _)
-  }
-
-  /** Gets the JSDoc comment associated with this statement, if any. */
-  JSDoc getDocumentation() {
-    result.getComment().getNextToken() = getFirstToken()
   }
 
   override string toString() {
@@ -659,9 +654,8 @@ class FunctionDeclStmt extends @functiondeclstmt, Stmt, Function {
     result = this
   }
 
-  /** Gets the JSDoc comment for this function, if any. */
-  override JSDoc getDocumentation() {
-    result = Stmt.super.getDocumentation()
+  override predicate isAmbient() {
+    Function.super.isAmbient()
   }
 }
 
@@ -754,10 +748,5 @@ class CatchClause extends @catchclause, ControlStmt, Parameterized {
   /** Gets the scope induced by this `catch` clause. */
   CatchScope getScope() {
     result.getCatchClause() = this
-  }
-
-  /** Gets the JSDoc comment associated with this `catch` clause, if any. */
-  override JSDoc getDocumentation() {
-    result = ControlStmt.super.getDocumentation()
   }
 }

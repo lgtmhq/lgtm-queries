@@ -62,7 +62,12 @@ module DataFlow {
      */
     cached
     Node getALocalSource() {
-      localFlowSource(result, this)
+      isLocalSource(result) and
+      (
+        result = this
+        or
+        locallyReachable(result, this)
+      )
     }
 
     /**
@@ -113,8 +118,8 @@ module DataFlow {
     not localFlowStep(_, src)
   }
 
-  private predicate localFlowSource(Node src, Node snk) =
-    shortestDistances(isLocalSource/1, localFlowStep/2)(src, snk, _)
+  private predicate locallyReachable(Node src, Node snk) =
+    boundedFastTC(localFlowStep/2, isLocalSource/1)(src, snk)
 
   /**
    * An expression or a function/class/namespace/enum declaration, viewed as a node in a data flow graph.
@@ -239,6 +244,7 @@ module DataFlow {
   /**
    * Holds if data can flow from `node1` to `node2` in one local step.
    */
+  cached
   predicate localFlowStep(Node pred, Node succ) {
     // flow into local variables
     exists (SsaDefinition ssa | succ = TSsaDefNode(ssa) |
@@ -379,4 +385,6 @@ module DataFlow {
     def.getTarget() instanceof DestructuringPattern and
     cause = "heap"
   }
+
+  import TrackedNodes
 }

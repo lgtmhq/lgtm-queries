@@ -20,6 +20,7 @@
  * @tags changeability
  *       readability
  *       statistical
+ *       non-attributable
  *       external/cwe/cwe-483
  * @precision very-high
  */

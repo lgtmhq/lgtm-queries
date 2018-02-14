@@ -403,6 +403,13 @@ class TypeName extends TTypeName {
   TypeDefinition getADefinition() {
     result.getTypeName() = this
   }
+
+  /**
+   * Gets an access to this type.
+   */
+  TypeAccess getAnAcccess() {
+    result.getTypeName() = this
+  }
 }
 
 /**

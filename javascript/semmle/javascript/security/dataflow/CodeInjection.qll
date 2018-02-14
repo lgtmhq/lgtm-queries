@@ -21,17 +21,17 @@ import semmle.javascript.security.dataflow.RemoteFlowSources
 /**
  * A data flow source for code injection vulnerabilities.
  */
-abstract class CodeInjectionSource extends DataFlowNode { }
+abstract class CodeInjectionSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for code injection vulnerabilities.
  */
-abstract class CodeInjectionSink extends DataFlowNode { }
+abstract class CodeInjectionSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for CodeInjection vulnerabilities.
  */
-abstract class CodeInjectionSanitizer extends DataFlowNode { }
+abstract class CodeInjectionSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about CodeInjection.
@@ -39,22 +39,22 @@ abstract class CodeInjectionSanitizer extends DataFlowNode { }
 class CodeInjectionDataFlowConfiguration extends TaintTracking::Configuration {
   CodeInjectionDataFlowConfiguration() { this = "CodeInjectionDataFlowConfiguration" }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof CodeInjectionSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof CodeInjectionSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
-    isSafeLocationProperty(node) or
+    isSafeLocationProperty(node.asExpr()) or
     node instanceof CodeInjectionSanitizer
   }
 
-  override predicate isAdditionalTaintStep(DataFlowNode src, DataFlowNode trg) {
+  override predicate isAdditionalTaintStep(DataFlow::Node src, DataFlow::Node trg) {
     super.isAdditionalTaintStep(src, trg)
     or
     // HTML sanitizers are insufficient protection against code injection
@@ -62,7 +62,7 @@ class CodeInjectionDataFlowConfiguration extends TaintTracking::Configuration {
       calleeName = htmlSanitizer.getCalleeName() and
       calleeName.regexpMatch("(?i).*html.*") and
       calleeName.regexpMatch("(?i).*(saniti[sz]|escape|strip).*") and
-      trg = htmlSanitizer and src = htmlSanitizer.getArgument(0)
+      trg.asExpr() = htmlSanitizer and src.asExpr() = htmlSanitizer.getArgument(0)
     )
   }
 }
@@ -70,28 +70,28 @@ class CodeInjectionDataFlowConfiguration extends TaintTracking::Configuration {
 /**
  * An access to a property that may hold (parts of) the document URL.
  */
-class LocationSource extends CodeInjectionSource {
+class LocationSource extends CodeInjectionSource, DataFlow::ValueNode {
   LocationSource() {
-    isDocumentURL(this)
+    isDocumentURL(astNode)
   }
 }
 
 /**
  * An expression which may be interpreted as an AngularJS expression.
  */
-class AngularJSExpressionSink extends CodeInjectionSink {
+class AngularJSExpressionSink extends CodeInjectionSink, DataFlow::ValueNode {
   AngularJSExpressionSink() {
-    any(AngularJS::AngularJSCall call).interpretsArgumentAsCode(this)
+    any(AngularJS::AngularJSCall call).interpretsArgumentAsCode(this.asExpr())
   }
 }
 
 /**
  * An expression which may be evaluated as JavaScript.
  */
-class EvalJavaScriptSink extends CodeInjectionSink {
+class EvalJavaScriptSink extends CodeInjectionSink, DataFlow::ValueNode {
   EvalJavaScriptSink() {
     exists(InvokeExpr c, string callName, int index |
-      callName = c.getCalleeName() and this = c.getArgument(index) |
+      callName = c.getCalleeName() and astNode = c.getArgument(index) |
       callName = "eval" and index = 0 or
       callName = "Function" or
       callName = "execScript" and index = 0 or

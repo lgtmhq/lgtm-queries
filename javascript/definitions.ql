@@ -23,7 +23,7 @@ import javascript
 private import Declarations.Declarations
 
 /**
- * Gets the kind of reference that `va` represents.
+ * Gets the kind of reference that `r` represents.
  *
  * References in callee position have kind `"M"` (for "method"), all
  * others have kind `"V"` (for "variable").
@@ -31,11 +31,32 @@ private import Declarations.Declarations
  * For example, in the expression `f(x)`, `f` has kind `"M"` while
  * `x` has kind `"V"`.
  */
-string refKind(VarAccess va) {
-  if exists(InvokeExpr invk | va = invk.getCallee().stripParens()) then
+string refKind(RefExpr r) {
+  if exists(InvokeExpr invk | r = invk.getCallee().stripParens()) then
     result = "M"
   else
     result = "V"
+}
+
+/**
+ * Gets a class, function or object literal `va` may refer to.
+ */
+ASTNode lookupDef(VarAccess va) {
+  exists (AbstractValue av | av = DataFlow::valueNode(va).(AnalyzedFlowNode).getAValue() |
+    result = av.(AbstractClass).getClass() or
+    result = av.(AbstractFunction).getFunction() or
+    result = av.(AbstractObjectLiteral).getObjectExpr()
+  )
+}
+
+/**
+ * Holds if `va` is of kind `kind` and `def` is the unique class,
+ * function or object literal it refers to.
+ */
+predicate variableDefLookup(VarAccess va, ASTNode def, string kind) {
+  count(lookupDef(va)) = 1 and
+  def = lookupDef(va) and
+  kind = refKind(va)
 }
 
 /**
@@ -46,7 +67,7 @@ string refKind(VarAccess va) {
  * expression of `y` is a variable access `x` of kind `"V"` that refers to
  * the declaration `x = 42`.
  */
-predicate variableLookup(VarAccess va, VarDecl decl, string kind) {
+predicate variableDeclLookup(VarAccess va, VarDecl decl, string kind) {
   // restrict to declarations in same file to avoid accidentally picking up
   // unrelated global definitions
   decl = firstRefInTopLevel(va.getVariable(), Decl(), va.getTopLevel()) and
@@ -66,7 +87,44 @@ predicate importLookup(PathExpr path, Module target, string kind) {
   target = any(Import i | path = i.getImportedPath()).getImportedModule()
 }
 
+/**
+ * Gets a node that may write the property read by `prn`.
+ */
+DataFlowNode getAWrite(PropReadNode prn) {
+  exists (AnalyzedFlowNode base, DefiniteAbstractValue baseVal, string propName |
+    base.asExpr() = prn.getBase() and propName = prn.getPropertyName() and
+    baseVal = base.getAValue().getAPrototype*() |
+    // write to a property on baseVal
+    DataFlow::valueNode(result).(AnalyzedPropertyWrite).writes(baseVal, propName, _)
+    or
+    // non-static class members aren't covered by `AnalyzedPropWrite`, so have to be handled
+    // separately
+    exists (ClassDefinition c, MemberDefinition m |
+      m = c.getMember(propName) and
+      baseVal.(AbstractInstance).getConstructor().(AbstractClass).getClass() = c and
+      result = m.getNameExpr()
+    )
+  )
+}
+
+/**
+ * Holds if `prop` is the property name expression of a property read that
+ * may read the property written by `write`. Furthermore, `write` must be the
+ * only such property write. Parameter `kind` is always bound to `"M"`
+ * at the moment.
+ */
+predicate propertyLookup(Expr prop, DataFlowNode write, string kind) {
+  exists (PropReadNode prn | prop = prn.getPropertyNameExpr() |
+    count(getAWrite(prn)) = 1 and
+    write = getAWrite(prn) and
+    kind = "M"
+  )
+}
+
 from ASTNode ref, ASTNode decl, string kind
-where variableLookup(ref, decl, kind) or
-      importLookup(ref, decl, kind)
+where variableDefLookup(ref, decl, kind) or
+      // prefer definitions over declarations
+      not variableDefLookup(ref, _, _) and variableDeclLookup(ref, decl, kind) or
+      importLookup(ref, decl, kind) or
+      propertyLookup(ref, decl, kind)
 select ref, decl, kind

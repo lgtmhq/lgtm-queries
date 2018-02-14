@@ -24,9 +24,12 @@
 
 import java
 import ArraySizing
+import semmle.code.java.dataflow.FlowSources
 
-from RemoteUserInput source, CheckableArrayAccess arrayAccess
-where arrayAccess.canThrowOutOfBounds(source)
+from RemoteUserInput source, Expr index, CheckableArrayAccess arrayAccess
+where
+  arrayAccess.canThrowOutOfBounds(index) and
+  source.flowsTo(DataFlow::exprNode(index))
 select arrayAccess.getIndexExpr(),
   "$@ flows to here and is used as an index causing an ArrayIndexOutOfBoundsException.",
   source, "User-provided value"

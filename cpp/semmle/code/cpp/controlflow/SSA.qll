@@ -150,15 +150,33 @@ class SsaDefinition extends @cfgnode {
     }
 
     /**
+     * Gets a definition that ultimately defines this variable and is not
+     * itself a phi node.
+     */
+    SsaDefinition getAnUltimateSsaDefinition(LocalScopeVariable v) {
+        result = this.getAPhiInput(v).getAnUltimateSsaDefinition(v)
+        or
+        not this.isPhiNode(v) and
+        result = this
+    }
+
+    /**
      * Gets a possible defining expression for `v` at this SSA definition,
      * recursing backwards through phi definitions. Not all definitions have a
      * defining expression---see the documentation for `getDefiningValue`.
      */
-    Expr getAnUltimateDefinition(LocalScopeVariable v) {
-        if this.isPhiNode(v)
-        then
-            result = this.getAPhiInput(v).getAnUltimateDefinition(v)
-        else
-            result = this.getDefiningValue(v)
+    Expr getAnUltimateDefiningValue(LocalScopeVariable v) {
+        result = this.getAnUltimateSsaDefinition(v).getDefiningValue(v)
+    }
+
+    /**
+     * DEPRECATED: this is the old name for `getAnUltimateDefiningValue`. The
+     * name was confusing as it seemed analogous to `getDefinition` rather than
+     * `getDefiningValue`. The SSA libraries for other languages use the name
+     * `getAnUltimateSsaDefinition` to refer to a predicate named
+     * `getAnUltimateSsaDefinition` in this class.
+     */
+    deprecated Expr getAnUltimateDefinition(LocalScopeVariable v) {
+        result = this.getAnUltimateDefiningValue(v)
     }
 }

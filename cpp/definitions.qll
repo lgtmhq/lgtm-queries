@@ -91,6 +91,31 @@ class MacroAccessWithHasLocationInfo extends Top {
 }
 
 /**
+ * An `Include` with a `hasLocationInfo` predicate.
+ *
+ * This has a location that covers only the name of the included
+ * file, not the `#include` text or whitespace before it.
+ */
+class IncludeWithHasLocationInfo extends Top {
+  IncludeWithHasLocationInfo() {
+    this instanceof Include
+  }
+
+  override
+  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+    exists(Include i, Location l |
+      i = this and
+      l = i.getLocation() and
+      path = l.getFile().getFullName() and
+      sl = l.getEndLine() and
+      sc = l.getEndColumn() + 1 - i.getIncludeText().length() and
+      el = l.getEndLine() and
+      ec = l.getEndColumn()
+    )
+  }
+}
+
+/**
  * Gets an element, of kind `kind`, that element `e` uses, if any.
  *
  * The `kind` is a string representing what kind of use it is:

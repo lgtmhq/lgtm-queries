@@ -23,12 +23,13 @@
 import javascript
 
 /**
- * Holds if the receiver of `method` is bound in the constructor of its class.
+ * Holds if the receiver of `method` is bound in a method of its class.
  */
-private predicate isBoundInConstructor(MethodDeclaration method) {
-  exists (PropWriteNode reassign, ConstructorDeclaration constructor |
-    constructor = method.getDeclaringType().(ClassDefinition).getConstructor() and
-    reassign.(Expr).getEnclosingFunction() = constructor.getBody() and
+private predicate isBoundInMethod(MethodDeclaration method) {
+  exists (PropWriteNode reassign, MethodDeclaration bindingMethod |
+    bindingMethod = method.getDeclaringType().(ClassDefinition).getAMethod() and
+    not bindingMethod.isStatic() and
+    reassign.(Expr).getEnclosingFunction() = bindingMethod.getBody() and
     // this.<methodName> = <expr>.bind(...)
     reassign.getBase() instanceof ThisExpr and
     reassign.getPropertyName() = method.getName() and
@@ -40,7 +41,7 @@ private predicate isBoundInConstructor(MethodDeclaration method) {
  * Gets an event handler attribute (onClick, onTouch, ...).
  */
 private DOM::AttributeDefinition getAnEventHandlerAttribute() {
-  exists (ReactComponent c, JSXElement rendered, string attributeName |
+  exists (ReactComponent c, JSXNode rendered, string attributeName |
       rendered = c.getRenderMethod().getAReturnedExpr().(DataFlowNode).getALocalSource() and
       result = rendered.getABodyElement*().(JSXElement).getAttributeByName(attributeName) and
       attributeName.regexpMatch("on[A-Z][a-zA-Z]+") // camelCased with 'on'-prefix
@@ -50,7 +51,7 @@ private DOM::AttributeDefinition getAnEventHandlerAttribute() {
 from MethodDeclaration callback, DOM::AttributeDefinition attribute, ThisExpr unbound
 where
       attribute = getAnEventHandlerAttribute() and
-      attribute.getValueNode().(AnalyzedFlowNode).getAValue().(AbstractFunction).getFunction() = callback.getBody() and
+      DataFlow::valueNode(attribute.getValueNode()).(AnalyzedFlowNode).getAValue().(AbstractFunction).getFunction() = callback.getBody() and
       unbound.getBinder() = callback.getBody() and
-      not isBoundInConstructor(callback)
+      not isBoundInMethod(callback)
 select attribute, "The receiver of this event handler call is unbound, `$@` will be `undefined` in the call to $@", unbound, "this", callback, callback.getName()

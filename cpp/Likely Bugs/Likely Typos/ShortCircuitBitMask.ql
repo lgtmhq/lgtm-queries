@@ -31,6 +31,7 @@ import default
 float candidateExpr(Expr e) {
   exists(BinaryLogicalOperation blo |
     e = blo.getAnOperand() and
+    not e.isFromTemplateInstantiation(_) and
     not e instanceof SizeofOperator and
     e.isConstant() and
     result = e.getValue().toFloat() and

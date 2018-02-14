@@ -18,17 +18,45 @@
 import javascript
 
 /**
+ * A JSX element or fragment.
+ */
+class JSXNode extends Expr, @jsxelement {
+  /** Gets the `i`th element in the body of this element or fragment. */
+  Expr getBodyElement(int i) {
+    i >= 0 and result = getChildExpr(-i-2)
+  }
+
+  /** Gets an element in the body of this element or fragment. */
+  Expr getABodyElement() {
+    result = getBodyElement(_)
+  }
+
+  /**
+   * Gets the parent JSX element or fragment of this element.
+   */
+  JSXNode getJsxParent() {
+    this = result.getABodyElement()
+  }
+}
+
+/**
  * A JSX element such as `<a href={linkTarget()}>{linkText()}</a>`.
  */
-class JSXElement extends Expr, @jsxelement {
+class JSXElement extends JSXNode {
+  JSXName name;
+
+  JSXElement() {
+    name = getChildExpr(-1)
+  }
+
   /** Gets the expression denoting the name of this element. */
   JSXName getNameExpr() {
-    result = getChildExpr(-1)
+    result = name
   }
 
   /** Gets the name of this element. */
   string getName() {
-    result = getNameExpr().getValue()
+    result = name.getValue()
   }
 
   /** Gets the `i`th attribute of this element. */
@@ -42,29 +70,26 @@ class JSXElement extends Expr, @jsxelement {
   }
 
   /** Gets the attribute of this element with the given name, if any. */
-  JSXAttribute getAttributeByName(string name) {
-    result = getAnAttribute() and result.getName() = name
-  }
-
-  /** Gets the `i`th element in the body of this element. */
-  Expr getBodyElement(int i) {
-    i >= 0 and result = getChildExpr(-i-2)
-  }
-
-  /** Gets an element in the body of this element. */
-  Expr getABodyElement() {
-    result = getBodyElement(_)
+  JSXAttribute getAttributeByName(string n) {
+    result = getAnAttribute() and result.getName() = n
   }
 
   override ControlFlowNode getFirstControlFlowNode() {
     result = getNameExpr().getFirstControlFlowNode()
   }
+}
 
-  /**
-   * Gets the parent JSX element of this element.
-   */
-  JSXElement getJsxParent() {
-    this = result.getABodyElement()
+/**
+ * A JSX fragment such as `<><h1>Title</h1>Some <b>text</b></>`.
+ */
+class JSXFragment extends JSXNode {
+  JSXFragment() {
+    not exists(getChildExpr(-1))
+  }
+
+  override ControlFlowNode getFirstControlFlowNode() {
+    result = getBodyElement(0).getFirstControlFlowNode() or
+    not exists(getABodyElement()) and result = this
   }
 }
 

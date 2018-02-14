@@ -39,12 +39,12 @@ module Koa {
 
     HeaderDefinition() {
       name = getMethodName() and
-      exists(RouteHandler rh, Expr ctx | rh.getAContextExpr() = ctx |
+      exists(RouteHandler rh |
         ( // ctx.set('Cache-Control', 'no-cache');
-          ctx = getReceiver() and
+          getReceiver() = rh.getAContextExpr() and
           name = "set") or
         ( // ctx.response.header('Cache-Control', 'no-cache')
-          getReceiver().(PropAccess).accesses(ctx, "response") and
+          getReceiver() = rh.getAResponseExpr() and
           name = "header")
       )
     }
@@ -86,6 +86,80 @@ module Koa {
       // this-access
       result.(ThisExpr).getEnclosingFunction().getThisBinder() = function
     }
+
+    /**
+     * Gets an expression that contains the "request" object of
+     * a route handler invocation.
+     */
+    DataFlowNode getARequestExpr() {
+      result.getALocalSource().(PropAccess).accesses(getAContextExpr(), "request")
+    }
+
+    /**
+     * Gets an expression that contains the "response" object of
+     * a route handler invocation.
+     */
+    DataFlowNode getAResponseExpr() {
+      result.getALocalSource().(PropAccess).accesses(getAContextExpr(), "response")
+    }
+
+  }
+
+  /**
+   * An access to a user-controlled Koa request input.
+   */
+  private class RequestInputAccess extends HTTP::RequestInputAccess {
+
+    string kind;
+
+    RequestInputAccess() {
+      exists (DataFlowNode request |
+        request = any(RouteHandler rh).getARequestExpr() |
+        // `ctx.request.body`
+        kind = "body" and
+        this.asExpr().(PropAccess).accesses(request, "body")
+        or
+        exists (PropAccess query |
+          kind = "parameter" and
+          // `ctx.request.query.name`
+          query.accesses(request, "query")  and
+          this.asExpr().(PropAccess).accesses(query, _)
+        )
+        or
+        exists (string propName |
+          // `ctx.request.url`, `ctx.request.originalUrl`, or `ctx.request.href`
+          kind = "url" and
+          this.asExpr().(PropAccess).accesses(request, propName) |
+          propName = "url" or
+          propName = "originalUrl" or
+          propName = "href"
+        )
+        or
+        exists (string propName, PropAccess headers |
+          // `ctx.request.header.<name>`, `ctx.request.headers.<name>`
+          kind = "header" and
+          headers.accesses(request, propName) and
+          this.asExpr().(PropAccess).accesses(headers, _) |
+          propName = "header" or
+          propName = "headers"
+        )
+        or
+        // `ctx.request.get(<name>)`
+        kind = "header" and
+        this.asExpr().(MethodCallExpr).calls(request, "get")
+      ) or
+      exists (PropAccess cookies |
+        // `ctx.cookies.get(<name>)`
+        kind = "cookie" and
+        cookies.accesses(any(RouteHandler rh).getAContextExpr(), "cookies") and
+        this.asExpr().(MethodCallExpr).calls(cookies, "get")
+      )
+    }
+
+    override string getKind() {
+      result = kind
+    }
+
   }
 
   /**
@@ -110,4 +184,21 @@ module Koa {
       result = server.(DataFlowNode).getALocalSource()
     }
   }
+
+  /**
+   * A value assigned to the body of an HTTP response object.
+   */
+  private class ResponseSendArgument extends HTTP::ResponseSendArgument {
+    RouteHandler rh;
+
+    ResponseSendArgument() {
+      exists (PropWriteNode pwn |
+        pwn.(PropAccess).accesses(rh.getAResponseExpr(), "body") and
+        this = pwn.getRhs()
+      )
+    }
+
+    override RouteHandler getHandler() { result = rh }
+  }
+
 }

@@ -16,6 +16,7 @@
  */
 
 import javascript
+import semmle.javascript.frameworks.Templating
 
 module DOM {
   /**
@@ -149,6 +150,15 @@ module DOM {
     ElementDefinition getElement() {
       this = result.getAttributeByName(_)
     }
+
+    /**
+     * Holds if the value of this attribute might be a template value
+     * such as `{{window.location.url}}`.
+     */
+    predicate mayHaveTemplateValue() {
+      getStringValue().regexpMatch(Templating::getDelimiterMatchingRegexp())
+    }
+
   }
 
   /**
@@ -244,6 +254,21 @@ module DOM {
       defn = this.(DataFlowNode).getALocalSource().(Element).getDefinition()
     }
   }
+
+  /**
+   * Holds if `attr` is an invalid id attribute because of `reason`.
+   */
+  predicate isInvalidHtmlIdAttributeValue(DOM::AttributeDefinition attr, string reason) {
+    attr.getName() = "id" and
+    exists (string v | v = attr.getStringValue() |
+      v = "" and
+      reason = "must contain at least one character"
+      or
+      v.regexpMatch(".*\\s.*") and
+      reason = "must not contain any space characters"
+    )
+  }
+
 }
 
 /**

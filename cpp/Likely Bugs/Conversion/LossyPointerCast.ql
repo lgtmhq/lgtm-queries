@@ -13,7 +13,9 @@
 
 /**
  * @name Lossy pointer cast
- * @description A pointer type is converted to a smaller integer type. This may lead to loss of information in the variable and is highly non-portable.
+ * @description A pointer type is converted to a smaller integer type. This may
+ *              lead to loss of information in the variable and is highly
+ *              non-portable.
  * @kind problem
  * @problem.severity warning
  * @precision high
@@ -29,7 +31,9 @@ predicate lossyPointerCast(Expr e, PointerType pt, IntegralType it) {
   e.getConversion().getType().getUnderlyingType() = it and
   e.getType().getUnderlyingType() = pt and
   it.getSize() < pt.getSize() and
-  not e.isInMacroExpansion()
+  not e.isInMacroExpansion() and
+  // low bits of pointers are sometimes used to store flags
+  not exists(BitwiseAndExpr a | a.getAnOperand() = e)
 }
 
 from Expr e, PointerType pt, IntegralType it

@@ -33,17 +33,17 @@ private import semmle.javascript.flow.InferredTypes
  */
 predicate isProto(AnalyzedFlowNode e) {
   // `o.__proto__ = e`, `{ __proto__: e }`, ...
-  e = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
+  e.asExpr() = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
   or
   exists (MethodCallExpr me, Expr recv, string n | me.calls(recv, n) |
     recv.accessesGlobal("Object") and (
       // Object.create(e)
-      n = "create" and e = me.getArgument(0) or
+      n = "create" and e.asExpr() = me.getArgument(0) or
       // Object.setPrototypeOf(o, e)
-      n = "setPrototypeOf" and e = me.getArgument(1)
+      n = "setPrototypeOf" and e.asExpr() = me.getArgument(1)
     ) or
     // e.isPrototypeOf(o)
-    e = recv and n = "isPrototypeOf"
+    e.asExpr() = recv and n = "isPrototypeOf"
   )
 }
 

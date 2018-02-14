@@ -659,7 +659,7 @@ private class DecoratorList extends Expr, @decorator_list {
  * A program element that declares parameters, that is, either a function or
  * a catch clause.
  */
-class Parameterized extends @parameterized, ASTNode {
+class Parameterized extends @parameterized, Documentable {
   /** Gets a parameter declared by this element. */
   Parameter getAParameter() {
     this = result.getParent()
@@ -675,9 +675,6 @@ class Parameterized extends @parameterized, ASTNode {
     result = getAParameter().getAVariable() and
     result.getName() = name
   }
-
-  /** Gets the JSDoc comment attached to this element, if any. */
-  abstract JSDoc getDocumentation();
 }
 
 /** A parameter declaration. */

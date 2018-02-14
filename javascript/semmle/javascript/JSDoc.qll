@@ -45,6 +45,17 @@ class JSDoc extends @jsdoc, Locatable {
 }
 
 /**
+ * A program element that can have a JSDoc comment.
+ */
+abstract class Documentable extends ASTNode {
+  /** Gets the JSDoc comment for this element, if any. */
+  cached
+  JSDoc getDocumentation() {
+    result.getComment().getNextToken() = getFirstToken()
+  }
+}
+
+/**
  * A syntactic element that a JSDoc type expression may be nested in, that is,
  * either a JSDoc tag or another JSDoc type expression.
  */

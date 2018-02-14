@@ -24,6 +24,7 @@ import semmle.code.java.frameworks.ApacheHttp
 import semmle.code.java.frameworks.android.XmlParsing
 import semmle.code.java.frameworks.android.WebView
 import semmle.code.java.frameworks.JaxWS
+import semmle.code.java.frameworks.android.Intent
 
 /** Class for `tainted` user input. */
 abstract class UserInput extends DataFlow::Node {}
@@ -194,3 +195,14 @@ class ReverseDNSMethod extends Method {
   }
 }
 
+/** Android `Intent` that may have come from a hostile application. */
+class AndroidIntentInput extends DataFlow::Node {
+  AndroidIntentInput() {
+    exists(MethodAccess ma, AndroidGetIntentMethod m | ma.getMethod().overrides*(m) and
+      this.asExpr() = ma
+    ) or
+    exists(Method m, AndroidReceiveIntentMethod rI | m.overrides*(rI) and
+      this.asParameter() = m.getParameter(1)
+    )
+  }
+}

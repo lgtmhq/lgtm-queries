@@ -49,7 +49,7 @@ predicate initialFlow(InsecureAlgoLiteral s, Node n) {
   TaintTracking::localTaint(exprNode(s), n) and
   (
     exists(CryptoAlgoSpec c | n.asExpr() = c.getAlgoSpec()) or
-    localFlowExit(n)
+    localFlowExit(n, any(InsecureCryptoConfiguration conf))
   )
 }
 

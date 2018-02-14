@@ -21,23 +21,23 @@ import javascript
 /**
  * A data flow source for stack trace exposure vulnerabilities.
  */
-abstract class StackTraceExposureSource extends DataFlowNode { }
+abstract class StackTraceExposureSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for stack trace exposure vulnerabilities.
  */
-abstract class StackTraceExposureSink extends DataFlowNode { }
+abstract class StackTraceExposureSink extends DataFlow::Node { }
 
 class StackTraceExposureTrackingConfig extends TaintTracking::Configuration {
   StackTraceExposureTrackingConfig() {
     this = "StackTraceExposureTrackingConfig"
   }
 
-  override predicate isSource(DataFlowNode src) {
+  override predicate isSource(DataFlow::Node src) {
     src instanceof StackTraceExposureSource
   }
 
-  predicate isSink(DataFlowNode snk) {
+  predicate isSink(DataFlow::Node snk) {
     snk instanceof StackTraceExposureSink
   }
 }
@@ -46,10 +46,10 @@ class StackTraceExposureTrackingConfig extends TaintTracking::Configuration {
  * A read of the `stack` property of an exception, viewed as a data flow
  * sink for stack trace exposure vulnerabilities.
  */
-class DefaultStackTraceExposureSource extends StackTraceExposureSource {
+class DefaultStackTraceExposureSource extends StackTraceExposureSource, DataFlow::ValueNode {
   DefaultStackTraceExposureSource() {
     // any read of the `stack` property of an exception is a source
-    exists (TryStmt try, PropReadNode pr | pr = this |
+    exists (TryStmt try, PropReadNode pr | pr = astNode |
       pr.getBase() = try.getACatchClause().getParameterVariable(_).getAnAccess() and
       pr.getPropertyName() = "stack"
     )
@@ -60,8 +60,8 @@ class DefaultStackTraceExposureSource extends StackTraceExposureSource {
  * An expression that can become part of an HTTP response body, viewed
  * as a data flow sink for stack trace exposure vulnerabilities.
  */
-class DefaultStackTraceExposureSink extends StackTraceExposureSink {
+class DefaultStackTraceExposureSink extends StackTraceExposureSink, DataFlow::ValueNode {
   DefaultStackTraceExposureSink() {
-    this instanceof HTTP::ResponseBody
+    astNode instanceof HTTP::ResponseBody
   }
 }

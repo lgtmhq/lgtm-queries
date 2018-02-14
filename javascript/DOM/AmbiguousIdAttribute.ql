@@ -30,14 +30,21 @@ import javascript
  * Holds if `elt` defines a DOM element with the given `id`
  * under document `root` at the given `line` and `column`.
  *
- * Furthermore, the id is required to be non-empty (since empty ids
- * are reported by a different query).
+ * Furthermore, the id is required to be valid, and not look like a template.
  */
-predicate elementAt(DOM::ElementDefinition elt, string id, DOM::ElementDefinition root,
-                    int line, int column) {
-  id = elt.getAttributeByName("id").getStringValue() and id != "" and
-  root = elt.getRoot() and
-  elt.getLocation().hasLocationInfo(_, line, column, _, _)
+predicate elementAt(DOM::ElementDefinition elt, string id, DOM::ElementDefinition root, int line, int column) {
+  exists (DOM::AttributeDefinition attr |
+    attr = elt.getAttributeByName("id") |
+    id = attr.getStringValue() and
+    root = elt.getRoot() and
+    elt.getLocation().hasLocationInfo(_, line, column, _, _) and
+    not (
+      // exclude invalid ids (reported by another query)
+      DOM::isInvalidHtmlIdAttributeValue(attr, _) or
+      // exclude attribute values that look like they might be templated
+      attr.mayHaveTemplateValue()
+    )
+  )
 }
 
 /**

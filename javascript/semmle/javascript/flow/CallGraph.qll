@@ -31,7 +31,7 @@ class CallSite extends @invokeexpr {
 
   /** Gets an abstract value representing possible callees of this call site. */
   cached AbstractValue getACalleeValue() {
-    result = invk.getCallee().(AnalyzedFlowNode).getAValue()
+    result = DataFlow::valueNode(invk.getCallee()).(AnalyzedFlowNode).getAValue()
   }
 
   /**
@@ -52,7 +52,7 @@ class CallSite extends @invokeexpr {
    * argument nodes.
    */
   AnalyzedFlowNode getArgumentNode(int i) {
-    result = invk.getArgument(i) and
+    result = DataFlow::valueNode(invk.getArgument(i)) and
     not earlierSpreadArgument(i)
   }
 
@@ -71,7 +71,7 @@ class CallSite extends @invokeexpr {
    * Holds if the approximation of possible callees for this call site is
    * affected by the given analysis incompleteness `cause`.
    */
-  predicate isIndefinite(DataFlowIncompleteness cause) {
+  predicate isIndefinite(DataFlow::Incompleteness cause) {
     getACalleeValue().isIndefinite(cause)
   }
 
@@ -100,7 +100,7 @@ class CallSite extends @invokeexpr {
   predicate isIncomplete() {
     // the flow analysis identifies a source of incompleteness other than
     // global flow (which usually leads to imprecision rather than incompleteness)
-    any (DataFlowIncompleteness cause | isIndefinite(cause)) != "global"
+    any (DataFlow::Incompleteness cause | isIndefinite(cause)) != "global"
   }
 
   /**
@@ -131,7 +131,7 @@ class ReflectiveCallSite extends CallSite {
   string callMode;
 
   ReflectiveCallSite() {
-    this.(MethodCallExpr).calls(callee, callMode) and
+    this.(MethodCallExpr).calls(callee.asExpr(), callMode) and
     (callMode = "call" or callMode = "apply")
   }
 

@@ -58,7 +58,7 @@ library class PossibleAdvancedFormatString extends StrConst {
         this.field(start, end) and
         exists(string c | 
             start+1 = this.getText().indexOf(c) |
-            c = "}" or c = ":" or c = "!"    
+            c = "}" or c = ":" or c = "!" or c = "."
         )
     }
 

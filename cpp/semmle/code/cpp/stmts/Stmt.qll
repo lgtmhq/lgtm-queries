@@ -722,6 +722,11 @@ class ForStmt extends Loop, @stmt_for {
    * for (i = 0; i < 10; i++) { j++; }
    * ```
    * the result is `i = 0;`.
+   *
+   * Does not hold if the initialization statement is an empty statement, as in
+   * ```
+   * for (; i < 10; i++) { j++ }
+   * ```
    */
   Stmt getInitialization() { for_initialization(this, result) }
 
@@ -733,6 +738,11 @@ class ForStmt extends Loop, @stmt_for {
    * for (i = 0; i < 10; i++) { j++; }
    * ```
    * the result is `i < 10`.
+   *
+   * Does not hold if the condition expression is omitted, as in
+   * ```
+   * for (i = 0;; i++) { if (i >= 10) break; }
+   * ```
    */
   override Expr getCondition() { for_condition(this, result) }
   override Expr getControllingExpr() { result = this.getCondition() }
@@ -745,6 +755,11 @@ class ForStmt extends Loop, @stmt_for {
    * for (i = 0; i < 10; i++) { j++; }
    * ```
    * the result is `i++`.
+   *
+   * Does not hold if the update expression is omitted, as in
+   * ```
+   * for (i = 0; i < 10;) { i++; }
+   * ```
    */
   Expr getUpdate() { for_update(this, result) }
 

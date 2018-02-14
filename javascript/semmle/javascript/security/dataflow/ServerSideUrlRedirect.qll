@@ -23,20 +23,20 @@ import UrlConcatenation
 /**
  * A data flow source for unvalidated URL redirect vulnerabilities.
  */
-abstract class ServerSideUrlRedirectSource extends DataFlowNode { }
+abstract class ServerSideUrlRedirectSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for unvalidated URL redirect vulnerabilities.
  */
-abstract class ServerSideUrlRedirectSink extends DataFlowNode {
+abstract class ServerSideUrlRedirectSink extends DataFlow::Node {
   /**
    * Holds if this sink may redirect to a non-local URL.
    */
   predicate maybeNonLocal() {
-    exists (DataFlowNode prefix | prefix = getAPrefix(this) |
-      not exists(prefix.(Expr).getStringValue())
+    exists (Expr prefix | prefix = getAPrefix(this.asExpr()) |
+      not exists(prefix.getStringValue())
       or
-      exists (string prefixVal | prefixVal = prefix.(Expr).getStringValue() |
+      exists (string prefixVal | prefixVal = prefix.getStringValue() |
         // local URLs (i.e., URLs that start with `/` not followed by `\` or `/`,
         // or that start with `~/`) are unproblematic
         not prefixVal.regexpMatch("/[^\\\\/].*|~/.*") and
@@ -48,13 +48,13 @@ abstract class ServerSideUrlRedirectSink extends DataFlowNode {
 }
 
 /**
- * Gets a data flow node that may end up being a prefix of the string
- * concatenation `nd`.
+ * Gets an expression that may end up being a prefix of the string
+ * concatenation `e`.
  */
-private DataFlowNode getAPrefix(DataFlowNode nd) {
-  exists (DataFlowNode src | src = nd.getALocalSource() |
+private Expr getAPrefix(Expr e) {
+  exists (Expr src | src = e.(DataFlowNode).getALocalSource() |
     if (src instanceof AddExpr or src instanceof AssignAddExpr) then
-      result = getAPrefix(src.(Expr).getChildExpr(0))
+      result = getAPrefix(src.getChildExpr(0))
     else
       result = src
   )
@@ -63,7 +63,7 @@ private DataFlowNode getAPrefix(DataFlowNode nd) {
 /**
  * A sanitizer for unvalidated URL redirect vulnerabilities.
  */
-abstract class ServerSideUrlRedirectSanitizer extends DataFlowNode { }
+abstract class ServerSideUrlRedirectSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about unvalidated URL redirections.
@@ -71,21 +71,21 @@ abstract class ServerSideUrlRedirectSanitizer extends DataFlowNode { }
 class ServerSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configuration {
   ServerSideUrlRedirectDataFlowConfiguration() { this = "ServerSideUrlRedirectDataFlowConfiguration" }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof ServerSideUrlRedirectSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink.(ServerSideUrlRedirectSink).maybeNonLocal()
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof ServerSideUrlRedirectSanitizer
   }
 
-  override predicate isSanitizer(DataFlowNode source, DataFlowNode sink) {
+  override predicate isSanitizer(DataFlow::Node source, DataFlow::Node sink) {
     sanitizingPrefixEdge(source, sink)
   }
 }
@@ -93,9 +93,9 @@ class ServerSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configur
 /**
  * An HTTP redirect, considered as a sink for `ServerSideUrlRedirectDataFlowConfiguration`.
  */
-class RedirectSink extends ServerSideUrlRedirectSink {
+class RedirectSink extends ServerSideUrlRedirectSink, DataFlow::ValueNode {
   RedirectSink() {
-    this = any(HTTP::RedirectInvocation redir).getUrlArgument()
+    astNode = any(HTTP::RedirectInvocation redir).getUrlArgument()
   }
 }
 
@@ -103,9 +103,9 @@ class RedirectSink extends ServerSideUrlRedirectSink {
  * A definition of the HTTP "Location" header, considered as a sink for
  * `ServerSideUrlRedirectDataFlowConfiguration`.
  */
-class LocationHeaderSink extends ServerSideUrlRedirectSink {
+class LocationHeaderSink extends ServerSideUrlRedirectSink, DataFlow::ValueNode {
   LocationHeaderSink() {
-    any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("Location", this)
+    any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("Location", astNode)
   }
 }
 

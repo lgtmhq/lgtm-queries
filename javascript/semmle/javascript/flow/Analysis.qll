@@ -40,37 +40,25 @@
 
 import javascript
 import AbstractValues
+
 private import InferredTypes
-private import AbstractValuesImpl
 private import Refinements
+private import AbstractValuesImpl
+
+private AnalyzedFlowNode getAnalyzedNode(ASTNode node) {
+  node = result.getAstNode()
+}
 
 /**
  * A data flow node for which analysis results are available.
  */
-class AnalyzedFlowNode extends @dataflownode {
+class AnalyzedFlowNode extends DataFlow::ValueNode {
   /**
    * Gets another data flow node whose value flows into this node in one local step
    * (that is, not involving global variables).
    */
   AnalyzedFlowNode localFlowPred() {
-    result = this.(DataFlowNode).localFlowPred()
-  }
-
-  /**
-   * Holds if analysis results for this node may be incomplete due to the given cause.
-   */
-  predicate isIncomplete(DataFlowIncompleteness cause) {
-    this.(DataFlowNode).isIncomplete(cause)
-  }
-
-  /** Gets a textual representation of this element. */
-  string toString() {
-    result = this.(ASTNode).toString()
-  }
-
-  /** Gets the location of this node. */
-  Location getLocation() {
-    result = this.(ASTNode).getLocation()
+    result = getAPredecessor()
   }
 
   /**
@@ -106,7 +94,7 @@ class AnalyzedFlowNode extends @dataflownode {
     // considered as sources
     result = localFlowPred().getALocalValue() or
     // model flow that isn't captured by the data flow graph
-    exists (DataFlowIncompleteness cause |
+    exists (DataFlow::Incompleteness cause |
       isIncomplete(cause) and result = TIndefiniteAbstractValue(cause)
     )
   }
@@ -129,6 +117,11 @@ class AnalyzedFlowNode extends @dataflownode {
   /** Gets the unique Boolean value that this node evaluates to, if any. */
   boolean getTheBooleanValue() {
     forex (boolean bv | bv = getABooleanValue() | result = bv)
+  }
+
+  /** Gets the unique type inferred for this node, if any. */
+  InferredType getTheType() {
+    count(getAType()) = 1 and result = getAType()
   }
 
   /**
@@ -190,23 +183,29 @@ class AnalyzedFlowNode extends @dataflownode {
 /**
  * Flow analysis for literal expressions.
  */
-private class LiteralSource extends AnalyzedFlowNode, @literal {
+private class LiteralSource extends AnalyzedFlowNode {
+
+  Literal literal;
+
   string value;
 
-  LiteralSource() { value = this.(Literal).getValue() }
+  LiteralSource() {
+    literal = astNode and
+    value = literal.getValue()
+  }
 
   override AbstractValue getALocalValue() {
     // flow analysis for `null` literals
-    this instanceof NullLiteral and result = TAbstractNull()
+    literal instanceof NullLiteral and result = TAbstractNull()
     or
     // flow analysis for Boolean literals
-    this instanceof BooleanLiteral and (
+    literal instanceof BooleanLiteral and (
       value = "true" and result = TAbstractBoolean(true) or
       value = "false" and result = TAbstractBoolean(false)
     )
     or
     // flow analysis for number literals
-    this instanceof NumberLiteral and
+    literal instanceof NumberLiteral and
     exists (float fv | fv = value.toFloat() |
       if fv = 0.0 or fv = -0.0 then
         result = TAbstractZero()
@@ -215,7 +214,7 @@ private class LiteralSource extends AnalyzedFlowNode, @literal {
     )
     or
     // flow analysis for string literals
-    this instanceof StringLiteral and
+    literal instanceof StringLiteral and
     (
       if value = "" then
         result = TAbstractEmpty()
@@ -226,7 +225,7 @@ private class LiteralSource extends AnalyzedFlowNode, @literal {
     )
     or
     // flow analysis for regular expression literals
-    this instanceof RegExpLiteral and
+    literal instanceof RegExpLiteral and
     result = TAbstractOtherObject()
   }
 }
@@ -234,90 +233,150 @@ private class LiteralSource extends AnalyzedFlowNode, @literal {
 /**
  * Flow analysis for template literals.
  */
-private class TemplateLiteralSource extends AnalyzedFlowNode, @templateliteral {
+private class TemplateLiteralSource extends AnalyzedFlowNode {
+
+  TemplateLiteralSource() {
+    astNode instanceof @templateliteral
+  }
+
   override AbstractValue getALocalValue() { result = abstractValueOfType(TTString()) }
 }
 
 /**
  * Flow analysis for object expressions.
  */
-private class ObjectExprSource extends AnalyzedFlowNode, @objexpr {
-  override AbstractValue getALocalValue() { result = TAbstractObjectLiteral(this) }
+private class ObjectExprSource extends AnalyzedFlowNode {
+
+  ObjectExprSource() {
+    astNode instanceof @objexpr
+  }
+
+  override AbstractValue getALocalValue() { result = TAbstractObjectLiteral(astNode) }
 }
 
 /**
  * Flow analysis for array expressions.
  */
-private class ArrayExprSource extends AnalyzedFlowNode, @arrayexpr {
+private class ArrayExprSource extends AnalyzedFlowNode {
+
+  ArrayExprSource() {
+    astNode instanceof @arrayexpr
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for array comprehensions.
  */
-private class ArrayComprehensionExprSource extends AnalyzedFlowNode, @arraycomprehensionexpr {
+private class ArrayComprehensionExprSource extends AnalyzedFlowNode {
+
+  ArrayComprehensionExprSource() {
+    astNode instanceof @arraycomprehensionexpr
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for functions.
  */
-private class FunctionSource extends AnalyzedFlowNode, @function {
-  override AbstractValue getALocalValue() { result = TAbstractFunction(this) }
+private class FunctionSource extends AnalyzedFlowNode {
+
+  FunctionSource() {
+    astNode instanceof @function
+  }
+
+  override AbstractValue getALocalValue() { result = TAbstractFunction(astNode) }
 }
 
 /**
  * Flow analysis for class declarations.
  */
-private class ClassExprSource extends AnalyzedFlowNode, @classdefinition {
-  override AbstractValue getALocalValue() { result = TAbstractClass(this) }
+private class ClassExprSource extends AnalyzedFlowNode {
+
+  ClassExprSource() {
+    astNode instanceof @classdefinition
+  }
+
+  override AbstractValue getALocalValue() { result = TAbstractClass(astNode) }
 }
 
 /**
  * Flow analysis for namespace objects.
  */
-private class NamespaceSource extends AnalyzedFlowNode, @namespacedeclaration {
+private class NamespaceSource extends AnalyzedFlowNode {
+
+  NamespaceSource() {
+    astNode instanceof @namespacedeclaration
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for enum objects.
  */
-private class EnumSource extends AnalyzedFlowNode, @enumdeclaration {
+private class EnumSource extends AnalyzedFlowNode {
+
+  EnumSource() {
+    astNode instanceof @enumdeclaration
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractOtherObject() }
 }
 
 /**
- * Flow analysis for JSX elements.
+ * Flow analysis for JSX elements and fragments.
  */
-private class JSXElementSource extends AnalyzedFlowNode, @jsxelement {
+private class JSXNodeSource extends AnalyzedFlowNode {
+
+  JSXNodeSource() {
+    astNode instanceof @jsxelement
+  }
+
+
   override AbstractValue getALocalValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for qualified JSX names.
  */
-private class JSXQualifiedNameSource extends AnalyzedFlowNode, @jsxqualifiedname {
+private class JSXQualifiedNameSource extends AnalyzedFlowNode {
+
+  JSXQualifiedNameSource() {
+    astNode instanceof @jsxqualifiedname
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractOtherObject() }
 }
 
 /**
  * Flow analysis for empty JSX expressions.
  */
-private class JSXEmptyExpressionSource extends AnalyzedFlowNode, @jsxemptyexpr {
+private class JSXEmptyExpressionSource extends AnalyzedFlowNode{
+
+  JSXEmptyExpressionSource() {
+    astNode instanceof @jsxemptyexpr
+  }
+  
   override AbstractValue getALocalValue() { result = TAbstractUndefined() }
 }
 
 /**
  * Flow analysis for `super` in super constructor calls.
  */
-private class AnalyzedSuperCall extends AnalyzedFlowNode, @superexpr {
-  AnalyzedSuperCall() { this = any(SuperCall sc).getCallee().stripParens() }
+private class AnalyzedSuperCall extends AnalyzedFlowNode {
+
+  AnalyzedSuperCall() {
+    astNode = any(SuperCall sc).getCallee().stripParens() and
+    astNode instanceof @superexpr
+  }
 
   override AbstractValue getALocalValue() {
     exists (MethodDefinition md, AnalyzedFlowNode sup, AbstractValue supVal |
-      md.getBody() = this.(Expr).getEnclosingFunction() and
-      sup = md.getDeclaringClass().getSuperClass() and
+      md.getBody() = asExpr().getEnclosingFunction() and
+      sup.getAstNode() = md.getDeclaringClass().getSuperClass() and
       supVal = sup.getALocalValue() |
       // `extends null` is treated specially in a way that we cannot model
       if supVal instanceof AbstractNull then
@@ -334,7 +393,12 @@ private class AnalyzedSuperCall extends AnalyzedFlowNode, @superexpr {
  * This conservatively handles the case where the callee is not known
  * precisely, or where the callee might return a non-primitive value.
  */
-private class NewSource extends AnalyzedFlowNode, @newexpr {
+private class NewSource extends AnalyzedFlowNode {
+
+  NewSource() {
+    astNode instanceof @newexpr
+  }
+
   override AbstractValue getALocalValue() {
     isIndefinite() and
     (
@@ -352,7 +416,7 @@ private class NewSource extends AnalyzedFlowNode, @newexpr {
    */
   private predicate isIndefinite() {
     exists (AnalyzedFlowNode callee, AbstractValue calleeVal |
-      callee = this.(NewExpr).getCallee() and
+      callee.getAstNode() = astNode.(NewExpr).getCallee() and
       calleeVal = callee.getALocalValue() |
       calleeVal.isIndefinite(_) or
       exists(calleeVal.(AbstractClass).getClass().getSuperClass()) or
@@ -364,10 +428,15 @@ private class NewSource extends AnalyzedFlowNode, @newexpr {
 /**
  * Flow analysis for `new` expressions that create class/function instances.
  */
-private class NewInstance extends AnalyzedFlowNode, @newexpr {
+private class NewInstance extends AnalyzedFlowNode{
+
+  NewInstance() {
+    astNode instanceof @newexpr
+  }
+
   override AbstractValue getALocalValue() {
     exists (AnalyzedFlowNode callee |
-      callee = this.(NewExpr).getCallee() and
+      callee.getAstNode() = astNode.(NewExpr).getCallee() and
       result = TAbstractInstance(callee.getALocalValue())
     )
   }
@@ -376,8 +445,12 @@ private class NewInstance extends AnalyzedFlowNode, @newexpr {
 /**
  * Flow analysis for (non-short circuiting) binary expressions.
  */
-private class AnalyzedBinaryExpr extends AnalyzedFlowNode, @binaryexpr {
-  AnalyzedBinaryExpr() { not this instanceof LogicalBinaryExpr }
+private class AnalyzedBinaryExpr extends AnalyzedFlowNode {
+
+  AnalyzedBinaryExpr() {
+    not astNode instanceof LogicalBinaryExpr and
+    astNode instanceof @binaryexpr
+  }
 
   override AbstractValue getALocalValue() {
     // most binary expressions are arithmetic expressions;
@@ -392,7 +465,7 @@ private class AnalyzedBinaryExpr extends AnalyzedFlowNode, @binaryexpr {
  */
 private predicate isStringAppend(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  e.getAChild().(AnalyzedFlowNode).getAPrimitiveType() = TTString()
+  getAnalyzedNode(e.getAChild()).getAPrimitiveType() = TTString()
 }
 
 /**
@@ -401,38 +474,58 @@ private predicate isStringAppend(Expr e) {
  */
 private predicate isAddition(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  e.getChild(0).(AnalyzedFlowNode).getAPrimitiveType() != TTString() and
-  e.getChild(1).(AnalyzedFlowNode).getAPrimitiveType() != TTString()
+  getAnalyzedNode(e.getChild(0)).getAPrimitiveType() != TTString() and
+  getAnalyzedNode(e.getChild(1)).getAPrimitiveType() != TTString()
 }
 
 /**
  * Flow analysis for addition.
  */
-private class AnalyzedAddExpr extends AnalyzedBinaryExpr, @addexpr {
+private class AnalyzedAddExpr extends AnalyzedBinaryExpr {
+
+  AnalyzedAddExpr() {
+    astNode instanceof @addexpr
+  }
+
   override AbstractValue getALocalValue() {
-    isStringAppend(this) and result = abstractValueOfType(TTString()) or
-    isAddition(this) and result = abstractValueOfType(TTNumber())
+    isStringAppend(astNode) and result = abstractValueOfType(TTString()) or
+    isAddition(astNode) and result = abstractValueOfType(TTNumber())
   }
 }
 
 /**
  * Flow analysis for comparison expressions.
  */
-private class ComparisonSource extends AnalyzedBinaryExpr, @comparison {
+private class ComparisonSource extends AnalyzedBinaryExpr {
+
+  ComparisonSource() {
+    astNode instanceof @comparison
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractBoolean(_) }
 }
 
 /**
  * Flow analysis for `in` expressions.
  */
-private class InSource extends AnalyzedBinaryExpr, @inexpr {
+private class InSource extends AnalyzedBinaryExpr  {
+
+  InSource() {
+    astNode instanceof @inexpr
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractBoolean(_) }
 }
 
 /**
  * Flow analysis for `instanceof` expressions.
  */
-private class InstanceofSource extends AnalyzedBinaryExpr, @instanceofexpr {
+private class InstanceofSource extends AnalyzedBinaryExpr {
+
+  InstanceofSource() {
+    astNode instanceof @instanceofexpr
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractBoolean(_) }
 }
 
@@ -441,8 +534,11 @@ private class InstanceofSource extends AnalyzedBinaryExpr, @instanceofexpr {
  * Flow analysis for unary expressions (except for spread, which is not
  * semantically a unary expression).
  */
-private class AnalyzedUnaryExpr extends AnalyzedFlowNode, @unaryexpr {
-  AnalyzedUnaryExpr() { not this instanceof SpreadElement }
+private class AnalyzedUnaryExpr extends AnalyzedFlowNode {
+  AnalyzedUnaryExpr() {
+    not astNode instanceof SpreadElement and
+    astNode instanceof @unaryexpr
+  }
 
   override AbstractValue getALocalValue() {
     // many unary expressions are arithmetic expressions;
@@ -454,23 +550,38 @@ private class AnalyzedUnaryExpr extends AnalyzedFlowNode, @unaryexpr {
 /**
  * Flow analysis for `void` expressions.
  */
-private class VoidSource extends AnalyzedUnaryExpr, @voidexpr {
+private class VoidSource extends AnalyzedUnaryExpr {
+
+  VoidSource() {
+    astNode instanceof @voidexpr
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractUndefined() }
 }
 
 /**
  * Flow analysis for `typeof` expressions.
  */
-private class TypeofSource extends AnalyzedUnaryExpr, @typeofexpr {
+private class TypeofSource extends AnalyzedUnaryExpr {
+
+  TypeofSource() {
+    astNode instanceof @typeofexpr
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractOtherString() }
 }
 
 /**
  * Flow analysis for logical negation.
  */
-private class AnalyzedLogNotExpr extends AnalyzedUnaryExpr, @lognotexpr {
+private class AnalyzedLogNotExpr extends AnalyzedUnaryExpr {
+
+  AnalyzedLogNotExpr() {
+    astNode instanceof @lognotexpr
+  }
+
   override AbstractValue getALocalValue() {
-    exists (AbstractValue op | op = this.(UnaryExpr).getOperand().(AnalyzedFlowNode).getALocalValue() |
+    exists (AbstractValue op | op = getAnalyzedNode(astNode.(UnaryExpr).getOperand()).getALocalValue() |
       exists (boolean bv | bv = op.getBooleanValue() |
         bv = true and result = TAbstractBoolean(false) or
         bv = false and result = TAbstractBoolean(true)
@@ -482,7 +593,12 @@ private class AnalyzedLogNotExpr extends AnalyzedUnaryExpr, @lognotexpr {
 /**
  * Flow analysis for `delete` expressions.
  */
-private class DeleteSource extends AnalyzedUnaryExpr, @deleteexpr {
+private class DeleteSource extends AnalyzedUnaryExpr {
+
+  DeleteSource() {
+    astNode instanceof @deleteexpr
+  }
+
   override AbstractValue getALocalValue() { result = TAbstractBoolean(_) }
 }
 
@@ -490,7 +606,12 @@ private class DeleteSource extends AnalyzedUnaryExpr, @deleteexpr {
 /**
  * Flow analysis for increment and decrement expressions.
  */
-private class UpdateSource extends AnalyzedFlowNode, @updateexpr {
+private class UpdateSource extends AnalyzedFlowNode {
+
+  UpdateSource() {
+    astNode instanceof @updateexpr
+  }
+
   override AbstractValue getALocalValue() { result = abstractValueOfType(TTNumber()) }
 }
 
@@ -498,8 +619,10 @@ private class UpdateSource extends AnalyzedFlowNode, @updateexpr {
 /**
  * Flow analysis for compound assignments.
  */
-private class AnalyzedCompoundAssignExpr extends AnalyzedFlowNode, @assignment {
-  AnalyzedCompoundAssignExpr() { this instanceof CompoundAssignExpr }
+private class AnalyzedCompoundAssignExpr extends AnalyzedFlowNode {
+  AnalyzedCompoundAssignExpr() {
+    astNode instanceof CompoundAssignExpr
+  }
 
   override AbstractValue getALocalValue() { result = abstractValueOfType(TTNumber()) }
 }
@@ -507,10 +630,15 @@ private class AnalyzedCompoundAssignExpr extends AnalyzedFlowNode, @assignment {
 /**
  * Flow analysis for add-assign.
  */
-private class AnalyzedAddAssignExpr extends AnalyzedCompoundAssignExpr, @assignaddexpr {
+private class AnalyzedAddAssignExpr extends AnalyzedCompoundAssignExpr {
+
+  AnalyzedAddAssignExpr() {
+    astNode instanceof @assignaddexpr
+  }
+
   override AbstractValue getALocalValue() {
-    isStringAppend(this) and result = abstractValueOfType(TTString()) or
-    isAddition(this) and result = abstractValueOfType(TTNumber())
+    isStringAppend(astNode) and result = abstractValueOfType(TTString()) or
+    isAddition(astNode) and result = abstractValueOfType(TTNumber())
   }
 }
 
@@ -547,11 +675,11 @@ private class AnalyzedCapturedVariable extends @variable {
 /**
  * Flow analysis for accesses to SSA variables.
  */
-private class SsaVarAccessAnalysis extends AnalyzedFlowNode, @varaccess {
+private class SsaVarAccessAnalysis extends AnalyzedFlowNode {
   AnalyzedSsaDefinition def;
 
   SsaVarAccessAnalysis() {
-    this = def.getVariable().getAUse()
+    astNode = def.getVariable().getAUse()
   }
 
   override AbstractValue getALocalValue() {
@@ -570,7 +698,7 @@ private class AnalyzedVarDef extends VarDef {
    */
   AbstractValue getAnAssignedValue() {
     result = getAnRhsValue() or
-    exists (DataFlowIncompleteness cause |
+    exists (DataFlow::Incompleteness cause |
       isIncomplete(cause) and result = TIndefiniteAbstractValue(cause)
     )
   }
@@ -590,16 +718,16 @@ private class AnalyzedVarDef extends VarDef {
    * this `VarDef`.
    */
   AnalyzedFlowNode getRhs() {
-    result = getSource() and getTarget() instanceof VarRef or
-    result = (CompoundAssignExpr)this or
-    result = (UpdateExpr)this
+    result.getAstNode() = getSource() and getTarget() instanceof VarRef or
+    result.asExpr() = (CompoundAssignExpr)this or
+    result.asExpr() = (UpdateExpr)this
   }
 
   /**
    * Holds if flow analysis results for this node may be incomplete
    * due to the given `cause`.
    */
-  predicate isIncomplete(DataFlowIncompleteness cause) {
+  predicate isIncomplete(DataFlow::Incompleteness cause) {
     this instanceof Parameter and cause = "call" or
     this instanceof ImportSpecifier and cause = "import" or
     exists (EnhancedForLoop efl | efl instanceof ForOfStmt or efl instanceof ForEachStmt |
@@ -639,8 +767,8 @@ private class AnalyzedIIFEParameter extends AnalyzedVarDef, @vardecl {
   }
 
   override AnalyzedFlowNode getRhs() {
-    getIIFE().argumentPassing(this, result) or
-    result = this.(Parameter).getDefault()
+    getIIFE().argumentPassing(this, result.getAstNode()) or
+    result.getAstNode() = this.(Parameter).getDefault()
   }
 
   override AbstractValue getAnRhsValue() {
@@ -648,7 +776,7 @@ private class AnalyzedIIFEParameter extends AnalyzedVarDef, @vardecl {
     not getIIFE().argumentPassing(this, _) and result = TAbstractUndefined()
   }
 
-  override predicate isIncomplete(DataFlowIncompleteness cause) {
+  override predicate isIncomplete(DataFlow::Incompleteness cause) {
     exists (ImmediatelyInvokedFunctionExpr iife | iife = getIIFE() |
       // if the IIFE has a name and that name is referenced, we conservatively
       // assume that there may be other calls than the direct one
@@ -673,7 +801,7 @@ private class AnalyzedRestParameter extends AnalyzedVarDef, @vardecl {
     result = TAbstractOtherObject()
   }
 
-  override predicate isIncomplete(DataFlowIncompleteness cause) {
+  override predicate isIncomplete(DataFlow::Incompleteness cause) {
     none()
   }
 }
@@ -686,7 +814,7 @@ private class AnalyzedImport extends AnalyzedVarDef, @importspecifier {
     resolveImport(_, this, _, _)
   }
 
-  override predicate isIncomplete(DataFlowIncompleteness cause) {
+  override predicate isIncomplete(DataFlow::Incompleteness cause) {
     // mark as incomplete if the import could rely on the lookup path
     exists (ImportDeclaration id, string path |
       resolveImport(id, this, _, _) and path = id.getImportedPath().getValue() |
@@ -716,7 +844,7 @@ private class AnalyzedDefaultImport extends AnalyzedImport {
     exists (ES2015Module m, string name | resolveImport(_, this, name, m) |
       // if we are importing a value, we only see that value
       exists (AnalyzedFlowNode remoteSrc |
-        remoteSrc = m.getAnExport().getSourceNode(name) and
+        remoteSrc.getAstNode() = m.getAnExport().getSourceNode(name) and
         result = remoteSrc.getALocalValue()
       )
     )
@@ -938,12 +1066,12 @@ private predicate nodeBuiltins(Variable var, AbstractValue av) {
 /**
  * Flow analysis for global variables.
  */
-private class AnalyzedGlobalVarUse extends AnalyzedFlowNode, @varaccess {
+private class AnalyzedGlobalVarUse extends AnalyzedFlowNode {
   GlobalVariable gv;
   TopLevel tl;
 
   AnalyzedGlobalVarUse() {
-    useIn(gv, this, tl)
+    useIn(gv, astNode, tl)
   }
 
   /** Gets the name of this global variable. */
@@ -955,10 +1083,10 @@ private class AnalyzedGlobalVarUse extends AnalyzedFlowNode, @varaccess {
    */
   private PropWriteNode getAnAssigningPropWrite() {
     result.getPropertyName() = getVariableName() and
-    result.getBase().(AnalyzedFlowNode).getALocalValue() instanceof AbstractGlobalObject
+    getAnalyzedNode(result.getBase()).getALocalValue() instanceof AbstractGlobalObject
   }
 
-  override predicate isIncomplete(DataFlowIncompleteness reason) {
+  override predicate isIncomplete(DataFlow::Incompleteness reason) {
     AnalyzedFlowNode.super.isIncomplete(reason)
     or
     clobberedProp(gv, reason)
@@ -967,7 +1095,7 @@ private class AnalyzedGlobalVarUse extends AnalyzedFlowNode, @varaccess {
   override AbstractValue getALocalValue() {
     result = AnalyzedFlowNode.super.getALocalValue()
     or
-    result = getAnAssigningPropWrite().getRhs().(AnalyzedFlowNode).getALocalValue()
+    result = getAnalyzedNode(getAnAssigningPropWrite().getRhs()).getALocalValue()
     or
     // prefer definitions within the same toplevel
     exists (AnalyzedVarDef def | defIn(gv, def, tl) |
@@ -1001,10 +1129,11 @@ private predicate defIn(GlobalVariable gv, AnalyzedVarDef def, TopLevel tl) {
  * Holds if there is a write to a property with the same name as `gv` on an object
  * for which the analysis is incomplete due to the given `reason`.
  */
-private predicate clobberedProp(GlobalVariable gv, DataFlowIncompleteness reason) {
+
+private predicate clobberedProp(GlobalVariable gv, DataFlow::Incompleteness reason) {
   exists (PropWriteNode pwn, AbstractValue baseVal |
     pwn.getPropertyName() = gv.getName() and
-    baseVal = pwn.getBase().(AnalyzedFlowNode).getALocalValue() and
+    baseVal = getAnalyzedNode(pwn.getBase()).getALocalValue() and
     baseVal.isIndefinite(reason) and
     baseVal.getType() = TTObject()
   )
@@ -1078,14 +1207,14 @@ private predicate maybeModifiedThroughArguments(LocalVariable v) {
  * does not replace the implementations in other classes, but complements
  * them by injecting additional values into the analysis.
  */
-private class ReflectiveVarFlow extends AnalyzedFlowNode, @varaccess {
+private class ReflectiveVarFlow extends AnalyzedFlowNode {
   ReflectiveVarFlow() {
-    exists (Variable v | v = this.(VarAccess).getVariable() |
+    exists (Variable v | v = astNode.(VarAccess).getVariable() |
       any(DirectEval de).mayAffect(v)
       or
       maybeModifiedThroughArguments(v)
       or
-      any(WithStmt with).mayAffect(this)
+      any(WithStmt with).mayAffect(astNode)
     )
   }
 
@@ -1098,9 +1227,9 @@ private class ReflectiveVarFlow extends AnalyzedFlowNode, @varaccess {
  * These are translated to property accesses by the TypeScript compiler and
  * can thus be mutated indirectly through the heap.
  */
-private class NamespaceExportVarFlow extends AnalyzedFlowNode, @varaccess {
+private class NamespaceExportVarFlow extends AnalyzedFlowNode {
   NamespaceExportVarFlow() {
-    this.(VarAccess).getVariable().isNamespaceExport()
+    astNode.(VarAccess).getVariable().isNamespaceExport()
   }
 
   override AbstractValue getALocalValue() { result = TIndefiniteAbstractValue("namespace") }
@@ -1144,11 +1273,11 @@ private abstract class AnalyzedPropertyRead extends AnalyzedFlowNode {
  * Flow analysis for `require` calls, interpreted as an implicit read of
  * the `module.exports` property of the imported module.
  */
-class AnalyzedRequireCall extends AnalyzedPropertyRead, @callexpr {
+class AnalyzedRequireCall extends AnalyzedPropertyRead {
   Module required;
 
   AnalyzedRequireCall() {
-    required = this.(Require).getImportedModule()
+    required = astNode.(Require).getImportedModule()
   }
 
   override predicate reads(AbstractValue base, string propName) {
@@ -1160,14 +1289,14 @@ class AnalyzedRequireCall extends AnalyzedPropertyRead, @callexpr {
 /**
  * Flow analysis for (non-numeric) property read accesses.
  */
-class AnalyzedPropertyAccess extends AnalyzedPropertyRead, @propaccess {
+class AnalyzedPropertyAccess extends AnalyzedPropertyRead {
   AnalyzedFlowNode baseNode;
   string propName;
 
   AnalyzedPropertyAccess() {
-    this.(PropAccess).accesses(baseNode, propName) and
+    astNode.(PropAccess).accesses(baseNode.getAstNode(), propName) and
     not exists(propName.toInt()) and
-    this instanceof RValue
+    astNode instanceof RValue
   }
 
   override predicate reads(AbstractValue base, string prop) {
@@ -1187,16 +1316,16 @@ private predicate isTrackedPropertyName(string prop) {
 /**
  * Flow analysis for property writes.
  */
-class AnalyzedPropertyWrite extends DataFlowNode {
+class AnalyzedPropertyWrite extends DataFlow::ValueNode {
   AnalyzedFlowNode baseNode;
   string prop;
   AnalyzedFlowNode rhs;
 
   AnalyzedPropertyWrite() {
-    exists (PropWriteNode pwn | this = pwn |
-      baseNode = pwn.getBase() and
+    exists (PropWriteNode pwn | astNode = pwn |
+      baseNode.getAstNode() = pwn.getBase() and
       prop = pwn.getPropertyName() and
-      rhs = pwn.getRhs()
+      rhs.getAstNode() = pwn.getRhs()
     ) and
     isTrackedPropertyName(prop)
   }
@@ -1228,7 +1357,7 @@ private AbstractValue getAnInitialPropertyValue(DefiniteAbstractValue baseVal, s
   // class members
   exists (ClassDefinition c, AnalyzedFlowNode init, MemberDefinition m |
     m = c.getMember(propertyName) and
-    init = m.getInit() and
+    init.getAstNode() = m.getInit() and
     result = init.getALocalValue() |
     if m.isStatic() then
       baseVal = TAbstractClass(c)
@@ -1240,12 +1369,12 @@ private AbstractValue getAnInitialPropertyValue(DefiniteAbstractValue baseVal, s
   exists (ValueProperty p |
     baseVal.(AbstractObjectLiteral).getObjectExpr() = p.getObjectExpr() and
     propertyName = p.getName() and
-    result = p.getInit().(AnalyzedFlowNode).getALocalValue()
+    result = getAnalyzedNode(p.getInit()).getALocalValue()
   )
   or
   // `f.prototype` for functions `f` that are instantiated
   propertyName = "prototype" and
-  baseVal = any(NewExpr ne).getCallee().(AnalyzedFlowNode).getALocalValue() and
+  baseVal = getAnalyzedNode(any(NewExpr ne).getCallee()).getALocalValue() and
   result = TAbstractInstance(baseVal)
 }
 
@@ -1388,7 +1517,7 @@ class AbstractProtoProperty extends AbstractProperty {
       // instance of super class
       exists (ClassDefinition cd, AbstractCallable superCtor |
         cd = ctor.(AbstractClass).getClass() and
-        superCtor = cd.getSuperClass().(AnalyzedFlowNode).getALocalValue() and
+        superCtor = getAnalyzedNode(cd.getSuperClass()).getALocalValue() and
         result = TAbstractInstance(superCtor)
       )
     )
@@ -1410,7 +1539,7 @@ private class AnalyzedArgumentsCallee extends AnalyzedPropertyAccess {
       result = TAbstractFunction(baseVal.getFunction())
     )
     or
-    hasNonArgumentsBase(this) and result = super.getALocalValue()
+    hasNonArgumentsBase(astNode) and result = super.getALocalValue()
   }
 }
 
@@ -1421,7 +1550,7 @@ private class AnalyzedArgumentsCallee extends AnalyzedPropertyAccess {
 private predicate hasNonArgumentsBase(PropAccess pacc) {
   pacc.getPropertyName() = "callee" and
   exists (AbstractValue baseVal |
-    baseVal = pacc.getBase().(AnalyzedFlowNode).getALocalValue() and
+    baseVal = getAnalyzedNode(pacc.getBase()).getALocalValue() and
     not baseVal instanceof AbstractArguments
   )
 }
@@ -1429,11 +1558,12 @@ private predicate hasNonArgumentsBase(PropAccess pacc) {
 /**
  * Flow analysis for immediately-invoked function expressions (IIFEs).
  */
-private class IifeReturnFlow extends AnalyzedFlowNode, @callexpr {
+private class IifeReturnFlow extends AnalyzedFlowNode {
   ImmediatelyInvokedFunctionExpr iife;
 
   IifeReturnFlow() {
-    this = iife.getInvocation()
+    astNode = iife.getInvocation() and
+    astNode instanceof @callexpr
   }
 
   override AbstractValue getALocalValue() {
@@ -1446,7 +1576,7 @@ private class IifeReturnFlow extends AnalyzedFlowNode, @callexpr {
  */
 private AbstractValue getAReturnValue(ImmediatelyInvokedFunctionExpr f) {
   // explicit return value
-  result = f.getAReturnedExpr().(AnalyzedFlowNode).getALocalValue()
+  result = getAnalyzedNode(f.getAReturnedExpr()).getALocalValue()
   or
   // implicit return value
   (
@@ -1492,11 +1622,11 @@ private AbstractValue getDefaultReturnValue(ImmediatelyInvokedFunctionExpr f) {
 /**
  * Flow analysis for `this` expressions inside functions.
  */
-private abstract class AnalyzedThisExpr extends AnalyzedFlowNode, @thisexpr {
+private abstract class AnalyzedThisExpr extends AnalyzedFlowNode {
   Function binder;
 
   AnalyzedThisExpr() {
-    binder = this.(ThisExpr).getBinder()
+    binder = astNode.(ThisExpr).getBinder()
   }
 }
 
@@ -1567,7 +1697,7 @@ private class AnalyzedThisInPropertyFunction extends AnalyzedThisExpr {
   AnalyzedThisInPropertyFunction() {
     exists (PropWriteNode pwn |
       pwn.getRhs() = binder and
-      base = pwn.getBase()
+      base.getAstNode() = pwn.getBase()
     )
   }
 

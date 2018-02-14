@@ -309,10 +309,20 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
    * Holds if this type declares or inherits method `m`, which is declared
    * in `declaringType`.
    */
-  cached
   predicate hasMethod(Method m, RefType declaringType) {
-    hasNonInterfaceMethod(m, declaringType) or
-    hasInterfaceMethod(m, declaringType)
+    hasMethod(m, declaringType, false)
+  }
+
+  /**
+   * Holds if this type declares or inherits method `m`, which is declared
+   * in `declaringType`. Methods that would be inherited if they were public,
+   * but are not inherited due to being package protected, are also included
+   * and indicated by `hidden` being true.
+   */
+  cached
+  predicate hasMethod(Method m, RefType declaringType, boolean hidden) {
+    hasNonInterfaceMethod(m, declaringType, hidden) or
+    hasInterfaceMethod(m, declaringType) and hidden = false
   }
 
   private predicate noMethodExtraction() {
@@ -331,14 +341,15 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
     srcDecl = sup.getSourceDeclaration()
   }
 
-  private predicate hasNonInterfaceMethod(Method m, RefType declaringType) {
-    m = getAMethod() and this = declaringType and not declaringType instanceof Interface or
-    exists(RefType sup |
+  private predicate hasNonInterfaceMethod(Method m, RefType declaringType, boolean hidden) {
+    m = getAMethod() and this = declaringType and not declaringType instanceof Interface and hidden = false or
+    exists(RefType sup, boolean h1, boolean h2 |
       sup = getASupertype() and
-      (if m.isPackageProtected() then sup.getPackage() = this.getPackage() else any()) and
+      (if m.isPackageProtected() and sup.getPackage() != this.getPackage() then h1 = true else h1 = false) and
       (not sup instanceof Interface or this instanceof Interface) and
       canInheritFrom(sup) and
-      sup.hasNonInterfaceMethod(m, declaringType) and
+      sup.hasNonInterfaceMethod(m, declaringType, h2) and
+      hidden = h1.booleanOr(h2) and
       exists(string signature | methods(m,_,signature,_,_,_) and not methods(_,_,signature,_,this,_)) and
       m.isInheritable()
     )
@@ -346,7 +357,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
 
   private predicate cannotInheritInterfaceMethod(string signature) {
     methods(_,_,signature,_,this,_) or
-    exists(Method m | hasNonInterfaceMethod(m, _) and methods(m,_,signature,_,_,_))
+    exists(Method m | hasNonInterfaceMethod(m, _, false) and methods(m,_,signature,_,_,_))
   }
 
   private predicate interfaceMethodCandidateWithSignature(Method m, string signature, RefType declaringType) {
@@ -632,6 +643,16 @@ class NestedClass extends NestedType, Class {
 class InnerClass extends NestedClass {
   InnerClass() {
     not this.isStatic()
+  }
+
+  /**
+   * Holds if an instance of this inner class holds a reference to its
+   * enclosing class.
+   */
+  predicate hasEnclosingInstance() {
+    // JLS 15.9.2. Determining Enclosing Instances
+    not this.(AnonymousClass).getClassInstanceExpr().isInStaticContext() and
+    not this.(LocalClass).getLocalClassDeclStmt().getEnclosingCallable().isStatic()
   }
 }
 

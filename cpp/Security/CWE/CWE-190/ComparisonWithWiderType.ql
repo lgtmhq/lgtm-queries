@@ -46,10 +46,10 @@ int getComparisonSize(Expr e) {
 predicate loopVariant(VariableAccess e, Loop loop) {
   exists (SsaDefinition d
     | d.getAUse(e.getTarget()) = e
-    | d.getAnUltimateDefinition(e.getTarget()) = loop.getCondition().getAChild*()
-    or d.getAnUltimateDefinition(e.getTarget()).getEnclosingStmt().getParent*()
+    | d.getAnUltimateDefiningValue(e.getTarget()) = loop.getCondition().getAChild*()
+    or d.getAnUltimateDefiningValue(e.getTarget()).getEnclosingStmt().getParent*()
       = loop.getStmt()
-    or d.getAnUltimateDefinition(e.getTarget())
+    or d.getAnUltimateDefiningValue(e.getTarget())
       = loop.(ForStmt).getUpdate().getAChild*())
 }
 

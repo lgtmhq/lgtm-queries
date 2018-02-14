@@ -20,6 +20,7 @@
  * @tags maintainability
  *       language-features
  *       statistical
+ *       non-attributable
  * @precision very-high
  */
 

@@ -352,6 +352,46 @@ class Class extends UserType {
   }
 
   /**
+   * Gets the byte offset within `this` of each base class subobject of type
+   * `baseClass`, or zero if `baseClass` and `this` are the same type. Both
+   * direct and indirect base classes are included.
+   * Does not hold for base class subobjects for virtual base classes, nor does
+   * it hold for further base class subobjects of virtual base classes.
+   */
+  private int getANonVirtualBaseClassByteOffset(Class baseClass) {
+    baseClass = this and result = 0 or  // `baseClass` is the most-derived type
+    exists(ClassDerivation cd |
+      // Add the offset of the direct base class and the offset of `baseClass`
+      // within that direct base class.
+      cd = getADerivation() and
+      result = cd.getBaseClass().getANonVirtualBaseClassByteOffset(baseClass) + 
+        cd.getByteOffset()
+    )
+  }
+
+  /**
+   * Gets the byte offset within `this` of each base class subobject of type
+   * `baseClass`, or zero if `baseClass` and `this` are the same type. Both
+   * direct and indirect base classes are included.
+   * Note that for virtual base classes, and non-virtual base classes thereof,
+   * this predicate assumes that `this` is the type of the complete most-derived
+   * object.
+   */
+  int getABaseClassByteOffset(Class baseClass) {
+    // Handle the non-virtual case.
+    result = getANonVirtualBaseClassByteOffset(baseClass) or
+    exists(Class virtualBaseClass, int virtualBaseOffset,
+      int offsetFromVirtualBase |
+      // Look for the base class as a non-virtual base of a direct or indirect
+      // virtual base, adding the two offsets.
+      getVirtualBaseClassByteOffset(virtualBaseClass) = virtualBaseOffset and
+      offsetFromVirtualBase = 
+        virtualBaseClass.getANonVirtualBaseClassByteOffset(baseClass) and
+      result = virtualBaseOffset + offsetFromVirtualBase
+    )
+  }
+
+  /**
    * Holds if this class has a virtual class derivation, for example the
    * "virtual public B" in "class D : virtual public B { ... };".
    */
@@ -364,13 +404,14 @@ class Class extends UserType {
   }
 
   /**
-   * Gets the offset of virtual base class subobject `base` within a
+   * Gets the byte offset of virtual base class subobject `base` within a
    * most-derived object of class `this`. The virtual base can be a direct or
    * indirect virtual base of `this`. Does not hold if `this` is an
    * uninstantiated template.
-   * See `ClassDerivation.getOffset` for offsets of non-virtual base classes.
+   * See `ClassDerivation.getByteOffset` for offsets of non-virtual base
+   * classes.
    */
-  int getVirtualBaseClassOffset(Class base) {
+  int getVirtualBaseClassByteOffset(Class base) {
     virtual_base_offsets(this, base, result)
   }
 
@@ -657,13 +698,14 @@ class ClassDerivation extends Locatable,  @derivation {
   }
 
   /**
-   * Gets the offset of the base class subobject relative to the start of the
-   * derived class object. Only holds for non-virtual bases, since the offset
-   * of a virtual base class is not a constant. Does not hold if the derived
-   * class is an uninstantiated template.
-   * See `Class.getVirtualBaseClassOffset` for offsets of virtual base classes.
+   * Gets the byte offset of the base class subobject relative to the start of
+   * the derived class object. Only holds for non-virtual bases, since the
+   * offset of a virtual base class is not a constant. Does not hold if the
+   * derived class is an uninstantiated template.
+   * See `Class.getVirtualBaseClassByteOffset` for offsets of virtual base
+   * classes.
    */
-  int getOffset() {
+  int getByteOffset() {
     direct_base_offsets(this, result)
   }
 

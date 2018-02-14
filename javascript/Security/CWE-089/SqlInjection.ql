@@ -27,7 +27,7 @@ import javascript
 import semmle.javascript.security.dataflow.SqlInjection
 import semmle.javascript.security.dataflow.NosqlInjection
 
-from DataFlowNode source, DataFlowNode sink
+from DataFlow::Node source, DataFlow::Node sink
 where any(SqlInjectionTrackingConfig cfg).flowsFrom(sink, source) or
       any(NosqlInjectionTrackingConfig cfg).flowsFrom(sink, source)
 select sink, "This query depends on $@.", source, "a user-provided value"

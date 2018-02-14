@@ -28,6 +28,6 @@ import semmle.javascript.flow.Analysis
 private import semmle.javascript.flow.InferredTypes
 
 from PropAccess pacc, AnalyzedFlowNode base
-where base = pacc.getBase() and
+where base.asExpr() = pacc.getBase() and
       forex (InferredType tp | tp = base.getAType() | tp = TTNull() or tp = TTUndefined())
 select pacc, "The base expression of this property access is always " + base.ppTypes() + "."

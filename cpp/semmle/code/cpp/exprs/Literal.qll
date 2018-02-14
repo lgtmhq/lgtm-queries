@@ -157,17 +157,145 @@ class AggregateLiteral extends Expr, @aggregateliteral {
   // if this is turned into a Literal we need to change mayBeImpure
 
   /**
+   * DEPRECATED: Use ClassAggregateLiteral.getFieldExpr() instead.
+   *
    * Gets the expression within the aggregate literal that is used to initialise field `f`,
    * if this literal is being used to initialise a class/struct instance.
    */
-  Expr getCorrespondingExpr(Field f) {
-    exists(Class c, int i |
-      c = this.getType().getUnspecifiedType()
-      and f = c.getMember(i)
-      and result = getChild(i)
-    )
+  deprecated Expr getCorrespondingExpr(Field f) {
+    result = this.(ClassAggregateLiteral).getFieldExpr(f)
   }
 
   /** Gets a textual representation of this aggregate literal. */
   override string toString() { result = "{...}" }
+}
+
+/**
+ * Holds if the specified field can be initialized as part of an initializer
+ * list. For example, in:
+ *
+ * struct S {
+ *   unsigned int a : 5;
+ *   unsigned int : 5;
+ *   unsigned int b : 5; 
+ * };
+ *
+ * Fields `a` and `b` are initializable, but the unnamed bitfield is not.
+ */
+pragma[inline]
+private predicate isFieldInitializable(Field field) {
+  not field.(BitField).isAnonymous()
+}
+
+/**
+ * Gets the zero-based index of the specified field within its enclosing class,
+ * counting only fields that can be initialized as part of an initializer list.
+ */
+private int fieldInitializerIndex(Class cls, Field field) {
+  exists(int memberIndex | 
+    field = cls.getMember(memberIndex) and
+    memberIndex = rank[result + 1](int index |
+      isFieldInitializable(cls.getMember(index))
+    )
+  )
+}
+
+/**
+ * A C/C++ aggregate literal that initializes a class, struct, or union
+ */
+class ClassAggregateLiteral extends AggregateLiteral {
+  Class classType;
+
+  ClassAggregateLiteral() {
+    classType = this.getType().getUnspecifiedType()
+  }
+
+  /**
+   * Gets the expression within the aggregate literal that is used to initialize
+   * field `field`, if present.
+   */
+  Expr getFieldExpr(Field field) {
+    result = getChild(fieldInitializerIndex(classType, field))
+  }
+
+  /**
+   * Holds if the field `field` is initialized by this initializer list, either
+   * explicitly with an expression, or implicitly value initialized.
+   */
+  pragma[inline]
+  predicate isInitialized(Field field) {
+    field = classType.getAField() and
+    isFieldInitializable(field) and
+    (
+      // If the field has an explicit initializer expression, then the field is
+      // initialized.
+      exists(getFieldExpr(field)) or
+      // If the type is not a union, all fields without initializers are value
+      // initialized.
+      not classType instanceof Union or
+      // If the type is a union, and there are no explicit initializers, then
+      // the first declared field is value initialized.
+      (
+        not exists(getAChild()) and
+        fieldInitializerIndex(classType, field) = 0
+      )
+    )
+  }
+
+  /**
+   * Holds if the field `field` is value initialized because it is not
+   * explicitly initialized by this initializer list.
+   *
+   * Value initialization (see [dcl.init]/8) recursively initializes all fields
+   * of an object to `false`, `0`, `nullptr`, or by calling the default
+   * constructor, as appropriate to the type.
+   */
+  pragma[inline]
+  predicate isValueInitialized(Field field) {
+    isInitialized(field) and
+    not exists(getFieldExpr(field))
+  }
+}
+
+/**
+ * A C/C++ aggregate literal that initializes an array
+ */
+class ArrayAggregateLiteral extends AggregateLiteral {
+  ArrayType arrayType;
+
+  ArrayAggregateLiteral() {
+    arrayType = this.getType().getUnspecifiedType()
+  }
+
+  /**
+   * Gets the expression within the aggregate literal that is used to initialize
+   * element `elementIndex`, if present.
+   */
+  Expr getElementExpr(int elementIndex) {
+    result = getChild(elementIndex)
+  }
+
+  /**
+   * Holds if the element `elementIndex` is initialized by this initializer
+   * list, either explicitly with an expression, or implicitly value
+   * initialized.
+   */
+  pragma[inline]
+  predicate isInitialized(int elementIndex) {
+    elementIndex in [0..arrayType.getArraySize() - 1]
+  }
+
+  /**
+   * Holds if the element `elementIndex` is value initialized because it is not
+   * explicitly initialized by this initializer list.
+   *
+   * Value initialization (see [dcl.init]/8) recursively initializes all fields
+   * of an object to `false`, `0`, `nullptr`, or by calling the default
+   * constructor, as appropriate to the type.
+   */
+  pragma[inline]
+  predicate isValueInitialized(int elementIndex) {
+    isInitialized(elementIndex) and
+    not exists(getElementExpr(elementIndex))
+  }
 }

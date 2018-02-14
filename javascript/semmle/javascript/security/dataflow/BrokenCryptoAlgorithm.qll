@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Provides a dataflow configuration for reasoning about sensitive information in broken or weak cryptographic algorithms.
+ * Provides a taint tracking configuration for reasoning about sensitive information in broken or weak cryptographic algorithms.
  */
 import javascript
 private import semmle.javascript.flow.Tracking
@@ -20,22 +20,22 @@ private import semmle.javascript.security.SensitiveActions
 private import semmle.javascript.frameworks.CryptoLibraries
 
 /**
- * A dataflow source for sensitive information in broken or weak cryptographic algorithms.
+ * A data flow source for sensitive information in broken or weak cryptographic algorithms.
  */
-abstract class BrokenCryptoAlgorithmSource extends DataFlowNode { }
+abstract class BrokenCryptoAlgorithmSource extends DataFlow::Node { }
 
 /**
- * A dataflow sink for sensitive information in broken or weak cryptographic algorithms.
+ * A data flow sink for sensitive information in broken or weak cryptographic algorithms.
  */
-abstract class BrokenCryptoAlgorithmSink extends DataFlowNode { }
+abstract class BrokenCryptoAlgorithmSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for sensitive information in broken or weak cryptographic algorithms.
  */
-abstract class BrokenCryptoAlgorithmSanitizer extends DataFlowNode { }
+abstract class BrokenCryptoAlgorithmSanitizer extends DataFlow::Node { }
 
 /**
- * A dataflow configuration for sensitive information in broken or weak cryptographic algorithms.
+ * A taint tracking configuration for sensitive information in broken or weak cryptographic algorithms.
  *
  * This configuration identifies flows from `BrokenCryptoAlgorithmSource`s, which are sources of
  * sensitive data, to `BrokenCryptoAlgorithmSink`s, which is an abstract class representing all
@@ -49,18 +49,18 @@ class BrokenCryptoAlgorithmDataFlowConfiguration extends TaintTracking::Configur
   }
 
   override
-  predicate isSource(DataFlowNode source) {
+  predicate isSource(DataFlow::Node source) {
     source instanceof BrokenCryptoAlgorithmSource or
-    source instanceof SensitiveExpr
+    source.asExpr() instanceof SensitiveExpr
   }
 
   override
-  predicate isSink(DataFlowNode sink) {
+  predicate isSink(DataFlow::Node sink) {
     sink instanceof BrokenCryptoAlgorithmSink
   }
 
   override
-  predicate isSanitizer(DataFlowNode node) {
+  predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof BrokenCryptoAlgorithmSanitizer
   }
@@ -73,7 +73,7 @@ class WeakCryptographicOperationSink extends BrokenCryptoAlgorithmSink {
   WeakCryptographicOperationSink() {
     exists(CryptographicOperation application |
       application.getAlgorithm().isWeak() and
-      this = application.getInput()
+      this.asExpr() = application.getInput()
     )
   }
 }

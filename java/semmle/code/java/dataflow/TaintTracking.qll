@@ -23,6 +23,7 @@ private import SSA
 private import DefUse
 private import semmle.code.java.security.SecurityTests
 private import semmle.code.java.security.Validation
+private import semmle.code.java.frameworks.android.Intent
 
 module TaintTracking {
 
@@ -61,7 +62,7 @@ module TaintTracking {
     // overridden to provide taint-tracking specific qldoc
     abstract override predicate isSink(DataFlow::Node sink);
 
-    /** Holds if the intermediate node `node` is a taint sanitizer. */
+    /** Holds if the node `node` is a taint sanitizer. */
     predicate isSanitizer(DataFlow::Node node) { none() }
 
     final
@@ -72,11 +73,17 @@ module TaintTracking {
       exists(ValidatedVariable var | node.asExpr() = var.getAnAccess())
     }
 
+    /** Holds if the edge from `node1` to `node2` is a taint sanitizer. */
+    predicate isSanitizerEdge(DataFlow::Node node1, DataFlow::Node node2) { none() }
+
+    final
+    override predicate isBarrierEdge(DataFlow::Node node1, DataFlow::Node node2) {
+      isSanitizerEdge(node1, node2)
+    }
+
     /**
      * Holds if the additional taint propagation step from `node1` to `node2`
      * must be taken into account in the analysis.
-     *
-     * `node1` and `node2` should belong to the same `Callable`.
      */
     predicate isAdditionalTaintStep(DataFlow::Node node1, DataFlow::Node node2) { none() }
 
@@ -130,7 +137,7 @@ module TaintTracking {
     // overridden to provide taint-tracking specific qldoc
     abstract override predicate isSink(DataFlow::Node sink);
 
-    /** Holds if the intermediate node `node` is a taint sanitizer. */
+    /** Holds if the node `node` is a taint sanitizer. */
     predicate isSanitizer(DataFlow::Node node) { none() }
 
     final
@@ -141,11 +148,17 @@ module TaintTracking {
       exists(ValidatedVariable var | node.asExpr() = var.getAnAccess())
     }
 
+    /** Holds if the edge from `node1` to `node2` is a taint sanitizer. */
+    predicate isSanitizerEdge(DataFlow::Node node1, DataFlow::Node node2) { none() }
+
+    final
+    override predicate isBarrierEdge(DataFlow::Node node1, DataFlow::Node node2) {
+      isSanitizerEdge(node1, node2)
+    }
+
     /**
      * Holds if the additional taint propagation step from `node1` to `node2`
      * must be taken into account in the analysis.
-     *
-     * `node1` and `node2` should belong to the same `Callable`.
      */
     predicate isAdditionalTaintStep(DataFlow::Node node1, DataFlow::Node node2) { none() }
 
@@ -347,6 +360,8 @@ module TaintTracking {
     or
     m.getDeclaringType().hasQualifiedName("javax.xml.transform.stream", "StreamSource") and
     m.hasName("getInputStream")
+    or
+    m instanceof IntentGetExtraMethod
   }
 
   private class StringReplaceMethod extends Method {

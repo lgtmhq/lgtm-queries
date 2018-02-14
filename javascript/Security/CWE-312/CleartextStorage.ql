@@ -30,6 +30,6 @@ import semmle.javascript.flow.Tracking
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.security.dataflow.CleartextStorage
 
-from CleartextStorageDataFlowConfiguration cleartextStorage, DataFlowNode source, DataFlowNode sink
+from CleartextStorageDataFlowConfiguration cleartextStorage, DataFlow::Node source, DataFlow::Node sink
 where cleartextStorage.flowsTo(source, sink)
 select sink, "Sensitive data returned by $@ is stored here.", source, source.toString()

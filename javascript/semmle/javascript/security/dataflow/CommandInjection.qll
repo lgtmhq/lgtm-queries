@@ -22,17 +22,17 @@ import semmle.javascript.security.dataflow.RemoteFlowSources
 /**
  * A data flow source for command-injection vulnerabilities.
  */
-abstract class CommandInjectionSource extends DataFlowNode { }
+abstract class CommandInjectionSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for command-injection vulnerabilities.
  */
-abstract class CommandInjectionSink extends DataFlowNode { }
+abstract class CommandInjectionSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for command-injection vulnerabilities.
  */
-abstract class CommandInjectionSanitizer extends DataFlowNode { }
+abstract class CommandInjectionSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about command-injection vulnerabilities.
@@ -42,17 +42,16 @@ class CommandInjectionTrackingConfig extends TaintTracking::Configuration {
     this = "CommandInjection"
   }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof CommandInjectionSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof CommandInjectionSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
-    super.isSanitizer(node) or
+  override predicate isSanitizer(DataFlow::Node node) {
     node instanceof CommandInjectionSanitizer
   }
 }
@@ -74,12 +73,12 @@ private predicate childProcessCommandParam(string methodName) {
 /**
  * A command argument to a function of the Node.js `child_process` module.
 */
-class ChildProcessCommandSink extends CommandInjectionSink {
+class ChildProcessCommandSink extends CommandInjectionSink, DataFlow::ValueNode {
   ChildProcessCommandSink() {
     exists (ModuleInstance cp, string m |
       cp.getPath() = "child_process" and
       childProcessCommandParam(m) and
-      this = cp.getAMethodCall(m).getArgument(0)
+      astNode = cp.getAMethodCall(m).getArgument(0)
     )
   }
 }

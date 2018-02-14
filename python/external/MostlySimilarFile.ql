@@ -21,6 +21,7 @@
  *       useless-code
  *       duplicate-code
  *       statistical
+ *       non-attributable
  * @problem.severity recommendation
  * @sub-severity low
  * @precision high

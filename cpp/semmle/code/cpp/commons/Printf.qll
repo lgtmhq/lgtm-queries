@@ -681,6 +681,12 @@ class FormatLiteral extends Expr {
     else any()
   }
 
+  private Ssize_t getSsize_t() {
+         if this.targetBitSize() = 4 then result.getSize() = min(Ssize_t l | | l.getSize())
+    else if this.targetBitSize() = 8 then result.getSize() = max(Ssize_t l | | l.getSize())
+    else any()
+  }
+
   private Ptrdiff_t getPtrdiff_t() {
          if this.targetBitSize() = 4 then result.getSize() = min(Ptrdiff_t l | | l.getSize())
     else if this.targetBitSize() = 8 then result.getSize() = max(Ptrdiff_t l | | l.getSize())
@@ -701,7 +707,7 @@ class FormatLiteral extends Expr {
       or (len="L" and result instanceof IntType)  // doesn't affect integral conversion
       or (len="j" and result = this.getIntmax_t())
       or ((len="z" or len="Z")
-                  and result = this.getSize_t())
+                  and (result = this.getSize_t() or result = this.getSsize_t()))
       or (len="t" and result = this.getPtrdiff_t())
       or (len="I" and result instanceof IntType)
       or (len="I32" and exists(MicrosoftInt32Type t |
@@ -718,7 +724,7 @@ class FormatLiteral extends Expr {
    * Gets the family of integral types output / displayed by the nth
    * conversion specifier's length flag.
    */
-  IntegralType getIntegralDisplayType(int n) {
+  Type getIntegralDisplayType(int n) {
     exists(string len | len = this.getLength(n) and
         ((len="hh" and result instanceof CharType)
       or (len="h" and result instanceof ShortType)
@@ -728,14 +734,14 @@ class FormatLiteral extends Expr {
       or (len="L" and result instanceof IntType)  // doesn't affect integral conversion
       or (len="j" and result = this.getIntmax_t())
       or ((len="z" or len="Z")
-                  and result = this.getSize_t())
+                  and (result = this.getSize_t() or result = this.getSsize_t()))
       or (len="t" and result = this.getPtrdiff_t())
       or (len="I" and result instanceof IntType)
       or (len="I32" and exists(MicrosoftInt32Type t |
-        t.getUnsigned() = result.getUnsigned()
+        t.getUnsigned() = result.(IntegralType).getUnsigned()
       ))
       or (len="I64" and exists(MicrosoftInt64Type t |
-        t.getUnsigned() = result.getUnsigned()
+        t.getUnsigned() = result.(IntegralType).getUnsigned()
       ))
       or (len=""  and result instanceof IntType)))
   }
@@ -789,8 +795,8 @@ class FormatLiteral extends Expr {
   private Type getConversionType1(int n) {
     exists(string cnv | cnv = this.getConversionChar(n) |
       cnv.regexpMatch("d|i") and result = this.getIntegralConversion(n)
-      and not result.(IntegralType).isExplicitlySigned()
-      and not result.(IntegralType).isExplicitlyUnsigned()
+      and not result.getUnderlyingType().(IntegralType).isExplicitlySigned()
+      and not result.getUnderlyingType().(IntegralType).isExplicitlyUnsigned()
     )
   }
 
@@ -832,7 +838,9 @@ class FormatLiteral extends Expr {
 
   private Type getConversionType2(int n) {
     exists(string cnv | cnv = this.getConversionChar(n) |
-      cnv.regexpMatch("o|u|x|X") and result = this.getIntegralConversion(n) and result.(IntegralType).isUnsigned()
+      cnv.regexpMatch("o|u|x|X") and
+      result = this.getIntegralConversion(n) and
+      result.getUnderlyingType().(IntegralType).isUnsigned()
     )
   }
 

@@ -22,17 +22,17 @@ import semmle.javascript.security.dataflow.DOM
 /**
  * A data flow source for XML-bomb vulnerabilities.
  */
-abstract class XmlBombSource extends DataFlowNode { }
+abstract class XmlBombSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for XML-bomb vulnerabilities.
  */
-abstract class XmlBombSink extends DataFlowNode { }
+abstract class XmlBombSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for XML-bomb vulnerabilities.
  */
-abstract class XmlBombSanitizer extends DataFlowNode { }
+abstract class XmlBombSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about XML-bomb vulnerabilities.
@@ -42,17 +42,17 @@ class XmlBombTrackingConfig extends TaintTracking::Configuration {
     this = "XmlBomb"
   }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof XmlBombSource or
     source instanceof RemoteFlowSource or
-    isLocation(source)
+    isLocation(source.asExpr())
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof XmlBombSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof XmlBombSanitizer
   }
@@ -62,9 +62,9 @@ class XmlBombTrackingConfig extends TaintTracking::Configuration {
  * A call to an XML parser that performs internal entity expansion, viewed
  * as a data flow sink for XML-bomb vulnerabilities.
  */
-class XmlParsingWithEntityResolution extends XmlBombSink {
+class XmlParsingWithEntityResolution extends XmlBombSink, DataFlow::ValueNode {
   XmlParsingWithEntityResolution() {
-    exists (XML::ParserInvocation parse | this = parse.getSourceArgument() |
+    exists (XML::ParserInvocation parse | astNode = parse.getSourceArgument() |
       parse.resolvesEntities(XML::InternalEntity())
     )
   }

@@ -166,6 +166,8 @@ class PythonModuleObject extends ModuleObject {
     predicate hasAttribute(string name) {
         FinalPointsTo::module_defines_name(this.getModule(), name)
         or
+        this.attributeRefersTo(name, _, _, _)
+        or
         /* The interpreter always adds the __name__ and __package__ attributes */
         name = "__name__" or name = "__package__"
     }

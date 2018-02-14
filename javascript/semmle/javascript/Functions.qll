@@ -20,7 +20,7 @@ import AST
 import BasicBlocks
 
 /** A function as defined either by a function declaration or a function expression. */
-class Function extends @function, Parameterized, TypeParameterized, StmtContainer {
+class Function extends @function, Parameterized, TypeParameterized, StmtContainer, Documentable {
   /** Gets the `i`th parameter of this function. */
   Parameter getParameter(int i) {
     result = getChildExpr(i)
@@ -192,11 +192,6 @@ class Function extends @function, Parameterized, TypeParameterized, StmtContaine
                      strictcount(nd.getASuccessor()) - 1)
   }
 
-  /** Gets the JSDoc documentation for this function, if any. */
-  override JSDoc getDocumentation() {
-    none()
-  }
-
   override predicate isStrict() {
     // check for explicit strict mode directive
     exists (StrictModeDecl smd | this = smd.getContainer())
@@ -360,7 +355,11 @@ class Function extends @function, Parameterized, TypeParameterized, StmtContaine
    * Holds if this function is part of an abstract class member.
    */
   predicate isAbstract() {
-      exists (MethodDeclaration md | this = md.getBody() | md.isAbstract())
+    exists (MethodDeclaration md | this = md.getBody() | md.isAbstract())
+  }
+
+  override predicate isAmbient() {
+    getParent().isAmbient() or not hasBody()
   }
 
   /**

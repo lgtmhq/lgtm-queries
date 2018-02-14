@@ -12,29 +12,29 @@
 // permissions and limitations under the License.
 
 /**
- * Provides a dataflow configuration for reasoning about cleartext storage of sensitive information.
+ * Provides a taint tracking configuration for reasoning about cleartext storage of sensitive information.
  */
 import javascript
 private import semmle.javascript.flow.Tracking
 private import semmle.javascript.security.SensitiveActions
 
 /**
- * A dataflow source for cleartext storage of sensitive information.
+ * A data flow source for cleartext storage of sensitive information.
  */
-abstract class CleartextStorageSource extends DataFlowNode { }
+abstract class CleartextStorageSource extends DataFlow::Node { }
 
 /**
- * A dataflow sink for cleartext storage of sensitive information.
+ * A data flow sink for cleartext storage of sensitive information.
  */
-abstract class CleartextStorageSink extends DataFlowNode { }
+abstract class CleartextStorageSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for cleartext storage of sensitive information.
  */
-abstract class CleartextStorageSanitizer extends DataFlowNode { }
+abstract class CleartextStorageSanitizer extends DataFlow::Node { }
 
 /**
- * A dataflow configuration for cleartext storage of sensitive information.
+ * A taint tracking configuration for cleartext storage of sensitive information.
  *
  * This configuration identifies flows from `CleartextStorageSource`s, which are sources of
  * sensitive data, to `CleartextStorageSink`s, which is an abstract class representing all
@@ -48,27 +48,27 @@ class CleartextStorageDataFlowConfiguration extends TaintTracking::Configuration
   }
 
   override
-  predicate isSource(DataFlowNode source) {
+  predicate isSource(DataFlow::Node source) {
     source instanceof CleartextStorageSource or
-    source instanceof SensitiveExpr
+    source.asExpr() instanceof SensitiveExpr
   }
 
   override
-  predicate isSink(DataFlowNode sink) {
+  predicate isSink(DataFlow::Node sink) {
     sink instanceof CleartextStorageSink
   }
 
   override
-  predicate isSanitizer(DataFlowNode node) {
+  predicate isSanitizer(DataFlow::Node node) {
     node instanceof CleartextStorageSanitizer
   }
 }
 
 /** A call to any method whose name suggests that it encodes or encrypts the parameter. */
-class ProtectSanitizer extends CleartextStorageSanitizer {
+class ProtectSanitizer extends CleartextStorageSanitizer, DataFlow::ValueNode {
   ProtectSanitizer() {
     exists(string s |
-      this.(CallExpr).getCalleeName().regexpMatch("(?i).*" + s + ".*") |
+      astNode.(CallExpr).getCalleeName().regexpMatch("(?i).*" + s + ".*") |
       s = "protect" or s = "encode" or s = "encrypt"
     )
   }
@@ -80,8 +80,8 @@ class ProtectSanitizer extends CleartextStorageSanitizer {
 class CookieStorageSink extends CleartextStorageSink {
   CookieStorageSink() {
     exists (HTTP::CookieDefinition cookieDef |
-      this = cookieDef.getValueArgument() or
-      this = cookieDef.getHeaderArgument()
+      this.asExpr() = cookieDef.getValueArgument() or
+      this.asExpr() = cookieDef.getHeaderArgument()
     )
   }
 }
@@ -91,7 +91,7 @@ class CookieStorageSink extends CleartextStorageSink {
  */
 class WebStorageSink extends CleartextStorageSink {
   WebStorageSink() {
-    this instanceof WebStorageWrite
+    this.asExpr() instanceof WebStorageWrite
   }
 }
 
@@ -100,6 +100,6 @@ class WebStorageSink extends CleartextStorageSink {
  */
 class AngularJSStorageSink extends CleartextStorageSink {
   AngularJSStorageSink() {
-    any(AngularJS::AngularJSCall call).storesArgumentGlobally(this)
+    any(AngularJS::AngularJSCall call).storesArgumentGlobally(this.asExpr())
   }
 }

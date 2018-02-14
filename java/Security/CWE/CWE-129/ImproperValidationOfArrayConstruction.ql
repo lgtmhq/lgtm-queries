@@ -24,9 +24,12 @@
 
 import java
 import ArraySizing
+import semmle.code.java.dataflow.FlowSources
 
-from RemoteUserInput source, ArrayCreationExpr arrayCreation, CheckableArrayAccess arrayAccess
-where arrayAccess.canThrowOutOfBoundsDueToEmptyArray(source, arrayCreation)
+from RemoteUserInput source, Expr sizeExpr, ArrayCreationExpr arrayCreation, CheckableArrayAccess arrayAccess
+where
+  arrayAccess.canThrowOutOfBoundsDueToEmptyArray(sizeExpr, arrayCreation) and
+  source.flowsTo(DataFlow::exprNode(sizeExpr))
 select arrayAccess.getIndexExpr(),
   "The $@ is accessed here, but the array is initialized using $@ which may be zero.",
   arrayCreation, "array",

@@ -29,6 +29,19 @@ class Field extends MemberVariable {
    * type (on the machine where facts were extracted).
    */
   int getByteOffset() { fieldoffsets(this,result,_) }
+
+  /**
+   * Gets the byte offset within `mostDerivedClass` of each occurence of this
+   * field within `mostDerivedClass` itself or a base class subobject of
+   * `mostDerivedClass`.
+   * Note that for fields of virtual base classes, and non-virtual base classes
+   * thereof, this predicate assumes that `mostDerivedClass` is the type of the
+   * complete most-derived object.
+   */
+  int getAByteOffsetIn(Class mostDerivedClass) {
+    result = mostDerivedClass.getABaseClassByteOffset(getDeclaringType()) +
+      getByteOffset()
+  }
 }
 
 /**

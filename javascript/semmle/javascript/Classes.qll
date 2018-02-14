@@ -97,6 +97,13 @@ class ClassOrInterface extends @classorinterface, TypeParameterized {
   TypeExpr getASuperInterface() { result = getSuperInterface(_) }
 
   /**
+   * Holds if this is an interface or a class declared with the `abstract` modifier.
+   */
+  predicate isAbstract() {
+    none()
+  }
+
+  /**
    * Gets a description of this class or interface.
    *
    * For named types such as `class C { ... }`, this is just the declared
@@ -105,6 +112,15 @@ class ClassOrInterface extends @classorinterface, TypeParameterized {
    * "anonymous interface".
    */
   override string describe() { none() } // Overridden in subtypes.
+
+  /**
+   * Gets the canonical name of this class or interface type.
+   *
+   * Anonymous classes and interfaces do not have a canonical name.
+   */
+  TypeName getTypeName() {
+    result = NameResolution::getTypeNameFromDefinition(this)
+  }
 }
 
 /**
@@ -167,6 +183,13 @@ class ClassDefinition extends @classdefinition, ClassOrInterface {
    */
   Decorator getADecorator() {
     result = getDecorator(_)
+  }
+
+  /**
+   * Holds if this class has the `abstract` modifier.
+   */
+  override predicate isAbstract() {
+    isAbstractClass(this)
   }
 
   override string describe() {
@@ -355,7 +378,7 @@ class ClassDeclScope extends @classdeclscope, Scope {
  * `FieldSignature`, and `FieldDefinition`, and similarly named subtypes for methods, constructors, and
  * getters and setters.
  */
-class MemberDeclaration extends @property, ASTNode {
+class MemberDeclaration extends @property, Documentable {
   MemberDeclaration() {
     // filter out property patterns and object properties and enum members
     exists (ClassOrInterface cl | properties(this, cl, _, _, _))
@@ -443,12 +466,6 @@ class MemberDeclaration extends @property, ASTNode {
   ClassDefinition getDeclaringClass() {
     properties(this, result, _, _, _)
   }
-
-  /** Gets the JSDoc comment for this member, if any. */
-  JSDoc getDocumentation() {
-    result.getComment().getNextToken() = getFirstToken()
-  }
-
   /** Gets the nearest enclosing function or toplevel in which this member occurs. */
   StmtContainer getContainer() {
     result = getDeclaringType().getContainer()

@@ -27,7 +27,7 @@
 import javascript
 import semmle.javascript.security.dataflow.Xxe
 
-from XxeTrackingConfig c, DataFlowNode source, DataFlowNode sink
+from XxeTrackingConfig c, DataFlow::Node source, DataFlow::Node sink
 where c.flowsFrom(sink, source)
 select sink, "A $@ is parsed as XML without guarding against external entity expansion.",
        source, "user-provided value"
