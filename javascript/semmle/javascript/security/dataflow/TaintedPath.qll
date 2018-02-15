@@ -21,17 +21,17 @@ import javascript
 /**
  * A data flow source for tainted-path vulnerabilities.
  */
-abstract class TaintedPathSource extends DataFlowNode { }
+abstract class TaintedPathSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for tainted-path vulnerabilities.
  */
-abstract class TaintedPathSink extends DataFlowNode { }
+abstract class TaintedPathSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for tainted-path vulnerabilities.
  */
-abstract class TaintedPathSanitizer extends DataFlowNode { }
+abstract class TaintedPathSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about tainted-path vulnerabilities.
@@ -41,16 +41,16 @@ class TaintedPathTrackingConfig extends TaintTracking::Configuration {
     this = "TaintedPath"
   }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof TaintedPathSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof TaintedPathSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof TaintedPathSanitizer
   }
@@ -60,10 +60,10 @@ class TaintedPathTrackingConfig extends TaintTracking::Configuration {
  * An expression whose value is interpreted as a path to a module, making it
  * a data flow sink for tainted-path vulnerabilities.
  */
-class ModulePathSink extends TaintedPathSink {
+class ModulePathSink extends TaintedPathSink, DataFlow::ValueNode {
   ModulePathSink() {
-    this = any(Require rq).getArgument(0) or
-    this = any(AMDModuleDefinition amd).getDependencies()
+    astNode = any(Require rq).getArgument(0) or
+    astNode = any(AMDModuleDefinition amd).getDependencies()
   }
 }
 
@@ -88,12 +88,12 @@ private predicate fsFileParam(string methodName, int i) {
  * A path argument to a file system function from Node's `fs` or `graceful-fs`
  * modules.
  */
-class FsPathSink extends TaintedPathSink {
+class FsPathSink extends TaintedPathSink, DataFlow::ValueNode {
   FsPathSink() {
     exists (MethodCallExpr mce, ModuleInstance fs, int i |
       mce.getReceiver().(DataFlowNode).getALocalSource() = fs and
       (fs.getPath() = "fs" or fs.getPath() = "graceful-fs") and
-      this = mce.getArgument(i) and
+      astNode = mce.getArgument(i) and
       fsFileParam(mce.getMethodName(), i)
     )
   }
@@ -102,50 +102,75 @@ class FsPathSink extends TaintedPathSink {
 /**
  * A path argument to the Express `res.render` method.
  */
-class ExpressRenderSink extends TaintedPathSink {
+class ExpressRenderSink extends TaintedPathSink, DataFlow::ValueNode {
   ExpressRenderSink() {
     exists (MethodCallExpr mce |
       Express::isResponse(mce.getReceiver()) and
       mce.getMethodName() = "render" and
-      this = mce.getArgument(0)
+      astNode = mce.getArgument(0)
     )
   }
 }
 
-class AngularJSTemplateUrlSink extends TaintedPathSink {
+/**
+ * A `templateUrl` member of an AngularJS directive.
+ */
+class AngularJSTemplateUrlSink extends TaintedPathSink, DataFlow::ValueNode {
   AngularJSTemplateUrlSink() {
-    this = any(AngularJS::CustomDirective d).getMember("templateUrl")
+    astNode = any(AngularJS::CustomDirective d).getMember("templateUrl")
   }
 }
 
 /**
- * Holds if this expression is part of a check that is insufficient to prevent
- * path tampering.
+ * Holds if `check` evaluating to `outcome` is not sufficient to sanitize `path`.
  */
-private predicate inWeakCheck(Expr e) {
-  exists (MethodCallExpr m | e = m.getReceiver() |
-    m.getMethodName() = "startsWith" or
-    m.getMethodName() = "endsWith" or
-    m.getMethodName().regexpMatch("exists(Sync)?")
-  ) or
-  exists (Expr op | op = e.(EqualityTest).getAnOperand() |
+predicate weakCheck(Expr check, boolean outcome, VarAccess path) {
+  // `path.startsWith`, `path.endsWith`, `fs.existsSync(path)`
+  exists (Expr base, string m | check.(MethodCallExpr).calls(base, m) |
+    path = base and
+    (m = "startsWith" or m = "endsWith")
+    or
+    path = check.(MethodCallExpr).getArgument(0) and
+    m.regexpMatch("exists(Sync)?")
+  ) and
+  (outcome = true or outcome = false)
+  or
+  // `path.indexOf` comparisons
+  check.(Comparison).getAnOperand().(MethodCallExpr).calls(path, "indexOf") and
+  (outcome = true or outcome = false)
+  or
+  // `path != null`, `path != undefined`, `path != "somestring"`
+  exists (EqualityTest eq, Expr op |
+    eq = check and eq.hasOperands(path, op) and outcome = eq.getPolarity().booleanNot() |
     op instanceof NullLiteral or
     op.(GlobalVarAccess).getName() = "undefined" or
-    op.getStringValue() = ""
+    exists(op.getStringValue())
   )
+  or
+  // `path`
+  check = path and
+  (outcome = true or outcome = false)
 }
 
 /**
  * A conditional involving the path, that is not considered to be a weak check.
  */
-class StrongPathCheck extends TaintTracking::SanitizingGuard, VarUse {
+class StrongPathCheck extends TaintTracking::SanitizingGuard {
+  VarAccess path;
+  boolean sanitizedOutcome;
+
   StrongPathCheck() {
-    not inWeakCheck(this)
+    exists (ConditionGuardNode cgg | this = cgg.getTest() |
+      this = path.getParentExpr*() and
+      path = any(SsaVariable v).getAUse() and
+      (sanitizedOutcome = true or sanitizedOutcome = false) and
+      not weakCheck(this, sanitizedOutcome, path)
+    )
   }
 
   override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
     cfg instanceof TaintedPathTrackingConfig and
-    (outcome = true or outcome = false) and
-    this = v.getAUse()
+    path = v.getAUse() and
+    outcome = sanitizedOutcome
   }
 }

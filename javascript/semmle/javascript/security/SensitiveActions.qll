@@ -103,6 +103,11 @@ class CredentialsFunctionName extends SensitiveDataFunctionName {
 }
 
 /**
+ * A sensitive action, such as transfer of sensitive data.
+ */
+abstract class SensitiveAction extends DataFlow::Node { }
+
+/**
  * Classes for expressions containing cleartext passwords.
  */
 private module CleartextPasswords {

@@ -105,12 +105,38 @@ module HTTP {
       this = "UNLOCK" or
       this = "UNSUBSCRIBE"
     }
+
+    /**
+     * Holds if this kind of HTTP request should be considered free of side effects,
+     * such as for `GET` and `HEAD` requests.
+     */
+    predicate isSafe() {
+      this = "GET" or
+      this = "HEAD" or
+      this = "OPTIONS" or
+      this = "PRI" or
+      this = "PROPFIND" or
+      this = "REPORT" or
+      this = "SEARCH" or
+      this = "TRACE"
+    }
   }
 
   /**
    * An expression whose value is sent as (part of) the body of an HTTP response.
    */
   abstract class ResponseBody extends Expr {
+    /**
+     * Gets the route handler that sends this expression.
+     */
+    abstract RouteHandler getHandler();
+  }
+
+  /**
+   * An expression whose value is included directly (and not, say, via a template)
+   * in the body of an HTTP response.
+   */
+  abstract class ResponseSendArgument extends ResponseBody {
   }
 
   /**
@@ -164,6 +190,7 @@ module HTTP {
      * Gets a header this handler sets.
      */
     abstract HeaderDefinition getAResponseHeader(string name);
+
   }
 
 
@@ -201,6 +228,7 @@ module HTTP {
         result = any(StandardRouteSetup setup | setup.getARouteHandler() = this |
           setup.getAServer())
       }
+
     }
 
     /**
@@ -235,5 +263,24 @@ module HTTP {
        */
       abstract DataFlowNode getAServer();
     }
+
   }
+
+  /**
+   * An access to a user-controlled HTTP request input.
+   */
+  abstract class RequestInputAccess extends RemoteFlowSource {
+
+    override string getSourceType() {
+      result = "Server request " + getKind()
+    }
+
+    /**
+     * Gets the kind of the accessed input,
+     * Can be one of "parameter", "header", "body", "url", "cookie".
+     */
+    abstract string getKind();
+
+  }
+
 }

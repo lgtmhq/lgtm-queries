@@ -109,8 +109,11 @@ class Parameter extends Element, @param, LocalScopeVariable {
     not isVarargs() and
     result = getACallArgument(getPosition())
   }
-  
+
   private pragma[noinline] Expr getACallArgument(int i) {
-    result = getCallable().getAReference().getArgument(i)
+    exists(Call call |
+      result = call.getArgument(i) and
+      call.getCallee().getSourceDeclaration().getAParameter() = this
+    )
   }
 }

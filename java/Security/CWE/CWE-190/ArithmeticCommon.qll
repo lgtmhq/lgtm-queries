@@ -101,3 +101,18 @@ predicate guardedAgainstUnderflow(ArithExpr e, VarAccess use) {
     (e instanceof DivExpr and guardedLesser(e, priorAccess(use)))
   )
 }
+
+/** Holds if the result of `exp` has certain bits filtered by a bitwise and. */
+private predicate inBitwiseAnd(Expr exp) {
+  exists(AndBitwiseExpr a | a.getAnOperand() = exp) or
+  inBitwiseAnd(exp.(ParExpr).getExpr()) or
+  inBitwiseAnd(exp.(LShiftExpr).getAnOperand()) or
+  inBitwiseAnd(exp.(RShiftExpr).getAnOperand()) or
+  inBitwiseAnd(exp.(URShiftExpr).getAnOperand())
+}
+
+/** Holds if overflow/underflow is irrelevant for this expression. */
+predicate overflowIrrelevant(ArithExpr exp) {
+  inBitwiseAnd(exp) or
+  exp.getEnclosingCallable() instanceof HashCodeMethod
+}

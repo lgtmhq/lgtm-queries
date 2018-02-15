@@ -14,20 +14,16 @@
 /**
  * Basic definitions for use in the data flow library.
  */
-import java
-private import SSA
+private import java
+private import semmle.code.java.dataflow.SSA
+import semmle.code.java.dataflow.InstanceAccess
 
   private newtype TNode =
     TExprNode(Expr e) or
     TExplicitParameterNode(Parameter p) { exists(p.getCallable().getBody()) } or
     TImplicitVarargsArray(Call c) { c.getCallee().isVarargs() and not exists(Argument arg | arg.getCall() = c and arg.isExplicitVarargsArray()) } or
     TInstanceParameterNode(Callable c) { exists(c.getBody()) and not c.isStatic() } or
-    TImplicitThisQualifier(FieldAccess fa) { fa.isOwnFieldAccess() and not exists(fa.getQualifier()) } or
-    TImplicitThisArgument(Call c) {
-      c instanceof ThisConstructorInvocationStmt or
-      c instanceof SuperConstructorInvocationStmt or
-      c.(MethodAccess).isOwnMethodAccess() and not exists(c.getQualifier())
-    }
+    TImplicitInstanceAccess(InstanceAccessExt ia) { not ia.isExplicit(_) }
 
   /**
    * An element, viewed as a node in a data flow graph. Either an expression,
@@ -52,8 +48,7 @@ private import SSA
       result = this.asParameter().getType() or
       exists(Parameter p | result = p.getType() and p.isVarargs() and p = this.(ImplicitVarargsArray).getCall().getCallee().getAParameter()) or
       result = this.(InstanceParameterNode).getCallable().getDeclaringType() or
-      result = this.(ImplicitThisQualifier).getFieldAccess().getEnclosingCallable().getDeclaringType() or
-      result = this.(ImplicitThisArgument).getCall().getEnclosingCallable().getDeclaringType()
+      result = this.(ImplicitInstanceAccess).getInstanceAccess().getType()
     }
 
     /** Gets the callable in which this node occurs. */
@@ -62,8 +57,7 @@ private import SSA
       result = this.asParameter().getCallable() or
       result = this.(ImplicitVarargsArray).getCall().getEnclosingCallable() or
       result = this.(InstanceParameterNode).getCallable() or
-      result = this.(ImplicitThisQualifier).getFieldAccess().getEnclosingCallable() or
-      result = this.(ImplicitThisArgument).getCall().getEnclosingCallable()
+      result = this.(ImplicitInstanceAccess).getInstanceAccess().getEnclosingCallable()
     }
   }
 
@@ -140,40 +134,21 @@ private import SSA
   }
 
   /**
-   * An implicit read of an unqualified `this` that is used as the implicit
-   * qualifier of an instance field access.
+   * An implicit read of `this` or `A.this`.
    */
-  class ImplicitThisQualifier extends Node, TImplicitThisQualifier {
-    FieldAccess fa;
-    ImplicitThisQualifier() { this = TImplicitThisQualifier(fa) }
-    override string toString() { result = "field qualifier this" }
-    override Location getLocation() { result = fa.getLocation() }
-    /** Gets the field access that refers to this implicit `this`. */
-    FieldAccess getFieldAccess() { result = fa }
-  }
-
-  /**
-   * An implicit read of an unqualified `this` that is passed as the instance
-   * parameter of a call.
-   */
-  class ImplicitThisArgument extends Node, TImplicitThisArgument {
-    Call call;
-    ImplicitThisArgument() { this = TImplicitThisArgument(call) }
-    override string toString() { result = "argument this" }
-    override Location getLocation() { result = call.getLocation() }
-    /** Gets the call to which this implicit `this` is passed. */
-    Call getCall() { result = call }
+  class ImplicitInstanceAccess extends Node, TImplicitInstanceAccess {
+    InstanceAccessExt ia;
+    ImplicitInstanceAccess() { this = TImplicitInstanceAccess(ia) }
+    override string toString() { result = ia.toString() }
+    override Location getLocation() { result = ia.getLocation() }
+    InstanceAccessExt getInstanceAccess() { result = ia }
   }
 
   /** Holds if `n` is an access to an unqualified `this` at `cfgnode`. */
   private predicate thisAccess(Node n, ControlFlowNode cfgnode) {
     n.(InstanceParameterNode).getCallable().getBody() = cfgnode or
     exists(InstanceAccess ia | ia = n.asExpr() and ia = cfgnode and ia.isOwnInstanceAccess()) or
-    exists(FieldAccess fa | fa = n.(ImplicitThisQualifier).getFieldAccess() |
-      if fa instanceof RValue then fa = cfgnode
-      else cfgnode.(AssignExpr).getDest() = fa
-    ) or
-    n.(ImplicitThisArgument).getCall() = cfgnode
+    n.(ImplicitInstanceAccess).getInstanceAccess().(OwnInstanceAccess).getCfgNode() = cfgnode
   }
 
   /** Calculation of the relative order in which `this` references are read. */
@@ -256,6 +231,25 @@ private import SSA
     node2.asExpr().(ConditionalExpr).getTrueExpr() = node1.asExpr() or
     node2.asExpr().(ConditionalExpr).getFalseExpr() = node1.asExpr() or
     node2.asExpr().(AssignExpr).getSource() = node1.asExpr()
+  }
+
+  /**
+   * Gets the node that occurs as the qualifier of `fa`.
+   */
+  Node getFieldQualifier(FieldAccess fa) {
+    fa.getField() instanceof InstanceField and
+    (
+      result.asExpr() = fa.getQualifier() or
+      result.(ImplicitInstanceAccess).getInstanceAccess().isImplicitFieldQualifier(fa)
+    )
+  }
+
+  /** Gets the instance argument of a non-static call. */
+  Node getInstanceArgument(Call call) {
+    call instanceof ClassInstanceExpr and result.asExpr() = call or
+    call instanceof MethodAccess and result.asExpr() = call.getQualifier() and not call.getCallee().isStatic() or
+    result.(ImplicitInstanceAccess).getInstanceAccess().isImplicitMethodQualifier(call) or
+    result.(ImplicitInstanceAccess).getInstanceAccess().isImplicitThisConstructorArgument(call)
   }
 
 

@@ -36,7 +36,7 @@ string describeProp(PropWriteNode pwn) {
 }
 
 from PropWriteNode pwn, AnalyzedFlowNode base
-where base = pwn.getBase() and
+where base.asExpr() = pwn.getBase() and
       forex (InferredType tp | tp = base.getAType() |
         tp instanceof PrimitiveType and
         // assignments on `null` and `undefined` are covered by

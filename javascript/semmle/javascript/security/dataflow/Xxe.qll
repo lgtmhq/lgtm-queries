@@ -22,17 +22,17 @@ import semmle.javascript.security.dataflow.DOM
 /**
  * A data flow source for XXE vulnerabilities.
  */
-abstract class XxeSource extends DataFlowNode { }
+abstract class XxeSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for XXE vulnerabilities.
  */
-abstract class XxeSink extends DataFlowNode { }
+abstract class XxeSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for XXE vulnerabilities.
  */
-abstract class XxeSanitizer extends DataFlowNode { }
+abstract class XxeSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about XXE vulnerabilities.
@@ -42,17 +42,17 @@ class XxeTrackingConfig extends TaintTracking::Configuration {
     this = "Xxe"
   }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof XxeSource or
     source instanceof RemoteFlowSource or
-    isLocation(source)
+    isLocation(source.asExpr())
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof XxeSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof XxeSanitizer
   }
@@ -62,9 +62,9 @@ class XxeTrackingConfig extends TaintTracking::Configuration {
  * A call to an XML parser that performs external entity expansion, viewed
  * as a data flow sink for XXE vulnerabilities.
  */
-class XmlParsingWithExternalEntityResolution extends XxeSink {
+class XmlParsingWithExternalEntityResolution extends XxeSink, DataFlow::ValueNode {
   XmlParsingWithExternalEntityResolution() {
-    exists (XML::ParserInvocation parse | this = parse.getSourceArgument() |
+    exists (XML::ParserInvocation parse | astNode = parse.getSourceArgument() |
       parse.resolvesEntities(XML::ExternalEntity(_))
       or
       parse.resolvesEntities(XML::ParameterEntity(true)) and

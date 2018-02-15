@@ -26,6 +26,6 @@
 import javascript
 import semmle.javascript.security.dataflow.UnsafeDeserialization
 
-from UnsafeDeserializationTrackingConfig cfg, DataFlowNode source, DataFlowNode sink
+from UnsafeDeserializationTrackingConfig cfg, DataFlow::Node source, DataFlow::Node sink
 where cfg.flowsFrom(sink, source)
 select sink, "Unsafe deserialization of $@.", source, "user input"

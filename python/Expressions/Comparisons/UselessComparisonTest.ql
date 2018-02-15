@@ -38,16 +38,18 @@ private predicate useless_test(Comparison comp, ComparisonControlBlock controls,
     not exists(controls.getTest().getNode().(Compare).getOp(1))
 }
 
-from Expr test, Expr other, boolean isTrue, string message
-where 
-forex(Comparison comp | 
-    comp.getNode() = test | 
-    exists(ConditionBlock other_comp | useless_test(comp, other_comp, isTrue) and other_comp.getLastNode().getNode() = other)
-)
-and (
-    if exists(test.(Compare).getOp(1)) then
-        message = "Part of test is always " + isTrue + ", because of $@"
-    else
-        message = "Test is always " + isTrue + ", because of $@"
+private predicate useless_test_ast(AstNode comp, AstNode previous, boolean isTrue) {
+    forex(Comparison compnode, ConditionBlock block| 
+        compnode.getNode() = comp and
+        block.getLastNode().getNode() = previous
+        |
+        useless_test(compnode, block, isTrue)
     )
-select test, message, other, "this condition"
+}
+
+from Expr test, Expr other, boolean isTrue
+where 
+useless_test_ast(test, other, isTrue) and not useless_test_ast(test.getAChildNode+(), other, _)
+
+
+select test, "Test is always " + isTrue + ", because of $@", other, "this condition"

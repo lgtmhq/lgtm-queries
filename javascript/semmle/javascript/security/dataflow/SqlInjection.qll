@@ -21,17 +21,17 @@ import javascript
 /**
  * A data flow source for SQL-injection vulnerabilities.
  */
-abstract class SqlInjectionSource extends DataFlowNode { }
+abstract class SqlInjectionSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for SQL-injection vulnerabilities.
  */
-abstract class SqlInjectionSink extends DataFlowNode { }
+abstract class SqlInjectionSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for SQL-injection vulnerabilities.
  */
-abstract class SqlInjectionSanitizer extends DataFlowNode { }
+abstract class SqlInjectionSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about SQL-injection vulnerabilities.
@@ -41,31 +41,31 @@ class SqlInjectionTrackingConfig extends TaintTracking::Configuration {
     this = "SqlInjection"
   }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof SqlInjectionSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof SqlInjectionSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof SqlInjectionSanitizer
   }
 }
 
 /** An SQL expression passed to an API call that executes SQL. */
-class SqlInjectionExprSink extends SqlInjectionSink {
+class SqlInjectionExprSink extends SqlInjectionSink, DataFlow::ValueNode {
   SqlInjectionExprSink() {
-    this instanceof SQL::SqlString
+    astNode instanceof SQL::SqlString
   }
 }
 
 /** An expression that sanitizes a value for the purposes of SQL injection. */
-class SqlInjectionSanitizerExpr extends SqlInjectionSanitizer {
+class SqlInjectionSanitizerExpr extends SqlInjectionSanitizer, DataFlow::ValueNode {
   SqlInjectionSanitizerExpr() {
-    this = any(SQL::SqlSanitizer ss).getOutput()
+    astNode = any(SQL::SqlSanitizer ss).getOutput()
   }
 }

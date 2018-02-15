@@ -24,6 +24,7 @@
 
 import javascript
 import semmle.javascript.flow.CallGraph
+private import semmle.javascript.flow.InferredTypes
 
 /**
  * A data flow tracking configuration.
@@ -43,30 +44,30 @@ abstract class FlowTrackingConfiguration extends string {
    *
    * The smaller this predicate is, the faster `flowsFrom()` will converge.
    */
-  abstract predicate isSource(DataFlowNode source);
+  abstract predicate isSource(DataFlow::Node source);
 
   /**
    * Holds if `sink` is a relevant data flow sink.
    *
    * The smaller this predicate is, the faster `flowsFrom()` will converge.
    */
-  abstract predicate isSink(DataFlowNode sink);
+  abstract predicate isSink(DataFlow::Node sink);
 
   /**
    * Holds if `source -> sink` should be considered as a flow edge
    * in addition to standard data flow edges.
    */
-  predicate isAdditionalFlowStep(DataFlowNode src, DataFlowNode trg) { none() }
+  predicate isAdditionalFlowStep(DataFlow::Node src, DataFlow::Node trg) { none() }
 
   /**
    * Holds if the intermediate flow node `node` is prohibited.
    */
-  predicate isBarrier(DataFlowNode node) { none() }
+  predicate isBarrier(DataFlow::Node node) { none() }
 
   /**
    * Holds if flow from `src` to `trg` is prohibited.
    */
-  predicate isBarrier(DataFlowNode src, DataFlowNode trg) { none() }
+  predicate isBarrier(DataFlow::Node src, DataFlow::Node trg) { none() }
 
   /**
    * Holds if `source` flows to `sink`.
@@ -76,7 +77,7 @@ abstract class FlowTrackingConfiguration extends string {
    * **Note**: use `flowsFrom(sink, source)` instead if the set of sinks is
    * expected to be smaller than the set of sources.
    */
-  predicate flowsTo(DataFlowNode source, DataFlowNode sink) {
+  predicate flowsTo(DataFlow::Node source, DataFlow::Node sink) {
     flowsTo(source, sink, this, _) and
     isSink(sink)
   }
@@ -89,7 +90,7 @@ abstract class FlowTrackingConfiguration extends string {
    * **Note**: use `flowsTo(source, sink)` instead if the set of sources is
    * expected to be smaller than the set of sinks.
    */
-  predicate flowsFrom(DataFlowNode sink, DataFlowNode source) {
+  predicate flowsFrom(DataFlow::Node sink, DataFlow::Node source) {
     flowsFrom(source, sink, this, _) and
     isSource(source)
   }
@@ -112,9 +113,9 @@ private predicate calls(InvokeExpr invk, Function f) {
  * additional steps and barriers from the configuration into account.
  */
 pragma[inline]
-private predicate localFlowStep(DataFlowNode src, DataFlowNode trg,
+private predicate localFlowStep(DataFlow::Node src, DataFlow::Node trg,
                                 FlowTrackingConfiguration configuration) {
-  (src = trg.localFlowPred() or configuration.isAdditionalFlowStep(src, trg)) and
+  (src = trg.getAPredecessor() or configuration.isAdditionalFlowStep(src, trg)) and
   not configuration.isBarrier(src, trg)
 }
 
@@ -123,37 +124,52 @@ private predicate localFlowStep(DataFlowNode src, DataFlowNode trg,
  * Holds if `arg` is passed as an argument into parameter `parm`
  * through invocation `invk` of function `f`.
  */
-private predicate argumentPassing(CallSite invk, Expr arg, Function f, SimpleParameter parm) {
-  exists (int i |
-    calls(invk, f) and
+private predicate argumentPassing(DataFlow::ValueNode invk, DataFlow::ValueNode arg, Function f, SimpleParameter parm) {
+  exists (int i, CallSite cs |
+    cs = invk.asExpr() and calls(cs, f) and
     f.getParameter(i) = parm and not parm.isRestParameter() and
-    arg = invk.getArgumentNode(i)
+    arg = cs.getArgumentNode(i)
   )
 }
 
 /**
- * Holds if `p` is a parameter of `f` that may be reached by
- * forward flow under `configuration`.
+ * Holds if `def` is a parameter of `f` or a variable that is captured
+ * by `f`, such that `def` may be reached by forward flow under `configuration`.
  */
-private predicate hasForwardFlow(Function f, SimpleParameter p,
+private predicate hasForwardFlow(Function f, SsaDefinition def,
                                  FlowTrackingConfiguration configuration) {
-  exists (Expr arg | argumentPassing(_, arg, f, p) |
-    forwardParameterFlow(_, _, arg, configuration) or
+  exists (DataFlow::Node arg, SimpleParameter p |
+    argumentPassing(_, arg, f, p) and def.(SsaExplicitDefinition).getDef() = p |
+    forwardFlowFromInput(_, _, arg, configuration) or
     flowsTo(_, arg, configuration, _)
   )
+  or
+  exists (DataFlow::SsaDefinitionNode previousDef |
+    defOfCapturedVar(previousDef.getSsaVariable().getDefinition(), def, f) |
+    forwardFlowFromInput(_, _, previousDef, configuration) or
+    flowsTo(_, previousDef, configuration, _)
+  )
 }
 
 /**
- * Holds if `p` is a parameter of `f` whose value flows into `sink`
- * under `configuration`, possibly through callees.
+ * Holds if `expl` is a definition of the variable captured by `f` in `cap`.
  */
-private predicate forwardParameterFlow(Function f, SimpleParameter p,
-                                DataFlowNode sink, FlowTrackingConfiguration configuration) {
-  hasForwardFlow(f, p, configuration) and
+private predicate defOfCapturedVar(SsaExplicitDefinition expl, SsaVariableCapture cap, Function f) {
+  expl.getSourceVariable() = cap.getSourceVariable() and
+  f = cap.getContainer()
+}
+
+/**
+ * Holds if `def` is a parameter of `f` or a variable that is captured
+ * by `f` whose value flows into `sink` under `configuration`, possibly through callees.
+ */
+private predicate forwardFlowFromInput(Function f, SsaDefinition def,
+                                       DataFlow::Node sink, FlowTrackingConfiguration configuration) {
+  hasForwardFlow(f, def, configuration) and
   (
-    p = f.getAParameter() and sink = p.getAnInitialUse()
+    sink = DataFlow::ssaDefinitionNode(def)
     or
-    exists (DataFlowNode mid | forwardParameterFlow(f, p, mid, configuration) |
+    exists (DataFlow::Node mid | forwardFlowFromInput(f, def, mid, configuration) |
       localFlowStep(mid, sink, configuration)
       or
       forwardFlowThroughCall(mid, sink, configuration) and
@@ -168,8 +184,8 @@ private predicate forwardParameterFlow(Function f, SimpleParameter p,
  * backward flow under `configuration`.
  */
 private predicate hasBackwardFlow(Function f, FlowTrackingConfiguration configuration) {
-  exists (InvokeExpr invk | argumentPassing(invk, _, f, _) |
-    backwardParameterFlow(_, invk, _, configuration) or
+  exists (DataFlow::Node invk | calls(invk.asExpr(), f) |
+    backwardFlowFromInput(_, invk, _, configuration) or
     flowsFrom(invk, _, configuration, _)
   )
 }
@@ -179,13 +195,13 @@ private predicate hasBackwardFlow(Function f, FlowTrackingConfiguration configur
  * an expression that may be returned from `f`), under `configuration`,
  * possibly through callees.
  */
-private predicate backwardParameterFlow(Function f, DataFlowNode source,
-                                DataFlowNode sink, FlowTrackingConfiguration configuration) {
+private predicate backwardFlowFromInput(Function f, DataFlow::Node source,
+                                        DataFlow::ValueNode sink, FlowTrackingConfiguration configuration) {
   hasBackwardFlow(f, configuration) and
   (
-    sink = f.getAReturnedExpr() and source = sink
+    sink.asExpr() = f.getAReturnedExpr() and source = sink
     or
-    exists (DataFlowNode mid | backwardParameterFlow(f, mid, sink, configuration) |
+    exists (DataFlow::Node mid | backwardFlowFromInput(f, mid, sink, configuration) |
       localFlowStep(source, mid, configuration)
       or
       backwardFlowThroughCall(source, mid, configuration) and
@@ -196,40 +212,52 @@ private predicate backwardParameterFlow(Function f, DataFlowNode source,
 }
 
 /**
- * Holds if function `f` returns an expression into which its parameter `p` flows
- * under `configuration`, possibly through callees.
+ * Holds if function `f` returns an expression into which `def`, which is either a parameter
+ * of `f` or a variable captured by `f`, flows under `configuration`, possibly through callees.
  */
-private predicate forwardParameterReturn(Function f, SimpleParameter p, FlowTrackingConfiguration configuration) {
-  forwardParameterFlow(f, p, f.getAReturnedExpr(), configuration)
-}
-
-/**
- * Holds if function `f` returns an expression into which its parameter `p` flows
- * under `configuration`, possibly through callees.
- */
-private predicate backwardParameterReturn(Function f, SimpleParameter p, FlowTrackingConfiguration configuration) {
-  backwardParameterFlow(f, p.getAnInitialUse(), f.getAReturnedExpr(), configuration)
-}
-
-/**
- * Holds if `arg` is passed as an argument by invocation `invk` to
- * a function such that the argument may flow into the function's
- * return value under `configuration`.
- */
-private predicate forwardFlowThroughCall(Expr arg, InvokeExpr invk, FlowTrackingConfiguration configuration) {
-  exists (Function g, SimpleParameter q |
-    argumentPassing(invk, arg, g, q) and forwardParameterReturn(g, q, configuration)
+private predicate forwardReturnOfInput(Function f, SsaDefinition def, FlowTrackingConfiguration configuration) {
+  exists (DataFlow::ValueNode ret |
+    ret.asExpr() = f.getAReturnedExpr() and
+    forwardFlowFromInput(f, def, ret, configuration)
   )
 }
 
 /**
- * Holds if `arg` is passed as an argument by invocation `invk` to
- * a function such that the argument may flow into the function's
- * return value under `configuration`.
+ * Holds if function `f` returns an expression into which `def`, which is either a parameter
+ * of `f` or a variable captured by `f`, flows under `configuration`, possibly through callees.
  */
-private predicate backwardFlowThroughCall(Expr arg, InvokeExpr invk, FlowTrackingConfiguration configuration) {
-  exists (Function g, SimpleParameter q |
-    argumentPassing(invk, arg, g, q) and backwardParameterReturn(g, q, configuration)
+private predicate backwardReturnOfInput(Function f, SsaDefinition def, FlowTrackingConfiguration configuration) {
+  exists (DataFlow::ValueNode ret |
+    ret.asExpr() = f.getAReturnedExpr() and
+    backwardFlowFromInput(f, DataFlow::ssaDefinitionNode(def), ret, configuration)
+  )
+}
+
+/**
+ * Holds if `invk` is an invocation of a function such that `arg` is either passed as an argument
+ * or captured by the function, and may flow into the function's return value under `configuration`.
+ *
+ * Flow is tracked forward.
+ */
+private predicate forwardFlowThroughCall(DataFlow::Node arg, DataFlow::Node invk, FlowTrackingConfiguration configuration) {
+  exists (Function g, SsaDefinition ssa |
+    argumentPassing(invk, arg, g, ssa.(SsaExplicitDefinition).getDef()) or
+    defOfCapturedVar(arg.(DataFlow::SsaDefinitionNode).getSsaVariable().getDefinition(), ssa, g) and calls(invk.asExpr(), g) |
+    forwardReturnOfInput(g, ssa, configuration)
+  )
+}
+
+/**
+ * Holds if `invk` is an invocation of a function such that `arg` is either passed as an argument
+ * or captured by the function, and may flow into the function's return value under `configuration`.
+ *
+ * Flow is tracked backward.
+ */
+private predicate backwardFlowThroughCall(DataFlow::Node arg, DataFlow::Node invk, FlowTrackingConfiguration configuration) {
+  exists (Function g, SsaDefinition ssa |
+    argumentPassing(invk, arg, g,  ssa.(SsaExplicitDefinition).getDef()) or
+    defOfCapturedVar(arg.(DataFlow::SsaDefinitionNode).getSsaVariable().getDefinition(), ssa, g) and calls(invk.asExpr(), g) |
+    backwardReturnOfInput(g, ssa, configuration)
   )
 }
 
@@ -241,11 +269,11 @@ private predicate backwardFlowThroughCall(Expr arg, InvokeExpr invk, FlowTrackin
  * parameters are necessary to derive this flow.
  */
 pragma[noinline]
-private predicate forwardReachableProperty(DataFlowNode source,
+private predicate forwardReachableProperty(DataFlow::Node source,
                                            AbstractObjectLiteral obj, string prop,
                                            FlowTrackingConfiguration configuration,
                                            boolean stepIn) {
-  exists (AnalyzedPropertyWrite pw, DataFlowNode mid |
+  exists (AnalyzedPropertyWrite pw, DataFlow::Node mid |
     flowsTo(source, mid, configuration, stepIn) and
     pw.writes(obj, prop, mid)
   )
@@ -260,7 +288,7 @@ private predicate forwardReachableProperty(DataFlowNode source,
  */
 pragma[noinline]
 private predicate backwardReachableProperty(AbstractObjectLiteral obj, string prop,
-                                            DataFlowNode sink,
+                                            DataFlow::Node sink,
                                             FlowTrackingConfiguration configuration,
                                             boolean stepOut) {
   exists (AnalyzedPropertyAccess pr |
@@ -277,7 +305,7 @@ private predicate backwardReachableProperty(AbstractObjectLiteral obj, string pr
  * parameters are necessary to derive this flow.
  */
 pragma[nomagic]
-private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
+private predicate flowsTo(DataFlow::Node source, DataFlow::Node sink,
                           FlowTrackingConfiguration configuration, boolean stepIn) {
   (
     // Base case
@@ -286,7 +314,7 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     stepIn = false
     or
     // Local flow
-    exists (DataFlowNode mid |
+    exists (DataFlow::Node mid |
       flowsTo(source, mid, configuration, stepIn) and
       localFlowStep(mid, sink, configuration)
     )
@@ -295,19 +323,21 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     exists (AbstractObjectLiteral obj, string prop, AnalyzedPropertyAccess read |
       forwardReachableProperty(source, obj, prop, configuration, stepIn) and
       read.reads(obj, prop) and
-      sink = read
+      sink = read and
+      not configuration.isBarrier(source, sink)
     )
     or
     // Flow into function
-    exists (Expr arg, SimpleParameter parm |
+    exists (DataFlow::Node arg, SimpleParameter parm |
       flowsTo(source, arg, configuration, _) and
-      argumentPassing(_, arg, _, parm) and sink = parm.getAnInitialUse() and
+      argumentPassing(_, arg, _, parm) and sink = DataFlow::parameterNode(parm) and
       not configuration.isBarrier(arg, sink) and
       stepIn = true
     )
     or
     // Flow through a function that returns a value that depends on one of its arguments
-    exists(Expr arg |
+    // or a captured variable
+    exists(DataFlow::Node arg |
       flowsTo(source, arg, configuration, stepIn) and
       forwardFlowThroughCall(arg, sink, configuration) and
       not configuration.isBarrier(arg, sink)
@@ -316,10 +346,10 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
     // Flow out of function
     // This path is only enabled if the flow so far did not involve
     // any interprocedural steps from an argument to a caller.
-    exists (InvokeExpr invk, Function f, Expr ret |
-      ret = f.getAReturnedExpr() and
+    exists (DataFlow::ValueNode invk, DataFlow::ValueNode ret, Function f |
+      ret.asExpr() = f.getAReturnedExpr() and
       flowsTo(source, ret, configuration, stepIn) and stepIn = false and
-      calls(invk, f) and
+      calls(invk.asExpr(), f) and
       sink = invk and
       not configuration.isBarrier(ret, sink)
     )
@@ -339,7 +369,7 @@ private predicate flowsTo(DataFlowNode source, DataFlowNode sink,
  * to the source.
  */
 pragma[nomagic]
-private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
+private predicate flowsFrom(DataFlow::Node source, DataFlow::Node sink,
                             FlowTrackingConfiguration configuration, boolean stepOut) {
   (
     // Base case
@@ -348,7 +378,7 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
     stepOut = false
     or
     // Local flow
-    exists (DataFlowNode mid |
+    exists (DataFlow::Node mid |
       flowsFrom(mid, sink, configuration, stepOut) and
       localFlowStep(source, mid, configuration)
     )
@@ -356,32 +386,33 @@ private predicate flowsFrom(DataFlowNode source, DataFlowNode sink,
     // Flow through properties of object literals
     exists (AbstractObjectLiteral obj, string prop, AnalyzedPropertyWrite pw |
       backwardReachableProperty(obj, prop, sink, configuration, stepOut) and
-      pw.writes(obj, prop, source)
+      pw.writes(obj, prop, source) and
+      not configuration.isBarrier(source, sink)
     )
     or
     // Flow into function
     // This path is only enabled if the flow so far did not involve
     // any interprocedural steps from a `return` statement to the invocation site.
-    exists (SimpleParameter p, VarUse initialUse |
-      initialUse = p.getAnInitialUse() and
-      flowsFrom(initialUse, sink, configuration, stepOut) and
+    exists (SimpleParameter p |
+      flowsFrom(DataFlow::parameterNode(p), sink, configuration, stepOut) and
       stepOut = false and
       argumentPassing(_, source, _, p) and
-      not configuration.isBarrier(source, initialUse)
+      not configuration.isBarrier(source, DataFlow::parameterNode(p))
     )
     or
     // Flow through a function that returns a value that depends on one of its arguments
-    exists(InvokeExpr invk |
+    // or a captured variable
+    exists(DataFlow::Node invk |
       flowsFrom(invk, sink, configuration, stepOut) and
       backwardFlowThroughCall(source, invk, configuration) and
       not configuration.isBarrier(source, invk)
     )
     or
     // Flow out of function
-    exists (InvokeExpr invk, Function f |
+    exists (DataFlow::ValueNode invk, Function f |
       flowsFrom(invk, sink, configuration, _) and
-      calls(invk, f) and
-      source = f.getAReturnedExpr() and
+      calls(invk.asExpr(), f) and
+      source.asExpr() = f.getAReturnedExpr() and
       not configuration.isBarrier(source, invk) and
       stepOut = true
     )
@@ -411,7 +442,7 @@ module TaintTracking {
      * The smaller this predicate is, the faster `hasFlow()` will converge.
      */
     // overridden to provide taint-tracking specific qldoc
-    abstract override predicate isSource(DataFlowNode source);
+    abstract override predicate isSource(DataFlow::Node source);
 
     /**
      * Holds if `sink` is a relevant taint sink.
@@ -419,23 +450,23 @@ module TaintTracking {
      * The smaller this predicate is, the faster `hasFlow()` will converge.
      */
     // overridden to provide taint-tracking specific qldoc
-    abstract override predicate isSink(DataFlowNode sink);
+    abstract override predicate isSink(DataFlow::Node sink);
 
     /** Holds if the intermediate node `node` is a taint sanitizer. */
-    predicate isSanitizer(DataFlowNode node) {
+    predicate isSanitizer(DataFlow::Node node) {
       sanitizedByGuard(this, node)
     }
 
     /** Holds if the edge from `source` to `sink` is a taint sanitizer. */
-    predicate isSanitizer(DataFlowNode source, DataFlowNode sink) {
+    predicate isSanitizer(DataFlow::Node source, DataFlow::Node sink) {
       none()
     }
 
     final
-    override predicate isBarrier(DataFlowNode node) { isSanitizer(node) }
+    override predicate isBarrier(DataFlow::Node node) { isSanitizer(node) }
 
     final
-    override predicate isBarrier(DataFlowNode source, DataFlowNode sink) {
+    override predicate isBarrier(DataFlow::Node source, DataFlow::Node sink) {
       isSanitizer(source, sink)
     }
 
@@ -443,31 +474,34 @@ module TaintTracking {
      * Holds if the additional taint propagation step from `pred` to `succ`
      * must be taken into account in the analysis.
      */
-    predicate isAdditionalTaintStep(DataFlowNode pred, DataFlowNode succ) {
+    predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
       pred = succ.(FlowTarget).getATaintSource()
     }
 
     final
-    override predicate isAdditionalFlowStep(DataFlowNode pred, DataFlowNode succ) {
+    override predicate isAdditionalFlowStep(DataFlow::Node pred, DataFlow::Node succ) {
       isAdditionalTaintStep(pred, succ)
     }
   }
 
   /**
-   * Holds if variable use `u` is sanitized for the purposes of taint-tracking
+   * Holds if data flow node `nd` acts as a sanitizer for the purposes of taint-tracking
    * configuration `cfg`.
    */
-  private predicate sanitizedByGuard(Configuration cfg, VarUse u) {
-    exists (SsaVariable v | u = v.getAUse() |
-      // either `v` is a refined variable where the guard performs
-      // sanitization
-      exists (SsaRefinementNode ref | v = ref.getVariable() |
-        guardSanitizes(cfg, ref.getGuard(), _)
+  private predicate sanitizedByGuard(Configuration cfg, DataFlow::Node nd) {
+    exists (SsaRefinementNode ref |
+      nd = DataFlow::ssaDefinitionNode(ref) and
+      forex (SsaVariable input | input = ref.getAnInput() |
+        guardSanitizes(cfg, ref.getGuard(), input)
       )
-      or
-      // or there is a non-refining guard that dominates this use
+    )
+    or
+    // or there is a non-refining guard that dominates this use
+    exists (SsaVariable ssa, BasicBlock bb |
+      nd = DataFlow::valueNode(ssa.getAUseIn(bb)) and
       exists (ConditionGuardNode guard |
-        guardSanitizes(cfg, guard, v) and guard.dominates(u.getBasicBlock())
+        guardSanitizes(cfg, guard, ssa) and
+        guard.dominates(bb)
       )
     )
   }
@@ -498,9 +532,9 @@ module TaintTracking {
   /**
    * A taint propagating data flow edge, represented by its target node.
    */
-  abstract class FlowTarget extends DataFlowNode {
+  abstract class FlowTarget extends DataFlow::Node {
     /** Gets another data flow node from which taint is propagated to this node. */
-    abstract DataFlowNode getATaintSource();
+    abstract DataFlow::Node getATaintSource();
   }
 
   /**
@@ -509,29 +543,32 @@ module TaintTracking {
    */
   private class DefaultFlowTarget extends FlowTarget {
     DefaultFlowTarget() {
-      this instanceof Expr
+      this = DataFlow::valueNode(_) or
+      this = DataFlow::parameterNode(_)
     }
 
-    override DataFlowNode getATaintSource() {
-      // iterating over a tainted iterator taints the loop variable
-      exists (EnhancedForLoop efl | result = efl.getIterationDomain() |
-        this = efl.getAnIterationVariable().getAnAccess()
+    override DataFlow::ValueNode getATaintSource() {
+      exists (Expr e, Expr f | e = this.asExpr() and f = result.asExpr() |
+        // iterating over a tainted iterator taints the loop variable
+        exists (EnhancedForLoop efl | f = efl.getIterationDomain() |
+          e = efl.getAnIterationVariable().getAnAccess()
+        )
+        or
+        // arrays with tainted elements and objects with tainted property names are tainted
+        e.(ArrayExpr).getAnElement() = f or
+        exists (Property prop | e.(ObjectExpr).getAProperty() = prop |
+          prop.isComputed() and f = prop.getNameExpr()
+        )
+        or
+        // reading from a tainted object yields a tainted result
+        e.(PropAccess).getBase() = f
+        or
+        // awaiting a tainted expression gives a tainted result
+        e.(AwaitExpr).getOperand() = f
+        or
+        // comparing a tainted expression against a constant gives a tainted result
+        e.(Comparison).hasOperands(f, any(ConstantString cs))
       )
-      or
-      // arrays with tainted elements and objects with tainted property names are tainted
-      this.(ArrayExpr).getAnElement() = result or
-      exists (Property prop | this.(ObjectExpr).getAProperty() = prop |
-        prop.isComputed() and result = prop.getNameExpr()
-      )
-      or
-      // reading from a tainted object yields a tainted result
-      this.(PropAccess).getBase() = result
-      or
-      // awaiting a tainted expression gives a tainted result
-      this.(AwaitExpr).getOperand() = result
-      or
-      // comparing a tainted expression against a constant gives a tainted result
-      this.(Comparison).hasOperands(result, any(Expr e | exists(e.getStringValue())))
       or
       // `array.map(function (elt, i, ary) { ... })`: if `array` is tainted, then so are
       // `elt` and `ary`; similar for `forEach`
@@ -540,8 +577,8 @@ module TaintTracking {
         (i = 0 or i = 2) and
         f = m.getArgument(0).(DataFlowNode).getALocalSource() and
         p = f.getParameter(i) and
-        this = p.getAnInitialUse() and
-        result = m.getReceiver()
+        this = DataFlow::parameterNode(p) and
+        result.asExpr() = m.getReceiver()
       )
     }
   }
@@ -556,20 +593,21 @@ module TaintTracking {
    * a map, not as a real object. In this case, it makes sense to consider the entire
    * map to be tainted as soon as one of its entries is.
    */
-  private class DictionaryFlowTarget extends FlowTarget, @varaccess {
-    DataFlowNode source;
+  private class DictionaryFlowTarget extends FlowTarget, DataFlow::ValueNode {
+    DataFlow::Node source;
 
     DictionaryFlowTarget() {
+      asExpr() instanceof VarAccess and
       exists (AssignExpr assgn, IndexExpr idx, ObjectExpr obj |
         assgn.getTarget() = idx and
         idx.getBase().(DataFlowNode).getALocalSource() = obj and
         not exists(idx.getPropertyName()) and
-        this.(DataFlowNode).getALocalSource() = obj and
-        source = assgn.getRhs()
+        astNode.(DataFlowNode).getALocalSource() = obj and
+        source = DataFlow::valueNode(assgn.getRhs())
       )
     }
 
-    override DataFlowNode getATaintSource() {
+    override DataFlow::Node getATaintSource() {
       result = source
     }
   }
@@ -581,27 +619,22 @@ module TaintTracking {
    * Note that since we cannot easily distinguish string append from addition, we consider
    * any `+` operation to propagate taint.
    */
-  private class StringManipulationFlowTarget extends FlowTarget {
-    StringManipulationFlowTarget() {
-      this instanceof Expr
-    }
-
-    override DataFlowNode getATaintSource() {
+  private class StringManipulationFlowTarget extends FlowTarget, DataFlow::ValueNode {
+    override DataFlow::Node getATaintSource() {
       // addition propagates taint
-      this.(AddExpr).getAnOperand() = result or
-      this.(AssignAddExpr).getAChildExpr() = result or
+      astNode.(AddExpr).getAnOperand() = result.asExpr() or
+      astNode.(AssignAddExpr).getAChildExpr() = result.asExpr() or
       exists (SsaExplicitDefinition ssa |
-        this = ssa.getVariable().getAUse() and
-        result = ssa.getDef() and
-        result instanceof AssignAddExpr
+        astNode = ssa.getVariable().getAUse() and
+        result.asExpr().(AssignAddExpr) = ssa.getDef()
       )
       or
       // templating propagates taint
-      this.(TemplateLiteral).getAnElement() = result
+      astNode.(TemplateLiteral).getAnElement() = result.asExpr()
       or
       // other string operations that propagate taint
-      exists (string name | name = this.(MethodCallExpr).getMethodName() |
-        result = this.(MethodCallExpr).getReceiver() and
+      exists (string name | name = astNode.(MethodCallExpr).getMethodName() |
+        result.asExpr() = astNode.(MethodCallExpr).getReceiver() and
         ( // sorted, interesting, properties of String.prototype
           name = "anchor" or
           name = "big" or
@@ -635,7 +668,7 @@ module TaintTracking {
           name = "trimRight" or
           name = "valueOf"
         ) or
-        exists (int i | result = this.(MethodCallExpr).getArgument(i) |
+        exists (int i | result.asExpr() = astNode.(MethodCallExpr).getArgument(i) |
           name = "concat" or
           name = "replace" and i = 1
         )
@@ -643,20 +676,23 @@ module TaintTracking {
       or
       // standard library constructors that propagate taint: `RegExp` and `String`
       exists (InvokeExpr invk, string gv |
-        invk = this and invk.getCallee().accessesGlobal(gv) and result = invk.getArgument(0) |
+        invk = astNode and
+        invk.getCallee().accessesGlobal(gv) and
+        result = DataFlow::valueNode(invk.getArgument(0)) |
         gv = "RegExp" or gv = "String"
       )
       or
       // String.fromCharCode and String.fromCodePoint
       exists (int i, MethodCallExpr mce |
-        mce = this and
-        result = mce.getArgument(i) and
+        mce = astNode and
+        result.asExpr() = mce.getArgument(i) and
         (mce.getMethodName() = "fromCharCode" or mce.getMethodName() = "fromCodePoint")
       )
       or
       // `(encode|decode)URI(Component)?` and `escape` propagate taint
       exists (CallExpr c, string name |
-        c = this and c.getCallee().accessesGlobal(name) and result = c.getArgument(0) |
+        c = astNode and c.getCallee().accessesGlobal(name) and
+        result = DataFlow::valueNode(c.getArgument(0)) |
         name = "encodeURI" or name = "decodeURI" or
         name = "encodeURIComponent" or name = "decodeURIComponent"
       )
@@ -666,17 +702,17 @@ module TaintTracking {
   /**
    * A taint propagating data flow edge arising from JSON parsing or unparsing.
    */
-  private class JsonManipulationFlowTarget extends FlowTarget, @callexpr {
+  private class JsonManipulationFlowTarget extends FlowTarget, DataFlow::ValueNode {
     JsonManipulationFlowTarget() {
       exists (MethodCallExpr mce, string methodName |
-        mce = this and methodName = mce.getMethodName() |
-        mce.getReceiver().accessesGlobal("JSON") and
-        (methodName = "parse" or methodName = "stringify")
+        mce = astNode and methodName = mce.getMethodName() and
+        mce.getReceiver().accessesGlobal("JSON") |
+        methodName = "parse" or methodName = "stringify"
       )
     }
 
-    override DataFlowNode getATaintSource() {
-      result = this.(CallExpr).getArgument(0)
+    override DataFlow::Node getATaintSource() {
+      result.asExpr() = astNode.(CallExpr).getArgument(0)
     }
   }
 
@@ -684,25 +720,25 @@ module TaintTracking {
    * Holds if `params` is a `URLSearchParams` object providing access to
    * the parameters encoded in `input`.
    */
-  predicate isUrlSearchParams(DataFlowNode params, DataFlowNode input) {
-    exists (NewExpr urlSearchParams | urlSearchParams = params |
+  predicate isUrlSearchParams(DataFlow::Node params, DataFlow::Node input) {
+    exists (NewExpr urlSearchParams | urlSearchParams = params.asExpr() |
       urlSearchParams.getCallee().accessesGlobal("URLSearchParams") and
-      input = urlSearchParams.getArgument(0)
+      input = DataFlow::valueNode(urlSearchParams.getArgument(0))
     )
     or
     exists (NewExpr url, DataFlowNode recv |
-      params.(PropAccess).accesses(recv, "searchParams") and
+      params.asExpr().(PropAccess).accesses(recv, "searchParams") and
       recv.getALocalSource() = url and
       url.getCallee().accessesGlobal("URL") and
-      input = url.getArgument(0)
+      input = DataFlow::valueNode(url.getArgument(0))
     )
   }
 
   /**
    * A taint propagating data flow edge arising from URL parameter parsing.
    */
-  private class UrlSearchParamsFlowTarget extends FlowTarget {
-    DataFlowNode source;
+  private class UrlSearchParamsFlowTarget extends FlowTarget, DataFlow::ValueNode {
+    DataFlow::Node source;
 
     UrlSearchParamsFlowTarget() {
       // either this is itself an `URLSearchParams` object
@@ -710,14 +746,111 @@ module TaintTracking {
       or
       // or this is a call to `get` or `getAll` on a `URLSearchParams` object
       exists (DataFlowNode recv, string m |
-        this.(MethodCallExpr).calls(recv, m) and
-        isUrlSearchParams(recv.getALocalSource(), source) and
+        astNode.(MethodCallExpr).calls(recv, m) and
+        isUrlSearchParams(DataFlow::valueNode(recv.getALocalSource()), source) and
         m.matches("get%")
       )
     }
 
-    override DataFlowNode getATaintSource() {
+    override DataFlow::Node getATaintSource() {
       result = source
+    }
+  }
+
+  /**
+   * Holds if `cfg` is any taint tracking configuration.
+   *
+   * This is an auxiliary predicate used in the definition of sanitizing guards
+   * that intentionally do not restrict the set of configurations they apply to.
+   */
+  private predicate anyCfg(Configuration cfg) {
+    any()
+  }
+
+  /**
+   * A conditional checking a tainted string against a regular expression, which is
+   * considered to be a sanitizer for all configurations.
+   */
+  class SanitizingRegExpTest extends SanitizingGuard, Expr {
+    VarUse u;
+
+    SanitizingRegExpTest() {
+      exists (MethodCallExpr mce, DataFlowNode base, string m, DataFlowNode firstArg |
+        mce = this and mce.calls(base, m) and firstArg = mce.getArgument(0) |
+        // /re/.test(u) or /re/.exec(u)
+        base.getALocalSource() instanceof RegExpLiteral and
+        (m = "test" or m = "exec") and
+        firstArg = u
+        or
+        // u.match(/re/) or u.match("re")
+        base = u and
+        m = "match" and
+        (
+         firstArg.getALocalSource() instanceof RegExpLiteral or
+         firstArg.getALocalSource() instanceof ConstantString
+        )
+      )
+      or
+      // m = /re/.exec(u) and similar
+      this.(AssignExpr).getRhs().(SanitizingRegExpTest).getSanitizedVarUse() = u
+    }
+
+    private VarUse getSanitizedVarUse() {
+      result = u
+    }
+
+    override predicate sanitizes(Configuration cfg, boolean outcome, SsaVariable v) {
+      anyCfg(cfg) and
+      (outcome = true or outcome = false) and
+      u = v.getAUse()
+    }
+  }
+
+  /** A check of the form `if(o.hasOwnProperty(x))`, which sanitizes `x` in its "then" branch. */
+  class HasOwnPropertySanitizer extends TaintTracking::SanitizingGuard, MethodCallExpr {
+    SsaVariable x;
+
+    HasOwnPropertySanitizer() {
+      this.getMethodName() = "hasOwnProperty" and
+      getArgument(0) = x.getAUse()
+    }
+
+    override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
+      anyCfg(cfg) and
+      outcome = true and x = v
+    }
+  }
+
+  /** A check of the form `if(x in o)`, which sanitizes `x` in its "then" branch. */
+  class InSanitizer extends TaintTracking::SanitizingGuard, InExpr {
+    SsaVariable x;
+
+    InSanitizer() {
+      getLeftOperand() = x.getAUse()
+    }
+
+    override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
+      anyCfg(cfg) and
+      outcome = true and x = v
+    }
+  }
+
+  /** A check of the form `if(o[x] != undefined)`, which sanitizes `x` in its "then" branch. */
+  class UndefinedCheckSanitizer extends TaintTracking::SanitizingGuard, EqualityTest {
+    SsaVariable x;
+
+    UndefinedCheckSanitizer() {
+      exists (IndexExpr idx, AnalyzedFlowNode undef | hasOperands(idx, undef.asExpr()) |
+        // one operand is of the form `o[x]`
+        idx = getAnOperand() and idx.getPropertyNameExpr() = x.getAUse() and
+        // and the other one is guaranteed to be `undefined`
+        undef.getTheType() = TTUndefined()
+      )
+    }
+
+    override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
+      anyCfg(cfg) and
+      outcome = getPolarity().booleanNot() and x = v
     }
   }
 }

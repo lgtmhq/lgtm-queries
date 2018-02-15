@@ -38,13 +38,13 @@ predicate isDomValue(DataFlowNode nd) {
   isDomValue(nd.getALocalSource())
 }
 
-/** Holds if `nd` could refer to the `location` property of a DOM node. */
-predicate isLocation(DataFlowNode location) {
-  exists (PropAccess pacc | pacc = location |
+/** Holds if `e` could refer to the `location` property of a DOM node. */
+predicate isLocation(Expr e) {
+  exists (PropAccess pacc | pacc = e |
     isDomValue(pacc.getBase()) and pacc.getPropertyName() = "location"
   )
   or
-  location.(Expr).accessesGlobal("location")
+  e.accessesGlobal("location")
 }
 
 /** Holds if `nd` could refer to the `document` object. */
@@ -52,9 +52,9 @@ predicate isDocument(DataFlowNode nd) {
   nd.getALocalSource().(Expr).accessesGlobal("document")
 }
 
-/** Holds if `nd` could refer to the document URL. */
-predicate isDocumentURL(DataFlowNode nd) {
-  exists (Expr base, string propName | nd.(PropAccess).accesses(base, propName) |
+/** Holds if `e` could refer to the document URL. */
+predicate isDocumentURL(Expr e) {
+  exists (Expr base, string propName | e.(PropAccess).accesses(base, propName) |
     isDocument(base) and
     (propName = "documentURI" or
      propName = "documentURIObject" or
@@ -65,7 +65,7 @@ predicate isDocumentURL(DataFlowNode nd) {
     isDomValue(base) and propName = "baseUri"
   )
   or
-  nd.(Expr).accessesGlobal("location")
+  e.accessesGlobal("location")
 }
 
 /**
@@ -74,7 +74,7 @@ predicate isDocumentURL(DataFlowNode nd) {
  * `href`, `hash` and `search`.
  */
 predicate isSafeLocationProperty(PropAccess pacc) {
-  exists (DataFlowNode loc, string prop |
+  exists (Expr loc, string prop |
     isLocation(loc) and pacc.accesses(loc, prop) |
     prop != "href" and prop != "hash" and prop != "search"
   )

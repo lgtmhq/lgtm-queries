@@ -111,13 +111,14 @@ abstract class ReactComponent extends ASTNode {
 class FunctionalComponent extends ReactComponent, Function {
   FunctionalComponent() {
     // heuristic: a function with a single parameter named `props`
-    // that always returns a JSX element is probably a component
+    // that always returns a JSX element or fragment is probably
+    // a component
     getNumParameter() = 1 and
     exists (Parameter p | p = getParameter(0) |
       p.(SimpleParameter).getName().regexpMatch("(?i).*props.*") or
       p instanceof ObjectPattern
     ) and
-    forex (Expr e | e = getAReturnedExpr() | e instanceof JSXElement)
+    forex (Expr e | e = getAReturnedExpr() | e instanceof JSXNode)
   }
 
   override Function getInstanceMethod(string name) {

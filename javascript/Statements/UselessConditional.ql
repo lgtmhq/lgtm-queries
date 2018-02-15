@@ -102,18 +102,18 @@ predicate isConditional(ASTNode cond, Expr e) {
 }
 
 from ASTNode cond, AnalyzedFlowNode op, boolean cv, ASTNode sel, string msg
-where isConditional(cond, op) and
+where isConditional(cond, op.asExpr()) and
       cv = op.getTheBooleanValue()and
-      not whitelist(op) and
+      not whitelist(op.asExpr()) and
 
       // if `cond` is of the form `<non-trivial truthy expr> && <something>`,
       // we suggest replacing it with `<non-trivial truthy expr>, <something>`
-      if cond instanceof LogAndExpr and cv = true and not op.(Expr).isPure() then
+      if cond instanceof LogAndExpr and cv = true and not op.asExpr().isPure() then
         (sel = cond and msg = "This logical 'and' expression can be replaced with a comma expression.")
 
       // otherwise we just report that `op` always evaluates to `cv`
       else (
-        sel = op.(Expr).stripParens() and
+        sel = op.asExpr().stripParens() and
         if sel instanceof VarAccess then
           msg = "Variable '" + sel.(VarAccess).getVariable().getName() + "' always evaluates to " + cv + " here."
         else

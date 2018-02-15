@@ -108,9 +108,10 @@ class UnitializedSanitizer extends Sanitizer {
  */
 private predicate maybe_call_to_exiting_function(CallNode call) {
     exists(FunctionObject exits, string name |
-        call.getFunction().(AttrNode).getName() = name and
-        exits.neverReturns() and exits.isNormalMethod() and
-        exits.getName() = name
+        exits.neverReturns() and exits.getName() = name
+        |
+        call.getFunction().(NameNode).getId() = name or
+        call.getFunction().(AttrNode).getName() = name
     )
 }
 

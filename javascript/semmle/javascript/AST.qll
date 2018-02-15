@@ -227,13 +227,13 @@ class TopLevel extends @toplevel, StmtContainer {
 }
 
 /**
- * A script originating from an HTML `<script>` element.
+ * A stand-alone file or script originating from an HTML `<script>` element.
  */
 abstract class Script extends TopLevel {
 }
 
 /**
- * An external script originating from an HTML `<script>` element.
+ * A stand-alone file or an external script originating from an HTML `<script>` element.
  */
 class ExternalScript extends @script, Script {
 }

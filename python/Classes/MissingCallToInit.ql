@@ -33,7 +33,6 @@ where
     missing_call_to_superclass_method(self, missing, "__init__") and
     // If a superclass is incorrect, don't flag this class as well.
     not missing_call_to_superclass_method(self.getASuperType(), missing, "__init__") and
-    not missing = theObjectType().lookupAttribute("__init__") and
     not missing.neverReturns() and
     not self.failedInference() and
     not missing.isBuiltin()

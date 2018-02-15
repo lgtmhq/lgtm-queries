@@ -76,6 +76,8 @@ from VarDef dead, PurelyLocalVariable v  // captured variables may be read by cl
 where deadStoreOfLocal(dead, v) and
       // the variable should be accessed somewhere; otherwise it will be flagged by UnusedVariable
       exists(v.getAnAccess()) and
+      // don't flag ambient variable definitions
+      not dead.(ASTNode).isAmbient() and
       // don't flag function expressions
       not exists (FunctionExpr fe | dead = fe.getId()) and
       // don't flag function declarations nested inside blocks or other compound statements;

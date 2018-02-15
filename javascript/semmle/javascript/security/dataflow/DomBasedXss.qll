@@ -12,29 +12,23 @@
 // permissions and limitations under the License.
 
 /**
- * Provides a taint-tracking configuration for reasoning about cross-site
- * scripting vulnerabilities.
+ * Provides a taint-tracking configuration for reasoning about DOM-based
+ * cross-site scripting vulnerabilities.
  */
 
 import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.frameworks.jQuery
 
-/*
- * Many sources and sinks taken from
- *
- * https://github.com/wisec/domxsswiki/wiki
- */
-
 /**
  * A data flow source for XSS vulnerabilities.
  */
-abstract class XssSource extends DataFlowNode { }
+abstract class XssSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for XSS vulnerabilities.
  */
-abstract class XssSink extends DataFlowNode { }
+abstract class XssSink extends DataFlow::Node { }
 
 class DefaultSink extends XssSink {
   DefaultSink() {
@@ -46,7 +40,7 @@ class DefaultSink extends XssSink {
 /**
  * A sanitizer for XSS vulnerabilities.
  */
-abstract class XssSanitizer extends DataFlowNode { }
+abstract class XssSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about XSS.
@@ -54,18 +48,18 @@ abstract class XssSanitizer extends DataFlowNode { }
 class XssDataFlowConfiguration extends TaintTracking::Configuration {
   XssDataFlowConfiguration() { this = "XssDataFlowConfiguration" }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof XssSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof XssSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
-    isSafeLocationProperty(node) or
+    isSafeLocationProperty(node.asExpr()) or
     node instanceof XssSanitizer
   }
 }
@@ -73,9 +67,9 @@ class XssDataFlowConfiguration extends TaintTracking::Configuration {
 /**
  * An access of the URL of this page, or of the referrer to this page.
  */
-class LocationSource extends XssSource {
+class LocationSource extends XssSource, DataFlow::ValueNode {
   LocationSource() {
-    isDocumentURL(this)
+    isDocumentURL(astNode)
   }
 }
 
@@ -88,9 +82,9 @@ class LibrarySink extends XssSink {
     // Call to a jQuery method that inserts its argument into the DOM
     exists(JQueryMethodCall call |
       call.interpretsArgumentsAsHtml() and
-      this = call.getAnArgument()
+      this.asExpr() = call.getAnArgument()
     ) or
-    any(AngularJS::AngularJSCall call).interpretsArgumentAsHtml(this)
+    any(AngularJS::AngularJSCall call).interpretsArgumentAsHtml(this.asExpr())
   }
 }
 
@@ -101,12 +95,12 @@ class LibrarySink extends XssSink {
 class DomSink extends XssSink {
   DomSink() {
     // Call to a DOM function that inserts its argument into the DOM
-    any(DomMethodCallExpr call).interpretsArgumentsAsHTML(this)
+    any(DomMethodCallExpr call).interpretsArgumentsAsHTML(this.asExpr())
     or
     // Assignment to a dangerous DOM property
     exists (DomPropWriteNode pw |
       pw.interpretsValueAsHTML() and
-      this = pw.getRhs()
+      this = DataFlow::valueNode(pw.getRhs())
     )
   }
 }
@@ -118,53 +112,14 @@ class DomSink extends XssSink {
  * Any write to the `__html` property of an object assigned to this attribute
  * is considered an XSS sink.
  */
-class DangerouslySetInnerHtmlSink extends XssSink {
+class DangerouslySetInnerHtmlSink extends XssSink, DataFlow::ValueNode {
   DangerouslySetInnerHtmlSink() {
     exists (JSXAttribute attr, DataFlowNode valueSrc, PropWriteNode pwn |
       attr.getName() = "dangerouslySetInnerHTML" and
       valueSrc = attr.getValue().(DataFlowNode).getALocalSource() and
       pwn.getBase().getALocalSource() = valueSrc and
       pwn.getPropertyName() = "__html" and
-      this = pwn.getRhs()
+      astNode = pwn.getRhs()
     )
-  }
-}
-
-/**
- * A conditional checking a tainted string against a regular expression, which is
- * considered to be a sanitizer.
- */
-class SanitizingRegExpTest extends TaintTracking::SanitizingGuard, Expr {
-  VarUse u;
-
-  SanitizingRegExpTest() {
-    exists (MethodCallExpr mce, DataFlowNode base, string m, DataFlowNode firstArg |
-      mce = this and mce.calls(base, m) and firstArg = mce.getArgument(0) |
-      // /re/.test(u) or /re/.exec(u)
-      base.getALocalSource() instanceof RegExpLiteral and
-      (m = "test" or m = "exec") and
-      firstArg = u
-      or
-      // u.match(/re/) or u.match("re")
-      base = u and
-      m = "match" and
-      (
-       firstArg.getALocalSource() instanceof RegExpLiteral or
-       firstArg.getALocalSource() instanceof ConstantString
-      )
-    )
-    or
-    // m = /re/.exec(u) and similar
-    this.(AssignExpr).getRhs().(SanitizingRegExpTest).getSanitizedVarUse() = u
-  }
-
-  VarUse getSanitizedVarUse() {
-    result = u
-  }
-
-  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
-    cfg instanceof XssDataFlowConfiguration and
-    (outcome = true or outcome = false) and
-    u = v.getAUse()
   }
 }

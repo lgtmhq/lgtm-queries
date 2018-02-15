@@ -387,6 +387,12 @@ abstract class PropRefNode extends DataFlowNode {
   abstract DataFlowNode getBase();
 
   /**
+   * Gets the expression specifying the name of the property being
+   * read or written. This is usually either an identifier or a literal.
+   */
+  abstract Expr getPropertyNameExpr();
+
+  /**
    * Gets the name of the property being read or written,
    * if it can be statically determined.
    *
@@ -417,6 +423,7 @@ abstract class PropWriteNode extends PropRefNode {
 private class PropAssignNode extends PropWriteNode, @propaccess {
   PropAssignNode() { this instanceof LValue }
   override DataFlowNode getBase() { result = this.(PropAccess).getBase() }
+  override Expr getPropertyNameExpr() { result = this.(PropAccess).getPropertyNameExpr() }
   override string getPropertyName() { result = this.(PropAccess).getPropertyName() }
   override DataFlowNode getRhs() { result = this.(LValue).getRhs() }
 }
@@ -430,6 +437,7 @@ private class PropInitNode extends PropWriteNode, @expr {
   /** Gets the property that this node wraps. */
   private Property getProperty() { this = result.getNameExpr() }
   override DataFlowNode getBase() { result = getProperty().getObjectExpr() }
+  override Expr getPropertyNameExpr() { result = this }
   override string getPropertyName() { result = getProperty().getName() }
   override DataFlowNode getRhs() { result = getProperty().(ValueProperty).getInit() }
 }
@@ -441,6 +449,9 @@ private class PropInitNode extends PropWriteNode, @expr {
 private class ObjectDefinePropNode extends PropWriteNode, @callexpr {
   ObjectDefinePropNode() { this instanceof CallToObjectDefineProperty }
   override DataFlowNode getBase() { result = this.(CallToObjectDefineProperty).getBaseObject() }
+  override Expr getPropertyNameExpr() {
+    result = this.(CallToObjectDefineProperty).getArgument(1)
+  }
   override string getPropertyName() {
     result = this.(CallToObjectDefineProperty).getPropertyName()
   }
@@ -463,6 +474,7 @@ private class StaticMemberAsWrite extends PropWriteNode, @expr {
   /** Gets the member definition that this node wraps. */
   private MemberDefinition getMember() { this = result.getNameExpr() }
   override DataFlowNode getBase() { result = getMember().getDeclaringClass() }
+  override Expr getPropertyNameExpr() { result = getMember().getNameExpr() }
   override string getPropertyName() { result = getMember().getName() }
   override DataFlowNode getRhs() { result = getMember().getInit() }
 }
@@ -474,6 +486,7 @@ private class StaticMemberAsWrite extends PropWriteNode, @expr {
 private class SpreadPropertyAsWrite extends PropWriteNode, @expr {
   SpreadPropertyAsWrite() { exists (SpreadProperty prop | this = prop.getInit()) }
   override DataFlowNode getBase() { result.(ObjectExpr).getAProperty().getInit() = this }
+  override Expr getPropertyNameExpr() { none() }
   override string getPropertyName() { none() }
   override DataFlowNode getRhs() { none() }
 }
@@ -488,6 +501,7 @@ private class JSXAttributeAsWrite extends PropWriteNode, @identifier {
   /** Gets the JSX attribute that this node wraps. */
   private JSXAttribute getAttribute() { result.getNameExpr() = this }
   override DataFlowNode getBase() { result = getAttribute().getElement() }
+  override Expr getPropertyNameExpr() { result = this }
   override string getPropertyName() { result = this.(Identifier).getName() }
   override DataFlowNode getRhs() { result = getAttribute().getValue() }
 }
@@ -508,6 +522,7 @@ abstract class PropReadNode extends PropRefNode {
 private class PropAccessReadNode extends PropReadNode, @propaccess {
   PropAccessReadNode() { this instanceof RValue }
   override DataFlowNode getBase() { result = this.(PropAccess).getBase() }
+  override Expr getPropertyNameExpr() { result = this.(PropAccess).getPropertyNameExpr() }
   override string getPropertyName() { result = this.(PropAccess).getPropertyName() }
   override DataFlowNode getDefault() { none() }
 }
@@ -526,6 +541,7 @@ private class PropPatternReadNode extends PropReadNode, @expr {
       result = d.getSource()
     )
   }
+  override Expr getPropertyNameExpr() { result = getPropertyPattern().getNameExpr() }
   override string getPropertyName() { result = getPropertyPattern().getName() }
   override DataFlowNode getDefault() { result = getPropertyPattern().getDefault() }
 }
@@ -542,6 +558,7 @@ private class RestPropertyAsRead extends PropReadNode {
       result = d.getSource()
     )
   }
+  override Expr getPropertyNameExpr() { none() }
   override string getPropertyName() { none() }
   override DataFlowNode getDefault() { none() }
 }

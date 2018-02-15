@@ -104,7 +104,7 @@ predicate referenceTo(Expr source, Expr use) {
   source = use
   or
   exists(SsaDefinition def, LocalScopeVariable v |
-         def.getAnUltimateDefinition(v) = source and def.getAUse(v) = use)
+         def.getAnUltimateDefiningValue(v) = source and def.getAUse(v) = use)
 }
 
 from FunctionCall fc, Expr check, Expr checkUse, Expr opUse

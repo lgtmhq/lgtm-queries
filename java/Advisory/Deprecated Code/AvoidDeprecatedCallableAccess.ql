@@ -20,6 +20,7 @@
  * @precision high
  * @id java/deprecated-call
  * @tags changeability
+ *       non-attributable
  *       external/cwe/cwe-477
  */
 import java

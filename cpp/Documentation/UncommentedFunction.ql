@@ -21,6 +21,7 @@
  * @tags maintainability
  *       documentation
  *       statistical
+ *       non-attributable
  */
 import default
 

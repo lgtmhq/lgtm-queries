@@ -67,7 +67,7 @@ predicate isPropertyFilter(UnusedLocal v) {
 predicate isReactImportForJSX(UnusedLocal v) {
   exists (ImportSpecifier is |
     is.getLocal() = v.getADeclaration() and
-    exists (JSXElement jsx | jsx.getTopLevel() = is.getTopLevel()) |
+    exists (JSXNode jsx | jsx.getTopLevel() = is.getTopLevel()) |
     v.getName() = "React" or
     // also accept legacy `@jsx` pragmas
     exists (JSXPragma p | p.getTopLevel() = is.getTopLevel() | p.getDOMName() = v.getName())

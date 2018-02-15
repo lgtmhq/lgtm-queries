@@ -92,19 +92,19 @@ newtype TAbstractValue =
    * An abstract representation of an indefinite value that represents a function or class,
    * where `cause` records the cause of the incompleteness.
    */
-  TIndefiniteFunctionOrClass(DataFlowIncompleteness cause)
+  TIndefiniteFunctionOrClass(DataFlow::Incompleteness cause)
   or
   /**
    * An abstract representation of an indefinite value that represents an object,
    * but not a function or class, with `cause` recording the cause of the incompleteness.
    */
-  TIndefiniteObject(DataFlowIncompleteness cause)
+  TIndefiniteObject(DataFlow::Incompleteness cause)
   or
   /**
    * Abstract representation of indefinite values that represent any value, with
    * `cause` recording the cause of the incompleteness.
    */
-  TIndefiniteAbstractValue(DataFlowIncompleteness cause)
+  TIndefiniteAbstractValue(DataFlow::Incompleteness cause)
 
 /**
  * Gets a definite abstract value with the given type.

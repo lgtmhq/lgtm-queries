@@ -25,6 +25,6 @@ import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.security.dataflow.InsufficientPasswordHash
 
-from InsufficientPasswordHashDataFlowConfiguration insufficientPasswordHash, DataFlowNode source, DataFlowNode sink
+from InsufficientPasswordHashDataFlowConfiguration insufficientPasswordHash, DataFlow::Node source, DataFlow::Node sink
 where insufficientPasswordHash.flowsFrom(sink, source)
 select sink, "Password from $@ is hashed insecurely.", source , source.toString()

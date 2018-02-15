@@ -901,8 +901,8 @@ class BasicBlock extends @py_flow_node {
 
     /** Gets the last node in this basic block */
     ControlFlowNode getLastNode() {
-        exists(int i | 
-            this.getNode(i) = result and 
+        exists(int i |
+            this.getNode(i) = result and
             i = max(int j | py_flow_bb_node(_, _, this, j))
         )
     }

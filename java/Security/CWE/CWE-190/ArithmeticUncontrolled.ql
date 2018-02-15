@@ -24,42 +24,46 @@
  *       external/cwe/cwe-191
  */
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.TaintTracking
 import semmle.code.java.security.SecurityTests
 import ArithmeticCommon
 
-class TaintSource extends FlowSource {
+class TaintSource extends DataFlow::ExprNode {
   TaintSource() {
     // Either this is an access to a random number generating method of the right kind, ...
     exists(Method def |
-      def = this.(MethodAccess).getMethod()
-      and 
+      def = this.getExpr().(MethodAccess).getMethod() and
       (
         // Some random-number methods are omitted:
         // `nextDouble` and `nextFloat` are between 0 and 1,
         // `nextGaussian` is extremely unlikely to hit max values.
         def.getName() = "nextInt" or
         def.getName() = "nextLong"
-      )
-      and def.getNumberOfParameters() = 0
-      and def.getDeclaringType().hasQualifiedName("java.util", "Random")
-    )
-    
+      ) and
+      def.getNumberOfParameters() = 0 and
+      def.getDeclaringType().hasQualifiedName("java.util", "Random")
+    ) or
     // ... or this is the array parameter of `nextBytes`, which is filled with random bytes.
-    or exists(MethodAccess m, Method def | 
-      m.getAnArgument() = this 
-      and m.getMethod() = def
-      and def.getName() = "nextBytes" 
-      and def.getNumberOfParameters() = 1
-      and def.getDeclaringType().hasQualifiedName("java.util", "Random")
+    exists(MethodAccess m, Method def |
+      m.getAnArgument() = this.getExpr() and
+      m.getMethod() = def and
+      def.getName() = "nextBytes" and
+      def.getNumberOfParameters() = 1 and
+      def.getDeclaringType().hasQualifiedName("java.util", "Random")
     )
   }
+}
+
+class ArithmeticUncontrolledFlowConfig extends TaintTracking::Configuration {
+  ArithmeticUncontrolledFlowConfig() { this = "ArithmeticUncontrolledFlowConfig" }
+  override predicate isSource(DataFlow::Node source) { source instanceof TaintSource }
+  override predicate isSink(DataFlow::Node sink) { any() }
 }
 
 from ArithExpr exp, VarAccess tainted, TaintSource origin, string effect
 where
   exp.getAnOperand() = tainted and
-  origin.flowsTo(tainted) and
+  any(ArithmeticUncontrolledFlowConfig conf).hasFlow(origin, DataFlow::exprNode(tainted)) and
   (
     (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
     (not guardedAgainstOverflow(exp, tainted) and effect = "overflow")
@@ -67,7 +71,7 @@ where
   // Exclude widening conversions of tainted values due to binary numeric promotion (JLS 5.6.2)
   // unless there is an enclosing cast down to a narrower type.
   and narrowerThanOrEqualTo(exp, tainted.getType())
-  and not exp.getEnclosingCallable() instanceof HashCodeMethod
+  and not overflowIrrelevant(exp)
   and not exp.getEnclosingCallable().getDeclaringType() instanceof NonSecurityTestClass
 select exp, "$@ flows to here and is used in arithmetic, potentially causing an " + effect + ".", 
   origin, "Uncontrolled value"

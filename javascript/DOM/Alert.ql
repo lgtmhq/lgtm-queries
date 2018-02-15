@@ -17,8 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @id js/alert-call
- * @tags usability
- *       maintainability
+ * @tags maintainability
  *       external/cwe/cwe-489
  * @precision very-high
  */

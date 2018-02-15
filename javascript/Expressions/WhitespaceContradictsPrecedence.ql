@@ -21,6 +21,7 @@
  * @tags maintainability
  *       correctness
  *       statistical
+ *       non-attributable
  *       external/cwe/cwe-783
  * @precision very-high
  */

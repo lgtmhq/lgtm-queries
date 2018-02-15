@@ -25,17 +25,9 @@
  */
 
 import javascript
-import semmle.javascript.frameworks.Templating
 
 from DOM::AttributeDefinition id, string reason
-where id.getName() = "id" and
-      exists (string v | v = id.getStringValue() |
-        v = "" and
-        reason = "must contain at least one character"
-        or
-        v.regexpMatch(".*\\s.*") and
-        // we exclude attribute values that look like they might be templated
-        not v.regexpMatch(Templating::getDelimiterMatchingRegexp()) and
-        reason = "must not contain any space characters"
-      )
+where DOM::isInvalidHtmlIdAttributeValue(id, reason) and
+      // exclude attribute values that look like they might be templated
+      not id.mayHaveTemplateValue()
 select id, "The value of the id attribute " + reason + "."

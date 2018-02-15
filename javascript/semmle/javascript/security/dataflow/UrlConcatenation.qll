@@ -21,10 +21,10 @@ import javascript
 
 /**
  * Holds if a string value containing `?` or `#` may flow into
- * `nd` or one of its operands, assuming that it is a concatenation.
+ * `e` or one of its operands, assuming that it is a concatenation.
  */
-private predicate hasSanitizingSubstring(DataFlowNode nd) {
-  exists (DataFlowNode src | src = nd.getALocalSource() |
+private predicate hasSanitizingSubstring(Expr e) {
+  exists (DataFlowNode src | src = e.(DataFlowNode).getALocalSource() |
     (src instanceof AddExpr or src instanceof AssignAddExpr) and
     hasSanitizingSubstring(src.(Expr).getAChildExpr())
     or
@@ -40,16 +40,16 @@ private predicate hasSanitizingSubstring(DataFlowNode nd) {
  *
  * This is considered as a sanitizing edge for the URL redirection queries.
  */
-predicate sanitizingPrefixEdge(DataFlowNode source, DataFlowNode sink) {
+predicate sanitizingPrefixEdge(DataFlow::Node source, DataFlow::Node sink) {
   exists (AddExpr add |
-    source = add.getRightOperand() and
-    sink = add and
+    source.asExpr() = add.getRightOperand() and
+    sink.asExpr() = add and
     hasSanitizingSubstring(add.getLeftOperand())
   )
   or
   exists (TemplateLiteral tl, int i |
-    source = tl.getElement(i) and
-    sink = tl and
+    source.asExpr() = tl.getElement(i) and
+    sink.asExpr() = tl and
     hasSanitizingSubstring(tl.getElement([0..i-1]))
   )
 }

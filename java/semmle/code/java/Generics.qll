@@ -121,6 +121,12 @@ abstract class BoundedType extends RefType, @boundedtype {
    * if no explicit type bound is present.
    */
   abstract RefType getFirstUpperBoundType();
+
+  /** Gets a transitive upper bound for this type that is not itself a bounded type. */
+  RefType getAnUltimateUpperBoundType() {
+    result = getUpperBoundType() and not result instanceof BoundedType or
+    result = getUpperBoundType().(BoundedType).getAnUltimateUpperBoundType()
+  }
 }
 
 /**

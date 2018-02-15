@@ -56,7 +56,7 @@ int maxArity(CallSite invk) {
  * This predicate is only defined for call sites where callee information is complete.
  */
 predicate firstSpuriousArgument(CallSite invk, Expr arg) {
-  arg = invk.getArgumentNode(maxArity(invk)) and
+  arg = invk.getArgumentNode(maxArity(invk)).asExpr() and
   not invk.isIncomplete()
 }
 

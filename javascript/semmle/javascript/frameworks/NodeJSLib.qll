@@ -17,6 +17,7 @@
 
 import javascript
 import semmle.javascript.frameworks.HTTP
+import semmle.javascript.security.SensitiveActions
 
 module NodeJSLib {
   /**
@@ -27,6 +28,71 @@ module NodeJSLib {
       http.getPath() = "http" or http.getPath() = "https" |
       call = http.getAMethodCall("createServer")
     )
+  }
+
+  /**
+   * A NodeJS HTTP response.
+   *
+   * A server library that provides an (enhanced) NodesJS HTTP response
+   * object should implement a library specific subclass of this class.
+   */
+  abstract class ResponseExpr extends Expr {
+
+    /**
+     * Gets a route handler that provides this response.
+     */
+    abstract HTTP::RouteHandler getARouteHandler();
+
+  }
+
+  /**
+   * A NodeJS HTTP request.
+   *
+   * A server library that provides an (enhanced) NodesJS HTTP request
+   * object should implement a library specific subclass of this class.
+   */
+  abstract class RequestExpr extends Expr {
+
+    /**
+     * Gets a route handler that provides this request.
+     */
+    abstract HTTP::RouteHandler getARouteHandler();
+
+  }
+
+  /**
+   * A builtin NodeJS HTTP response.
+   */
+  private class BuiltinRouteHandlerResponseExpr extends ResponseExpr {
+
+    RouteHandler rh;
+
+    BuiltinRouteHandlerResponseExpr() {
+      this = rh.getAResponseExpr()
+    }
+
+    override RouteHandler getARouteHandler() {
+      result = rh
+    }
+
+  }
+
+  /**
+   * A builtin NodeJS HTTP request.
+   */
+  private class BuiltinRouteHandlerRequestExpr extends RequestExpr {
+
+    RouteHandler rh;
+
+    BuiltinRouteHandlerRequestExpr() {
+      this = rh.getARequestExpr()
+    }
+
+
+    override RouteHandler getARouteHandler() {
+      result = rh
+    }
+
   }
 
   class RouteHandler extends HTTP::Servers::StandardRouteHandler {
@@ -62,18 +128,51 @@ module NodeJSLib {
     }
   }
 
+
+  /**
+   * An access to a user-controlled NodeJS request input.
+   */
+  private class RequestInputAccess extends HTTP::RequestInputAccess {
+
+    string kind;
+
+    RequestInputAccess() {
+      exists (RequestExpr request |
+        // `req.url`
+        kind = "url" and
+        this.asExpr().(PropAccess).accesses(request, "url")
+        or
+        exists (PropAccess headers, string name |
+          // `req.headers.<name>`
+          if name = "cookie" then kind = "cookie" else kind= "header" |
+          headers.accesses(request, "headers") and
+          this.asExpr().(PropAccess).accesses(headers, name)
+        )
+      )
+    }
+
+    override string getKind() {
+      result = kind
+    }
+
+  }
+
   /**
    * Holds if `nd` is an HTTP request object.
+   *
+   * DEPRECATED: use `instanceof RequestExpr` instead.
    */
-  predicate isRequest(DataFlowNode nd) {
-    any(RouteHandler rh).getARequestExpr() = nd
+  deprecated predicate isRequest(DataFlowNode nd) {
+    nd instanceof RequestExpr
   }
 
   /**
    * Holds if `nd` is an HTTP response object.
+   *
+   * DEPRECATED: use `instanceof ResponseExpr` instead.
    */
-  predicate isResponse(DataFlowNode nd) {
-    any(RouteHandler rh).getAResponseExpr() = nd
+  deprecated predicate isResponse(DataFlowNode nd) {
+    nd instanceof ResponseExpr
   }
 
   class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
@@ -104,30 +203,18 @@ module NodeJSLib {
 
   }
 
-  /**
-   * A read access to the `url` property of an HTTP request.
-   */
-  private class RequestUrlAccess extends RemoteFlowSource {
-    RequestUrlAccess() {
-      exists (PropReadNode prn | this = prn |
-        isRequest(prn.getBase()) and prn.getPropertyName() = "url"
-      )
-    }
-
-    override string getSourceType() {
-      result = "Node.js request URL"
-    }
-  }
-
   private abstract class HeaderDefinition extends HTTP::Servers::StandardHeaderDefinition {
 
+    ResponseExpr r;
+
     HeaderDefinition(){
-      isResponse(getReceiver())
+      getReceiver() = r
     }
 
-    override RouteHandler getARouteHandler(){
-      getReceiver() = result.getAResponseExpr()
+    override HTTP::RouteHandler getARouteHandler(){
+      result = r.getARouteHandler()
     }
+
   }
 
   /**
@@ -161,29 +248,69 @@ module NodeJSLib {
   /**
    * A call to `url.parse` or `querystring.parse`.
    */
-  private class UrlParsingFlowTarget extends TaintTracking::FlowTarget, @callexpr {
-    override DataFlowNode getATaintSource() {
+  private class UrlParsingFlowTarget extends TaintTracking::FlowTarget, DataFlow::ValueNode {
+    UrlParsingFlowTarget() {
+      astNode.(MethodCallExpr).calls(_, "parse")
+    }
+
+    override DataFlow::Node getATaintSource() {
       exists (ModuleInstance m |
         m.getPath() = "url" or m.getPath() = "querystring" |
-        this = m.getAMethodCall("parse") and result = this.(CallExpr).getArgument(0)
+        astNode = m.getAMethodCall("parse") and
+        result.asExpr() = astNode.(CallExpr).getArgument(0)
       )
     }
+  }
+
+  /**
+   * A call to a path-module method that preserves taint.
+   */
+  private class PathFlowTarget extends TaintTracking::FlowTarget, DataFlow::ValueNode {
+
+    Expr tainted;
+
+    PathFlowTarget() {
+      exists (ModuleInstance pathModule, CallExpr call, string methodName |
+        astNode = call and
+        pathModule.getPath() = "path" and
+        astNode = pathModule.getAMethodCall(methodName) |
+        // getters
+        (methodName = "basename" and tainted = call.getArgument(0)) or
+        (methodName = "dirname" and tainted = call.getArgument(0)) or
+        (methodName = "extname" and tainted = call.getArgument(0)) or
+
+        // transformers
+        (methodName = "join" and tainted = call.getAnArgument()) or
+        (methodName = "normalize" and tainted = call.getArgument(0)) or
+        (methodName = "relative" and tainted = call.getArgument([0..1])) or
+        (methodName = "resolve" and tainted = call.getAnArgument()) or
+        (methodName = "toNamespacedPath" and tainted = call.getArgument(0))
+      )
+    }
+
+    override DataFlow::Node getATaintSource() {
+        result.asExpr() = tainted
+    }
+
   }
 
   /**
    * An expression passed as the first argument to the `write` or `end` method
    * of an HTTP response.
    */
-  private class ResponseBody extends HTTP::ResponseBody {
-    ResponseBody() {
-      exists (MethodCallExpr mce |
-        isResponse(mce.getReceiver()) and
-        (mce.getMethodName() = "write" or mce.getMethodName() = "end") and
+  private class ResponseSendArgument extends HTTP::ResponseSendArgument {
+    HTTP::RouteHandler rh;
+
+    ResponseSendArgument() {
+      exists (MethodCallExpr mce, string m | m = "write" or m = "end" |
+        mce.calls(any(ResponseExpr e | e.getARouteHandler() = rh), m) and
         this = mce.getArgument(0) and
         // don't mistake callback functions as data
         not this.(DataFlowNode).getALocalSource() instanceof Function
       )
     }
+
+    override HTTP::RouteHandler getHandler() { result = rh }
   }
 
   /**
@@ -213,4 +340,26 @@ module NodeJSLib {
     }
 
   }
+
+  /**
+   * A call a process-terminating function, such as `process.exit`.
+   */
+  class ProcessTermination extends SensitiveAction {
+
+    ProcessTermination() {
+      exists (Expr callee |
+        this.asExpr().(CallExpr).getCallee().(DataFlowNode).getALocalSource() = callee |
+        exists(ModuleInstance mod |
+          mod.getPath() = "exit" and
+          callee = mod
+        ) or
+        exists(PropAccess exit |
+          exit.accesses(any(Expr e | e.accessesGlobal("process")), "exit") and
+          callee = exit
+        )
+      )
+    }
+
+  }
+
 }

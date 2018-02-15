@@ -56,6 +56,7 @@ module ExpressLibraries {
       name = this.(XFrameOptionsRouteHandlerHeader).getAHeaderName() and
       result = this
     }
+
   }
 
 
@@ -89,6 +90,7 @@ module ExpressLibraries {
       name = this.(FrameGuardRouteHandlerHeader).getAHeaderName() and
       result = this
     }
+
   }
 
 
@@ -126,6 +128,7 @@ module ExpressLibraries {
       name = this.(HelmetRouteHandlerHeader).getAHeaderName() and
       result = this
     }
+
   }
 
 }

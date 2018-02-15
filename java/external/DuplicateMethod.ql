@@ -24,6 +24,7 @@
  *       useless-code
  *       duplicate-code
  *       statistical
+ *       non-attributable
  */
 import java
 import CodeDuplication

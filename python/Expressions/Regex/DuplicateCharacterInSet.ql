@@ -36,7 +36,9 @@ predicate duplicate_char_in_class(Regex r, string char) {
         r.charSet(start, end)
     ) and
     /* Exclude � as we use it for any unencodable character */
-    char != "�"
+    char != "�" and
+    //Ignore whitespace in verbose mode
+    not (r.getAMode() = "VERBOSE" and (char = " " or char = "\t" or char = "\r" or char = "\n"))
 }
 
 from Regex r, string char

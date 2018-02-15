@@ -24,13 +24,13 @@
  *       external/cwe/cwe-191
  */
 import java
-import semmle.code.java.security.DataFlow
+import semmle.code.java.dataflow.FlowSources
 import ArithmeticCommon
 
 from ArithExpr exp, VarAccess tainted, RemoteUserInput origin, string effect
 where
   exp.getAnOperand() = tainted and
-  origin.flowsTo(tainted) and
+  origin.flowsTo(DataFlow::exprNode(tainted)) and
   (
     (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
     (not guardedAgainstOverflow(exp, tainted) and effect = "overflow")
@@ -38,6 +38,6 @@ where
   // Exclude widening conversions of tainted values due to binary numeric promotion (JLS 5.6.2)
   // unless there is an enclosing cast down to a narrower type.
   and narrowerThanOrEqualTo(exp, tainted.getType())
-  and not exp.getEnclosingCallable() instanceof HashCodeMethod
+  and not overflowIrrelevant(exp)
 select exp, "$@ flows to here and is used in arithmetic, potentially causing an " + effect + ".", 
   origin, "User-provided value"

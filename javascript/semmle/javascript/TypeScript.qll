@@ -305,12 +305,23 @@ class TypeAliasDeclaration extends @typealiasdeclaration, TypeParameterized, Stm
   override predicate isAmbient() {
     any()
   }
+
+  /**
+   * Gets the canonical name of the type being defined.
+   */
+  TypeName getTypeName() {
+    result = NameResolution::getTypeNameFromDefinition(this)
+  }
 }
 
 /**
  * A TypeScript interface declaration, inline interface type, or function type.
  */
-class InterfaceDefinition extends @interfacedefinition, ClassOrInterface {}
+class InterfaceDefinition extends @interfacedefinition, ClassOrInterface {
+  override predicate isAbstract() {
+    any()
+  }
+}
 
 /** A TypeScript interface declaration. */
 class InterfaceDeclaration extends Stmt, InterfaceDefinition, @interfacedeclaration {
@@ -652,6 +663,9 @@ class TypeExpr extends ExprOrType, @typeexpr {
   /** Holds if this is the `symbol` type. */
   predicate isSymbol() { none() }
 
+  /** Holds if this is the `unique symbol` type. */
+  predicate isUniqueSymbol() { none() }
+
   /** Holds if this is the `Function` type. */
   predicate isRawFunction() { none() }
 
@@ -685,6 +699,7 @@ private class KeywordTypeExpr extends @keywordtypeexpr, TypeExpr {
   override predicate isNever() { getName() = "never" }
   override predicate isThis() { getName() = "this" }
   override predicate isSymbol() { getName() = "symbol" }
+  override predicate isUniqueSymbol() { getName() = "unique symbol" }
   override predicate isObjectKeyword() { getName() = "object" }
 }
 
@@ -1341,6 +1356,13 @@ class EnumDeclaration extends NamespaceDefinition, @enumdeclaration {
   }
 
   /**
+   * Gets the canonical name of the type being defined.
+   */
+  TypeName getTypeName() {
+    result = NameResolution::getTypeNameFromDefinition(this)
+  }
+
+  /**
    * Gets the local namespace name introduced by the enumeration, for use in
    * types that reference the enum members directly.
    *
@@ -1455,6 +1477,13 @@ class EnumMember extends ASTNode, @enum_member {
    */
   string getPrefixedName() {
     result = getDeclaringEnum().getName() + "." + getName()
+  }
+
+  /**
+   * Gets the canonical name of the type defined by this enum member.
+   */
+  TypeName getTypeName() {
+    result = NameResolution::getTypeNameFromDefinition(this)
   }
 }
 

@@ -21,6 +21,7 @@
  * @tags efficiency
  *       readability
  *       statistical
+ *       non-attributable
  */
 import default
 

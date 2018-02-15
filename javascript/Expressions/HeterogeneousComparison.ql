@@ -57,11 +57,11 @@ predicate hasImplicitConversionMethod(DefiniteAbstractValue av) {
  */
 InferredType strictEqualityOperandType(ASTNode eq, AnalyzedFlowNode operand) {
   // strict equality tests do no conversion at all
-  operand = eq.(StrictEqualityTest).getAChildExpr() and result = operand.getAType() or
+  operand.asExpr() = eq.(StrictEqualityTest).getAChildExpr() and result = operand.getAType() or
 
   // switch behaves like a strict equality test
   exists (SwitchStmt switch | switch = eq |
-    (operand = switch.getExpr() or operand = switch.getACase().getExpr()) and
+    (operand.asExpr() = switch.getExpr() or operand.asExpr() = switch.getACase().getExpr()) and
     result = operand.getAType()
   )
 }
@@ -72,7 +72,7 @@ InferredType strictEqualityOperandType(ASTNode eq, AnalyzedFlowNode operand) {
  */
 predicate implicitlyConvertedOperand(ASTNode parent, AnalyzedFlowNode operand) {
   (parent instanceof NonStrictEqualityTest or parent instanceof RelationalComparison) and
-  operand = parent.getAChildExpr() and
+  operand.asExpr() = parent.getAChildExpr() and
   hasImplicitConversionMethod(operand.getAValue())
 }
 
@@ -82,7 +82,7 @@ predicate implicitlyConvertedOperand(ASTNode parent, AnalyzedFlowNode operand) {
  */
 InferredType nonStrictOperandType(ASTNode parent, AnalyzedFlowNode operand) {
   // non-strict equality tests perform conversions
-  operand = parent.(NonStrictEqualityTest).getAChildExpr() and
+  operand.asExpr() = parent.(NonStrictEqualityTest).getAChildExpr() and
   exists (InferredType tp | tp = operand.getAValue().getType() |
     result = tp
     or
@@ -92,7 +92,7 @@ InferredType nonStrictOperandType(ASTNode parent, AnalyzedFlowNode operand) {
     // and so are strings
     tp = TTString() and
     // exclude cases where the string is guaranteed to coerce to NaN
-    not exists(ConstantString l | l = operand | not exists(l.getStringValue().toFloat())) and
+    not exists(ConstantString l | l = operand.asExpr() | not exists(l.getStringValue().toFloat())) and
     result = TTNumber()
     or
     // Dates are converted to strings (which are guaranteed to coerce to NaN)
@@ -107,7 +107,7 @@ InferredType nonStrictOperandType(ASTNode parent, AnalyzedFlowNode operand) {
   )
   or
   // relational operators convert their operands to numbers or strings
-  operand = parent.(RelationalComparison).getAChildExpr() and
+  operand.asExpr() = parent.(RelationalComparison).getAChildExpr() and
   exists (AbstractValue v | v = operand.getAValue() |
     result = v.getType()
     or
@@ -136,7 +136,7 @@ InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
  */
 predicate isHeterogeneousComparison(ASTNode cmp, AnalyzedFlowNode left, AnalyzedFlowNode right,
                                     string leftTypes, string rightTypes) {
-  comparisonOperands(cmp, left, right) and
+  comparisonOperands(cmp, left.asExpr(), right.asExpr()) and
   not convertedOperandType(cmp, left) = convertedOperandType(cmp, right) and
   leftTypes = left.ppTypes() and rightTypes = right.ppTypes()
 }

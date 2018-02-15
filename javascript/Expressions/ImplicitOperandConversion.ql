@@ -36,7 +36,7 @@ abstract class ImplicitConversion extends AnalyzedFlowNode {
   Expr parent;
 
   ImplicitConversion() {
-    this = parent.getAChildExpr()
+    this.asExpr() = parent.getAChildExpr()
   }
 
   /**
@@ -77,7 +77,7 @@ abstract class ImplicitConversionWithWhitelist extends ImplicitConversion {
  */
 class PropertyNameConversion extends ImplicitConversionWithWhitelist {
   PropertyNameConversion() {
-    this = parent.(InExpr).getLeftOperand()
+    this.asExpr() = parent.(InExpr).getLeftOperand()
   }
 
   override InferredType getAWhitelistedType() {
@@ -95,7 +95,7 @@ class PropertyNameConversion extends ImplicitConversionWithWhitelist {
  */
 class IndexExprConversion extends ImplicitConversionWithWhitelist {
   IndexExprConversion() {
-    this = parent.(IndexExpr).getIndex()
+    this.asExpr() = parent.(IndexExpr).getIndex()
   }
 
   override InferredType getAWhitelistedType() {
@@ -112,8 +112,8 @@ class IndexExprConversion extends ImplicitConversionWithWhitelist {
  */
 class ObjectConversion extends ImplicitConversionWithWhitelist {
   ObjectConversion() {
-    this = parent.(InExpr).getRightOperand() or
-    this = parent.(InstanceofExpr).getLeftOperand()
+    this.asExpr() = parent.(InExpr).getRightOperand() or
+    this.asExpr() = parent.(InstanceofExpr).getLeftOperand()
   }
 
   override InferredType getAWhitelistedType() {
@@ -130,7 +130,7 @@ class ObjectConversion extends ImplicitConversionWithWhitelist {
  */
 class ConstructorConversion extends ImplicitConversionWithWhitelist {
   ConstructorConversion() {
-    this = parent.(InstanceofExpr).getRightOperand()
+    this.asExpr() = parent.(InstanceofExpr).getRightOperand()
   }
 
   override InferredType getAWhitelistedType() {

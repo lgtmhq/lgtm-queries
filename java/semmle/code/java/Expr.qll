@@ -92,6 +92,23 @@ class Expr extends ExprParent, @expr {
    * See JLS v8, section 15.28 (Constant Expressions).
    */
   predicate isCompileTimeConstant() { this instanceof CompileTimeConstantExpr }
+
+  /** Holds if this expression occurs in a static context. */
+  predicate isInStaticContext() {
+    /*
+     * JLS 8.1.3 (Inner Classes and Enclosing Instances)
+     * A statement or expression occurs in a static context if and only if the
+     * innermost method, constructor, instance initializer, static initializer,
+     * field initializer, or explicit constructor invocation statement
+     * enclosing the statement or expression is a static method, a static
+     * initializer, the variable initializer of a static variable, or an
+     * explicit constructor invocation statement.
+     */
+    getEnclosingCallable().isStatic() or
+    getParent+() instanceof ThisConstructorInvocationStmt or
+    getParent+() instanceof SuperConstructorInvocationStmt or
+    exists(LambdaExpr lam | lam.asMethod() = getEnclosingCallable() and lam.isInStaticContext())
+  }
 }
 
 /**
@@ -1051,6 +1068,8 @@ abstract class InstanceAccess extends Expr {
   /**
    * Holds if this instance access gets the value of `this`. That is, it is not
    * an enclosing instance.
+   * This never holds for accesses in lambda expressions as they cannot access
+   * their own instance directly.
    */
   predicate isOwnInstanceAccess() {
     not isEnclosingInstanceAccess(_)
@@ -1060,6 +1079,11 @@ abstract class InstanceAccess extends Expr {
   predicate isEnclosingInstanceAccess(RefType t) {
     t = getQualifier().getType().(RefType).getSourceDeclaration() and
     t != getEnclosingCallable().getDeclaringType()
+    or
+    not exists(getQualifier()) and
+    exists(LambdaExpr lam | lam.asMethod() = getEnclosingCallable() |
+      t = lam.getAnonymousClass().getEnclosingType()
+    )
   }
 }
 

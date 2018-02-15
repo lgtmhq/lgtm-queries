@@ -22,7 +22,6 @@
  *       external/cwe/cwe-313
  */
 import java
-import semmle.code.java.security.DataFlow
 import SensitiveStorage
 
 from SensitiveSource data, Properties s, Expr input, Expr store

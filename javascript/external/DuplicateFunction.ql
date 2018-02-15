@@ -22,6 +22,7 @@
  *       useless-code
  *       maintainability
  *       statistical
+ *       non-attributable
  *       duplicate-code
  * @precision very-high
  */

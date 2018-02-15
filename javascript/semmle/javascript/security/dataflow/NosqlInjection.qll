@@ -21,17 +21,17 @@ import javascript
 /**
  * A data flow source for NoSQL-injection vulnerabilities.
  */
-abstract class NosqlInjectionSource extends DataFlowNode { }
+abstract class NosqlInjectionSource extends DataFlow::Node { }
 
 /**
  * A data flow sink for SQL-injection vulnerabilities.
  */
-abstract class NosqlInjectionSink extends DataFlowNode { }
+abstract class NosqlInjectionSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for SQL-injection vulnerabilities.
  */
-abstract class NosqlInjectionSanitizer extends DataFlowNode { }
+abstract class NosqlInjectionSanitizer extends DataFlow::Node { }
 
 /**
  * A taint-tracking configuration for reasoning about SQL-injection vulnerabilities.
@@ -41,16 +41,16 @@ class NosqlInjectionTrackingConfig extends TaintTracking::Configuration {
     this = "NosqlInjection"
   }
 
-  override predicate isSource(DataFlowNode source) {
+  override predicate isSource(DataFlow::Node source) {
     source instanceof NosqlInjectionSource or
     source instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode sink) {
+  override predicate isSink(DataFlow::Node sink) {
     sink instanceof NosqlInjectionSink
   }
 
-  override predicate isSanitizer(DataFlowNode node) {
+  override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof NosqlInjectionSanitizer
   }
@@ -65,46 +65,49 @@ private class RemoteJsonTrackingConfig extends TaintTracking::Configuration {
     this = "RemoteJsonTrackingConfig"
   }
 
-  override predicate isSource(DataFlowNode nd) {
+  override predicate isSource(DataFlow::Node nd) {
     nd instanceof RemoteFlowSource
   }
 
-  override predicate isSink(DataFlowNode nd) {
-    nd = any(JsonParseCall c).getArgument(0)
+  override predicate isSink(DataFlow::Node nd) {
+    nd.asExpr() = any(JsonParseCall c).getArgument(0)
   }
 }
 
 /**
  * A call to `JSON.parse` where the argument is user-provided.
  */
-class RemoteJson extends NosqlInjectionSource {
+class RemoteJson extends NosqlInjectionSource, DataFlow::ValueNode {
   RemoteJson() {
-    any(RemoteJsonTrackingConfig cfg).flowsFrom(this.(JsonParseCall).getArgument(0), _)
+    exists (DataFlow::Node parsedArg |
+      parsedArg.asExpr() = astNode.(JsonParseCall).getArgument(0) and
+      any(RemoteJsonTrackingConfig cfg).flowsFrom(parsedArg, _)
+    )
   }
 }
 
 /** An expression interpreted as a NoSQL query, viewed as a sink. */
-class NosqlQuerySink extends NosqlInjectionSink {
+class NosqlQuerySink extends NosqlInjectionSink, DataFlow::ValueNode {
   NosqlQuerySink() {
-    this instanceof NoSQL::Query
+    astNode instanceof NoSQL::Query
   }
 }
 
 /**
  * An additional flow step to track taint through NoSQL query objects.
  */
-class NosqlQueryFlowTarget extends TaintTracking::FlowTarget {
+class NosqlQueryFlowTarget extends TaintTracking::FlowTarget, DataFlow::ValueNode {
   NoSQL::Query query;
   PropWriteNode pwn;
 
   NosqlQueryFlowTarget() {
     exists (DataFlowNode queryObj | queryObj = query.getALocalSource() |
-      this.getALocalSource() = queryObj and
+      astNode.(DataFlowNode).getALocalSource() = queryObj and
       queryObj = pwn.getBase().getALocalSource()
     )
   }
 
-  override DataFlowNode getATaintSource() {
-    result = pwn.getRhs()
+  override DataFlow::Node getATaintSource() {
+    result = DataFlow::valueNode(pwn.getRhs())
   }
 }

@@ -22,6 +22,78 @@ class SSLClass extends RefType {
   }
 }
 
+class X509TrustManager extends RefType {
+  X509TrustManager() {
+    this.hasQualifiedName("javax.net.ssl", "X509TrustManager")
+  }
+}
+
+
+class HttpsURLConnection extends RefType {
+  HttpsURLConnection() {
+    hasQualifiedName("javax.net.ssl", "HttpsURLConnection")
+  }
+}
+
+class SSLSocketFactory extends RefType {
+  SSLSocketFactory() {
+    this.hasQualifiedName("javax.net.ssl", "SSLSocketFactory")
+  }
+}
+
+class SSLContext extends RefType {
+  SSLContext() {
+    hasQualifiedName("javax.net.ssl", "SSLContext")
+  }
+}
+
+class HostnameVerifier extends RefType {
+  HostnameVerifier() {
+    hasQualifiedName("javax.net.ssl", "HostnameVerifier")
+  }
+}
+
+class HostnameVerifierVerify extends Method {
+  HostnameVerifierVerify() {
+    hasName("verify") and getDeclaringType().getASupertype*() instanceof HostnameVerifier
+  }
+}
+
+class TrustManagerCheckMethod extends Method {
+  TrustManagerCheckMethod() {
+    (this.hasName("checkClientTrusted") or this.hasName("checkServerTrusted")) and
+    this.getDeclaringType().getASupertype*() instanceof X509TrustManager
+  }
+}
+
+class CreateSocket extends Method {
+  CreateSocket() {
+    hasName("createSocket") and
+    getDeclaringType() instanceof SSLSocketFactory
+  }
+}
+
+class GetSocketFactory extends Method {
+  GetSocketFactory() {
+    hasName("getSocketFactory") and
+    getDeclaringType() instanceof SSLContext
+  }
+}
+
+class SetConnectionFactoryMethod extends Method {
+  SetConnectionFactoryMethod() {
+    hasName("setSSLSocketFactory") and
+    getDeclaringType().getASupertype*() instanceof HttpsURLConnection
+  }
+}
+
+class SetHostnameVerifierMethod extends Method {
+  SetHostnameVerifierMethod() {
+    hasName("setHostnameVerifier") and
+    getDeclaringType().getASupertype*() instanceof HttpsURLConnection
+  }
+}
+
 bindingset[algorithmString]
 private string algorithmRegex(string algorithmString) {
   // Algorithms usually appear in names surrounded by characters that are not

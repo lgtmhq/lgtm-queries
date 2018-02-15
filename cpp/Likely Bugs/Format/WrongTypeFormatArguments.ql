@@ -143,8 +143,20 @@ predicate trivialConversion(ExpectedType expected, Type actual) {
       ) or (
         expected instanceof UnsignedCharType and actualU instanceof IntType
       ) or (
+        // allow the underlying type of a `size_t` (e.g. `unsigned long`) for
+        // `%zu`, since this is the type of a `sizeof` expression
+        expected instanceof Size_t and
+        actual.getUnspecifiedType() = expected.getUnspecifiedType()
+      ) or (
+        // allow the underlying type of a `ssize_t` (e.g. `long`) for `%zd`
+        expected instanceof Ssize_t and
+        actual.getUnspecifiedType() = expected.getUnspecifiedType()
+      ) or (
+        // allow any integral type of the same size 
+        // (this permits signedness changes)
         expected.(IntegralType).getSize() = actualU.(IntegralType).getSize()
       ) or (
+        // allow expected, or a typedef or specified version of expected
         expected = getAnUnderlyingExpectedType(actual)
       )
     )

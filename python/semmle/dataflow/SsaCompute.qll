@@ -42,8 +42,12 @@ cached module EssaDefinitions {
 
     /** A phi node for `v` at the beginning of basic block `b`. */
     cached predicate phiNode(SsaSourceVariable v, BasicBlock b) {
-        exists(BasicBlock def | def.dominanceFrontier(b) |
-            SsaCompute::ssaDef(v, def)
+        (
+            exists(BasicBlock def | def.dominanceFrontier(b) |
+                SsaCompute::ssaDef(v, def)
+            )
+            or
+            piNode(v, _, b) and strictcount(b.getAPredecessor()) > 1
         ) and
         Liveness::liveAtEntry(v, b)
     }

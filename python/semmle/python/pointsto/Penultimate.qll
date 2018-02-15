@@ -642,18 +642,12 @@ module PenultimatePointsTo {
         )
         or
         not live_import_from_dot_in_init(f, _) and
-        exists(string name, ImportExprNode fmod, ModuleObject mod |
-            fmod = f.getModule(name) and
-            points_to(fmod, context, mod, _, _) |
+        exists(string name, ModuleObject mod |
+            points_to(f.getModule(name), context, mod, _, _) |
             exists(ObjectOrCfg orig |
                 Layer::module_attribute_points_to(mod, name, value, cls, orig) and
                 origin = origin_from_object_or_here(orig, f)
             )
-            or
-            not Layer0PointsTo::Layer::module_attribute_points_to(mod, name, _, _, _) and
-            value = mod.(PackageObject).submodule(name) and cls = theModuleType() and
-            context.appliesTo(f) and
-            origin = origin_from_object_or_here(value, f)
         )
     }
 
@@ -1129,11 +1123,21 @@ module PenultimatePointsTo {
          * Transfer of values from the callsite to the callee, for enclosing variables, but not arguments/parameters. */
         pragma [noinline]
         private predicate callsite_entry_value_transfer(EssaVariable caller_var, PenultimateContext caller_context, ScopeEntryDefinition entry_def, PenultimateContext callee_context) {
-            exists(CallNode callsite, FunctionObject f |
+            exists(CallNode callsite, FunctionObject f, Variable var |
+                scope_entry_function_and_variable(entry_def, f, var) and
                 callee_context.fromCall(callsite, f, caller_context) and
-                caller_var.getSourceVariable() = entry_def.getSourceVariable() and
-                caller_var.getAUse() = callsite and
-                entry_def.getDefiningNode() = f.getFunction().getEntryNode()
+                caller_var.getSourceVariable() = var and
+                caller_var.getAUse() = callsite
+            )
+        }
+
+        /** Helper for callsite_entry_value_transfer to improve join-order */
+        private predicate scope_entry_function_and_variable(ScopeEntryDefinition entry_def, FunctionObject f, Variable var) {
+            exists(Function func |
+                func = f.getFunction() |
+                entry_def.getDefiningNode() = func.getEntryNode() and
+                not var.getScope() = func and
+                entry_def.getSourceVariable() = var
             )
         }
 
@@ -1846,7 +1850,7 @@ module PenultimatePointsTo {
         predicate ssa_filter_definition_named_attribute_points_to(PyEdgeRefinement def, PenultimateContext context, string name, Object value, ClassObject cls, ObjectOrCfg origin) {
             exists(ControlFlowNode test, EssaVariable input |
                 input = def.getInput() and
-                test = def.getPredecessor().getLastNode() |
+                test = def.getTest() |
                 exists(AttrNode use |
                     use.getObject(name) = def.getInput().getSourceVariable().(Variable).getAUse() and
                     test_contains(test, use) and
@@ -1854,8 +1858,7 @@ module PenultimatePointsTo {
                 )
                 or
                 not exists(AttrNode use |
-                    use.getObject(name) = def.getInput().getSourceVariable().(Variable).getAUse() and
-                    test_contains(test, use.getObject(name))
+                    refinement_test(test, use.getObject(name), _, def)
                 ) and
                 SSA::ssa_variable_named_attribute_points_to(input, context, name, value, cls, origin)
             )

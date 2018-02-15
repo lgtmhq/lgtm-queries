@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Provides a dataflow configuration for reasoning about password hashing with insufficient computational effort.
+ * Provides a taint tracking configuration for reasoning about password hashing with insufficient computational effort.
  */
 import javascript
 private import semmle.javascript.flow.Tracking
@@ -20,22 +20,22 @@ private import semmle.javascript.security.SensitiveActions
 private import semmle.javascript.frameworks.CryptoLibraries
 
 /**
- * A dataflow source for password hashing with insufficient computational effort.
+ * A data flow source for password hashing with insufficient computational effort.
  */
-abstract class InsufficientPasswordHashSource extends DataFlowNode { }
+abstract class InsufficientPasswordHashSource extends DataFlow::Node { }
 
 /**
- * A dataflow sink for password hashing with insufficient computational effort.
+ * A data flow sink for password hashing with insufficient computational effort.
  */
-abstract class InsufficientPasswordHashSink extends DataFlowNode { }
+abstract class InsufficientPasswordHashSink extends DataFlow::Node { }
 
 /**
  * A sanitizer for password hashing with insufficient computational effort.
  */
-abstract class InsufficientPasswordHashSanitizer extends DataFlowNode { }
+abstract class InsufficientPasswordHashSanitizer extends DataFlow::Node { }
 
 /**
- * A dataflow configuration for password hashing with insufficient computational effort.
+ * A taint tracking configuration for password hashing with insufficient computational effort.
  *
  * This configuration identifies flows from `InsufficientPasswordHashSource`s, which are sources of
  * password data, to `InsufficientPasswordHashSink`s, which is an abstract class representing all
@@ -49,18 +49,18 @@ class InsufficientPasswordHashDataFlowConfiguration extends TaintTracking::Confi
   }
 
   override
-  predicate isSource(DataFlowNode source) {
+  predicate isSource(DataFlow::Node source) {
     source instanceof InsufficientPasswordHashSource or
-    source instanceof CleartextPasswordExpr
+    source.asExpr() instanceof CleartextPasswordExpr
   }
 
   override
-  predicate isSink(DataFlowNode sink) {
+  predicate isSink(DataFlow::Node sink) {
     sink instanceof InsufficientPasswordHashSink
   }
 
   override
-  predicate isSanitizer(DataFlowNode node) {
+  predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node) or
     node instanceof InsufficientPasswordHashSanitizer
   }
@@ -74,7 +74,7 @@ class InsufficientPasswordHashAlgorithm extends InsufficientPasswordHashSink {
     exists(CryptographicOperation application |
       application.getAlgorithm().isWeak() or
       not application.getAlgorithm() instanceof PasswordHashingAlgorithm |
-      this = application.getInput()
+      this.asExpr() = application.getInput()
     )
   }
 }

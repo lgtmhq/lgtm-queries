@@ -12,17 +12,22 @@
 // permissions and limitations under the License.
 
 /**
- * @name Sizeof with side effects
- * @description The sizeof operator should not be used on expressions that contain side effects. It is subtle whether the side effects will occur or not.
+ * @name Reflected cross-site scripting
+ * @description Writing user input directly to an HTTP response allows for
+ *              a cross-site scripting vulnerability.
  * @kind problem
  * @problem.severity error
  * @precision high
- * @id cpp/sizeof-side-effect
- * @tags reliability
- *       correctness
+ * @id js/reflected-xss
+ * @tags security
+ *       external/cwe/cwe-079
+ *       external/cwe/cwe-116
  */
-import default
-import jsf.lib.section_4_21_Operators.AV_Rule_166
 
-from SizeofImpureExprOperator sz
-select sz, "A sizeof operator should not be used on expressions that contain side effects as the effect is confusing."
+import javascript
+import semmle.javascript.security.dataflow.ReflectedXss
+
+from XssDataFlowConfiguration xss, DataFlow::Node source, DataFlow::Node sink
+where xss.flowsFrom(sink, source)
+select sink, "Cross-site scripting vulnerability due to $@.",
+       source, "user-provided value"

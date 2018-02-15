@@ -20,6 +20,7 @@
  * @id cpp/class-many-fields
  * @tags maintainability
  *       statistical
+ *       non-attributable
  */
 import default
 

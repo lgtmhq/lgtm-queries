@@ -23,6 +23,7 @@
  * @id js/duplicated-lines-in-files
  * @tags testability
  *       duplicate-code
+ *       non-attributable
  */
 
 import external.CodeDuplication

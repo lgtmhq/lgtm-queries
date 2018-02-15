@@ -50,21 +50,47 @@ module Connect {
     Expr getAResponseExpr() {
       result.mayReferToParameter(function.getParameter(1))
     }
+
+    /**
+     * Gets an expression that contains the "request" object of
+     * a route handler invocation.
+     */
+    Expr getARequestExpr() {
+      result.mayReferToParameter(function.getParameter(0))
+    }
+
   }
 
   /**
-   * An HTTP header defined in a Connect server.
+   * A NodeJS HTTP response provided by Connect.
    */
-  private class HeaderDefinition extends HTTP::Servers::StandardHeaderDefinition {
+  private class ResponseExpr extends NodeJSLib::ResponseExpr {
 
-    HeaderDefinition() {
-      // res.setHeader('Cache-Control', 'no-cache')
-      getReceiver() = any(RouteHandler rh).getAResponseExpr() and
-      getMethodName() = "setHeader"
+    RouteHandler rh;
+
+    ResponseExpr() {
+      this = rh.getAResponseExpr()
     }
 
-    override RouteHandler getARouteHandler(){
-      getReceiver() = result.getAResponseExpr()
+    override RouteHandler getARouteHandler() {
+      result = rh
+    }
+
+  }
+
+  /**
+   * A NodeJS HTTP response provided by Connect.
+   */
+  private class RequestExpr extends NodeJSLib::RequestExpr {
+
+    RouteHandler rh;
+
+    RequestExpr() {
+      this = rh.getARequestExpr()
+    }
+
+    override RouteHandler getARouteHandler() {
+      result = rh
     }
 
   }
@@ -111,6 +137,29 @@ module Connect {
     }
 
     override string getCredentialsKind() {
+      result = kind
+    }
+
+  }
+
+  /**
+   * An access to a user-controlled Connect request input.
+   */
+  private class RequestInputAccess extends HTTP::RequestInputAccess {
+    string kind;
+
+    RequestInputAccess() {
+      exists (RequestExpr request |
+        exists (PropAccess cookies |
+          // `req.cookies.get(<name>)`
+          kind = "cookie" and
+          cookies.accesses(request, "cookies") and
+          this.asExpr().(MethodCallExpr).calls(cookies, "get")
+        )
+      )
+    }
+
+    override string getKind() {
       result = kind
     }
 

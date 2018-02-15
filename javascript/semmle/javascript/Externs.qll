@@ -84,7 +84,7 @@ class ExternalTypedef extends ExternalDecl, VariableDeclarator {
 }
 
 /** A variable or function declaration in an externs file. */
-abstract class ExternalVarDecl extends ExternalDecl, ASTNode {
+abstract class ExternalVarDecl extends ExternalDecl {
   /**
    * Gets the initializer associated with this declaration, if any.
    *
@@ -93,15 +93,17 @@ abstract class ExternalVarDecl extends ExternalDecl, ASTNode {
   abstract ASTNode getInit();
 
   /**
-   * Gets the documentation comment associated with this declaration, if any.
+   * Gets a JSDoc tag associated with this declaration.
    */
-  abstract JSDoc getDocumentation();
+  JSDocTag getATag() {
+    result = this.(Documentable).getDocumentation().getATag()
+  }
 
   /**
    * Gets the `@type` tag associated with this declaration, if any.
    */
   ExternalTypeTag getTypeTag() {
-    result = getDocumentation().getATag()
+    result = getATag()
   }
 }
 
@@ -126,9 +128,6 @@ class ExternalGlobalFunctionDecl extends ExternalGlobalDecl, FunctionDeclStmt {
   override ASTNode getInit() {
     result = this
   }
-
-  /** Gets the JSDoc comment associated with this declaration, if any. */
-  override JSDoc getDocumentation() { result = FunctionDeclStmt.super.getDocumentation() }
 }
 
 /** A global variable declaration in an externs file. */
@@ -148,9 +147,6 @@ class ExternalGlobalVarDecl extends ExternalGlobalDecl, VariableDeclarator {
   override Expr getInit() {
     result = VariableDeclarator.super.getInit()
   }
-
-  /** Gets the JSDoc comment associated with this declaration, if any. */
-  override JSDoc getDocumentation() { result = VariableDeclarator.super.getDocumentation() }
 }
 
 /** A member variable declaration in an externs file. */
@@ -201,9 +197,6 @@ class ExternalMemberDecl extends ExternalVarDecl, ExprStmt {
   ExternalType getDeclaringType() {
     result.getQualifiedName() = getBaseName()
   }
-
-  /** Gets the documentation comment associated with this declaration, if any. */
-  override JSDoc getDocumentation() { result = ExprStmt.super.getDocumentation() }
 }
 
 /**
@@ -266,7 +259,7 @@ class ExternalFunction extends ExternalEntity, Function {
   predicate isVarArgs() {
     exists (SimpleParameter lastParm, JSDocParamTag pt |
       lastParm = this.getParameter(this.getNumParameter()-1) and
-      pt = getDecl().getDocumentation().getATag() and
+      pt = getDecl().getATag() and
       pt.getName() = lastParm.getName() and
       pt.getType() instanceof JSDocRestParameterTypeExpr
     )
