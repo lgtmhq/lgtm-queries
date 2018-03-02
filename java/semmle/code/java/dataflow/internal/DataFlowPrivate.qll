@@ -47,20 +47,6 @@ private import semmle.code.java.dataflow.SSA
   }
 
   /**
-   * Holds if the `FieldRead` is not completely determined by explicit SSA
-   * updates.
-   */
-  private predicate hasNonlocalValue(FieldRead fr) {
-    not exists(SsaVariable v | v.getAUse() = fr) or
-    exists(SsaVariable v, SsaVariable def |
-      v.getAUse() = fr and def = v.getAnUltimateDefinition()
-      |
-      def instanceof SsaImplicitInit or
-      def instanceof SsaImplicitUpdate
-    )
-  }
-
-  /**
    * Holds if data can flow from `node1` to `node2` through a static field.
    */
   private predicate staticFieldStep(ExprNode node1, ExprNode node2) {

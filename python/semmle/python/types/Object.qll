@@ -159,7 +159,63 @@ class Object extends @py_object {
         )
     }
 
+    /** Holds if this object can be referred to by `longName`
+     * For example, the modules `dict` in the `sys` module
+     * has the long name `sys.modules` and the name `os.path.join`
+     * will refer to the path joining function even though it might
+     * be declared in the `posix` or `nt` modules.
+     * Long names can have no more than three dots after the module name.
+     */
+    cached predicate hasLongName(string longName) {
+        this = findByName0(longName) or
+        this = findByName1(longName) or
+        this = findByName2(longName) or
+        this = findByName3(longName)
+    }
+
 }
+
+private Object findByName0(string longName) {
+    result.(ModuleObject).getName() = longName
+}
+
+private Object findByName1(string longName) {
+    exists(string owner, string attrname |
+        longName = owner + "." + attrname
+        |
+        result = findByName0(owner).(ModuleObject).getAttribute(attrname)
+        or
+        result = findByName0(owner).(ClassObject).lookupAttribute(attrname)
+    )
+    and
+    not result = findByName0(_)
+}
+
+private Object findByName2(string longName) {
+    exists(string owner, string attrname |
+        longName = owner + "." + attrname
+        |
+        result = findByName1(owner).(ModuleObject).getAttribute(attrname)
+        or
+        result = findByName1(owner).(ClassObject).lookupAttribute(attrname)
+    )
+    and not result = findByName0(_)
+    and not result = findByName1(_)
+}
+
+private Object findByName3(string longName) {
+    exists(string owner, string attrname |
+        longName = owner + "." + attrname
+        |
+        result = findByName2(owner).(ModuleObject).getAttribute(attrname)
+        or
+        result = findByName2(owner).(ClassObject).lookupAttribute(attrname)
+    )
+    and not result = findByName0(_)
+    and not result = findByName1(_)
+    and not result = findByName2(_)
+}
+
 
 /** Numeric objects (ints and floats). 
  *  Includes those occurring in the source as a literal

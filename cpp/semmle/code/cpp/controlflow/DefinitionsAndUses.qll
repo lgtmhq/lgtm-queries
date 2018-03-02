@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import cpp
 private import semmle.code.cpp.controlflow.LocalScopeVariableReachability
 
 /**
@@ -21,7 +21,7 @@ private import semmle.code.cpp.controlflow.LocalScopeVariableReachability
  * be read. (There can be more than one definition reaching a single
  * use, and a single definition can reach many uses.)
  */
-predicate definitionUsePair(LocalScopeVariable var, Expr def, Expr use) {
+predicate definitionUsePair(SemanticStackVariable var, Expr def, Expr use) {
   exists(Use u |
     u = use
     and
@@ -39,7 +39,7 @@ predicate definitionReaches(Expr def, Expr node) {
   def.(Def).reaches(true, _, (DefOrUse)node)
 }
 
-private predicate hasAddressOfAccess(LocalScopeVariable var) {
+private predicate hasAddressOfAccess(SemanticStackVariable var) {
   exists(VariableAccess va | va.getTarget() = var | va.isAddressOfAccess())
 }
 
@@ -49,7 +49,7 @@ private predicate hasAddressOfAccess(LocalScopeVariable var) {
  * control-flow path from `first` to `second` without crossing
  * a definition of `var`).
  */
-predicate useUsePair(LocalScopeVariable var, Expr first, Expr second) {
+predicate useUsePair(SemanticStackVariable var, Expr first, Expr second) {
   (
     /* If the address of `var` is used anywhere, we require that
      * a definition of `var` can reach the first use. This is to
@@ -91,6 +91,13 @@ predicate parameterUsePair(Parameter p, VariableAccess va) {
  */
 library
 class DefOrUse extends @cfgnode {
+  DefOrUse() {
+    // Uninstantiated templates are purely syntax, and only on instantiation
+    // will they be complete with information about types, conversions, call
+    // targets, etc.
+    not this.(Element).isFromUninstantiatedTemplate(_)
+  }
+
   /**
    * Gets the target variable of this definition or use.
    *
@@ -99,10 +106,10 @@ class DefOrUse extends @cfgnode {
    * `int x = y`, `y` is both a definition of `x`, as well as a use of
    * `y`, and `isDef` is used to distinguish the two situations.
    */
-  abstract LocalScopeVariable getVariable(boolean isDef);
+  abstract SemanticStackVariable getVariable(boolean isDef);
 
   pragma[noinline]
-  private predicate reaches_helper(boolean isDef, LocalScopeVariable v, BasicBlock bb, int i) {
+  private predicate reaches_helper(boolean isDef, SemanticStackVariable v, BasicBlock bb, int i) {
     getVariable(isDef) = v and
     bb.getNode(i) = this
   }
@@ -113,7 +120,7 @@ class DefOrUse extends @cfgnode {
    * definition of `v`.
    */
   cached
-  predicate reaches(boolean isDef, LocalScopeVariable v, DefOrUse defOrUse) {
+  predicate reaches(boolean isDef, SemanticStackVariable v, DefOrUse defOrUse) {
     /* Implementation detail: this predicate and its private auxiliary
      * predicates are instances of the more general predicates in
      * LocalScopeVariableReachability.qll, and should be kept in sync.
@@ -136,7 +143,7 @@ class DefOrUse extends @cfgnode {
     )
   }
 
-  private predicate firstBarrierAfterThis(boolean isDef, int j, LocalScopeVariable v) {
+  private predicate firstBarrierAfterThis(boolean isDef, int j, SemanticStackVariable v) {
     exists(BasicBlock bb, int i |
       getVariable(isDef) = v
       and
@@ -156,7 +163,7 @@ class Def extends DefOrUse {
     definition(_, this)
   }
 
-  override LocalScopeVariable getVariable(boolean isDef) {
+  override SemanticStackVariable getVariable(boolean isDef) {
     definition(result, this) and isDef = true
   }
 }
@@ -175,7 +182,7 @@ class ParameterDef extends DefOrUse {
     exists(Function f | parameterIsOverwritten(f, _) | this = f.getEntryPoint())
   }
 
-  override LocalScopeVariable getVariable(boolean isDef) {
+  override SemanticStackVariable getVariable(boolean isDef) {
     exists(Function f | parameterIsOverwritten(f, result) | this = f.getEntryPoint())
     and
     isDef = true
@@ -188,24 +195,24 @@ class Use extends DefOrUse {
     useOfVar(_, this)
   }
 
-  override LocalScopeVariable getVariable(boolean isDef) {
+  override SemanticStackVariable getVariable(boolean isDef) {
     useOfVar(result, this) and isDef = false
   }
 }
 
-private predicate bbUseAt(BasicBlock bb, int i, LocalScopeVariable v, Use use) {
+private predicate bbUseAt(BasicBlock bb, int i, SemanticStackVariable v, Use use) {
   bb.getNode(i) = use
   and
   use.getVariable(false) = v
 }
 
-private predicate bbDefAt(BasicBlock bb, int i, LocalScopeVariable v, Def def) {
+private predicate bbDefAt(BasicBlock bb, int i, SemanticStackVariable v, Def def) {
   bb.getNode(i) = def
   and
   def.getVariable(true) = v
 }
 
-private predicate bbBarrierAt(BasicBlock bb, int i, LocalScopeVariable v, ControlFlowNode node) {
+private predicate bbBarrierAt(BasicBlock bb, int i, SemanticStackVariable v, ControlFlowNode node) {
   bb.getNode(i) = node
   and
   definitionBarrier(v, node)
@@ -222,7 +229,7 @@ private predicate bbBarrierAt(BasicBlock bb, int i, LocalScopeVariable v, Contro
  * true upon entry, is skipped (including the step from `bb` to the
  * successor).
  */
-private predicate bbSuccessorEntryReachesDefOrUse(BasicBlock bb, LocalScopeVariable v, DefOrUse defOrUse, boolean skipsFirstLoopAlwaysTrueUponEntry) {
+private predicate bbSuccessorEntryReachesDefOrUse(BasicBlock bb, SemanticStackVariable v, DefOrUse defOrUse, boolean skipsFirstLoopAlwaysTrueUponEntry) {
   exists(BasicBlock succ, boolean succSkipsFirstLoopAlwaysTrueUponEntry |
     bbSuccessorEntryReachesLoopInvariant(bb, succ, skipsFirstLoopAlwaysTrueUponEntry, succSkipsFirstLoopAlwaysTrueUponEntry) |
     bbEntryReachesDefOrUseLocally(succ, v, defOrUse) and
@@ -233,7 +240,7 @@ private predicate bbSuccessorEntryReachesDefOrUse(BasicBlock bb, LocalScopeVaria
   )
 }
 
-private predicate bbEntryReachesDefOrUseLocally(BasicBlock bb, LocalScopeVariable v, DefOrUse defOrUse) {
+private predicate bbEntryReachesDefOrUseLocally(BasicBlock bb, SemanticStackVariable v, DefOrUse defOrUse) {
   exists(int n |
     bbDefAt(bb, n, v, defOrUse) or bbUseAt(bb, n, v, defOrUse) |
     not exists(int m | m < n | bbBarrierAt(bb, m, v, _))
@@ -245,7 +252,7 @@ private predicate bbEntryReachesDefOrUseLocally(BasicBlock bb, LocalScopeVariabl
  * access that gets the address of `v`. In both cases, the value of
  * `v` after `barrier` cannot be assumed to be the same as before.
  */
-predicate definitionBarrier(LocalScopeVariable v, ControlFlowNode barrier) {
+predicate definitionBarrier(SemanticStackVariable v, ControlFlowNode barrier) {
   definition(v, barrier)
   or
   exists(VariableAccess va |
@@ -271,7 +278,7 @@ predicate definitionBarrier(LocalScopeVariable v, ControlFlowNode barrier) {
  * the variable may hold another value in the control-flow node(s)
  * following `def` than before.
  */
-predicate definition(LocalScopeVariable v, Expr def) {
+predicate definition(SemanticStackVariable v, Expr def) {
   def = v.getInitializer().getExpr()
   or
   exists(Assignment assign |
@@ -293,7 +300,7 @@ predicate definition(LocalScopeVariable v, Expr def) {
  * Holds if `def` is a (definite) assignment to the stack variable `v`. `e` is
  * the assigned expression.
  */
-predicate exprDefinition(LocalScopeVariable v, ControlFlowNode def, Expr e) {
+predicate exprDefinition(SemanticStackVariable v, ControlFlowNode def, Expr e) {
   (
     def = v.getInitializer().getExpr() and
     def = e and
@@ -305,6 +312,11 @@ predicate exprDefinition(LocalScopeVariable v, ControlFlowNode def, Expr e) {
     assign.getLValue() = v.getAnAccess() and
     e = assign.getRValue()
   )
+}
+
+pragma[noinline]
+private predicate containsAssembly(Function f) {
+  f = any(AsmStmt s).getEnclosingFunction()
 }
 
 /**
@@ -332,8 +344,14 @@ predicate definitionByReference(VariableAccess va, Expr def) {
       // If the callee contains an AsmStmt, then it is better to
       // be conservative and assume that the parameter can be
       // modified.
-      exists(AsmStmt stmt | stmt.getEnclosingFunction() = f)
+      containsAssembly(f)
     ) and
+    // If the resulting pointer is const then we will trust that it will not be
+    // used to modify the variable.
+    not def.getFullyConverted().getUnderlyingType().(PointerType)
+           .getBaseType().isConst() and
+    not def.getFullyConverted().getUnderlyingType().(ReferenceType)
+           .getBaseType().isConst() and
     not (
       c.getTarget().getNamespace().getName() = "std" and
       c.getTarget().getName() = "move"
@@ -361,7 +379,7 @@ private predicate accessInSizeof(VariableAccess use) {
  * variable value), but _will_ include accesses in increment/decrement
  * operations.
  */
-predicate useOfVar(LocalScopeVariable v, VariableAccess use) {
+predicate useOfVar(SemanticStackVariable v, VariableAccess use) {
   use = v.getAnAccess() and
   not exists(AssignExpr e | e.getLValue() = use) and
   not definitionByReference(use, _) and
@@ -375,7 +393,7 @@ predicate useOfVar(LocalScopeVariable v, VariableAccess use) {
  * run-time. (Non-examples include `&x` and function calls where the
  * callee does not use the relevant parameter.)
  */
-predicate useOfVarActual(LocalScopeVariable v, VariableAccess use) {
+predicate useOfVarActual(SemanticStackVariable v, VariableAccess use) {
   useOfVar(v, use) and
   not use.isAddressOfAccess() and
   // A call to a function that does not use the relevant parameter

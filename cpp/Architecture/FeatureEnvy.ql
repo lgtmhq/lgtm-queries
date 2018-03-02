@@ -18,13 +18,12 @@
  * @problem.severity recommendation
  * @precision high
  * @id cpp/feature-envy
- * @tags changeability
- *       maintainability
+ * @tags maintainability
  *       modularity
  *       statistical
  *       non-attributable
  */
-import default
+import cpp
 
 predicate functionUsesVariable(Function source, Variable v, File target) {
   v.getAnAccess().getEnclosingFunction() = source and

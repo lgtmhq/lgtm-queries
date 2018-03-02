@@ -19,7 +19,7 @@ import javascript
 
 module NoSQL {
   /** An expression that is interpreted as a NoSQL query. */
-  abstract class Query extends DataFlowNode {
+  abstract class Query extends Expr {
   }
 }
 

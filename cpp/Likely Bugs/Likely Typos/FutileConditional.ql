@@ -22,7 +22,7 @@
  * @tags reliability
  *       readability
  */
-import default
+import cpp
 
 predicate macroUse(Locatable l) {
   l instanceof PreprocessorDirective or l instanceof MacroInvocation

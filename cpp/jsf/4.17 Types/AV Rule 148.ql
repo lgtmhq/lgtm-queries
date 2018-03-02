@@ -22,7 +22,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 // flag switch statements where every non-default case dispatches on an integer constant
 from SwitchStmt s

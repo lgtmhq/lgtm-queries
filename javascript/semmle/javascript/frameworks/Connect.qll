@@ -18,12 +18,11 @@ import javascript
 import semmle.javascript.frameworks.HTTP
 
 module Connect {
-
   /**
-   * A Connect server.
+   * An expression that creates a new Connect server.
    */
-  private class Server extends HTTP::Servers::StandardServer, CallExpr {
-    Server() {
+  class ServerDefinition extends HTTP::Servers::StandardServerDefinition, CallExpr {
+    ServerDefinition() {
       exists (ModuleInstance connect | connect.getPath() = "connect" |
         // `app = connect()`
         getCallee().(DataFlowNode).getALocalSource() = connect
@@ -34,7 +33,7 @@ module Connect {
   /**
    * A Connect route handler.
    */
-  private class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
 
     Function function;
 
@@ -44,69 +43,82 @@ module Connect {
     }
 
     /**
-     * Gets an expression that contains the "response" object of
-     * a route handler invocation.
+     * Gets the parameter of the route handler that contains the request object.
      */
-    Expr getAResponseExpr() {
-      result.mayReferToParameter(function.getParameter(1))
+    SimpleParameter getRequestParameter() {
+      result = function.getParameter(0)
     }
 
     /**
-     * Gets an expression that contains the "request" object of
-     * a route handler invocation.
+     * Gets the parameter of the route handler that contains the response object.
      */
-    Expr getARequestExpr() {
-      result.mayReferToParameter(function.getParameter(0))
+    SimpleParameter getResponseParameter() {
+      result = function.getParameter(1)
     }
-
   }
 
   /**
-   * A NodeJS HTTP response provided by Connect.
+   * A Connect response source, that is, the response parameter of a
+   * route handler.
    */
-  private class ResponseExpr extends NodeJSLib::ResponseExpr {
-
+  private class ResponseSource extends HTTP::Servers::ResponseSource {
     RouteHandler rh;
 
-    ResponseExpr() {
-      this = rh.getAResponseExpr()
+    ResponseSource() {
+      this = DataFlow::parameterNode(rh.getResponseParameter())
     }
 
-    override RouteHandler getARouteHandler() {
+    /**
+     * Gets the route handler that provides this response.
+     */
+    RouteHandler getRouteHandler() {
       result = rh
     }
-
   }
 
   /**
-   * A NodeJS HTTP response provided by Connect.
+   * A Connect request source, that is, the request parameter of a
+   * route handler.
    */
-  private class RequestExpr extends NodeJSLib::RequestExpr {
-
+  private class RequestSource extends HTTP::Servers::RequestSource {
     RouteHandler rh;
 
-    RequestExpr() {
-      this = rh.getARequestExpr()
+    RequestSource() {
+      this = DataFlow::parameterNode(rh.getRequestParameter())
     }
 
-    override RouteHandler getARouteHandler() {
+    /**
+     * Gets the route handler that handles this request.
+     */
+    RouteHandler getRouteHandler() {
       result = rh
     }
+  }
 
+  /**
+   * A Node.js HTTP response provided by Connect.
+   */
+  class ResponseExpr extends NodeJSLib::ResponseExpr {
+    ResponseExpr() { src instanceof ResponseSource }
+  }
+
+  /**
+   * A Node.js HTTP request provided by Connect.
+   */
+  class RequestExpr extends NodeJSLib::RequestExpr {
+    RequestExpr() { src instanceof RequestSource }
   }
 
   /**
    * A call to a Connect method that sets up a route.
    */
-  private class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
-
-    DataFlowNode server;
+  class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
+    ServerDefinition server;
 
     RouteSetup() {
       // app.use('/', fun)
       // app.use(fun)
-      server = getReceiver() and
-      server.getALocalSource() instanceof Server and
+      server.flowsTo(getReceiver()) and
       getMethodName() = "use"
     }
 
@@ -114,8 +126,8 @@ module Connect {
       result = getAnArgument().(DataFlowNode).getALocalSource()
     }
 
-    override DataFlowNode getAServer() {
-      result = server.getALocalSource()
+    override DataFlowNode getServer() {
+      result = server
     }
   }
 
@@ -146,23 +158,25 @@ module Connect {
    * An access to a user-controlled Connect request input.
    */
   private class RequestInputAccess extends HTTP::RequestInputAccess {
+    RequestExpr request;
     string kind;
 
     RequestInputAccess() {
-      exists (RequestExpr request |
-        exists (PropAccess cookies |
-          // `req.cookies.get(<name>)`
-          kind = "cookie" and
-          cookies.accesses(request, "cookies") and
-          this.asExpr().(MethodCallExpr).calls(cookies, "get")
-        )
+      exists (PropAccess cookies |
+        // `req.cookies.get(<name>)`
+        kind = "cookie" and
+        cookies.accesses(request, "cookies") and
+        this.asExpr().(MethodCallExpr).calls(cookies, "get")
       )
+    }
+
+    override RouteHandler getRouteHandler() {
+      result = request.getRouteHandler()
     }
 
     override string getKind() {
       result = kind
     }
-
   }
 
 }

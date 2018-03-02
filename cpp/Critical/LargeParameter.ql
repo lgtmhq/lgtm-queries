@@ -23,7 +23,7 @@
  *       statistical
  *       non-attributable
  */
-import default
+import cpp
 
 from Function f, Parameter p, Type t, int size
 where f.getAParameter() = p

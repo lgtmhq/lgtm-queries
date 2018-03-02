@@ -24,7 +24,7 @@
  *       correctness
  *       types
  */
-import default
+import cpp
 
 predicate lossyPointerCast(Expr e, PointerType pt, IntegralType it) {
   not it instanceof BoolType and

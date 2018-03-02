@@ -133,7 +133,7 @@ class FinalContext extends TFinalContext {
         this = TCallContext(call, caller, _)
     }
 
-    /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context. */
+    /** Holds if `call` is the call-site from which this context was entered and `caller` is the caller's context. */
     predicate fromCall(CallNode call, FunctionObject callee, FinalContext caller) {
         call = FinalPointsTo::get_a_call(callee, caller) and
         this = TCallContext(call, caller, _)

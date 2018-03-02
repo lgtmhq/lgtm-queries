@@ -22,7 +22,7 @@
  *       readability
  *       maintainability
  */
-import default
+import cpp
 
 class ComplexStmt extends Stmt {
   ComplexStmt() {

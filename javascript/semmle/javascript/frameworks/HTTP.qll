@@ -16,8 +16,6 @@
  */
 
 import javascript
-import semmle.javascript.frameworks.Express
-import semmle.javascript.frameworks.NodeJSLib
 
 module HTTP {
   /**
@@ -26,6 +24,9 @@ module HTTP {
   abstract class RedirectInvocation extends InvokeExpr {
     /** Gets the argument specifying the URL to redirect to. */
     abstract Expr getUrlArgument();
+
+    /** Gets the route handler this redirect occurs in. */
+    abstract RouteHandler getRouteHandler();
   }
 
   /**
@@ -41,6 +42,11 @@ module HTTP {
      * Holds if the header named `headerName` is set to `headerValue`.
      */
     abstract predicate defines(string headerName, string headerValue);
+
+    /**
+     * Gets the handler this definition occurs in.
+     */
+    abstract RouteHandler getRouteHandler();
   }
 
 
@@ -129,7 +135,7 @@ module HTTP {
     /**
      * Gets the route handler that sends this expression.
      */
-    abstract RouteHandler getHandler();
+    abstract RouteHandler getRouteHandler();
   }
 
   /**
@@ -157,6 +163,9 @@ module HTTP {
      * Gets the argument, if any, specifying the cookie value.
      */
     Expr getValueArgument() { none() }
+
+    /** Gets the route handler that sets this cookie. */
+    abstract RouteHandler getRouteHandler();
   }
 
   /**
@@ -170,17 +179,26 @@ module HTTP {
     override Expr getHeaderArgument() {
       this.(ExplicitHeaderDefinition).definesExplicitly("Set-Cookie", result)
     }
+
+    override RouteHandler getRouteHandler() {
+      result = this.(HeaderDefinition).getRouteHandler()
+    }
   }
 
   /**
-   * A server, identified by its creation site.
+   * An expression that creates a new server.
    */
-  abstract class Server extends Expr {
+  abstract class ServerDefinition extends Expr {
     /**
-     * Gets a route handlers of the server.
+     * Gets a route handler of the server.
      */
     abstract RouteHandler getARouteHandler();
   }
+
+  /**
+   * DEPRECATED: Use `ServerDefinition` instead.
+   */
+  deprecated class Server = ServerDefinition;
 
   /**
    * A callback for handling a request on some route on a server.
@@ -191,6 +209,41 @@ module HTTP {
      */
     abstract HeaderDefinition getAResponseHeader(string name);
 
+    /**
+     * Gets an expression that contains a request object handled
+     * by this handler.
+     */
+    RequestExpr getARequestExpr() {
+      result.getRouteHandler() = this
+    }
+
+    /**
+     * Gets an expression that contains a response object provided
+     * by this handler.
+     */
+    ResponseExpr getAResponseExpr() {
+      result.getRouteHandler() = this
+    }
+  }
+
+  /**
+   * An expression that may contain a request object.
+   */
+  abstract class RequestExpr extends Expr {
+    /**
+     * Gets the route handler that handles this request.
+     */
+    abstract RouteHandler getRouteHandler();
+  }
+
+  /**
+   * An expression that may contain a response object.
+   */
+  abstract class ResponseExpr extends Expr {
+    /**
+     * Gets the route handler that handles this request.
+     */
+    abstract RouteHandler getRouteHandler();
   }
 
 
@@ -201,12 +254,12 @@ module HTTP {
   module Servers {
 
     /**
-     * A standard server.
+     * A standard server definition.
      */
-    abstract class StandardServer extends Server {
+    abstract class StandardServerDefinition extends ServerDefinition, DataFlow::TrackedExpr {
 
       override RouteHandler getARouteHandler() {
-        result.(StandardRouteHandler).getAServer() = this
+        result.(StandardRouteHandler).getServer() = this
       }
 
     }
@@ -215,32 +268,75 @@ module HTTP {
      * A standard route handler.
      */
     abstract class StandardRouteHandler extends RouteHandler {
-
       override HeaderDefinition getAResponseHeader(string name) {
-        result.(StandardHeaderDefinition).getARouteHandler() = this and
+        result.(StandardHeaderDefinition).getRouteHandler() = this and
         result.getAHeaderName() = name
       }
 
       /**
-       * Gets a server this route handler is registered on.
+       * Gets the server this route handler is registered on.
        */
-      DataFlowNode getAServer() {
-        result = any(StandardRouteSetup setup | setup.getARouteHandler() = this |
-          setup.getAServer())
+      DataFlowNode getServer() {
+        exists (StandardRouteSetup setup | setup.getARouteHandler() = this |
+          result = setup.getServer()
+        )
       }
+    }
 
+    /**
+     * A request source, that is, a data flow node through which
+     * a request object enters the flow graph, such as the request
+     * parameter of a route handler.
+     */
+    abstract class RequestSource extends DataFlow::TrackedNode {
+      /**
+       * Gets the route handler that handles this request.
+       */
+      abstract RouteHandler getRouteHandler();
+    }
+
+    /**
+     * A response source, that is, a data flow node through which
+     * a response object enters the flow graph, such as the response
+     * parameter of a route handler.
+     */
+    abstract class ResponseSource extends DataFlow::TrackedNode {
+      /**
+       * Gets the route handler that provides this response.
+       */
+      abstract RouteHandler getRouteHandler();
+    }
+
+    /**
+     * A request expression arising from a request source.
+     */
+    class StandardRequestExpr extends RequestExpr {
+      RequestSource src;
+
+      StandardRequestExpr() { src.flowsTo(DataFlow::valueNode(this)) }
+
+      override RouteHandler getRouteHandler() {
+        result = src.getRouteHandler()
+      }
+    }
+
+    /**
+     * A response expression arising from a response source.
+     */
+    class StandardResponseExpr extends ResponseExpr {
+      ResponseSource src;
+
+      StandardResponseExpr() { src.flowsTo(DataFlow::valueNode(this)) }
+
+      override RouteHandler getRouteHandler() {
+        result = src.getRouteHandler()
+      }
     }
 
     /**
      * A standard header definition.
      */
     abstract class StandardHeaderDefinition extends ExplicitHeaderDefinition, MethodCallExpr {
-
-      /**
-       * Gets a handler this definition occurs in.
-       */
-      abstract RouteHandler getARouteHandler();
-
       override predicate definesExplicitly(string headerName, Expr headerValue) {
         headerName = getArgument(0).(ConstantString).getStringValue() and
         headerValue = getArgument(1)
@@ -259,9 +355,9 @@ module HTTP {
       abstract DataFlowNode getARouteHandler();
 
       /**
-       * Gets a server that gets the a route handler of this setup.
+       * Gets the server on which this route setup sets up routes.
        */
-      abstract DataFlowNode getAServer();
+      abstract DataFlowNode getServer();
     }
 
   }
@@ -270,17 +366,20 @@ module HTTP {
    * An access to a user-controlled HTTP request input.
    */
   abstract class RequestInputAccess extends RemoteFlowSource {
-
     override string getSourceType() {
       result = "Server request " + getKind()
     }
+
+    /**
+     * Gets the route handler whose request input is accessed.
+     */
+    abstract RouteHandler getRouteHandler();
 
     /**
      * Gets the kind of the accessed input,
      * Can be one of "parameter", "header", "body", "url", "cookie".
      */
     abstract string getKind();
-
   }
 
 }

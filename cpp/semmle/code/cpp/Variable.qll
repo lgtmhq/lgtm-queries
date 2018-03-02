@@ -271,7 +271,7 @@ class ParameterDeclarationEntry extends VariableDeclarationEntry {
  */
 class LocalScopeVariable extends Variable, @localscopevariable {
   /** Gets the function to which this variable belongs. */
-  abstract Function getFunction();
+  /*abstract*/ Function getFunction() { none() }
 }
 
 /**
@@ -391,5 +391,26 @@ class FunctionPointerVariable extends Variable {
 class FunctionPointerMemberVariable extends MemberVariable {
   FunctionPointerMemberVariable() {
     this instanceof FunctionPointerVariable
+  }
+}
+
+/**
+ * A C++14 variable template.
+ */
+class TemplateVariable extends Variable {
+  TemplateVariable() { is_variable_template(this) }
+  Variable getAnInstantiation() { variable_instantiation(result, this) }
+}
+
+/**
+ * A non-static local variable or parameter that is not part of an
+ * uninstantiated template. Uninstantiated templates are purely syntax, and
+ * only on instantiation will they be complete with information about types,
+ * conversions, call targets, etc.
+ */
+class SemanticStackVariable extends LocalScopeVariable {
+  SemanticStackVariable() {
+    not this.isStatic() and
+    not this.isFromUninstantiatedTemplate(_)
   }
 }

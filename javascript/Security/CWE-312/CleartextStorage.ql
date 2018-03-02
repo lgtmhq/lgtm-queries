@@ -26,8 +26,6 @@
  */
 
 import javascript
-import semmle.javascript.flow.Tracking
-import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.security.dataflow.CleartextStorage
 
 from CleartextStorageDataFlowConfiguration cleartextStorage, DataFlow::Node source, DataFlow::Node sink

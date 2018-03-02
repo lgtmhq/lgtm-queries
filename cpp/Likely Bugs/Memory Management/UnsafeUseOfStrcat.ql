@@ -25,7 +25,7 @@
  *       external/cwe/cwe-120
  *       external/cwe/cwe-251
  */
-import default
+import cpp
 import Buffer
 
 /**

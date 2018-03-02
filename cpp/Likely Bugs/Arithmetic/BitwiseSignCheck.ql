@@ -22,7 +22,7 @@
  * @tags reliability
  *       correctness
  */
-import default
+import cpp
 
 from RelationalOperation e, BinaryBitwiseOperation lhs
 where lhs = e.getLeftOperand() and

@@ -21,7 +21,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 class LocalVariableOrParameter extends VariableDeclarationEntry {
   LocalVariableOrParameter() {

@@ -35,7 +35,28 @@ abstract class TrackedNode extends DataFlow::Node {
 }
 
 /**
- * A simplified copy of `Tracking.qll` that implements forward-tracking
+ * An expression whose value should be tracked inter-procedurally.
+ *
+ * To track additional expressions, extends this class with additional
+ * subclasses.
+ */
+abstract class TrackedExpr extends Expr {
+  predicate flowsTo(Expr sink) {
+    exists (TrackedExprNode ten | ten.asExpr() = this |
+      ten.flowsTo(DataFlow::valueNode(sink))
+    )
+  }
+}
+
+/**
+ * Turn all `TrackedExpr`s into `TrackedNode`s.
+ */
+private class TrackedExprNode extends TrackedNode {
+  TrackedExprNode() { asExpr() instanceof TrackedExpr }
+}
+
+/**
+ * A simplified copy of `Configuration.qll` that implements forward-tracking
  * of `TrackedNode`s without barriers or additional flow steps.
  */
 private module NodeTracking {
@@ -48,6 +69,23 @@ private module NodeTracking {
         (f = cs.getACallee() and f.getFile() = invk.getFile())
       else
         f = cs.getACallee()
+    )
+  }
+
+  /**
+   * Holds if data can flow in one step from `src` to `trg`,  taking
+   * additional steps and barriers from the configuration into account.
+   */
+  pragma[inline]
+  private predicate localFlowStep(DataFlow::Node src, DataFlow::Node trg) {
+    src = trg.getAPredecessor()
+    or
+    // extra step: the flow analysis models import specifiers as property reads;
+    // they should flow into the SSA variable corresponding to the imported variable
+    exists (ImportSpecifier is, SsaExplicitDefinition ssa |
+      src = DataFlow::valueNode(is) and
+      ssa.getDef() = is and
+      trg = DataFlow::ssaDefinitionNode(ssa)
     )
   }
 
@@ -132,19 +170,32 @@ private module NodeTracking {
   }
 
   /**
+   * Holds if flow should be tracked through properties of `obj`.
+   *
+   * Currently, flow is tracked through object literals, `module` and
+   * `module.exports` objects.
+   */
+  private predicate shouldTrackProperties(AbstractValue obj) {
+    obj instanceof AbstractExportsObject or
+    obj instanceof AbstractModuleObject or
+    obj instanceof AbstractObjectLiteral
+  }
+
+  /**
    * Holds if the value of `source` may flow into an assignment to property
    * `prop` of an object represented by `obj` under the given `configuration`.
    *
    * The parameter `stepIn` indicates whether steps from arguments to
    * parameters are necessary to derive this flow.
    */
-  pragma[noinline]
+  pragma[nomagic]
   private predicate forwardReachableProperty(DataFlow::Node source,
-                                             AbstractObjectLiteral obj, string prop,
+                                             AbstractValue obj, string prop,
                                              boolean stepIn) {
     exists (AnalyzedPropertyWrite pw, DataFlow::Node mid |
       flowsTo(source, mid, stepIn) and
-      pw.writes(obj, prop, mid)
+      pw.writes(obj, prop, mid) and
+      shouldTrackProperties(obj)
     )
   }
 
@@ -165,11 +216,11 @@ private module NodeTracking {
       // Local flow
       exists (DataFlow::Node mid |
         flowsTo(source, mid, stepIn) and
-        mid = sink.getAPredecessor()
+        localFlowStep(mid, sink)
       )
       or
-      // Flow through properties of object literals
-      exists (AbstractObjectLiteral obj, string prop, AnalyzedPropertyAccess read |
+      // Flow through properties
+      exists (AbstractValue obj, string prop, AnalyzedPropertyRead read |
         forwardReachableProperty(source, obj, prop, stepIn) and
         read.reads(obj, prop) and
         sink = read

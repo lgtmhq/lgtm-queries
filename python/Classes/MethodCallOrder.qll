@@ -15,15 +15,20 @@ import python
 
 // Helper predicates for multiple call to __init__/__del__ queries.
 
+pragma [noinline]
+private predicate multiple_invocation_paths(FunctionInvocation top, FunctionInvocation i1, FunctionInvocation i2, FunctionObject multi) {
+    i1 != i2 and
+    i1 = top.getACallee+() and
+    i2 = top.getACallee+() and
+    i1.getFunction() = multi and
+    i2.getFunction() = multi
+}
+
 /** Holds if `self.name` calls `multi` by multiple paths, and thus calls it more than once. */
 predicate multiple_calls_to_superclass_method(ClassObject self, FunctionObject multi, string name) {
     exists(FunctionInvocation top, FunctionInvocation i1, FunctionInvocation i2 |
-        i1 != i2 and
+        multiple_invocation_paths(top, i1, i2, multi) and
         top.runtime(self.declaredAttribute(name)) and
-        i1 = top.getACallee+() and
-        i2 = top.getACallee+() and
-        i1.getFunction() = multi and
-        i2.getFunction() = multi and
         self.getASuperType().declaredAttribute(name) = multi |
         /* Only called twice if called from different functions,
          * or if one call-site can reach the other */

@@ -22,7 +22,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 /* This is slightly subtle: The extractor adds a dummy 'return;' statement for control paths
    that fall off the end of a function. So we can simply look for non-void functions containing

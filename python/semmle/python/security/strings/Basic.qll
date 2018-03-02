@@ -27,7 +27,7 @@ abstract class ExternalStringKind extends TaintKind {
     override TaintKind getTaintForFlowStep(ControlFlowNode fromnode, ControlFlowNode tonode) {
         result = this and
         (
-            str_method_call(fromnode, tonode) or 
+            str_method_call(fromnode, tonode) or
             slice(fromnode, tonode) or
             tonode.(BinaryExprNode).getAnOperand() = fromnode or
             os_path_join(fromnode, tonode) or
@@ -42,6 +42,33 @@ abstract class ExternalStringKind extends TaintKind {
         result = this and copy_call(fromnode, tonode)
         or
         tonode.(DictNode).getAValue() = fromnode and result.(ExternalStringDictKind).getValue() = this
+    }
+
+    override ClassObject getClass() {
+        result = theStrType()
+    }
+
+}
+
+private class StringEqualitySanitizer extends Sanitizer {
+
+    StringEqualitySanitizer() { this = "string equality sanitizer" }
+
+    /** The test `if untrusted == "KNOWN_VALUE":` sanitizes `untrusted` on its `true` edge. */
+    override predicate sanitizingEdge(TaintKind taint, PyEdgeRefinement test) {
+        taint instanceof ExternalStringKind and
+        exists(ControlFlowNode const, Cmpop op |
+            const.getNode() instanceof StrConst |
+            (
+                test.getTest().(CompareNode).operands(const, op, _)
+                or
+                test.getTest().(CompareNode).operands(_, op, const)
+            ) and (
+                op instanceof Eq and test.getSense() = true
+                or
+                op instanceof NotEq and test.getSense() = false
+            )
+        )
     }
 
 }

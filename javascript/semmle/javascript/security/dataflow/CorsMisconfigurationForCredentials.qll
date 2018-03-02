@@ -15,8 +15,6 @@
  * Provides a dataflow taint tracking configuration for reasoning about CORS misconfiguration for credentials transfer.
  */
 import javascript
-import semmle.javascript.security.dataflow.RemoteFlowSources
-private import semmle.javascript.flow.Tracking
 
 /**
  * A data flow source for CORS misconfiguration for credentials transfer.

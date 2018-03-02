@@ -58,9 +58,7 @@ class SqlInjectionTrackingConfig extends TaintTracking::Configuration {
 
 /** An SQL expression passed to an API call that executes SQL. */
 class SqlInjectionExprSink extends SqlInjectionSink, DataFlow::ValueNode {
-  SqlInjectionExprSink() {
-    astNode instanceof SQL::SqlString
-  }
+  override SQL::SqlString astNode;
 }
 
 /** An expression that sanitizes a value for the purposes of SQL injection. */

@@ -22,7 +22,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 from CopyConstructor f
 where f.getNumberOfParameters() > 1

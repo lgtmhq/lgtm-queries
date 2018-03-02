@@ -21,7 +21,7 @@
  * @tags reliability
  *       readability
  */
-import default
+import cpp
 
 from LoopCounter lc
 where lc.getUnderlyingType() instanceof FloatingPointType

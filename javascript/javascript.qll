@@ -46,14 +46,16 @@ import semmle.javascript.Util
 import semmle.javascript.SSA
 import semmle.javascript.DataFlow
 import semmle.javascript.dataflow.DataFlow
+import semmle.javascript.dataflow.TaintTracking
 import semmle.javascript.security.dataflow.RemoteFlowSources
+import semmle.javascript.flow.CallGraph
 import semmle.javascript.frameworks.AngularJS
 import semmle.javascript.frameworks.AWS
 import semmle.javascript.frameworks.Azure
 import semmle.javascript.frameworks.Credentials
 import semmle.javascript.frameworks.DigitalOcean
 import semmle.javascript.frameworks.jQuery
-import semmle.javascript.frameworks.HttpFrameWorks
+import semmle.javascript.frameworks.HttpFrameworks
 import semmle.javascript.frameworks.NoSQL
 import semmle.javascript.frameworks.PkgCloud
 import semmle.javascript.frameworks.React
@@ -66,3 +68,6 @@ import semmle.javascript.linters.JSLint
 import semmle.javascript.XML
 import semmle.javascript.TypeScript
 import semmle.javascript.QualifiedNames
+import semmle.javascript.Constants
+
+import semmle.javascript.flow.Tracking

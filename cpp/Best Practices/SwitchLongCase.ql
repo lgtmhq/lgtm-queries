@@ -21,7 +21,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 predicate switchCaseStartLine(SwitchCase sc, int start) {
   sc.getLocation().getStartLine() = start

@@ -205,6 +205,23 @@ class Element extends @element {
       this.(DeclarationEntry).getDeclaration() = e
     )
   }
+
+  /**
+   * Holds if this `Element` is part of a template `template` (not if it is
+   * part of an instantiation of `template`). This means it is represented in
+   * the database purely as syntax and without guarantees on the presence or
+   * correctness of type-based operations such as implicit conversions.
+   *
+   * If an element is nested within several templates, this predicate holds with
+   * a value of `template` for each containing template.
+   */
+  predicate isFromUninstantiatedTemplate(Element template) {
+    exists(Element e |
+      isFromUninstantiatedTemplateRec(e, template) |
+      this = e or
+      this.(DeclarationEntry).getDeclaration() = e
+    )
+  }
 }
 
 private predicate isFromTemplateInstantiationRec(Element e, Element instantiation) {
@@ -217,7 +234,22 @@ private predicate isFromTemplateInstantiationRec(Element e, Element instantiatio
   variable_instantiation(instantiation, _) and
   e = instantiation
   or
-  isFromTemplateInstantiationRec(e.getEnclosingElement(), instantiation)
+  isFromTemplateInstantiationRec(e.getEnclosingElement(), instantiation) and
+  not e instanceof MacroAccess
+}
+
+private predicate isFromUninstantiatedTemplateRec(Element e, Element template) {
+  class_instantiation(_, template) and
+  e = template
+  or
+  function_instantiation(_, template) and
+  e = template
+  or
+  variable_instantiation(_, template) and
+  e = template
+  or
+  isFromUninstantiatedTemplateRec(e.getEnclosingElement(), template) and
+  not e instanceof MacroAccess
 }
 
 /**

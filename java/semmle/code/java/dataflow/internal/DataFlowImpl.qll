@@ -67,6 +67,16 @@
     }
 
     /**
+     * Holds if data may flow from `source` to `sink` for this configuration.
+     *
+     * The corresponding paths are generated from the end-points and the graph
+     * included in the module `PathGraph`.
+     */
+    predicate hasFlowPath(PathNode source, PathNode sink) {
+      flowsTo(source, sink, _, _, this)
+    }
+
+    /**
      * Holds if data may flow from some source to `sink` for this configuration.
      */
     predicate hasFlowTo(Node sink) {
@@ -108,13 +118,24 @@
     additionalJumpStep(node1, node2, config)
   }
 
+  pragma[noinline]
+  private predicate isAdditionalFlowStep(Node node1, Node node2, Callable callable1, Callable callable2, Configuration config) {
+    config.isAdditionalFlowStep(node1, node2) and
+    callable1 = node1.getEnclosingCallable() and
+    callable2 = node2.getEnclosingCallable()
+  }
+
   /**
    * Holds if data can flow in one local step from `node1` to `node2` taking
    * additional steps from the configuration into account.
    */
   private predicate localFlowStep(Node node1, Node node2, Configuration config) {
-    localFlowStep(node1, node2) and not config.isBarrierEdge(node1, node2) or
-    config.isAdditionalFlowStep(node1, node2) and node1.getEnclosingCallable() = node2.getEnclosingCallable()
+    localFlowStep(node1, node2) and
+    not config.isBarrierEdge(node1, node2)
+    or
+    exists(Callable callable |
+      isAdditionalFlowStep(node1, node2, callable, callable, config)
+    )
   }
 
   /**
@@ -245,8 +266,8 @@
    */
   private predicate simpleArgumentFlowsThrough(ArgumentNode arg, ExprNode call, Configuration config) {
     exists(ParameterNode param, ReturnNode ret |
-      nodeCand1(arg, config) and
-      nodeCand1(call, config) and
+      nodeCand1(arg, unbind(config)) and
+      nodeCand1(call, unbind(config)) and
       viableParamArg(param, arg) and
       simpleParameterFlow(param, ret, config) and
       arg.argumentOf(call.getExpr(), _)
@@ -322,7 +343,7 @@
     )
     or
     // flow into a callable
-    nodeCandFwd2(node, _, config) and
+    nodeCandFwd2(node, _, unbind(config)) and
     exists(Node param |
       viableParamArg(param, node) and
       nodeCand2(param, false, config) and
@@ -383,7 +404,8 @@
   private predicate localFlowStepPlus(Node node1, Node node2, Configuration config) {
     localFlowEntry(node1, config) and
     localFlowStep(node1, node2, config) and
-    nodeCand(node2, config)
+    node1 != node2 and
+    nodeCand(node2, unbind(config))
     or
     exists(Node mid |
       localFlowStepPlus(node1, mid, config) and
@@ -440,13 +462,21 @@
    *    to which data may flow if it should reach a `return` statement.
    */
   private abstract class CallContext extends TCallContext {
-    string toString() { result = "call context" }
+    abstract string toString();
   }
-  private class CallContextAny extends CallContext, TAnyCallContext { }
+  private class CallContextAny extends CallContext, TAnyCallContext {
+    string toString() { result = "CcAny" }
+  }
   private abstract class CallContextCall extends CallContext { }
-  private class CallContextSpecificCall extends CallContextCall, TSpecificCall { }
-  private class CallContextSomeCall extends CallContextCall, TSomeCall { }
-  private class CallContextReturn extends CallContext, TReturn { }
+  private class CallContextSpecificCall extends CallContextCall, TSpecificCall {
+    string toString() { result = "CcCall" }
+  }
+  private class CallContextSomeCall extends CallContextCall, TSomeCall {
+    string toString() { result = "CcSomeCall" }
+  }
+  private class CallContextReturn extends CallContext, TReturn {
+    string toString() { result = "CcReturn" }
+  }
 
   bindingset[cc, m]
   private predicate resolveReturn(CallContext cc, Method m, MethodAccess ma) {
@@ -474,30 +504,30 @@
 
   private bindingset[conf, result] Configuration unbind(Configuration conf) { result >= conf and result <= conf }
 
-  private newtype TFlowGraphNode =
-    TFlowGraphNodeMid(Node node, CallContext cc, Configuration config) {
-      // A FlowGraphNode is introduced by a source ...
+  private newtype TPathNode =
+    TPathNodeMid(Node node, CallContext cc, Configuration config) {
+      // A PathNode is introduced by a source ...
       nodeCand(node, config) and
       config.isSource(node) and
       cc instanceof CallContextAny
       or
-      // ... or a step from an existing FlowGraphNode to another node.
-      exists(FlowGraphNodeMid mid |
+      // ... or a step from an existing PathNode to another node.
+      exists(PathNodeMid mid |
         flowStep(mid, node, cc) and
         config = mid.getConfiguration() and
         nodeCand(node, unbind(config))
       )
     } or
-    TFlowGraphNodeSink(Node node, Configuration config) {
+    TPathNodeSink(Node node, Configuration config) {
       config.isSink(node) and
       nodeCand(node, config)
     }
 
   /**
    * A `Node` augmented with a call context (except for sinks) and a configuration.
-   * Only those `FlowGraphNode`s that are reachable from a source are generated.
+   * Only those `PathNode`s that are reachable from a source are generated.
    */
-  private abstract class FlowGraphNode extends TFlowGraphNode {
+  abstract class PathNode extends TPathNode {
     /** Gets a textual representation of this element. */
     string toString() { result = getNode().toString() }
     /** The source location for this element. */
@@ -507,29 +537,54 @@
     /** Gets the associated configuration. */
     abstract Configuration getConfiguration();
     /** Gets a successor. */
-    abstract FlowGraphNode getSucc();
+    abstract PathNode getSucc();
+  }
+
+  /**
+   * Provides the query predicates needed to include a graph in a path-problem query.
+   */
+  module PathGraph {
+    /** Holds if `(a,b)` is an edge in the graph of data flow path explanations. */
+    query predicate edges(PathNode a, PathNode b) { a.getSucc() = b }
   }
 
   /**
    * An intermediate flow graph node. This is a triple consisting of a `Node`,
    * a `CallContext`, and a `Configuration`.
    */
-  private class FlowGraphNodeMid extends FlowGraphNode, TFlowGraphNodeMid {
+  private class PathNodeMid extends PathNode, TPathNodeMid {
     Node node;
     CallContext cc;
     Configuration config;
-    FlowGraphNodeMid() { this = TFlowGraphNodeMid(node, cc, config) }
+    PathNodeMid() { this = TPathNodeMid(node, cc, config) }
     override Node getNode() { result = node }
     CallContext getCallContext() { result = cc }
     override Configuration getConfiguration() { result = config }
-    override FlowGraphNode getSucc() {
+    private PathNodeMid getSuccMid() {
+      flowStep(this, result.getNode(), result.getCallContext()) and
+      result.getConfiguration() = unbind(this.getConfiguration())
+    }
+    override PathNode getSucc() {
       // an intermediate step to another intermediate node
-      flowStep(this, result.getNode(), result.(FlowGraphNodeMid).getCallContext()) and
+      result = getSuccMid()
+      or
+      // a final step to a sink via one or more local steps
+      localFlowStepPlus(node, result.getNode(), config) and
+      result instanceof PathNodeSink and
       result.getConfiguration() = unbind(this.getConfiguration())
       or
-      // a final step to a sink
-      (node = result.getNode() or localFlowStepPlus(node, result.getNode(), config)) and
-      result instanceof FlowGraphNodeSink and
+      // a final step to a sink via zero steps means we merge the last two steps to prevent trivial-looking edges
+      exists(PathNodeMid mid |
+        mid = getSuccMid() and
+        mid.getNode() = result.getNode() and
+        result instanceof PathNodeSink and
+        result.getConfiguration() = unbind(mid.getConfiguration())
+      )
+      or
+      // a direct step from a source to a sink if a node is both
+      this instanceof PathNodeSource and
+      result instanceof PathNodeSink and
+      this.getNode() = result.getNode() and
       result.getConfiguration() = unbind(this.getConfiguration())
     }
   }
@@ -537,8 +592,8 @@
   /**
    * A flow graph node corresponding to a source.
    */
-  private class FlowGraphNodeSource extends FlowGraphNodeMid {
-    FlowGraphNodeSource() {
+  private class PathNodeSource extends PathNodeMid {
+    PathNodeSource() {
       getConfiguration().isSource(getNode()) and
       getCallContext() instanceof CallContextAny
     }
@@ -549,20 +604,20 @@
    * intermediate nodes in order to uniquely correspond to a given sink by
    * excluding the `CallContext`.
    */
-  private class FlowGraphNodeSink extends FlowGraphNode, TFlowGraphNodeSink {
+  private class PathNodeSink extends PathNode, TPathNodeSink {
     Node node;
     Configuration config;
-    FlowGraphNodeSink() { this = TFlowGraphNodeSink(node, config) }
+    PathNodeSink() { this = TPathNodeSink(node, config) }
     override Node getNode() { result = node }
     override Configuration getConfiguration() { result = config }
-    override FlowGraphNode getSucc() { none() }
+    override PathNode getSucc() { none() }
   }
 
   /**
    * Holds if data may flow from `mid` to `node`. The last step in or out of
    * a callable is recorded by `cc`.
    */
-  private predicate flowStep(FlowGraphNodeMid mid, Node node, CallContext cc) {
+  private predicate flowStep(PathNodeMid mid, Node node, CallContext cc) {
     cc = mid.getCallContext() and
     localFlowBigStep(mid.getNode(), node, mid.getConfiguration())
     or
@@ -580,7 +635,7 @@
    * Holds if data may flow from `mid` to an exit of `m` in the context
    * `innercc`, and the path did not flow through a parameter of `m`.
    */
-  private predicate flowOutOfMethod0(FlowGraphNodeMid mid, Method m, CallContext innercc) {
+  private predicate flowOutOfMethod0(PathNodeMid mid, Method m, CallContext innercc) {
     exists(ReturnNode ret |
       ret = mid.getNode() and
       innercc = mid.getCallContext() and
@@ -594,7 +649,7 @@
    * is a return from a method and is recorded by `cc`, if needed.
    */
   pragma[noinline]
-  private predicate flowOutOfMethod(FlowGraphNodeMid mid, MethodAccess ma, CallContext cc) {
+  private predicate flowOutOfMethod(PathNodeMid mid, MethodAccess ma, CallContext cc) {
     exists(Method m, CallContext innercc |
       flowOutOfMethod0(mid, m, innercc) and
       resolveReturn(innercc, m, ma)
@@ -607,7 +662,7 @@
    * Holds if data may flow from `mid` to the `i`th argument of `call` in `cc`.
    */
   pragma[noinline]
-  private predicate flowIntoArg(FlowGraphNodeMid mid, int i, CallContext cc, Call call) {
+  private predicate flowIntoArg(PathNodeMid mid, int i, CallContext cc, Call call) {
     exists(ArgumentNode arg |
       arg = mid.getNode() and
       cc = mid.getCallContext() and
@@ -624,7 +679,7 @@
   }
 
   pragma[nomagic]
-  private predicate flowIntoCallable0(FlowGraphNodeMid mid, Callable callable, int i, CallContext outercc, Call call) {
+  private predicate flowIntoCallable0(PathNodeMid mid, Callable callable, int i, CallContext outercc, Call call) {
     flowIntoArg(mid, i, outercc, call) and
     callable = resolveCall(call, outercc) and
     parameterCand(callable, any(int j | j <= i and j >= i), mid.getConfiguration())
@@ -635,7 +690,7 @@
    * before and after entering the callable are `outercc` and `innercc`,
    * respectively.
    */
-  private predicate flowIntoCallable(FlowGraphNodeMid mid, ParameterNode p, CallContext outercc, CallContextCall innercc, Call call) {
+  private predicate flowIntoCallable(PathNodeMid mid, ParameterNode p, CallContext outercc, CallContextCall innercc, Call call) {
     exists(int i, Callable callable |
       flowIntoCallable0(mid, callable, i, outercc, call) and
       p.isParameterOf(callable, i)
@@ -646,7 +701,7 @@
 
   /** Holds if data may flow from `p` to a return statement in the callable. */
   private predicate paramFlowsThrough(ParameterNode p, CallContextCall cc, Configuration config) {
-    exists(FlowGraphNodeMid mid, ReturnNode ret |
+    exists(PathNodeMid mid, ReturnNode ret |
       mid.getNode() = ret and
       cc = mid.getCallContext() and
       config = mid.getConfiguration()
@@ -664,7 +719,7 @@
    * `m`. The context `cc` is restored to its value prior to entering `m`.
    */
   pragma[noinline]
-  private predicate flowThroughMethod(FlowGraphNodeMid mid, Call methodcall, CallContext cc) {
+  private predicate flowThroughMethod(PathNodeMid mid, Call methodcall, CallContext cc) {
     exists(ParameterNode p, CallContext innercc |
       flowIntoCallable(mid, p, cc, innercc, methodcall) and
       paramFlowsThrough(p, innercc, unbind(mid.getConfiguration()))
@@ -677,11 +732,19 @@
    * Will only have results if `configuration` has non-empty sources and
    * sinks.
    */
+  private predicate flowsTo(PathNodeSource flowsource, PathNodeSink flowsink, Node source, Node sink, Configuration configuration) {
+    flowsource.getConfiguration() = configuration and
+    flowsource.getNode() = source and
+    flowsource.getSucc*() = flowsink and
+    flowsink.getNode() = sink
+  }
+
+  /**
+   * Holds if data can flow (inter-procedurally) from `source` to `sink`.
+   *
+   * Will only have results if `configuration` has non-empty sources and
+   * sinks.
+   */
   predicate flowsTo(Node source, Node sink, Configuration configuration) {
-    exists(FlowGraphNodeSource flowsource, FlowGraphNodeSink flowsink |
-      flowsource.getConfiguration() = configuration and
-      flowsource.getNode() = source and
-      flowsource.getSucc*() = flowsink and
-      flowsink.getNode() = sink
-    )
+    flowsTo(_, _, source, sink, configuration)
   }

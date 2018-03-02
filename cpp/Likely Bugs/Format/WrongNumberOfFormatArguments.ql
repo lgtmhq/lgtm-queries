@@ -23,7 +23,7 @@
  *       correctness
  *       external/cwe/cwe-685
  */
-import default
+import cpp
 
 from FormatLiteral fl, FormattingFunctionCall ffc, int expected, int given
 where ffc = fl.getUse()

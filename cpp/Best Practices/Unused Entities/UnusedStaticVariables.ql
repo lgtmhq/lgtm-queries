@@ -23,7 +23,7 @@
  *       useless-code
  *       external/cwe/cwe-563
  */
-import default
+import cpp
 
 predicate declarationHasSideEffects(Variable v) {
   exists (Class c | c = v.getType().getUnderlyingType().getUnspecifiedType() |

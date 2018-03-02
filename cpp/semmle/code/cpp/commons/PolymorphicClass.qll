@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import cpp
 
 /**
  * A C++ class or structure which (possibly by inheritance) has at least one virtual method.

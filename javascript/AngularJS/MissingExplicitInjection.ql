@@ -33,4 +33,4 @@ where f1.asFunction().getNumParameter() > 0 and
       f1 != f2 and
       exists(f2.getAnExplicitDependencyInjection()) and
       f1.getLocation().getFile() = f2.getLocation().getFile()
-select f1, "This function has no explicit dependency injections."
+select f1, "This function has no explicit dependency injections, but $@ has an explicit dependency injection.", f2, "this function"

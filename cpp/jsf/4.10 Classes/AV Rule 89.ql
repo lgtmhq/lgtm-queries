@@ -21,7 +21,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 predicate derivesVirtual(Class c, Class base) {
   exists(ClassDerivation d | d.getDerivedClass() = c and d.getBaseClass() = base

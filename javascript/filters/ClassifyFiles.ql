@@ -28,26 +28,13 @@ import semmle.javascript.dependencies.FrameworkLibraries
 /**
  * Holds if `e` may be caused by parsing a template file as plain HTML or JavaScript.
  *
- * Our heuristic is to check for the presence of a known template delimiter preceding
- * the error on the same line.
+ * We use two heuristics: check for the presence of a known template delimiter preceding
+ * the error on the same line, and check whether the file name contains `template` or
+ * `templates`.
  */
 predicate maybeCausedByTemplate(JSParseError e) {
   exists (File f | f = e.getFile() |
-    // to check whether a known template delimiter precedes `e`, we take the prefix
-    // of the line on which `e` occurs up to the start of `e` plus the maximum length
-    // of a template delimiter (to account for the possibility that the parser gives
-    // up somewhere half-way through the delimiter), and look for an occurrence of
-    // a delimiter inside this string
-    exists (string prefix, int errStart, int n |
-      errStart = e.getLocation().getStartColumn() and
-      n = min(int nn |
-        nn = errStart + max(Templating::getADelimiter().length()) or
-        // take the entire line if it is too short
-        nn = e.getLine().length()
-      ) and
-      prefix = e.getLine().substring(0, n) and
-      prefix.regexpMatch(Templating::getDelimiterMatchingRegexp())
-    )
+    e.getLine().indexOf(Templating::getADelimiter()) <= e.getLocation().getStartColumn()
     or
     f.getAbsolutePath().regexpMatch("(?i).*\\btemplates?\\b.*")
   )

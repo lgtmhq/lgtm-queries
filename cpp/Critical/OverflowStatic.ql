@@ -24,7 +24,7 @@
  *       external/cwe/cwe-119
  *       external/cwe/cwe-131
  */
-import default
+import cpp
 import semmle.code.cpp.commons.Buffer
 import LoopBounds
 

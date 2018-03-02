@@ -88,9 +88,7 @@ class RemoteJson extends NosqlInjectionSource, DataFlow::ValueNode {
 
 /** An expression interpreted as a NoSQL query, viewed as a sink. */
 class NosqlQuerySink extends NosqlInjectionSink, DataFlow::ValueNode {
-  NosqlQuerySink() {
-    astNode instanceof NoSQL::Query
-  }
+  override NoSQL::Query astNode;
 }
 
 /**
@@ -101,7 +99,7 @@ class NosqlQueryFlowTarget extends TaintTracking::FlowTarget, DataFlow::ValueNod
   PropWriteNode pwn;
 
   NosqlQueryFlowTarget() {
-    exists (DataFlowNode queryObj | queryObj = query.getALocalSource() |
+    exists (DataFlowNode queryObj | queryObj = query.(DataFlowNode).getALocalSource() |
       astNode.(DataFlowNode).getALocalSource() = queryObj and
       queryObj = pwn.getBase().getALocalSource()
     )

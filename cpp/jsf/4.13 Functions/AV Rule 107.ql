@@ -21,7 +21,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 from DeclStmt ds
 where ds.getADeclaration() instanceof Function

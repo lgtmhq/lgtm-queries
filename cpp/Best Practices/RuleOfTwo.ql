@@ -24,7 +24,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 // This query enforces the Rule of Two, which is a conservative variation of
 // the more well-known Rule of Three.

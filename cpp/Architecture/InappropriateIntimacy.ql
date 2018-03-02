@@ -23,7 +23,7 @@
  *       statistical
  *       non-attributable
  */
-import default
+import cpp
 
 predicate remoteVarAccess(File source, File target, VariableAccess va) {
   va.getFile() = source and va.getTarget().getFile() = target and source != target

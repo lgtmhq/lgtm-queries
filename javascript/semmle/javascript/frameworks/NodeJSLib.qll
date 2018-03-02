@@ -31,70 +31,26 @@ module NodeJSLib {
   }
 
   /**
-   * A NodeJS HTTP response.
+   * A Node.js HTTP response.
    *
    * A server library that provides an (enhanced) NodesJS HTTP response
    * object should implement a library specific subclass of this class.
    */
-  abstract class ResponseExpr extends Expr {
-
-    /**
-     * Gets a route handler that provides this response.
-     */
-    abstract HTTP::RouteHandler getARouteHandler();
-
+  abstract class ResponseExpr extends HTTP::Servers::StandardResponseExpr {
   }
 
   /**
-   * A NodeJS HTTP request.
+   * A Node.js HTTP request.
    *
    * A server library that provides an (enhanced) NodesJS HTTP request
    * object should implement a library specific subclass of this class.
    */
-  abstract class RequestExpr extends Expr {
-
-    /**
-     * Gets a route handler that provides this request.
-     */
-    abstract HTTP::RouteHandler getARouteHandler();
-
+  abstract class RequestExpr extends HTTP::Servers::StandardRequestExpr {
   }
 
   /**
-   * A builtin NodeJS HTTP response.
+   * A Node.js route handler.
    */
-  private class BuiltinRouteHandlerResponseExpr extends ResponseExpr {
-
-    RouteHandler rh;
-
-    BuiltinRouteHandlerResponseExpr() {
-      this = rh.getAResponseExpr()
-    }
-
-    override RouteHandler getARouteHandler() {
-      result = rh
-    }
-
-  }
-
-  /**
-   * A builtin NodeJS HTTP request.
-   */
-  private class BuiltinRouteHandlerRequestExpr extends RequestExpr {
-
-    RouteHandler rh;
-
-    BuiltinRouteHandlerRequestExpr() {
-      this = rh.getARequestExpr()
-    }
-
-
-    override RouteHandler getARouteHandler() {
-      result = rh
-    }
-
-  }
-
   class RouteHandler extends HTTP::Servers::StandardRouteHandler {
 
     Function function;
@@ -104,57 +60,100 @@ module NodeJSLib {
       any(RouteSetup setup).getARouteHandler() = this
     }
 
-    private Expr getALocalParameterUse(int paramIndex){
-      exists(SimpleParameter param |
-        param = function.getParameter(paramIndex) and
-        result.mayReferToParameter(param)
-      )
+    /**
+     * Gets the parameter of the route handler that contains the request object.
+     */
+    SimpleParameter getRequestParameter() {
+      result = function.getParameter(0)
     }
 
     /**
-     * Gets an expression that contains the "request" object of
-     * a route handler invocation.
+     * Gets the parameter of the route handler that contains the response object.
      */
-    Expr getARequestExpr(){
-      result = getALocalParameterUse(0)
-    }
-
-    /**
-     * Gets an expression that contains the "response" object of
-     * a route handler invocation.
-     */
-    Expr getAResponseExpr(){
-      result = getALocalParameterUse(1)
+    SimpleParameter getResponseParameter() {
+      result = function.getParameter(1)
     }
   }
 
+  /**
+   * A Node.js response source, that is, the response parameter of a
+   * route handler.
+   */
+  private class ResponseSource extends HTTP::Servers::ResponseSource {
+    RouteHandler rh;
+
+    ResponseSource() {
+      this = DataFlow::parameterNode(rh.getResponseParameter())
+    }
+
+    /**
+     * Gets the route handler that provides this response.
+     */
+    RouteHandler getRouteHandler() {
+      result = rh
+    }
+  }
 
   /**
-   * An access to a user-controlled NodeJS request input.
+   * A Node.js request source, that is, the request parameter of a
+   * route handler.
+   */
+  private class RequestSource extends HTTP::Servers::RequestSource {
+    RouteHandler rh;
+
+    RequestSource() {
+      this = DataFlow::parameterNode(rh.getRequestParameter())
+    }
+
+    /**
+     * Gets the route handler that handles this request.
+     */
+    RouteHandler getRouteHandler() {
+      result = rh
+    }
+  }
+
+  /**
+   * A builtin Node.js HTTP response.
+   */
+  private class BuiltinRouteHandlerResponseExpr extends ResponseExpr {
+    BuiltinRouteHandlerResponseExpr() { src instanceof ResponseSource }
+  }
+
+  /**
+   * A builtin Node.js HTTP request.
+   */
+  private class BuiltinRouteHandlerRequestExpr extends RequestExpr {
+    BuiltinRouteHandlerRequestExpr() { src instanceof RequestSource }
+  }
+
+  /**
+   * An access to a user-controlled Node.js request input.
    */
   private class RequestInputAccess extends HTTP::RequestInputAccess {
-
+    RequestExpr request;
     string kind;
 
     RequestInputAccess() {
-      exists (RequestExpr request |
-        // `req.url`
-        kind = "url" and
-        this.asExpr().(PropAccess).accesses(request, "url")
-        or
-        exists (PropAccess headers, string name |
-          // `req.headers.<name>`
-          if name = "cookie" then kind = "cookie" else kind= "header" |
-          headers.accesses(request, "headers") and
-          this.asExpr().(PropAccess).accesses(headers, name)
-        )
+      // `req.url`
+      kind = "url" and
+      this.asExpr().(PropAccess).accesses(request, "url")
+      or
+      exists (PropAccess headers, string name |
+        // `req.headers.<name>`
+        if name = "cookie" then kind = "cookie" else kind= "header" |
+        headers.accesses(request, "headers") and
+        this.asExpr().(PropAccess).accesses(headers, name)
       )
+    }
+
+    override RouteHandler getRouteHandler() {
+      result = request.getRouteHandler()
     }
 
     override string getKind() {
       result = kind
     }
-
   }
 
   /**
@@ -176,29 +175,25 @@ module NodeJSLib {
   }
 
   class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
-
-    Expr server;
-
+    ServerDefinition server;
     Expr handler;
 
     RouteSetup() {
-      (server = this and
-        isCreateServer(server) and
-        handler = getArgument(0)) or
-        (server = getReceiver() and
-          server.(DataFlowNode).getALocalSource() instanceof Server and
-          getMethodName().regexpMatch("on(ce)?") and
-          getArgument(0).getStringValue() = "request" and
-          handler = getArgument(1)
-        )
+      server.flowsTo(this) and
+      handler = getArgument(0)
+      or
+      server.flowsTo(getReceiver()) and
+      getMethodName().regexpMatch("on(ce)?") and
+      getArgument(0).getStringValue() = "request" and
+      handler = getArgument(1)
     }
 
     override DataFlowNode getARouteHandler() {
       result = handler.(DataFlowNode).getALocalSource()
     }
 
-    override DataFlowNode getAServer() {
-      result = server.(DataFlowNode).getALocalSource()
+    override DataFlowNode getServer() {
+      result = server
     }
 
   }
@@ -211,8 +206,8 @@ module NodeJSLib {
       getReceiver() = r
     }
 
-    override HTTP::RouteHandler getARouteHandler(){
-      result = r.getARouteHandler()
+    override HTTP::RouteHandler getRouteHandler(){
+      result = r.getRouteHandler()
     }
 
   }
@@ -303,24 +298,29 @@ module NodeJSLib {
 
     ResponseSendArgument() {
       exists (MethodCallExpr mce, string m | m = "write" or m = "end" |
-        mce.calls(any(ResponseExpr e | e.getARouteHandler() = rh), m) and
+        mce.calls(any(ResponseExpr e | e.getRouteHandler() = rh), m) and
         this = mce.getArgument(0) and
         // don't mistake callback functions as data
         not this.(DataFlowNode).getALocalSource() instanceof Function
       )
     }
 
-    override HTTP::RouteHandler getHandler() { result = rh }
+    override HTTP::RouteHandler getRouteHandler() { result = rh }
   }
 
   /**
-   * A Node.js server application.
+   * An expression that creates a new Node.js server.
    */
-  class Server extends HTTP::Servers::StandardServer {
-    Server() {
+  class ServerDefinition extends HTTP::Servers::StandardServerDefinition {
+    ServerDefinition() {
       isCreateServer(this)
     }
   }
+
+  /**
+   * DEPRECATED: Use `ServerDefinition` instead.
+   */
+  deprecated class Server = ServerDefinition;
 
   /** An expression that is passed as `http.request({ auth: <expr> }, ...)`. */
   class Credentials extends CredentialsExpr {

@@ -12,18 +12,20 @@
 // permissions and limitations under the License.
 
 /**
- * @name Sizeof with side effects
- * @description The sizeof operator should not be used on expressions that contain side effects. It is subtle whether the side effects will occur or not.
+ * @name Insecure randomness
+ * @description Using a cryptographically weak pseudo-random number generator to generate a
+ *              security-sensitive value may allow an attacker to predict what value will
+ *              be generated.
  * @kind problem
  * @problem.severity warning
  * @precision high
- * @id cpp/sizeof-side-effect
- * @tags reliability
- *       correctness
+ * @id js/insecure-randomness
+ * @tags security
+ *       external/cwe/cwe-338
  */
-import default
-import jsf.lib.section_4_21_Operators.AV_Rule_166
+import javascript
+import semmle.javascript.security.dataflow.InsecureRandomness
 
-from SizeofImpureExprOperator sz
-where sz.getFile().compiledAsC() // Query only applies to C99+
-select sz, "A sizeof operator should not be used on expressions that contain side effects as the effect is confusing."
+from InsecureRandomnessDataFlowConfiguration cfg, DataFlow::Node source, DataFlow::Node sink
+where cfg.flowsFrom(sink, source)
+select sink, "Cryptographically insecure $@ in a security context.", source, "random value"

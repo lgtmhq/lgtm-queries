@@ -1755,12 +1755,3 @@ private class LiteralDynamicImportPath extends PathExprInModule, ConstantString 
 
   override string getValue() { result = this.(ConstantString).getStringValue() }
 }
-
-/**
- * An expression that evaluates to a constant string.
- */
-class ConstantString extends Expr {
-  ConstantString() {
-    exists(getStringValue())
-  }
-}

@@ -19,7 +19,7 @@
  * @problem.severity recommendation
  * @precision high
  * @id java/deprecated-call
- * @tags changeability
+ * @tags maintainability
  *       non-attributable
  *       external/cwe/cwe-477
  */

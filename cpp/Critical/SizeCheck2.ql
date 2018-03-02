@@ -24,7 +24,7 @@
  *       external/cwe/cwe-131
  *       external/cwe/cwe-122
  */
-import default
+import cpp
 
 class Allocation extends FunctionCall
 {

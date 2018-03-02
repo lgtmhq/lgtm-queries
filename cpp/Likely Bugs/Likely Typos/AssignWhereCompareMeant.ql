@@ -23,7 +23,7 @@
  *       correctness
  *       external/cwe/cwe-481
  */
-import default
+import cpp
 
 abstract class BooleanControllingAssignment extends AssignExpr {
   abstract predicate isWhitelisted();

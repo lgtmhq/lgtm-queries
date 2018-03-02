@@ -25,7 +25,7 @@
  *       correctness
  *       external/cwe/cwe-134
  */
-import default
+import cpp
 
 /**
  * Holds if `t` is a character array or pointer, where `charType` is the type of

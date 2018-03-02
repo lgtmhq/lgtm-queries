@@ -19,10 +19,10 @@ import semmle.javascript.frameworks.HTTP
 
 module Hapi {
   /**
-   * A Hapi server.
+   * An expression that creates a new Hapi server.
    */
-  private class Server extends HTTP::Servers::StandardServer, NewExpr {
-    Server() {
+  class ServerDefinition extends HTTP::Servers::StandardServerDefinition, NewExpr {
+    ServerDefinition() {
       exists (ModuleInstance hapi | hapi.getPath() = "hapi" |
         // `server = new Hapi.Server()`
         this.getCallee() = hapi.getAPropertyRead("Server")
@@ -33,7 +33,7 @@ module Hapi {
   /**
    * A Hapi route handler.
    */
-  private class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
 
     Function function;
 
@@ -43,25 +43,74 @@ module Hapi {
     }
 
     /**
-     * Gets an expression that contains the "request" object of
-     * a route handler invocation.
+     * Gets the parameter of the route handler that contains the request object.
      */
-    Expr getARequestExpr() {
-      result.mayReferToParameter(function.getParameter(0))
+    SimpleParameter getRequestParameter() {
+      result = function.getParameter(0)
+    }
+  }
+
+  /**
+   * A Hapi response source, that is, an access to the `response` property
+   * of a request object.
+   */
+  private class ResponseSource extends HTTP::Servers::ResponseSource {
+    RequestExpr req;
+
+    ResponseSource() {
+      asExpr().(PropAccess).accesses(req, "response")
     }
 
+    /**
+     * Gets the route handler that provides this response.
+     */
+    RouteHandler getRouteHandler() {
+      result = req.getRouteHandler()
+    }
+  }
+
+  /**
+   * A Hapi request source, that is, the request parameter of a
+   * route handler.
+   */
+  private class RequestSource extends HTTP::Servers::RequestSource {
+    RouteHandler rh;
+
+    RequestSource() {
+      this = DataFlow::parameterNode(rh.getRequestParameter())
+    }
+
+    /**
+     * Gets the route handler that handles this request.
+     */
+    RouteHandler getRouteHandler() {
+      result = rh
+    }
+  }
+
+  /**
+   * A Hapi response expression.
+   */
+  class ResponseExpr extends HTTP::Servers::StandardResponseExpr {
+    override ResponseSource src;
+  }
+
+  /**
+   * An Hapi request expression.
+   */
+  class RequestExpr extends HTTP::Servers::StandardRequestExpr {
+    override RequestSource src;
   }
 
   /**
    * An access to a user-controlled Hapi request input.
    */
   private class RequestInputAccess extends HTTP::RequestInputAccess {
-
+    RouteHandler rh;
     string kind;
 
     RequestInputAccess() {
-      exists (Expr request |
-        request = any(RouteHandler rh).getARequestExpr() |
+      exists (Expr request | request = rh.getARequestExpr() |
         kind = "body" and
         (
           // `request.rawPayload`
@@ -103,31 +152,28 @@ module Hapi {
       )
     }
 
+    override RouteHandler getRouteHandler() {
+      result = rh
+    }
+
     override string getKind() {
       result = kind
     }
-
   }
 
   /**
    * An HTTP header defined in a Hapi server.
    */
   private class HeaderDefinition extends HTTP::Servers::StandardHeaderDefinition {
+    ResponseExpr res;
 
     HeaderDefinition() {
-      exists(Expr req |
-        any(RouteHandler rh).getARequestExpr() = req and
-        // request.response.header('Cache-Control', 'no-cache')
-        getReceiver().(PropAccess).accesses(req, "response") and
-        getMethodName() = "header"
-      )
+      // request.response.header('Cache-Control', 'no-cache')
+      calls(res, "header")
     }
 
-    override RouteHandler getARouteHandler(){
-      exists(Expr base |
-        this.getReceiver().(PropAccess).getBase() = base and
-        result.getARequestExpr() = base
-      )
+    override RouteHandler getRouteHandler(){
+      result = res.getRouteHandler()
     }
 
   }
@@ -135,27 +181,27 @@ module Hapi {
   /**
    * A call to a Hapi method that sets up a route.
    */
-  private class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
-
-    Expr server;
-
+  class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
+    ServerDefinition server;
     string methodName;
 
     RouteSetup() {
-      server = getReceiver() and
-      server.(DataFlowNode).getALocalSource() instanceof Server and
+      server.flowsTo(getReceiver()) and
+      methodName = getMethodName() and
       (methodName = "route" or methodName = "ext")
     }
 
     override DataFlowNode getARouteHandler() {
       // server.route({ handler: fun })
-      (methodName = "route" and result = any(DataFlowNode n | hasOptionArgument(0, "handler", n)).getALocalSource()) or
-        // server.ext('/', fun)
-        (methodName = "ext" and result = getArgument(1).(DataFlowNode).getALocalSource())
-      }
+      methodName = "route" and
+      result = any(DataFlowNode n | hasOptionArgument(0, "handler", n)).getALocalSource()
+      or
+      // server.ext('/', fun)
+      methodName = "ext" and result = getArgument(1).(DataFlowNode).getALocalSource()
+    }
 
-      override DataFlowNode getAServer(){
-      result = server.(DataFlowNode).getALocalSource()
+    override DataFlowNode getServer() {
+      result = server
     }
   }
 }

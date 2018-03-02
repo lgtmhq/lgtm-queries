@@ -24,7 +24,7 @@
  *       statistical
  *       non-attributable
  */
-import default
+import cpp
 
 predicate logicalOp(string op) {
   op = "&&" or op = "||"

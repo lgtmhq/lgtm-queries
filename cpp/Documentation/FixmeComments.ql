@@ -22,7 +22,7 @@
  *       documentation
  *       external/cwe/cwe-546
  */
-import default
+import cpp
 import Documentation.CaptionedComments
 
 from Comment c, string message

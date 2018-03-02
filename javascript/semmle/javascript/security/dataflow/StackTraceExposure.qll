@@ -61,7 +61,5 @@ class DefaultStackTraceExposureSource extends StackTraceExposureSource, DataFlow
  * as a data flow sink for stack trace exposure vulnerabilities.
  */
 class DefaultStackTraceExposureSink extends StackTraceExposureSink, DataFlow::ValueNode {
-  DefaultStackTraceExposureSink() {
-    astNode instanceof HTTP::ResponseBody
-  }
+  override HTTP::ResponseBody astNode;
 }

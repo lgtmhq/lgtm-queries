@@ -21,7 +21,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 from SwitchStmt s
 where s.fromSource() and

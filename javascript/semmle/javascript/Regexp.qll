@@ -141,7 +141,7 @@ class RegExpCharEscape extends RegExpEscape, RegExpConstant, @regexp_char_escape
       getValue() = "?" and
       exists (string s | s = toString().toLowerCase() |
         // only Unicode escapes give rise to unencodable characters
-        s.matches("\\u%") and
+        s.matches("\\\\u%") and
         // but '\u003f' actually is the '?' character itself
         s != "\\u003f"
       )

@@ -67,7 +67,7 @@ private class HttpResponseSink extends XssSink {
   HttpResponseSink() {
     exists (HTTP::ResponseSendArgument sendarg | sendarg = asExpr() |
       forall (HTTP::HeaderDefinition hd |
-        hd = sendarg.getHandler().getAResponseHeader("Content-Type") |
+        hd = sendarg.getRouteHandler().getAResponseHeader("Content-Type") |
         exists (string tp | hd.defines("Content-Type", tp) |
           tp.toLowerCase().matches("%html%")
         )

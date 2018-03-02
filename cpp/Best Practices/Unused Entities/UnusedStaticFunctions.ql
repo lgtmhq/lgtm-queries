@@ -24,7 +24,7 @@
  *       useless-code
  *       external/cwe/cwe-561
  */
-import default
+import cpp
 
 predicate immediatelyReachableFunction(Function f) {
     not f.isStatic()

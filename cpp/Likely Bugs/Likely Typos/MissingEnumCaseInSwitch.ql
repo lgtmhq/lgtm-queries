@@ -23,7 +23,7 @@
  *       correctness
  *       external/cwe/cwe-478
  */
-import default
+import cpp
 
 from EnumSwitch es, float missing, float total
 where not es.hasDefaultCase()

@@ -38,7 +38,6 @@ class ArrayLengthRead extends FieldRead, SizeOfContainer {
     this.getField() instanceof ArrayLengthField
   }
 
-  string toString() { result = FieldRead.super.toString() }
   string getContainerKind() { result = "an array" }
 }
 
@@ -48,21 +47,15 @@ class StringLengthRead extends MethodAccess, SizeOfContainer {
     this.getMethod() instanceof StringLengthMethod
   }
 
-  Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
-  string toString() { result = MethodAccess.super.toString() }
   string getContainerKind() { result = "a string" }
 }
 
 /** An access to `Collection.size()`. */
 class CollectionSizeCall extends MethodAccess, SizeOfContainer {
   CollectionSizeCall() {
-      this.getMethod() instanceof CollectionSizeMethod
+    this.getMethod() instanceof CollectionSizeMethod
   }
-  
-  Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
-  string toString() { result = MethodAccess.super.toString() }
+
   string getContainerKind() { result = "a collection" }
 }
 
@@ -72,9 +65,6 @@ class MapSizeCall extends MethodAccess, SizeOfContainer {
     this.getMethod() instanceof MapSizeMethod
   }
 
-  Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
-  string toString() { result = MethodAccess.super.toString() }
   string getContainerKind() { result = "a map" }
 }
 

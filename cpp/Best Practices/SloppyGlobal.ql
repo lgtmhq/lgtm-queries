@@ -20,7 +20,7 @@
  * @id cpp/short-global-name
  * @tags maintainability
  */
-import default
+import cpp
 
 from GlobalVariable gv
 where gv.getName().length() <= 3

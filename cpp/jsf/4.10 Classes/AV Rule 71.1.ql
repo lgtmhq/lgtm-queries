@@ -22,7 +22,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 predicate thisCall(FunctionCall c) {
   c.getQualifier() instanceof ThisExpr or

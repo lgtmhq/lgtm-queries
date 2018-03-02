@@ -23,7 +23,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 from ThrowExpr t
 where t.getEnclosingFunction() instanceof Destructor

@@ -21,7 +21,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 from Parameter p, Parameter superP, MemberFunction subF, MemberFunction superF, int i, string subValue, string superValue
 where p.hasInitializer()

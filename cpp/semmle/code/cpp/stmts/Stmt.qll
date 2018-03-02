@@ -490,6 +490,19 @@ class ContinueStmt extends JumpStmt, @stmt_continue {
 
   override predicate mayBeImpure() { none() }
   override predicate mayBeGloballyImpure() { none() }
+  
+  /**
+   * Gets the loop that this continue statement will jump to the beginning of.
+   */
+  Stmt getContinuable() {
+    result = getEnclosingContinuable(this)
+  }
+}
+
+private Stmt getEnclosingContinuable(Stmt s) {
+  if s.getParent().getEnclosingStmt() instanceof Loop
+  then result = s.getParent().getEnclosingStmt()
+  else result = getEnclosingContinuable(s.getParent().getEnclosingStmt())
 }
 
 /**
@@ -506,6 +519,19 @@ class BreakStmt extends JumpStmt, @stmt_break {
 
   override predicate mayBeImpure() { none() }
   override predicate mayBeGloballyImpure() { none() }
+  
+  /**
+   * Gets the loop or switch statement that this break statement will exit.
+   */
+  Stmt getBreakable() {
+    result = getEnclosingBreakable(this)
+  }
+}
+
+private Stmt getEnclosingBreakable(Stmt s) {
+  if s.getParent().getEnclosingStmt() instanceof Loop or s.getParent().getEnclosingStmt() instanceof SwitchStmt
+  then result = s.getParent().getEnclosingStmt()
+  else result = getEnclosingBreakable(s.getParent().getEnclosingStmt())
 }
 
 /**

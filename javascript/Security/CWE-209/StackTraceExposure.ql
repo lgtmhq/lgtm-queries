@@ -25,7 +25,6 @@
  */
 
 import javascript
-import semmle.javascript.flow.Tracking
 import semmle.javascript.security.dataflow.StackTraceExposure
 
 from StackTraceExposureTrackingConfig cfg, DataFlow::Node source, DataFlow::Node sink

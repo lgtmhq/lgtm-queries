@@ -17,8 +17,7 @@
  * @kind problem
  * @problem.severity recommendation
  * @id js/use-of-reserved-word
- * @tags changeability
- *       maintainability
+ * @tags maintainability
  *       language-features
  * @precision very-high
  */

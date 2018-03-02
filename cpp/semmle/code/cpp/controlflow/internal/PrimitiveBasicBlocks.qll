@@ -37,17 +37,12 @@ predicate primitive_basic_block_entry_node(ControlFlowNode node) {
   // The entry point of the CFG is the start of a BB.
   exists (Function f | f.getEntryPoint() = node)
 
-  // Any node with more than one predecessor is the start of
-  // a primitive basic block
-  or
-  strictcount (ControlFlowNode pred | successors_extended(pred, node) | pred) > 1
-
-  // If the node's predecessor has more than one successor then
-  // the node is the start of a new BB.
+  // If the node has more than one predecessor,
+  // or the node's predecessor has more than one successor,
+  // then the node is the start of a new primitive basic block.
   or
   strictcount (ControlFlowNode pred, ControlFlowNode other
-  | successors_extended(pred,node) and successors_extended(pred,other)
-  | other) > 1
+  | successors_extended(pred,node) and successors_extended(pred,other)) > 1
 
   // If the node has zero predecessors then it is the start of
   // a BB. However, the C++ AST contains many nodes with zero

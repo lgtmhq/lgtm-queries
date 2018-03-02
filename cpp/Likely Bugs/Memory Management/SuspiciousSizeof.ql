@@ -24,7 +24,7 @@
  *       correctness
  *       external/cwe/cwe-467
  */
-import default
+import cpp
 
 class CandidateParameter extends Parameter {
   CandidateParameter() {

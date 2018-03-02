@@ -21,7 +21,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 import Best_Practices.Hiding.Shadowing
 

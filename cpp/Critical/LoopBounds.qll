@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /** Provides helpers for OverflowStatic.ql */
-import default
+import cpp
 
 class ZeroAssignment extends AssignExpr
 {

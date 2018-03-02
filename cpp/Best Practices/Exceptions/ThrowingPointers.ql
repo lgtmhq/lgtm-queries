@@ -23,7 +23,7 @@
  *       exceptions
  */
 
-import default
+import cpp
 
 from ThrowExpr throw, NewExpr new, Type t
 where new.getParent() = throw

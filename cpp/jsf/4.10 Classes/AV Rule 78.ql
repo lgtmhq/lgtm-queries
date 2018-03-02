@@ -22,7 +22,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 // find classes with virtual functions that have a destructor that is not virtual and for which there exists a derived class
 // when calling the destructor of a derived class the destructor in the base class may not be called

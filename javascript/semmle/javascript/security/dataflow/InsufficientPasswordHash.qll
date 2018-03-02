@@ -15,7 +15,6 @@
  * Provides a taint tracking configuration for reasoning about password hashing with insufficient computational effort.
  */
 import javascript
-private import semmle.javascript.flow.Tracking
 private import semmle.javascript.security.SensitiveActions
 private import semmle.javascript.frameworks.CryptoLibraries
 
