@@ -152,10 +152,7 @@ private class IntRefinement extends NumberRefinement, NumberLiteral {
 /**
  * A use of the global variable `undefined`, viewed as a refinement expression.
  */
-private class UndefinedInRefinement extends RefinementCandidate, VarUse {
-  UndefinedInRefinement() {
-    getVariable().(GlobalVariable).getName() = "undefined"
-  }
+private class UndefinedInRefinement extends RefinementCandidate, SyntacticConstants::UndefinedConstant {
 
   override SsaSourceVariable getARefinedVar() {
     none()

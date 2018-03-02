@@ -42,28 +42,64 @@ abstract class BufferWrite extends Expr
 {
   // --- derived classes override these ---
 
-  /** a data source (e.g. the source string, format string; not necessarily copied as-is) */
+  /**
+   * Gets the (unspecified) type of the buffer this operation works
+   * with (for example `char *`).
+   */
+  abstract Type getBufferType();
+
+  /**
+   * Gets a data source of this operation (e.g. the source string,
+   * format string; not necessarily copied as-is).
+   */
   Expr getASource() { none() }
 
-  /** the destination buffer */
+  /**
+   * Gets the destination buffer of this operation.
+   */
   abstract Expr getDest();
 
-  /** does the operation have an explicit parameter that limits the amount of data written
-      (e.g. strncpy does, whereas strcpy doesn't); this is not the same as exists(getExplicitLimit())
-      because the limit may exist but be unknown at compile time. */
+  /**
+   * Holds if the operation has an explicit parameter that limits the amount
+   * of data written (e.g. `strncpy` does, whereas `strcpy` does not); this
+   * is not the same as exists(getExplicitLimit()) because the limit may exist
+   * though it's value is unknown.
+   */
   predicate hasExplicitLimit() { none() }
   
-  /** returns the explicit limit (in bytes, if it exists and is known) */
+  /**
+   * Gets the explicit limit of bytes copied by this operation, if it exists
+   * and it's value can be determined.
+   */
   int getExplicitLimit() { none() }
   
-  /** returns an upper bound to the amount of data that's being written (if it can be found) */
+  /**
+   * Gets an upper bound to the amount of data that's being written (if one
+   * can be found).
+   */
   int getMaxData() { none() }
 
-  /** as getMaxData() except that float to string conversions are assumed to be much smaller (8 bytes) than their true
-      maximum length.  This can be helpful in determining the cause of a buffer overflow issue. */
+  /**
+   * Gets an upper bound to the amount of data that's being written (if one
+   * can be found), except that float to string conversions are assumed to be
+   * much smaller (8 bytes) than their true maximum length.  This can be
+   * helpful in determining the cause of a buffer overflow issue.
+   */
   int getMaxDataLimited() { result = getMaxData() }
 
-  /** describes the buffer write */
+  /**
+   * Gets the size of a single character of the type this
+   * operation works with, in bytes.
+   */
+  int getCharSize()
+  {
+    result = getBufferType().(PointerType).getBaseType().getSize() or
+    result = getBufferType().(ArrayType).getBaseType().getSize()
+  }
+
+  /**
+   * Gets a description of this buffer write.
+   */
   string getBWDesc()
   {
     result = toString()
@@ -75,12 +111,6 @@ abstract class BufferWrite extends Expr
  */
 abstract class BufferWriteCall extends BufferWrite, FunctionCall
 {
-  Location getLocation() { result = FunctionCall.super.getLocation() }
-  Type getType() { result = FunctionCall.super.getType() }
-  string toString() { result = FunctionCall.super.toString() }
-  predicate mayBeImpure() { FunctionCall.super.mayBeImpure() }
-  predicate mayBeGloballyImpure() { FunctionCall.super.mayBeGloballyImpure() }
-  int getPrecedence() { result = FunctionCall.super.getPrecedence() }
 }
 
 // --- BufferWrite classes ---
@@ -138,15 +168,9 @@ class StrCopyBW extends BufferWriteCall
     ))
   }
 
-  int getCharSize()
+  Type getBufferType()
   {
-    exists(TopLevelFunction fn, string name | (fn = getTarget()) and (name = fn.getName()) and (
-      if exists(name.indexOf("wcs")) then (
-        exists(Type t | (t instanceof Wchar_t) and (result = t.getSize()))
-      ) else (
-        exists(Type t | (t instanceof PlainCharType) and (result = t.getSize()))
-      )
-    ))
+    result = this.getTarget().getParameter(getParamSrc()).getType().getUnspecifiedType()
   }
 
   Expr getASource()
@@ -199,15 +223,9 @@ class StrCatBW extends BufferWriteCall
     result = 1
   }
 
-  int getCharSize()
+  Type getBufferType()
   {
-    exists(TopLevelFunction fn, string name | (fn = getTarget()) and (name = fn.getName()) and (
-      if exists(name.indexOf("wcs")) then (
-        exists(Type t | (t instanceof Wchar_t) and (result = t.getSize()))
-      ) else (
-        exists(Type t | (t instanceof PlainCharType) and (result = t.getSize()))
-      )
-    ))
+    result = this.getTarget().getParameter(getParamSrc()).getType().getUnspecifiedType()
   }
 
   Expr getASource()
@@ -258,16 +276,12 @@ class SprintfBW extends BufferWriteCall
     ))
   }
 
-  int getCharSize()
+  Type getBufferType()
   {
-    exists(TopLevelFunction fn, string name | (fn = getTarget()) and (name = fn.getName()) and (
-      if (exists(name.indexOf("wprintf"))
-          or exists(name.indexOf("wsprintf"))) then (
-        exists(Type t | (t instanceof Wchar_t) and (result = t.getSize()))
-      ) else (
-        exists(Type t | (t instanceof PlainCharType) and (result = t.getSize()))
-      )
-    ))
+    exists(FormattingFunction f |
+      f = this.getTarget() and
+      result = f.getParameter(f.getFormatParameterIndex()).getType().getUnspecifiedType()
+    )
   }
 
   Expr getASource()
@@ -350,16 +364,12 @@ class SnprintfBW extends BufferWriteCall
     result = 1
   }
 
-  int getCharSize()
+  Type getBufferType()
   {
-    exists(TopLevelFunction fn, string name | (fn = getTarget()) and (name = fn.getName()) and (
-      if (exists(name.indexOf("wprintf"))
-          or exists(name.indexOf("wsprintf"))) then (
-        exists(Type t | (t instanceof Wchar_t) and (result = t.getSize()))
-      ) else (
-        exists(Type t | (t instanceof PlainCharType) and (result = t.getSize()))
-      )
-    ))
+    exists(FormattingFunction f |
+      f = this.getTarget() and
+      result = f.getParameter(f.getFormatParameterIndex()).getType().getUnspecifiedType()
+    )
   }
 
   Expr getASource()
@@ -424,15 +434,9 @@ class GetsBW extends BufferWriteCall
     )
   }
 
-  int getCharSize()
+  Type getBufferType()
   {
-    exists(TopLevelFunction fn, string name | (fn = getTarget()) and (name = fn.getName()) and (
-      if (name = "fgetws") then (
-        exists(Type t | (t instanceof Wchar_t) and (result = t.getSize()))
-      ) else (
-        exists(Type t | (t instanceof PlainCharType) and (result = t.getSize()))
-      )
-    ))  
+    result = this.getTarget().getParameter(0).getType().getUnspecifiedType()
   }
 
   Expr getASource()
@@ -483,14 +487,12 @@ class ScanfBW extends BufferWrite
     )
   }
 
-  int getCharSize()
+  Type getBufferType()
   {
-    exists(ScanfFunctionCall fc | (this = fc.getArgument(_)) and
-      if (fc.isWideCharDefault()) then (
-        exists(Type t | (t instanceof Wchar_t) and (result = t.getSize()))
-      ) else (
-        exists(Type t | (t instanceof PlainCharType) and (result = t.getSize()))
-      )
+    exists(ScanfFunction f, ScanfFunctionCall fc |
+      this = fc.getArgument(_) and
+      f = fc.getTarget() and
+      result = f.getParameter(f.getFormatParameterIndex()).getType().getUnspecifiedType()
     )
   }
 
@@ -543,7 +545,12 @@ private int path_max() {
 class RealpathBW extends BufferWriteCall {
   RealpathBW() {
     exists(path_max()) and // Ignore realpath() calls if PATH_MAX cannot be determined
-    getTarget().getQualifiedName() = "realpath"
+    getTarget().getQualifiedName() = "realpath" // realpath(path, resolved_path);
+  }
+
+  Type getBufferType()
+  {
+    result = this.getTarget().getParameter(0).getType().getUnspecifiedType()
   }
   
   Expr getDest() { result = getArgument(1) }

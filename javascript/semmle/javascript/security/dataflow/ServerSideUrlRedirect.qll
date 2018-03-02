@@ -114,25 +114,14 @@ class LocationHeaderSink extends ServerSideUrlRedirectSink, DataFlow::ValueNode 
  * considered to sanitize a variable for purposes of URL redirection.
  */
 class LocalUrlSanitizingGuard extends TaintTracking::SanitizingGuard, CallExpr {
-  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
-    cfg instanceof ServerSideUrlRedirectDataFlowConfiguration and
-    // `isLocalUrl(v)` sanitizes `v` if it evaluates to `true`
-    this.getCalleeName().regexpMatch("(?i)(is_?)?local_?url") and
-    this.getAnArgument() = v.getAUse() and
-    outcome = true
+  LocalUrlSanitizingGuard() {
+    this.getCalleeName().regexpMatch("(?i)(is_?)?local_?url")
   }
-}
 
-/**
- * A comparison to a constant string, which is considered to
- * sanitize a variable for purposes of URL redirection.
- */
-class UrlWhitelistSanitizingGuard extends TaintTracking::SanitizingGuard, EqualityTest {
-  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
+  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
     cfg instanceof ServerSideUrlRedirectDataFlowConfiguration and
-    // `v === "foo"` sanitizes `v` if it evaluates to `true`, `v !== "bar"`
-    // if it evaluates to `false`
-    this.hasOperands(v.getAUse(), any(Expr c | exists(c.getStringValue()))) and
-    outcome = this.getPolarity()
+    // `isLocalUrl(e)` sanitizes `e` if it evaluates to `true`
+    this.getAnArgument() = e and
+    outcome = true
   }
 }

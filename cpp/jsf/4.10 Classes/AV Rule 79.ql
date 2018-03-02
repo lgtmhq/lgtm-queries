@@ -22,7 +22,7 @@
  *       readability
  *       external/cwe/cwe-404
  */
-import default
+import cpp
 
 // List pairs of functions that do resource acquisition/release
 // Extend this to add custom function pairs. As written the query

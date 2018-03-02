@@ -276,7 +276,7 @@ private predicate isShadowedFromBulkExport(BulkReExportDeclaration reExport, str
   exists (ExportNamedDeclaration other | other.getContainer() = reExport.getEnclosingModule() |
     other.getAnExportedDecl().getName() = name
     or
-    other.getASpecifier().getExported().getName() = name)
+    other.getASpecifier().getExportedName() = name)
 }
 
 /**
@@ -337,11 +337,14 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
   }
 
   override predicate exportsAs(LexicalName v, string name) {
-    exists (LexicalDecl vd | vd = getAnExportedDecl() | name = vd.getName() and v = vd.getALexicalName()) or
-    exists (ExportSpecifier spec | spec = getASpecifier() |
-      name = spec.getExported().getName() and
-      (v = spec.getLocal().(LexicalAccess).getALexicalName() or
-       this.(ReExportDeclaration).getImportedModule().exportsAs(v, spec.getLocal().getName()))
+    exists (LexicalDecl vd | vd = getAnExportedDecl() |
+      name = vd.getName() and v = vd.getALexicalName()
+    )
+    or
+    exists (ExportSpecifier spec | spec = getASpecifier() and name = spec.getExportedName() |
+      v = spec.getLocal().(LexicalAccess).getALexicalName()
+      or
+      this.(ReExportDeclaration).getImportedModule().exportsAs(v, spec.getLocalName())
     )
   }
 
@@ -350,11 +353,11 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
       name = d.getTarget().(VarDecl).getName() and
       result = d.getSource()
     ) or
-    exists (ExportSpecifier spec | spec = getASpecifier() and name = spec.getExported().getName() |
+    exists (ExportSpecifier spec | spec = getASpecifier() and name = spec.getExportedName() |
       not exists(getImportedPath()) and result = spec.getLocal()
       or
       exists (ReExportDeclaration red | red = this |
-        result = red.getImportedModule().getAnExport().getSourceNode(spec.getLocal().getName())
+        result = red.getImportedModule().getAnExport().getSourceNode(spec.getLocalName())
       )
     )
   }
@@ -382,6 +385,11 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
 
 /** An export specifier in a named export declaration. */
 class ExportSpecifier extends Expr, @exportspecifier {
+  /** Gets the declaration to which this specifier belongs. */
+  ExportDeclaration getExportDeclaration() {
+    result = getParent()
+  }
+
   /** Gets the local symbol that is being exported. */
   Identifier getLocal() {
     result = getChildExpr(0)
@@ -391,6 +399,51 @@ class ExportSpecifier extends Expr, @exportspecifier {
   Identifier getExported() {
     result = getChildExpr(1)
   }
+
+  /**
+   * Gets the local name of the exported symbol, that is, the name
+   * of the exported local variable, or the imported name in a
+   * re-export.
+   *
+   * For example, consider these six exports:
+   *
+   * ```javascript
+   * export { x }
+   * export { y as z }
+   * export function f() {}
+   * export default 42
+   * export * from 'd'
+   * export default from 'm'
+   * ```
+   *
+   * The local names for the first three of them are, respectively,
+   * `x`, `y` and `f`; the fourth one exports an un-named value, and
+   * hence has no local name; the fifth one does not export a unique
+   * name, and hence also does not have a local name.
+   *
+   * The sixth one (unlike the fourth one) _does_ have a local name
+   * (that is, `default`), since it is a re-export.
+   */
+  string getLocalName() { result = getLocal().getName() }
+
+  /**
+   * Gets the name under which the symbol is exported.
+   *
+   * For example, consider these five exports:
+   *
+   * ```javascript
+   * export { x }
+   * export { y as z }
+   * export function f() {}
+   * export default 42
+   * export * from 'd'
+   * ```
+   *
+   * The exported names for the first four of them are, respectively,
+   * `x`, `z`, `f` and `default`, while the last one does not have
+   * an exported name since it does not export a unique symbol.
+   */
+  string getExportedName() { result = getExported().getName() }
 }
 
 /** A named export specifier. */
@@ -399,6 +452,13 @@ class NamedExportSpecifier extends ExportSpecifier, @namedexportspecifier {
 
 /** A default export specifier. */
 class ExportDefaultSpecifier extends ExportSpecifier, @exportdefaultspecifier {
+  override string getLocalName() {
+    getExportDeclaration() instanceof ReExportDeclaration and result = "default"
+  }
+
+  override string getExportedName() {
+    result = "default"
+  }
 }
 
 /** A namespace export specifier. */

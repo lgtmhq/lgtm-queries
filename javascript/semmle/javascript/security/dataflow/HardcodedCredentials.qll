@@ -15,7 +15,6 @@
  * Provides a data flow configuration for reasoning about hardcoded credentials.
  */
 import javascript
-private import semmle.javascript.flow.Tracking
 private import semmle.javascript.security.SensitiveActions
 
 /**
@@ -38,7 +37,7 @@ abstract class HardcodedCredentialsSanitizer extends DataFlow::Node { }
 /**
  * A data flow tracking configuration for hardcoded credentials.
  */
-class HardcodedCredentialsTrackingConfiguration extends FlowTrackingConfiguration {
+class HardcodedCredentialsTrackingConfiguration extends DataFlow::Configuration {
   HardcodedCredentialsTrackingConfiguration() {
     this = "HardcodedCredentials"
   }

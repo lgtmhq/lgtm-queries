@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import cpp
 import semmle.code.cpp.controlflow.Dominance
 import semmle.code.cpp.controlflow.SSA // must be imported for proper caching of SSAHelper
 import semmle.code.cpp.rangeanalysis.RangeSSA // must be imported for proper caching of SSAHelper

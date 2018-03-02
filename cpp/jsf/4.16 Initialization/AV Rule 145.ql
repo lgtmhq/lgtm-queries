@@ -22,7 +22,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 predicate hasInitializer(EnumConstant c) {
   c.getInitializer().fromSource()

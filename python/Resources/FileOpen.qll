@@ -128,9 +128,7 @@ predicate close_method_call(CallNode call, ControlFlowNode self) {
 }
 
 predicate function_closes_file(FunctionObject close) {
-    exists(ModuleObject os | os.getName() = "os" and
-        os.getAttribute("close") = close
-    )
+    close.hasLongName("os.close")
     or
     function_should_close_parameter(close.getFunction())
 }

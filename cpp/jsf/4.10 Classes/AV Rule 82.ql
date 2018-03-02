@@ -22,7 +22,7 @@
  *       readability
  *       language-features
  */
-import default
+import cpp
 
 predicate callOnThis(FunctionCall fc) {
   // `this->f(...)`

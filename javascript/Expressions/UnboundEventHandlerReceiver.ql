@@ -31,9 +31,9 @@ private predicate isBoundInMethod(MethodDeclaration method) {
     not bindingMethod.isStatic() and
     reassign.(Expr).getEnclosingFunction() = bindingMethod.getBody() and
     // this.<methodName> = <expr>.bind(...)
-    reassign.getBase() instanceof ThisExpr and
+    reassign.getBase().(DataFlowNode).getALocalSource() instanceof ThisExpr and
     reassign.getPropertyName() = method.getName() and
-    reassign.getRhs().(MethodCallExpr).getMethodName() = "bind"
+    reassign.getRhs().(DataFlowNode).getALocalSource().(MethodCallExpr).getMethodName() = "bind"
   )
 }
 

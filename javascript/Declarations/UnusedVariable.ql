@@ -32,7 +32,7 @@ class UnusedLocal extends LocalVariable {
     not exists(getAnAccess()) and
     not exists(Parameter p | this = p.getAVariable()) and
     not exists(FunctionExpr fe | this = fe.getVariable()) and
-    not exists(ExportNamedDeclaration end | this = end.getADecl().getVariable()) and
+    not exists(ExportDeclaration ed | ed.exportsAs(this, _)) and
     not exists(LocalVarTypeAccess type | type.getVariable() = this)
   }
 }

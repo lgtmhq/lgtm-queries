@@ -143,7 +143,7 @@ predicate weakCheck(Expr check, boolean outcome, VarAccess path) {
   exists (EqualityTest eq, Expr op |
     eq = check and eq.hasOperands(path, op) and outcome = eq.getPolarity().booleanNot() |
     op instanceof NullLiteral or
-    op.(GlobalVarAccess).getName() = "undefined" or
+    op instanceof SyntacticConstants::UndefinedConstant or
     exists(op.getStringValue())
   )
   or
@@ -168,9 +168,9 @@ class StrongPathCheck extends TaintTracking::SanitizingGuard {
     )
   }
 
-  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, SsaVariable v) {
+  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
     cfg instanceof TaintedPathTrackingConfig and
-    path = v.getAUse() and
+    path = e and
     outcome = sanitizedOutcome
   }
 }

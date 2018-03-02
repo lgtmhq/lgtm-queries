@@ -254,7 +254,7 @@ class Variable extends @variable, LexicalName {
    */
   predicate isCaptured() {
     this instanceof GlobalVariable or
-    getAnAccess().getContainer() != this.(LocalVariable).getDeclaringContainer()
+    getAnAccess().getContainer().getFunctionBoundary() != this.(LocalVariable).getDeclaringContainer().getFunctionBoundary()
   }
 
   /** Holds if there is a declaration of this variable in `tl`. */

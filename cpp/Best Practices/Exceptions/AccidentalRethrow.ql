@@ -23,7 +23,7 @@
  *       exceptions
  */
 
-import default
+import cpp
 
 predicate isInCatch(Expr e) {
   e.getEnclosingStmt().getParent*() instanceof CatchBlock or // Lexically enclosing catch blocks will cause there to be a current exception,

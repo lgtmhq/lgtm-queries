@@ -24,7 +24,7 @@
  *       external/cwe/cwe-686
  */
 
-import default
+import cpp
 
 /**
  * Holds if the argument corresponding to the `pos` conversion specifier
@@ -130,10 +130,12 @@ predicate trivialConversion(ExpectedType expected, Type actual) {
         // allow any `char *` type to be displayed with `%s`
         expected instanceof CharPointerType and actualU instanceof CharPointerType
       ) or (
-        // allow any `wchar_t *` type (even a pointer to a typedef called `wchar_t`) to be displayed
+        // allow `wchar_t *`, or any pointer to an integral type of the same size, to be displayed
         // with `%ws`
         expected.(PointerType).getBaseType().hasName("wchar_t") and
-        getAnUnderlyingExpectedType(actual.(PointerType).getBaseType()) instanceof Wchar_t
+        exists(Wchar_t t |
+          actual.getUnspecifiedType().(PointerType).getBaseType().(IntegralType).getSize() = t.getSize()
+        )
       ) or (
         // allow an `int` (or anything promoted to `int`) to be displayed with `%c`
         expected instanceof CharType and actualU instanceof IntType

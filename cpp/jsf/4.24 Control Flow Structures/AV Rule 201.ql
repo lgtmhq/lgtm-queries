@@ -21,7 +21,7 @@
  * @tags reliability
  *       readability
  */
-import default
+import cpp
 import Likely_Bugs.NestedLoopSameVar
 
 pragma[noopt]

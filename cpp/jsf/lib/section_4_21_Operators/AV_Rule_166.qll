@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import cpp
 
 class IgnoreAllVolatileSpecifiersEverywhere extends Specifier {
     string getName() { result = super.getName() and result != "volatile" }

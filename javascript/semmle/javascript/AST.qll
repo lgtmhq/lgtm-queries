@@ -284,6 +284,23 @@ class StmtContainer extends @stmt_container, ASTNode {
     none()
   }
 
+  /**
+   * Gets the innermost enclosing function or top-level,
+   * possibly this container itself if it is a function or top-level.
+   *
+   * To get a strictly enclosing function or top-level, use
+   * `getEnclosingContainer().getFunctionBoundary()`.
+   *
+   * TypeScript namespace declarations are containers that are not considered
+   * function boundaries.  In plain JavaScript, all containers are function boundaries.
+   */
+  StmtContainer getFunctionBoundary() {
+    if (this instanceof Function or this instanceof TopLevel) then
+      result = this
+    else
+      result = getEnclosingContainer().getFunctionBoundary()
+  }
+
   /** Gets a statement that belongs to this container. */
   Stmt getAStmt() {
     result.getContainer() = this

@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import default
+import cpp
 
 /**
  * Holds if `sizeof(s)` occurs as part of the parameter of a dynamic

@@ -127,7 +127,7 @@ private cached module Internal {
          )
        }
     or TImplicitInit(EntryBasicBlock bb, SsaSourceVariable v) {
-         bb.getContainer() = v.getDeclaringContainer() and
+         bb.getContainer() = v.getDeclaringContainer().getFunctionBoundary() and
          (liveAtEntry(bb, v) or v.isCaptured())
        }
     or TCapture(ReachableBasicBlock bb, int i, SsaSourceVariable v) {
@@ -173,7 +173,7 @@ private cached module Internal {
   }
 
   /**
-   * Holds if the `i`th node of `bb` in container `sc` is invocation expresison `nd`.
+   * Holds if the `i`th node of `bb` in container `sc` is invocation expression `nd`.
    */
   private predicate invokeNode(StmtContainer sc, ReachableBasicBlock bb, int i,
                                InvokeExpr nd) {

@@ -25,7 +25,7 @@
  *       external/cwe/cwe-119
  *       external/cwe/cwe-251
  */
-import default
+import cpp
 import Buffer
 
 predicate isSizePlus(Expr e, BufferSizeExpr baseSize, int plus)

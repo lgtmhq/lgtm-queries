@@ -57,17 +57,15 @@ module DataFlow {
     }
 
     /**
+     * DEPRECATED: This predicate is not scalable enough for use in production queries.
+     *
      * Gets a source flow node (that is, a node without a predecessor in the data flow
      * graph) from which data may flow to this node in zero or more local steps.
      */
-    cached
-    Node getALocalSource() {
-      isLocalSource(result) and
-      (
-        result = this
-        or
-        locallyReachable(result, this)
-      )
+    deprecated Node getALocalSource() {
+      not exists(getAPredecessor()) and result = this
+      or
+      result = getAPredecessor().getALocalSource()
     }
 
     /**
@@ -110,16 +108,14 @@ module DataFlow {
       endline = 0 and endcolumn = 0
     }
 
+    /** Gets the file this data flow node comes from. */
+    File getFile() {
+      hasLocationInfo(result.getAbsolutePath(), _, _, _, _)
+    }
+
     /** Gets a textual representation of this element. */
     string toString() { none() }
   }
-
-  private predicate isLocalSource(Node src) {
-    not localFlowStep(_, src)
-  }
-
-  private predicate locallyReachable(Node src, Node snk) =
-    boundedFastTC(localFlowStep/2, isLocalSource/1)(src, snk)
 
   /**
    * An expression or a function/class/namespace/enum declaration, viewed as a node in a data flow graph.
@@ -386,5 +382,11 @@ module DataFlow {
     cause = "heap"
   }
 
+  import Configuration
   import TrackedNodes
 }
+
+/**
+ * DEPRECATED: Use `DataFlow::Configuration` instead.
+ */
+deprecated class FlowTrackingConfiguration = DataFlow::Configuration;

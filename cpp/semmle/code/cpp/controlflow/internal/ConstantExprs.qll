@@ -285,14 +285,7 @@ library class ExprEvaluator extends int {
     interestingInternal(e, va, sub) and
     v = getVariableTarget(va) and
     (v.hasInitializer() or sub = true and allowVariableWithoutInitializer(e, v)) and
-    // For performance reasons, we only want to compute the below `forall` if
-    // its range is small enough that we can do it fast. The threshold chosen
-    // here has been tested empirically to have effect only on a few rare
-    // examples.
-    ( not exists(StmtParent def | nonAnalyzableVariableDefinition(v, def))
-      or
-      strictcount(StmtParent def | nonAnalyzableVariableDefinition(v, def)) < 1000
-    ) and
+    tractableVariable(v) and
     forall(StmtParent def |
       nonAnalyzableVariableDefinition(v, def) |
       sub = true and
@@ -304,6 +297,7 @@ library class ExprEvaluator extends int {
     exists(FunctionCall fc |
       interestingInternal(e, fc, _) |
       f = fc.getTarget()
+      and not obviouslyNonConstant(f)
       and not f.getType().getUnspecifiedType() instanceof VoidType
     )
   }
@@ -564,13 +558,35 @@ library class ExprEvaluator extends int {
     )
   }
 
-  language[monotonicAggregates]
   private int getVariableValueNonSubExpr(VariableAccess va) {
+    // All assignments must have the same int value
+    result = getMinVariableValueNonSubExpr(va) and
+    result = getMaxVariableValueNonSubExpr(va)
+  }
+
+  /**
+   * Helper predicate for `getVariableValueNonSubExpr`: computes the minimum value considered by this library
+   * that is assigned to the variable accessed by `va`.
+   */
+  language[monotonicAggregates]
+  pragma[noopt]
+  private int getMinVariableValueNonSubExpr(VariableAccess va) {
     exists(Variable v |
       interestingVariableAccess(_, va, v, false)
       and
-      // All assignments must have the same int value
-      result = min(Expr value | value = v.getAnAssignedValue() | getValueInternalNonSubExpr(value)) and
+      result = min(Expr value | value = v.getAnAssignedValue() | getValueInternalNonSubExpr(value))
+    )
+  }
+
+  /**
+   * Helper predicate for `getVariableValueNonSubExpr`: computes the maximum value considered by this library
+   * that is assigned to the variable accessed by `va`.
+   */
+  language[monotonicAggregates]
+  pragma[noopt]
+  private int getMaxVariableValueNonSubExpr(VariableAccess va) {
+    exists(Variable v |
+      interestingVariableAccess(_, va, v, false) and
       result = max(Expr value | value = v.getAnAssignedValue() | getValueInternalNonSubExpr(value))
     )
   }
@@ -611,6 +627,70 @@ private predicate nonAnalyzableVariableDefinition(Variable v, StmtParent def) {
   )
   or
   asmStmtMayDefineVariable(def, v)
+}
+
+/**
+ * For performance reasons, we want to restrict some of the computation to only
+ * variables that are tractable. The threshold chosen here has been tested
+ * empirically to have effect only on a few rare and pathological examples.
+ */
+private predicate tractableVariable(Variable v) {
+  not exists(StmtParent def | nonAnalyzableVariableDefinition(v, def)) or
+  strictcount(StmtParent def | nonAnalyzableVariableDefinition(v, def)) < 1000
+}
+
+/**
+ * Helper predicate: Gets an expression which is obviously just an access to
+ * the parameter `p`, including ternary expressions.
+ */
+private Expr parameterAccess(Parameter p) {
+  result = p.getAnAccess() or
+  result.(ConditionalExpr).getThen() = parameterAccess(p) or
+  result.(ConditionalExpr).getElse() = parameterAccess(p)
+}
+
+/**
+ * Holds if the function `f` is obviously not tractable for this library's
+ * analysis techniques:
+ * - it may obviously return multiple distinct constant values,
+ * - it may return one of its parameters without reassigning it, or
+ * - it may return an expression for which this analysis cannot infer a constant value.
+ *
+ * For example, `int f(int x) { if (x) return 0; else return 1; }` may
+ * obviously return two constant values, and so will never be considered to
+ * have a compile-time constant value by this library, and
+ * `int min(int x, int y) { return x < y ? x : y; }` returns a parameter and
+ * so won't have a locally constant value.
+ */
+private predicate obviouslyNonConstant(Function f) {
+  // May return multiple distinct constant values
+  1 < strictcount(Expr e, string value | returnStmt(f, e) and value = e.getValue()) or
+  // May return a parameter without reassignment
+  exists(Parameter p, Expr ret |
+    returnStmt(f, ret) and
+    p = f.getAParameter() and
+    not exists(p.getAnAssignedValue()) |
+    ret = parameterAccess(p)
+  ) or
+  // May return a value for which this analysis cannot infer a constant value
+  exists(Expr ret | returnStmt(f, ret) | nonComputableConstant(ret))
+  or
+  // Returns many non-constant values
+  strictcount(Expr e | returnStmt(f, e) and not exists(e.getValue())) > 100
+}
+
+/**
+ * Helper predicate: holds if the analysis cannot compute a
+ * constant value for the expression `e`.
+ */
+private predicate nonComputableConstant(Expr e) {
+  // Variable targets that are ignored
+  e instanceof VariableAccess and not exists(getVariableTarget(e))
+  or
+  // Recursive cases
+  nonComputableConstant(e.(BinaryArithmeticOperation).getAnOperand())
+  or
+  nonComputableConstant(e.(ComparisonOperation).getAnOperand())
 }
 
 /** Holds if assembler statement `asm` may define variable `v`. */

@@ -27,7 +27,7 @@
  *       non-attributable
  *       external/cwe/cwe-476
  */
-import default
+import cpp
 
 predicate assertMacro(Macro m) {
   m.getHead().toLowerCase().matches("%assert%")

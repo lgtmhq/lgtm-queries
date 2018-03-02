@@ -25,13 +25,8 @@ class PathsGet extends PathCreation, MethodAccess {
       m.getName() = "get"
     )
   }
-  
+
   Expr getInput() { result = this.getAnArgument() }
-  
-  Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
-  
-  string toString() { result = MethodAccess.super.toString() }
 }
 
 class FileSystemGetPath extends PathCreation, MethodAccess {
@@ -41,47 +36,32 @@ class FileSystemGetPath extends PathCreation, MethodAccess {
       m.getName() = "getPath"
     )
   }
-  
+
   Expr getInput() { result = this.getAnArgument() }
-  
-  Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
-  
-  string toString() { result = MethodAccess.super.toString() }
 }
 
 class FileCreation extends PathCreation, ClassInstanceExpr {
   FileCreation() {
     this.getConstructedType() instanceof TypeFile
   }
-  
-  Expr getInput() { 
-    result = this.getAnArgument() 
+
+  Expr getInput() {
+    result = this.getAnArgument() and
     // Relevant arguments include those that are not a `File`.
-    and not result.getType() instanceof TypeFile 
+    not result.getType() instanceof TypeFile 
   }
-  
-  Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
-  
-  string toString() { result = ClassInstanceExpr.super.toString() }
 }
 
 class FileWriterCreation extends PathCreation, ClassInstanceExpr {
   FileWriterCreation() {
     this.getConstructedType().getQualifiedName() = "java.io.FileWriter"
   }
-  
-  Expr getInput() { 
-    result = this.getAnArgument() 
+
+  Expr getInput() {
+    result = this.getAnArgument() and
     // Relevant arguments are those of type `String`.
-    and result.getType() instanceof TypeString 
+    result.getType() instanceof TypeString 
   }
-  
-  Callable getEnclosingCallable() { result = ClassInstanceExpr.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = ClassInstanceExpr.super.getEnclosingStmt() }
-  
-  string toString() { result = ClassInstanceExpr.super.toString() }
 }
 
 predicate inWeakCheck(Expr e) {

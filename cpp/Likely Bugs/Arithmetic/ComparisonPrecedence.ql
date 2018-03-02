@@ -23,7 +23,7 @@
  * @tags maintainability
  *       readability
  */
-import default
+import cpp
 
 
 from ComparisonOperation co, ComparisonOperation chco

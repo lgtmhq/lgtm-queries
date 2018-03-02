@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import python
+private import semmle.python.pointsto.Filters as Filters
 
 /** A 'kind' of taint. This may be almost anything,
  * but it is typically something like a "user-defined string".
@@ -59,6 +60,14 @@ abstract class TaintKind extends string {
         exists(TaintedNode n |
             n.getTaintKind() = this and n.getNode() = expr
         )
+    }
+
+    /** Gets the class of this kind of taint.
+     * For example, if this were a kind of string taint
+     * the `result` would be `theStrType()`.
+     */
+    ClassObject getClass() {
+        none()
     }
 
 }
@@ -772,6 +781,17 @@ module TaintFlow {
             tainted_var(var, context, origin) and
             not exists(Sanitizer sanitizer |
                 sanitizer.sanitizingEdge(kind, test)
+            )
+            |
+            not Filters::isinstance(test.getTest(), _, var.getSourceVariable().getAUse())
+            or
+            exists(ControlFlowNode c, ClassObject cls |
+                Filters::isinstance(test.getTest(), c, var.getSourceVariable().getAUse())
+                and c.refersTo(cls)
+                |
+                test.getSense() = true and kind.getClass().getAnImproperSuperType() = cls
+                or
+                test.getSense() = false and not kind.getClass().getAnImproperSuperType() = cls
             )
         )
     }

@@ -22,7 +22,7 @@
  *       maintainability
  *       modularity
  */
-import default
+import cpp
 import semmle.code.cpp.headers.MultipleInclusion
 
 /*

@@ -23,7 +23,7 @@
  *       readability
  */
 
-import default
+import cpp
 
 predicate zeroComparison(EqualityOperation e) {
   exists(Expr zero | zero.getValue() = "0" |

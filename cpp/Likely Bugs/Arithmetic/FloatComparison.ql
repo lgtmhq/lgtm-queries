@@ -23,7 +23,7 @@
  * @tags reliability
  *       correctness
  */
-import default
+import cpp
 
 from EqualityOperation ro, Expr left, Expr right
 where left = ro.getLeftOperand() and right = ro.getRightOperand() and

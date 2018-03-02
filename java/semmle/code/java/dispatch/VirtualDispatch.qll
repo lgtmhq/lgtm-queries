@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import java
+import semmle.code.java.dataflow.TypeFlow
 
 /**
  * A conservative analysis that returns a single method - if we can establish
@@ -53,10 +54,90 @@ class CalledMethod extends Method {
 }
 
 cached private module Dispatch {
+  private predicate qualType(VirtualMethodAccess ma, RefType t, boolean exact) {
+    exprTypeFlow(ma.getQualifier(), t, exact)
+  }
 
   /** Gets a viable implementation of the method called in the given method access. */
+  cached Method viableImpl(MethodAccess ma) {
+    result = viableImpl_v1(ma) and
+    (
+      exists(Method def, RefType t, boolean exact |
+        qualType(ma, t, exact) and
+        def = ma.getMethod()
+        |
+        exact = true and result = exactMethodImpl(def, t.getSourceDeclaration())
+        or
+        exact = false and
+        exists(RefType t2 |
+          result = viableMethodImpl(def, t.getSourceDeclaration(), t2) and
+          not Unification_v2::failsUnification(t, t2)
+        )
+      ) or
+      not qualType(ma, _, _)
+    )
+  }
+
+  private module Unification_v2 {
+    pragma[noinline]
+    private predicate unificationTargetLeft(ParameterizedType t1, GenericType g) {
+      qualType(_, t1, _) and t1.getGenericType() = g
+    }
+
+    pragma[noinline]
+    private predicate unificationTargetRight(ParameterizedType t2, GenericType g) {
+      exists(viableMethodImpl(_, _, t2)) and t2.getGenericType() = g
+    }
+
+    private predicate unificationTargets(Type t1, Type t2) {
+      exists(GenericType g | unificationTargetLeft(t1, g) and unificationTargetRight(t2, g)) or
+      exists(Array a1, Array a2 |
+        unificationTargets(a1, a2) and
+        t1 = a1.getComponentType() and
+        t2 = a2.getComponentType()
+      ) or
+      exists(ParameterizedType pt1, ParameterizedType pt2, int pos |
+        unificationTargets(pt1, pt2) and
+        not pt1.getSourceDeclaration() != pt2.getSourceDeclaration() and
+        t1 = pt1.getTypeArgument(pos) and
+        t2 = pt2.getTypeArgument(pos)
+      )
+    }
+
+    pragma[noinline]
+    private predicate typeArgsOfUnificationTargets(ParameterizedType t1, ParameterizedType t2, int pos, RefType arg1, RefType arg2) {
+      unificationTargets(t1, t2) and
+      arg1 = t1.getTypeArgument(pos) and
+      arg2 = t2.getTypeArgument(pos)
+    }
+
+    predicate failsUnification(Type t1, Type t2) {
+      unificationTargets(t1, t2) and
+      (
+        exists(RefType arg1, RefType arg2 |
+          typeArgsOfUnificationTargets(t1, t2, _, arg1, arg2) and
+          failsUnification(arg1, arg2)
+        ) or
+        failsUnification(t1.(Array).getComponentType(), t2.(Array).getComponentType()) or
+        not (
+          t1 instanceof Array and t2 instanceof Array or
+          t1.(PrimitiveType) = t2.(PrimitiveType) or
+          t1.(Class).getSourceDeclaration() = t2.(Class).getSourceDeclaration() or
+          t1.(Interface).getSourceDeclaration() = t2.(Interface).getSourceDeclaration() or
+          t1 instanceof BoundedType and t2 instanceof RefType or
+          t1 instanceof RefType and t2 instanceof BoundedType
+        )
+      )
+    }
+  }
+
+  /**
+   * INTERNAL: Use `viableImpl` instead.
+   *
+   * Gets a viable implementation of the method called in the given method access.
+   */
   cached
-  Method viableImpl(MethodAccess source) {
+  Method viableImpl_v1(MethodAccess source) {
     not result.isAbstract() and
     if source instanceof VirtualMethodAccess then
       exists(CalledMethod def, RefType t, boolean exact |
@@ -68,62 +149,64 @@ cached private module Dispatch {
         exact = false and
         exists(RefType t2 |
           result = viableMethodImpl(def, t.getSourceDeclaration(), t2) and
-          not failsUnification(t, t2)
+          not Unification_v1::failsUnification(t, t2)
         )
       )
     else
       result = source.getMethod().getSourceDeclaration()
   }
 
-  pragma[noinline]
-  private predicate unificationTargetLeft(ParameterizedType t1, GenericType g) {
-    hasQualifierType(_, t1, _) and t1.getGenericType() = g
-  }
+  private module Unification_v1 {
+    pragma[noinline]
+    private predicate unificationTargetLeft(ParameterizedType t1, GenericType g) {
+      hasQualifierType(_, t1, _) and t1.getGenericType() = g
+    }
 
-  pragma[noinline]
-  private predicate unificationTargetRight(ParameterizedType t2, GenericType g) {
-    exists(viableMethodImpl(_, _, t2)) and t2.getGenericType() = g
-  }
+    pragma[noinline]
+    private predicate unificationTargetRight(ParameterizedType t2, GenericType g) {
+      exists(viableMethodImpl(_, _, t2)) and t2.getGenericType() = g
+    }
 
-  private predicate unificationTargets(Type t1, Type t2) {
-    exists(GenericType g | unificationTargetLeft(t1, g) and unificationTargetRight(t2, g)) or
-    exists(Array a1, Array a2 |
-      unificationTargets(a1, a2) and
-      t1 = a1.getComponentType() and
-      t2 = a2.getComponentType()
-    ) or
-    exists(ParameterizedType pt1, ParameterizedType pt2, int pos |
-      unificationTargets(pt1, pt2) and
-      not pt1.getSourceDeclaration() != pt2.getSourceDeclaration() and
-      t1 = pt1.getTypeArgument(pos) and
-      t2 = pt2.getTypeArgument(pos)
-    )
-  }
-
-  pragma[noinline]
-  private predicate typeArgsOfUnificationTargets(ParameterizedType t1, ParameterizedType t2, int pos, RefType arg1, RefType arg2) {
-    unificationTargets(t1, t2) and
-    arg1 = t1.getTypeArgument(pos) and
-    arg2 = t2.getTypeArgument(pos)
-  }
-
-  private predicate failsUnification(Type t1, Type t2) {
-    unificationTargets(t1, t2) and
-    (
-      exists(RefType arg1, RefType arg2 |
-        typeArgsOfUnificationTargets(t1, t2, _, arg1, arg2) and
-        failsUnification(arg1, arg2)
+    private predicate unificationTargets(Type t1, Type t2) {
+      exists(GenericType g | unificationTargetLeft(t1, g) and unificationTargetRight(t2, g)) or
+      exists(Array a1, Array a2 |
+        unificationTargets(a1, a2) and
+        t1 = a1.getComponentType() and
+        t2 = a2.getComponentType()
       ) or
-      failsUnification(t1.(Array).getComponentType(), t2.(Array).getComponentType()) or
-      not (
-        t1 instanceof Array and t2 instanceof Array or
-        t1.(PrimitiveType) = t2.(PrimitiveType) or
-        t1.(Class).getSourceDeclaration() = t2.(Class).getSourceDeclaration() or
-        t1.(Interface).getSourceDeclaration() = t2.(Interface).getSourceDeclaration() or
-        t1 instanceof BoundedType and t2 instanceof RefType or
-        t1 instanceof RefType and t2 instanceof BoundedType
+      exists(ParameterizedType pt1, ParameterizedType pt2, int pos |
+        unificationTargets(pt1, pt2) and
+        not pt1.getSourceDeclaration() != pt2.getSourceDeclaration() and
+        t1 = pt1.getTypeArgument(pos) and
+        t2 = pt2.getTypeArgument(pos)
       )
-    )
+    }
+
+    pragma[noinline]
+    private predicate typeArgsOfUnificationTargets(ParameterizedType t1, ParameterizedType t2, int pos, RefType arg1, RefType arg2) {
+      unificationTargets(t1, t2) and
+      arg1 = t1.getTypeArgument(pos) and
+      arg2 = t2.getTypeArgument(pos)
+    }
+
+    predicate failsUnification(Type t1, Type t2) {
+      unificationTargets(t1, t2) and
+      (
+        exists(RefType arg1, RefType arg2 |
+          typeArgsOfUnificationTargets(t1, t2, _, arg1, arg2) and
+          failsUnification(arg1, arg2)
+        ) or
+        failsUnification(t1.(Array).getComponentType(), t2.(Array).getComponentType()) or
+        not (
+          t1 instanceof Array and t2 instanceof Array or
+          t1.(PrimitiveType) = t2.(PrimitiveType) or
+          t1.(Class).getSourceDeclaration() = t2.(Class).getSourceDeclaration() or
+          t1.(Interface).getSourceDeclaration() = t2.(Interface).getSourceDeclaration() or
+          t1 instanceof BoundedType and t2 instanceof RefType or
+          t1 instanceof RefType and t2 instanceof BoundedType
+        )
+      )
+    }
   }
 
   private predicate hasQualifierType(VirtualMethodAccess ma, RefType t, boolean exact) {

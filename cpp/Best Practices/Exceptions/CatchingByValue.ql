@@ -23,7 +23,7 @@
  *       exceptions
  */
 
-import default
+import cpp
 
 from CatchBlock cb, Class caughtType
 where caughtType = cb.getParameter().getType().getUnderlyingType().getUnspecifiedType()

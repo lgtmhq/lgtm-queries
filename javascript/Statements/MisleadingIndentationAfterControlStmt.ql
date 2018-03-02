@@ -18,8 +18,7 @@
  * @kind problem
  * @problem.severity warning
  * @id js/misleading-indentation-after-control-statement
- * @tags changeability
- *       correctness
+ * @tags correctness
  *       statistical
  *       non-attributable
  *       external/cwe/cwe-483

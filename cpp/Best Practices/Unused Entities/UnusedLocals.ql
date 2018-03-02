@@ -23,7 +23,7 @@
  *       useless-code
  *       external/cwe/cwe-563
  */
-import default
+import cpp
 
 /**
  * A type that contains a template parameter type

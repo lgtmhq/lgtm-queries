@@ -19,7 +19,7 @@
  * @problem.severity warning
  * @precision very-high
  * @id java/misleading-indentation
- * @tags changeability
+ * @tags maintainability
  *       correctness
  *       logic
  */

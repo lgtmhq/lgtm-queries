@@ -374,6 +374,8 @@ class BuiltinFunctionObject extends BuiltinCallable {
             this = builtin_object("compile") and result = theNoneType()
             or
             this = builtin_object("sum")
+            or
+            this = builtin_object("filter")
         )
     }
 

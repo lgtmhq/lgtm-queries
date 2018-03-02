@@ -18,10 +18,9 @@
  * @problem.severity recommendation
  * @precision high
  * @id cpp/undisciplined-multiple-inheritance
- * @tags changeability
- *       readability
+ * @tags readability
  */
-import default
+import cpp
 
 /*
 In the context of this rule, an interface is specified by a class which has the following properties:

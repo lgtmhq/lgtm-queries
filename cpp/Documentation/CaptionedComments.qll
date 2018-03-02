@@ -14,7 +14,7 @@
 /**
  * Provides heuristics to find "todo" and "fixme" comments (in all caps).
  */
-import default
+import cpp
 
 string getCommentTextCaptioned(Comment c, string caption) {
     (caption = "TODO" or caption = "FIXME") and

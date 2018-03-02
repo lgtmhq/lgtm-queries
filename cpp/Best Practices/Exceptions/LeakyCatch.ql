@@ -24,7 +24,7 @@
  *       external/cwe/cwe-401
  */
 
-import default
+import cpp
 
 predicate doesRethrow(Function f) {
   exists(ReThrowExpr e | e.getEnclosingFunction() = f |

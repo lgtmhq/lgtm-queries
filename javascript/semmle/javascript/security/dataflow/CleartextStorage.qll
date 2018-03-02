@@ -15,7 +15,6 @@
  * Provides a taint tracking configuration for reasoning about cleartext storage of sensitive information.
  */
 import javascript
-private import semmle.javascript.flow.Tracking
 private import semmle.javascript.security.SensitiveActions
 
 /**

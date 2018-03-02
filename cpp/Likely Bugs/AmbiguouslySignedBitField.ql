@@ -27,7 +27,7 @@
  *       language-features
  *       external/cwe/cwe-190
  */
-import default
+import cpp
 
 from BitField bf
 where not bf.getType().getUnspecifiedType().(IntegralType).isExplicitlySigned()

@@ -24,7 +24,7 @@
  *       non-attributable
  *       external/cwe/cwe-252
  */
-import default
+import cpp
 
 predicate exclude(Function f) {
   exists(string name | name = f.getName() |

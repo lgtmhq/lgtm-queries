@@ -15,7 +15,7 @@
  * Provides a class for modelling sources of remote user input.
  */
 
-import semmle.javascript.flow.Tracking
+import javascript
 import semmle.javascript.frameworks.HTTP
 import semmle.javascript.security.dataflow.DOM
 

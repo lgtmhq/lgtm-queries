@@ -13,7 +13,9 @@
 
 /**
  * @name Missing header guard
- * @description Header files should contain header guards (#defines to prevent the file from being included twice). This prevents errors and inefficiencies caused by repeated inclusion.
+ * @description Header files should contain header guards (#defines to prevent
+ *              the file from being included twice). This prevents errors and
+ *              inefficiencies caused by repeated inclusion.
  * @kind problem
  * @problem.severity warning
  * @precision high
@@ -22,26 +24,67 @@
  *       maintainability
  *       modularity
  */
-import default
+import cpp
 import semmle.code.cpp.headers.MultipleInclusion
 
 string possibleGuard(HeaderFile hf, string body) {
   exists(Macro m | m.getFile() = hf and m.getBody() = body | result = m.getHead())
 }
 
-bindingset[s, e]
-string mkLink(string s, Element e) {
-  exists(string path, int sl, int sc, int el, int ec, string url |
-    e.getLocation().hasLocationInfo(path, sl, sc, el, ec) and
-    toUrl(path, sl, sc, el, ec, url) and
-    result = "[[\"" + s + "\"|\"" + url + "\"]]"
-  )
+/**
+ * Option type for preprocessor directives so we can produce a variable number
+ * of links in the result
+ */
+newtype TMaybePreprocessorDirective =
+  TSomePreprocessorDirective(PreprocessorDirective pd) or
+  TNoPreprocessorDirective()
+
+abstract class MaybePreprocessorDirective extends TMaybePreprocessorDirective {
+  abstract string toString();
+  abstract Location getLocation();
 }
 
-string extraDetail(HeaderFile hf) {
-  exists(string s, PreprocessorDirective ifndef, PreprocessorEndif endif | startsWithIfndef(hf, ifndef, s) and endif.getIf() = ifndef |
+class NoPreprocessorDirective extends TNoPreprocessorDirective, MaybePreprocessorDirective {
+  string toString() {
+    result = ""
+  }
+  
+  Location getLocation() {
+    result instanceof UnknownDefaultLocation
+  }
+}
+
+class SomePreprocessorDirective extends TSomePreprocessorDirective, MaybePreprocessorDirective {
+  PreprocessorDirective pd;
+
+  SomePreprocessorDirective() {
+    this = TSomePreprocessorDirective(pd)
+  }
+
+  string toString() {
+    result = pd.toString()
+  }
+  
+  Location getLocation() {
+    result = pd.getLocation()
+  }
+  
+  PreprocessorDirective getPreprocessorDirective() {
+    result = pd
+  }
+}
+
+/**
+ * Provides additional detail when there is an incorrect header guard.
+ * The second and third parameters are option typed, and are only present
+ * when there are additional links in the detail string.
+ */
+string extraDetail(HeaderFile hf, SomePreprocessorDirective detail1, SomePreprocessorDirective detail2) {
+  exists(string s, PreprocessorEndif endif, PreprocessorDirective ifndef | startsWithIfndef(hf, ifndef, s) and endif.getIf() = ifndef |
+    detail1.getPreprocessorDirective() = endif and
+    detail2.getPreprocessorDirective() = ifndef and
     if not endsWithEndif(hf, endif) then
-      result = " (" + mkLink("#endif", endif) + " matching " + mkLink(s, ifndef) + " occurs before the end of the file)."
+      result = " ($@ matching $@ occurs before the end of the file)."
     else if exists(Macro m | m.getFile() = hf and m.getHead() = s) then
       result = " (#define " + s + " needs to appear immediately after #ifndef " + s + ")."
     else if strictcount(possibleGuard(hf, _)) = 1 then
@@ -53,13 +96,17 @@ string extraDetail(HeaderFile hf) {
   )
 }
 
-from HeaderFile hf, string detail
+from HeaderFile hf, string detail, MaybePreprocessorDirective detail1, MaybePreprocessorDirective detail2
 where not hf instanceof IncludeGuardedHeader
-  and (if exists(extraDetail(hf)) then detail = extraDetail(hf) else detail = ".")
+  and (if exists(extraDetail(hf, _, _))
+    then detail = extraDetail(hf, detail1, detail2)
+    else (detail = "." and
+      detail1 instanceof NoPreprocessorDirective and
+      detail2 instanceof NoPreprocessorDirective))
   // Exclude files which consist purely of preprocessor directives.
   and not hf.(MetricFile).getNumberOfLinesOfCode() = strictcount(PreprocessorDirective ppd | ppd.getFile() = hf)
   // Exclude files which are always #imported.
   and not forex(Include i | i.getIncludedFile() = hf | i instanceof Import)
   // Exclude files which are only included once.
   and not strictcount(Include i | i.getIncludedFile() = hf) = 1
-select hf, "This header file should contain a header guard to prevent multiple inclusion" + detail
+select hf, "This header file should contain a header guard to prevent multiple inclusion" + detail, detail1, detail1.toString(), detail2, detail2.toString()

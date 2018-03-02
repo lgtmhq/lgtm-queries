@@ -22,7 +22,7 @@
  *       statistical
  *       non-attributable
  */
-import default
+import cpp
 
 string kindstr(Class c)
 {

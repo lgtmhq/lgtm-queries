@@ -23,7 +23,7 @@
  *       correctness
  *       external/cwe/cwe-480
  */
-import default
+import cpp
 
 /** An expression that is a candidate for a violation, and its constant value.
  * We look for constant operands of binary logical operations other than 0 and 1.

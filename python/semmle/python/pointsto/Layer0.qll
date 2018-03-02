@@ -587,7 +587,7 @@ module Layer0PointsTo {
         Types::class_attribute_lookup(obj, name, value, cls, orig)
         or
         /* Module attributes */
-        NonePointsTo::Layer::module_attribute_points_to(obj, name, value, cls, orig)
+        Layer::module_attribute_points_to(obj, name, value, cls, orig)
     }
 
     /** Holds if `f` points to `(value, cls, origin)` where `f` is an instance attribute, `x.attr`. */

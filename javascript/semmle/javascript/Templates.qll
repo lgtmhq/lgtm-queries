@@ -51,6 +51,9 @@ class TemplateLiteral extends Expr, @templateliteral {
 
   override string getStringValue() {
     // fold singletons
+    getNumChildExpr() = 0 and
+    result = ""
+    or
     getNumChildExpr() = 1 and
     result = getElement(0).getStringValue()
   }

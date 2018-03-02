@@ -54,13 +54,6 @@ class SensitiveMethodAccess extends SensitiveExpr, MethodAccess {
       not s.matches(nonSuspicious())
     )
   }
-
-  Callable getEnclosingCallable() { result = MethodAccess.super.getEnclosingCallable() }
-  Stmt getEnclosingStmt() { result = MethodAccess.super.getEnclosingStmt() }
-  
-  string toString() {
-    result = MethodAccess.super.toString()
-  }
 }
 
 /** Access to a variable that might contain sensitive data. */
@@ -70,10 +63,6 @@ class SensitiveVarAccess extends SensitiveExpr, VarAccess {
       s.matches(suspicious()) and
       not s.matches(nonSuspicious())
     )
-  }
-  
-  string toString() {
-    result = VarAccess.super.toString()
   }
 }
 

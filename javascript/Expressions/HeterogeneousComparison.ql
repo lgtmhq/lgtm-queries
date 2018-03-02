@@ -141,9 +141,43 @@ predicate isHeterogeneousComparison(ASTNode cmp, AnalyzedFlowNode left, Analyzed
   leftTypes = left.ppTypes() and rightTypes = right.ppTypes()
 }
 
-from ASTNode cmp, AnalyzedFlowNode left, AnalyzedFlowNode right, string leftTypes, string rightTypes
+/**
+ * Holds if `name` is a variable name that programmers consider a keyword.
+ */
+predicate isPseudoKeyword(string name) {
+  name = "Infinity" or
+  name = "NaN" or
+  name = "undefined"
+}
+
+/**
+ * Gets a user friendly description of `e`, if such a description exists.
+ */
+string getDescription(VarAccess e) {
+  exists (string name | name = e.getName() |
+    if isPseudoKeyword(name) then
+      result = "'" + name + "'"
+    else
+      result  = "variable '" + name + "'"
+  )
+}
+
+/**
+ * Gets a user friendly description of `e`, `default` is the result if no such description exists.
+ */
+bindingset[default]
+string getDescription(Expr e, string default) {
+  if exists (getDescription(e)) then
+    result = getDescription(e)
+  else
+    result = default
+}
+
+from ASTNode cmp, AnalyzedFlowNode left, AnalyzedFlowNode right, string leftTypes, string rightTypes, string leftExprDescription, string rightExprDescription
 where isHeterogeneousComparison(cmp, left, right, leftTypes, rightTypes) and
       // don't flag unreachable code
-      exists (left.getAType()) and exists (right.getAType())
-select left, "This expression is of type " + leftTypes + ", but it is compared to $@.",
-       right, "an expression of type " + rightTypes
+      exists (left.getAType()) and exists (right.getAType()) and
+      leftExprDescription = capitalize(getDescription(left.asExpr(), "this expression")) and
+      rightExprDescription = getDescription(right.asExpr(), "an expression")
+select left, leftExprDescription + " is of type " + leftTypes + ", but it is compared to $@ of type " + rightTypes + ".",
+       right, rightExprDescription

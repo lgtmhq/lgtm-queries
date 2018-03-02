@@ -587,7 +587,7 @@ module FinalPointsTo {
         Types::class_attribute_lookup(obj, name, value, cls, orig)
         or
         /* Module attributes */
-        PenultimatePointsTo::Layer::module_attribute_points_to(obj, name, value, cls, orig)
+        Layer::module_attribute_points_to(obj, name, value, cls, orig)
     }
 
     /** Holds if `f` points to `(value, cls, origin)` where `f` is an instance attribute, `x.attr`. */

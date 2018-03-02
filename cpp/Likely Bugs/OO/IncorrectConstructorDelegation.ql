@@ -25,7 +25,7 @@
  *       language-features
  */
 
-import default
+import cpp
 
 from FunctionCall call
 where call.getTarget() = call.getEnclosingFunction().(Constructor).getDeclaringType().getAConstructor()

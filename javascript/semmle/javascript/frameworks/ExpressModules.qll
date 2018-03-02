@@ -38,6 +38,10 @@ module ExpressLibraries {
     override predicate defines(string headerName, string headerValue) {
       xFrameOptionsDefaultImplicitHeaderDefinition(headerName, headerValue)
     }
+
+    override HTTP::RouteHandler getRouteHandler() {
+      result = this
+    }
   }
 
   /**
@@ -72,6 +76,10 @@ module ExpressLibraries {
     override predicate defines(string headerName, string headerValue) {
       xFrameOptionsDefaultImplicitHeaderDefinition(headerName, headerValue)
     }
+
+    override HTTP::RouteHandler getRouteHandler() {
+      result = this
+    }
   }
 
   /**
@@ -105,6 +113,10 @@ module ExpressLibraries {
 
     override predicate defines(string headerName, string headerValue) {
       xFrameOptionsDefaultImplicitHeaderDefinition(headerName, headerValue)
+    }
+
+    override HTTP::RouteHandler getRouteHandler() {
+      result = this
     }
   }
 

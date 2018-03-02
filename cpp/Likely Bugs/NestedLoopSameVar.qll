@@ -15,7 +15,7 @@
  * Provides the implementation of the query 'Nested loops with same variable'.
  */
 
-import default
+import cpp
 
 /**
  * Holds if `inner` and `outer` are nested for statements that

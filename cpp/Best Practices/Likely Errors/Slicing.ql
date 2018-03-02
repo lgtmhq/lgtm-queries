@@ -22,7 +22,7 @@
  *       correctness
  *       types
  */
-import default
+import cpp
 
 //see http://www.cs.ualberta.ca/~hoover/Courses/201/201-New-Notes/lectures/section/slice.htm
 //Does not find anything in rivers (unfortunately)

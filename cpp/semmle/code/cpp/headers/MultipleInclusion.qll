@@ -16,7 +16,7 @@
  * multiple inclusion of header files.
  */
 
-import default
+import cpp
 
 /**
  * A header file with an include guard.

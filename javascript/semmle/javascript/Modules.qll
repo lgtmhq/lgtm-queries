@@ -219,10 +219,24 @@ class ModuleInstance extends DataFlowNode {
   }
 
   /**
+   * Gets an invocation of the method or constructor named `memberName` on this module instance.
+   */
+  InvokeExpr getAMemberInvocation(string memberName) {
+    result.getCallee().(DataFlowNode).getALocalSource() = getAPropertyRead(memberName)
+  }
+
+  /**
    * Gets a function call that invokes method `methodName` on this module instance.
    */
   CallExpr getAMethodCall(string methodName) {
-    result.getCallee().(DataFlowNode).getALocalSource() = getAPropertyRead(methodName)
+    result = getAMemberInvocation(methodName)
+  }
+
+  /**
+   * Gets a `new` call that invokes constructor `constructorName` on this module instance.
+   */
+  NewExpr getAConstructorInvocation(string constructorName) {
+    result = getAMemberInvocation(constructorName)
   }
 
   /**

@@ -23,7 +23,7 @@
  *       correctness
  *       external/cwe/cwe-561
  */
-import default
+import cpp
 
 class PureExprInVoidContext extends ExprInVoidContext {
   PureExprInVoidContext() { this.isPure() }

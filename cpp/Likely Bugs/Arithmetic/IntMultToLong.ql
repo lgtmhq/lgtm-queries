@@ -28,7 +28,7 @@
  *       external/cwe/cwe-197
  *       external/cwe/cwe-681
  */
-import default
+import cpp
 
 from MulExpr me, Type t1, Type t2
 where t1 = me.getType().getUnderlyingType() and

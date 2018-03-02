@@ -22,7 +22,7 @@
  *       correctness
  *       types
  */
-import default
+import cpp
 
 predicate commonErrorCode(string value) {
   value = "0" or value = "1" or value = "-1"

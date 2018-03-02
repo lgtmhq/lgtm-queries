@@ -20,13 +20,8 @@ import python
 import semmle.python.security.TaintTracking
 import semmle.python.web.HttpRedirect
 import semmle.python.security.strings.Basic
+private import semmle.python.web.django.Shared
 
-private FunctionObject redirect() {
-    exists(ModuleObject shortcuts |
-        shortcuts.getName() = "django.shortcuts" and
-        result = shortcuts.getAttribute("redirect")
-    )
-}
 
 /**
  * Represents an argument to the `django.redirect` function.

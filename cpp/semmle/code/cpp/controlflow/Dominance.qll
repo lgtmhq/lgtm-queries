@@ -20,7 +20,7 @@
  * and only for nodes reachable from the entry point. Unreachable nodes are not
  * part the dominance relation.
  */
-import default
+import cpp
 
 
 /*

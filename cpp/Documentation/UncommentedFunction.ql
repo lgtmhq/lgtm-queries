@@ -23,7 +23,7 @@
  *       statistical
  *       non-attributable
  */
-import default
+import cpp
 
 from MetricFunction f, int n
 where n = f.getNumberOfLines() and n > 100 and

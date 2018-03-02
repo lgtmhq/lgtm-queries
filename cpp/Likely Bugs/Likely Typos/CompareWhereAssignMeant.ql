@@ -23,7 +23,7 @@
  *       correctness
  *       external/cwe/cwe-482
  */
-import default
+import cpp
 
 from EQExpr op
 where op instanceof ExprInVoidContext

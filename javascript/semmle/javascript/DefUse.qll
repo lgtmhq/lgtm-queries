@@ -50,8 +50,8 @@ private predicate defn(ControlFlowNode def, Expr lhs, DataFlowNode rhs) {
   exists (ClassDefinition c | lhs = c.getIdentifier() |
     def = c and rhs = c and not c.isAmbient()
   ) or
-  exists (NamespaceDeclaration n | def = n.getId() |
-    lhs = def and rhs = n
+  exists (NamespaceDeclaration n | def = n |
+    lhs = n.getId() and rhs = n
   ) or
   exists (EnumDeclaration ed | def = ed.getIdentifier() |
     lhs = def and rhs = ed
@@ -152,10 +152,11 @@ class LValue extends RefExpr {
  */
 class RValue extends RefExpr {
   RValue() {
-    not this instanceof LValue or
+    not this instanceof LValue and not this instanceof VarDecl or
     // in `x++` and `x += 1`, `x` is both RValue and LValue
     this = any(CompoundAssignExpr a).getTarget() or
-    this = any(UpdateExpr u).getOperand().stripParens()
+    this = any(UpdateExpr u).getOperand().stripParens() or
+    this = any(NamespaceDeclaration decl).getId()
   }
 }
 
@@ -223,14 +224,14 @@ class VarDef extends ControlFlowNode {
  *
  * Some variable definitions are also uses, notably the operands of update expressions.
  */
-class VarUse extends ControlFlowNode, @varaccess {
+class VarUse extends ControlFlowNode, @varref {
   VarUse() {
     this instanceof RValue
   }
 
   /** Gets the variable this use refers to. */
   Variable getVariable() {
-    result = this.(VarAccess).getVariable()
+    result = this.(VarRef).getVariable()
   }
 
   /**

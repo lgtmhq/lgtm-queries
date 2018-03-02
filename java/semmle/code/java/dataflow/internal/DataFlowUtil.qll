@@ -210,6 +210,20 @@ import semmle.code.java.dataflow.InstanceAccess
   }
 
   /**
+   * Holds if the `FieldRead` is not completely determined by explicit SSA
+   * updates.
+   */
+  predicate hasNonlocalValue(FieldRead fr) {
+    not exists(SsaVariable v | v.getAUse() = fr) or
+    exists(SsaVariable v, SsaVariable def |
+      v.getAUse() = fr and def = v.getAnUltimateDefinition()
+      |
+      def instanceof SsaImplicitInit or
+      def instanceof SsaImplicitUpdate
+    )
+  }
+
+  /**
    * Holds if data can flow from `node1` to `node2` in one local step.
    */
   predicate localFlowStep(Node node1, Node node2) {
@@ -224,7 +238,9 @@ import semmle.code.java.dataflow.InstanceAccess
       init.isParameterDefinition(node1.asParameter()) and
       node2.asExpr() = init.getAFirstUse()
     ) or
-    adjacentUseUse(node1.asExpr(), node2.asExpr()) or
+    adjacentUseUse(node1.asExpr(), node2.asExpr()) and
+    not exists(FieldRead fr | hasNonlocalValue(fr) and fr.getField().isStatic() and fr = node1.asExpr())
+    or
     ThisFlow::adjacentThisRefs(node1, node2) or
     node2.asExpr().(ParExpr).getExpr() = node1.asExpr() or
     node2.asExpr().(CastExpr).getExpr() = node1.asExpr() or

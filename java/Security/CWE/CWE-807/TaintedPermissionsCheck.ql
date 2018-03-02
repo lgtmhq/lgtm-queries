@@ -52,13 +52,9 @@ class PermissionsCheckMethodAccess extends MethodAccess, PermissionsConstruction
       m.getNumberOfParameters() = 1)
     )
   }
-  
+
   Expr getInput() {
     result = getArgument(0)
-  }
-  
-  string toString() {
-    result = MethodAccess.super.toString()
   }
 }
 
@@ -69,10 +65,6 @@ class WCPermissionConstruction extends ClassInstanceExpr, PermissionsConstructio
   
   Expr getInput() {
     result = getArgument(0)
-  }
-  
-  string toString() {
-    result = ClassInstanceExpr.super.toString()
   }
 }
 

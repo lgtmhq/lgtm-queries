@@ -23,7 +23,7 @@
  *       correctness
  *       types
  */
-import default
+import cpp
 
 from EqualityOperation t, RemExpr lhs, Literal rhs
 where t.getLeftOperand() = lhs and

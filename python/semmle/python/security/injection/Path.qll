@@ -25,6 +25,66 @@ class PathInjection extends ExternalStringKind {
         this = "path.injection"
     }
 
+    override TaintKind getTaintForFlowStep(ControlFlowNode fromnode, ControlFlowNode tonode) {
+        result = super.getTaintForFlowStep(fromnode, tonode)
+        or
+        abspath_call(tonode, fromnode) and result instanceof NormalizedPath
+    }
+
+}
+
+/** Prevents taint flowing through ntpath.normpath()
+ * NormalizedPath below handles that case.
+ */
+private class PathSanitizer extends Sanitizer {
+
+    PathSanitizer() {
+        this = "path.sanitizer"
+    }
+
+    override predicate sanitizingNode(TaintKind taint, ControlFlowNode node) {
+        taint instanceof PathInjection and
+        abspath_call(node, _)
+    }
+
+}
+
+private FunctionObject abspath() {
+    exists(ModuleObject os, ModuleObject os_path |
+        os.getName() = "os" and
+        os.getAttribute("path") = os_path |
+        os_path.getAttribute("abspath") = result
+        or
+        os_path.getAttribute("normpath") = result
+    )
+}
+
+private predicate abspath_call(CallNode call, ControlFlowNode arg) {
+    call.getFunction().refersTo(abspath()) and
+    arg = call.getArg(0)
+}
+
+/** A path that has been normalized, but not verified to be safe */
+class NormalizedPath extends TaintKind {
+
+    NormalizedPath() {
+        this = "normalized.path.injection"
+    }
+
+}
+
+class NormalizedPathSanitizer extends Sanitizer {
+
+    NormalizedPathSanitizer() {
+        this = "normalized.path.sanitizer"
+    }
+
+    override predicate sanitizingEdge(TaintKind taint, PyEdgeRefinement test) {
+        taint instanceof NormalizedPath and
+        test.getTest().(CallNode).getFunction().(AttrNode).getName() = "startswith" and
+        test.getSense() = true
+    }
+
 }
 
 /** A taint sink that is vulnerable to malicious paths.
@@ -43,6 +103,13 @@ class OpenNode extends TaintSink {
 
     predicate sinks(TaintKind kind) {
         kind instanceof PathInjection
+        or
+        kind instanceof NormalizedPath
     }
 
 }
+
+
+
+
+
