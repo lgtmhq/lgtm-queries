@@ -630,6 +630,11 @@ class VariableDeclarator extends Expr, @vardeclarator {
     result = this.getChildTypeExpr(2)
   }
 
+  /** Holds if this is a TypeScript variable marked as definitely assigned with the `!` operator. */
+  predicate hasDefiniteAssignmentAssertion() {
+    hasDefiniteAssignmentAssertion(this)
+  }
+
   /** Gets the declaration statement this declarator belongs to, if any. */
   DeclStmt getDeclStmt() {
     this = result.getADecl()

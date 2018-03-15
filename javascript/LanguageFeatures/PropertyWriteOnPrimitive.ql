@@ -25,8 +25,7 @@
  */
 
 import javascript
-private import semmle.javascript.flow.Analysis
-private import semmle.javascript.flow.InferredTypes
+private import semmle.javascript.dataflow.InferredTypes
 
 /** Gets a description of the property written by `pwn`. */
 string describeProp(PropWriteNode pwn) {
@@ -35,7 +34,7 @@ string describeProp(PropWriteNode pwn) {
   not exists(pwn.getPropertyName()) and result = "a property"
 }
 
-from PropWriteNode pwn, AnalyzedFlowNode base
+from PropWriteNode pwn, DataFlow::AnalyzedNode base
 where base.asExpr() = pwn.getBase() and
       forex (InferredType tp | tp = base.getAType() |
         tp instanceof PrimitiveType and

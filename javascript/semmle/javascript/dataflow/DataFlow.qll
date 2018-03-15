@@ -85,6 +85,11 @@ module DataFlow {
       isIncomplete(this, cause)
     }
 
+    /** Gets type inference results for this data flow node. */
+    AnalyzedNode analyze() {
+      result = this
+    }
+
     /** Gets the expression corresponding to this data flow node, if any. */
     Expr asExpr() { none() }
 
@@ -118,15 +123,19 @@ module DataFlow {
   }
 
   /**
-   * An expression or a function/class/namespace/enum declaration, viewed as a node in a data flow graph.
+   * An expression, property, or a function/class/namespace/enum declaration, viewed as a node in a data flow graph.
    */
   class ValueNode extends Node, TValueNode {
-    ExprOrStmt astNode;
 
-    ValueNode() { this = TValueNode(astNode) }
+    ASTNode astNode;
+
+    ValueNode() {
+      this = TValueNode(astNode) and
+      astNode instanceof DataFlowNode
+    }
 
     /** Gets the expression or declaration this node corresponds to. */
-    ExprOrStmt getAstNode() {
+    ASTNode getAstNode() {
       result = astNode
     }
 
@@ -135,7 +144,7 @@ module DataFlow {
     }
 
     override BasicBlock getBasicBlock() {
-      result = astNode.getBasicBlock()
+      astNode = result.getANode()
     }
 
     override predicate hasLocationInfo(string filepath, int startline, int startcolumn,
@@ -178,10 +187,10 @@ module DataFlow {
   /**
    * Gets the data flow node corresponding to `nd`.
    *
-   * This predicate is only defined for expressions, and for statements that declare
+   * This predicate is only defined for expressions, properties, and for statements that declare
    * a function, a class, or a TypeScript namespace or enum.
    */
-  ValueNode valueNode(ExprOrStmt nd) { result.getAstNode() = nd }
+  ValueNode valueNode(ASTNode nd) { result.getAstNode() = nd }
 
   /** Gets the data flow node corresponding to `ssa`. */
   SsaDefinitionNode ssaDefinitionNode(SsaDefinition ssa) {
@@ -382,6 +391,7 @@ module DataFlow {
     cause = "heap"
   }
 
+  import TypeInference
   import Configuration
   import TrackedNodes
 }
@@ -390,3 +400,8 @@ module DataFlow {
  * DEPRECATED: Use `DataFlow::Configuration` instead.
  */
 deprecated class FlowTrackingConfiguration = DataFlow::Configuration;
+
+/**
+ * DEPRECATED: Use `AnalyzedDataFlowNode` instead.
+ */
+deprecated class AnalyzedFlowNode = DataFlow::AnalyzedNode;

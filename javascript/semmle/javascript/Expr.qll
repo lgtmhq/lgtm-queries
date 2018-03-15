@@ -165,6 +165,11 @@ class Expr extends @expr, ExprOrStmt, ExprOrType {
   cached predicate mayReferToParameter(SimpleParameter p) {
     this.(DataFlowNode).getALocalSource() = p.getAnInitialUse()
   }
+
+  /** Gets type inference results for this expression. */
+  DataFlow::AnalyzedNode analyze() {
+    result = DataFlow::valueNode(this).analyze()
+  }
 }
 
 /** An identifier. */

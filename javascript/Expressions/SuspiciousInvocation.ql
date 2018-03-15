@@ -24,10 +24,9 @@
  */
 
 import javascript
-import semmle.javascript.flow.Analysis
-private import semmle.javascript.flow.InferredTypes
+private import semmle.javascript.dataflow.InferredTypes
 
-from InvokeExpr invk, AnalyzedFlowNode callee
+from InvokeExpr invk, DataFlow::AnalyzedNode callee
 where callee.asExpr() = invk.getCallee() and
       forex (InferredType tp | tp = callee.getAType() | tp != TTFunction() and tp != TTClass())
 select invk, "Callee is not a function: it has type " + callee.ppTypes() + "."

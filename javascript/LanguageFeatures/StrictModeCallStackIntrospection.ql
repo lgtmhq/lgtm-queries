@@ -25,7 +25,6 @@
  */
 
 import javascript
-import semmle.javascript.flow.Analysis
 
 /**
  * Holds if it is illegal to access property `prop` on `baseVal` in strict-mode
@@ -39,7 +38,7 @@ predicate illegalPropAccess(AbstractValue baseVal, string baseDesc, string prop)
   (prop = "caller" or prop = "arguments")
 }
 
-from PropAccess acc, AnalyzedFlowNode baseNode, string base, string prop
+from PropAccess acc, DataFlow::AnalyzedNode baseNode, string base, string prop
 where acc.accesses(baseNode.asExpr(), prop) and
       acc.getContainer().isStrict() and
       illegalPropAccess(baseNode.getAValue(), base, prop) and

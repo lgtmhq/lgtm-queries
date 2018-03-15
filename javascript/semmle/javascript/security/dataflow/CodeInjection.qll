@@ -55,8 +55,6 @@ class CodeInjectionDataFlowConfiguration extends TaintTracking::Configuration {
   }
 
   override predicate isAdditionalTaintStep(DataFlow::Node src, DataFlow::Node trg) {
-    super.isAdditionalTaintStep(src, trg)
-    or
     // HTML sanitizers are insufficient protection against code injection
     exists(CallExpr htmlSanitizer, string calleeName |
       calleeName = htmlSanitizer.getCalleeName() and
@@ -91,15 +89,28 @@ class AngularJSExpressionSink extends CodeInjectionSink, DataFlow::ValueNode {
 class EvalJavaScriptSink extends CodeInjectionSink, DataFlow::ValueNode {
   EvalJavaScriptSink() {
     exists(InvokeExpr c, string callName, int index |
-      callName = c.getCalleeName() and astNode = c.getArgument(index) |
-      callName = "eval" and index = 0 or
-      callName = "Function" or
-      callName = "execScript" and index = 0 or
-      callName = "executeJavaScript" and index = 0 or
-      callName = "execCommand" and index = 0 or
-      callName = "setTimeout" and index = 0 or
-      callName = "setInterval" and index = 0 or
-      callName = "setImmediate" and index = 0
+      astNode = c.getArgument(index) and
+      (
+        (callName = c.getCalleeName() and
+          (
+            callName = "eval" and index = 0 or
+            callName = "Function" or
+            callName = "execScript" and index = 0 or
+            callName = "executeJavaScript" and index = 0 or
+            callName = "execCommand" and index = 0 or
+            callName = "setTimeout" and index = 0 or
+            callName = "setInterval" and index = 0 or
+            callName = "setImmediate" and index = 0
+          )
+        ) or
+        exists (PropReadNode prn |
+          callName = "compile" or
+          callName = "compileStreaming" |
+          prn.getBase().(Expr).accessesGlobal("WebAssembly") and
+          prn.getPropertyName() = callName and
+          c.getCallee().(DataFlowNode).getALocalSource() = prn
+        )
+      )
     )
   }
 }

@@ -25,7 +25,7 @@
  * @precision very-high
  */
 
-import semmle.javascript.flow.Analysis
+import javascript
 import semmle.javascript.RestrictedLocations
 
 /**
@@ -101,7 +101,7 @@ predicate isConditional(ASTNode cond, Expr e) {
   e = cond.(LogOrExpr).getLeftOperand()
 }
 
-from ASTNode cond, AnalyzedFlowNode op, boolean cv, ASTNode sel, string msg
+from ASTNode cond, DataFlow::AnalyzedNode op, boolean cv, ASTNode sel, string msg
 where isConditional(cond, op.asExpr()) and
       cv = op.getTheBooleanValue()and
       not whitelist(op.asExpr()) and

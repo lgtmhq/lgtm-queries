@@ -29,9 +29,15 @@ import semmle.python.strings
 
 predicate dict_key(Dict d, Expr k, string s) {
     k = d.getAKey() and
-    (s = ((Num)k).getN()
-     or
-     s = "\"" + ((StrConst)k).getText() + "\""
+    (
+        s = ((Num)k).getN()
+        or
+        exists(StrConst c |
+            c = k |
+            s = "u\"" + c.getText() + "\"" and c.isUnicode()
+            or
+            s = "b\"" + c.getText() + "\"" and not c.isUnicode()
+        )
     )
 }
 

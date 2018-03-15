@@ -16,7 +16,7 @@
  */
 
 import semmle.javascript.Expr
-import Analysis
+import TypeInference
 private import InferredTypes
 
 /**
@@ -31,7 +31,7 @@ class CallSite extends @invokeexpr {
 
   /** Gets an abstract value representing possible callees of this call site. */
   cached AbstractValue getACalleeValue() {
-    result = DataFlow::valueNode(invk.getCallee()).(AnalyzedFlowNode).getAValue()
+    result = invk.getCallee().analyze().getAValue()
   }
 
   /**
@@ -51,8 +51,8 @@ class CallSite extends @invokeexpr {
    * but the position of `z` cannot be determined, hence there are no first and second
    * argument nodes.
    */
-  AnalyzedFlowNode getArgumentNode(int i) {
-    result = DataFlow::valueNode(invk.getArgument(i)) and
+  DataFlow::AnalyzedNode getArgumentNode(int i) {
+    result = invk.getArgument(i).analyze() and
     not earlierSpreadArgument(i)
   }
 
@@ -127,7 +127,7 @@ class CallSite extends @invokeexpr {
  * A reflective function call using `call` or `apply`.
  */
 class ReflectiveCallSite extends CallSite {
-  AnalyzedFlowNode callee;
+  DataFlow::AnalyzedNode callee;
   string callMode;
 
   ReflectiveCallSite() {
@@ -139,7 +139,7 @@ class ReflectiveCallSite extends CallSite {
     result = callee.getAValue()
   }
 
-  override AnalyzedFlowNode getArgumentNode(int i) {
+  override DataFlow::AnalyzedNode getArgumentNode(int i) {
     callMode = "call" and
     result = super.getArgumentNode(i+1)
   }

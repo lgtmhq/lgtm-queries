@@ -25,7 +25,6 @@
  */
 
 import javascript
-import semmle.javascript.flow.CallGraph
 
 /**
  * Holds if call site `cs` may invoke function `callee` as specified by `how`.

@@ -199,8 +199,14 @@ private predicate isImport(DataFlowNode nd, string moduleName) {
   exists (Import i | i.getImportedPath().getValue() = moduleName |
     // `require("http")`
     nd = (Require)i or
-    // `import * as http from 'http'`
-    nd = i.(ImportDeclaration).getASpecifier().(ImportNamespaceSpecifier).getLocal()
+    exists (ImportSpecifier spec | spec = i.(ImportDeclaration).getASpecifier() |
+      // common, but semantically different, ways of exposing modules through imports:
+
+      // `import * as http from 'http'`
+      nd = spec.(ImportNamespaceSpecifier).getLocal() or
+      // `import http from 'http'`
+      nd = spec.(ImportDefaultSpecifier).getLocal()
+    )
   )
 }
 

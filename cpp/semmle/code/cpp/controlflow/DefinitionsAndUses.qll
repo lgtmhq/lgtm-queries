@@ -67,6 +67,11 @@ predicate useUsePair(SemanticStackVariable var, Expr first, Expr second) {
     definitionUsePair(var, _, first)
   )
   and
+  // If `first` is both a def and a use, like `x` in `f(x)` when `f` takes a
+  // reference parameter, it'll play the role of a use first and a def second.
+  // We are not interested in uses that follow its role as a def.
+  not definition(var, first)
+  and
   exists(Use u |
     u = second
     and
@@ -320,8 +325,10 @@ private predicate containsAssembly(Function f) {
 }
 
 /**
- * Holds if `def` is a variable passed by reference (as `va`) where the callee
- * (potentially) assigns the relevant parameter.
+ * Holds if `va` is a variable passed by reference as argument `def`, where the
+ * callee potentially assigns the corresponding parameter. The
+ * definitions-and-uses library models assignment by reference as if it happens
+ * on evaluation of the argument, `def`.
  *
  * All library functions except `std::move` are assumed to assign
  * call-by-reference parameters, and source code functions are assumed to
@@ -382,7 +389,6 @@ private predicate accessInSizeof(VariableAccess use) {
 predicate useOfVar(SemanticStackVariable v, VariableAccess use) {
   use = v.getAnAccess() and
   not exists(AssignExpr e | e.getLValue() = use) and
-  not definitionByReference(use, _) and
   // sizeof accesses are resolved at compile-time
   not accessInSizeof(use)
 }

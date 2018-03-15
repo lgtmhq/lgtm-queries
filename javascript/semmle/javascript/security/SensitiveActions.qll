@@ -107,6 +107,26 @@ class CredentialsFunctionName extends SensitiveDataFunctionName {
  */
 abstract class SensitiveAction extends DataFlow::Node { }
 
+/** A call that may perform authorization. */
+class AuthorizationCall extends SensitiveAction {
+
+  AuthorizationCall() {
+    exists(string s | s = this.asExpr().(CallExpr).getCalleeName().toLowerCase() |
+      (
+        s.matches("%login%") or
+        s.matches("%auth%")
+      )
+      and not
+      (
+        s.matches("get%") or
+        s.matches("set%") or
+        s.matches("%loginfo%")
+      )
+    )
+  }
+
+}
+
 /**
  * Classes for expressions containing cleartext passwords.
  */

@@ -362,4 +362,69 @@ module NodeJSLib {
 
   }
 
+  /**
+   * Holds if the `i`th parameter of method `methodName` of the Node.js
+   * `fs` module might represent a file path.
+   *
+   * We determine this by looking for an externs declaration for
+   * `fs.methodName` where the `i`th parameter's name is `filename` or
+   * `path` or a variation thereof.
+   */
+  private predicate fsFileParam(string methodName, int i) {
+    exists (ExternalMemberDecl decl, Function f, JSDocParamTag p, string n |
+      decl.hasQualifiedName("fs", methodName) and f = decl.getInit() and
+      p.getDocumentedParameter() = f.getParameter(i).getAVariable() and
+      n = p.getName().toLowerCase() |
+      n = "filename" or n.regexpMatch("(old|new|src|dst|)path")
+    )
+  }
+
+
+  /**
+   * A call to a method from module `fs` or `graceful-fs`.
+   */
+  private class NodeJSFileSystemAccess extends FileSystemAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    NodeJSFileSystemAccess() {
+      exists (ModuleInstance fs | fs.getPath() = "fs" or fs.getPath() = "graceful-fs" |
+        asExpr() = fs.getAMethodCall(_)
+      )
+    }
+
+    override DataFlow::Node getAPathArgument() {
+      exists (int i | fsFileParam(astNode.getMethodName(), i) |
+        result = DataFlow::valueNode(astNode.getArgument(i))
+      )
+    }
+  }
+
+  /**
+   * A call to a method from module `child_process`.
+   */
+  private class ChildProcessMethodCall extends SystemCommandExecution, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    ChildProcessMethodCall() {
+      exists (ModuleInstance cp | cp.getPath() = "child_process" |
+        asExpr() = cp.getAMethodCall(_)
+      )
+    }
+
+    override DataFlow::Node getACommandArgument() {
+      // check whether this is an invocation of an exec/spawn/fork method
+      exists (string methodName | methodName = astNode.getMethodName() |
+        methodName = "exec" or
+        methodName = "execSync" or
+        methodName = "execFile" or
+        methodName = "execFileSync" or
+        methodName = "spawn" or
+        methodName = "spawnSync" or
+        methodName = "fork"
+      )
+      and
+      // all of the above methods take the command as their first argument
+      result = DataFlow::valueNode(astNode.getArgument(0))
+    }
+  }
 }

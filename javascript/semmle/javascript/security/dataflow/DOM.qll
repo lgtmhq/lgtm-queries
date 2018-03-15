@@ -153,3 +153,58 @@ class WebStorageWrite extends Expr {
     )
   }
 }
+
+/**
+ * An event handler that handles `postMessage` events.
+ */
+class PostMessageEventHandler extends Function {
+  PostMessageEventHandler() {
+    exists (CallExpr addEventListener |
+      addEventListener.getCallee().accessesGlobal("addEventListener") and
+      addEventListener.getArgument(0).mayHaveStringValue("message") and
+      addEventListener.getArgument(1).analyze().getAValue().(AbstractFunction).getFunction() = this
+    )
+  }
+
+  /**
+   * Gets the parameter that contains the event.
+   */
+  SimpleParameter getEventParameter() {
+    result = getParameter(0)
+  }
+}
+
+/**
+ * An event parameter for a `postMessage` event handler, considered as an untrusted
+ * source of data.
+ */
+private class PostMessageEventParameter extends RemoteFlowSource {
+  PostMessageEventParameter() {
+    this = DataFlow::parameterNode(any(PostMessageEventHandler pmeh).getEventParameter())
+  }
+
+  override string getSourceType() {
+    result = "postMessage event"
+  }
+}
+
+/**
+ * An equality test on `e.origin` or `e.source` where `e` is a `postMessage` event object,
+ * considered as a sanitizer for `e`.
+ */
+private class PostMessageEventSanitizer extends TaintTracking::SanitizingGuard, EqualityTest {
+  VarAccess event;
+
+  PostMessageEventSanitizer() {
+    exists (string prop | prop = "origin" or prop = "source" |
+      getAnOperand().(PropAccess).accesses(event, prop) and
+      event.mayReferToParameter(any(PostMessageEventHandler h).getEventParameter())
+    )
+  }
+
+  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
+    cfg = cfg and
+    outcome = getPolarity() and
+    e = event
+  }
+}

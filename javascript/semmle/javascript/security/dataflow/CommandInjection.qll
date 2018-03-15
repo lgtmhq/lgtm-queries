@@ -56,29 +56,12 @@ class CommandInjectionTrackingConfig extends TaintTracking::Configuration {
   }
 }
 
-/**
- * Holds if a parameter of method `methodName` of the Node.js
- * `child_process` module might influence a shell command.
- */
-private predicate childProcessCommandParam(string methodName) {
-  methodName = "exec" or
-  methodName = "execSync" or
-  methodName = "execFile" or
-  methodName = "execFileSync" or
-  methodName = "spawn" or
-  methodName = "spawnSync" or
-  methodName = "fork"
-}
 
 /**
- * A command argument to a function of the Node.js `child_process` module.
+ * A command argument to a function that initiates an operating system command.
 */
-class ChildProcessCommandSink extends CommandInjectionSink, DataFlow::ValueNode {
-  ChildProcessCommandSink() {
-    exists (ModuleInstance cp, string m |
-      cp.getPath() = "child_process" and
-      childProcessCommandParam(m) and
-      astNode = cp.getAMethodCall(m).getArgument(0)
-    )
+class SystemCommandExecutionSink extends CommandInjectionSink, DataFlow::ValueNode {
+  SystemCommandExecutionSink() {
+    this = any(SystemCommandExecution sys).getACommandArgument()
   }
 }

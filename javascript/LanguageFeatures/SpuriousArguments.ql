@@ -25,7 +25,6 @@
  */
 
 import javascript
-import semmle.javascript.flow.CallGraph
 
 /**
  * Holds if `fn` expects a fixed number of arguments, that is,
