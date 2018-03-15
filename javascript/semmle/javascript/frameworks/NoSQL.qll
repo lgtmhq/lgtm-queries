@@ -74,16 +74,30 @@ private module MongoDB {
     }
   }
 
+  /** A call to a MongoDB query method. */
+  private class QueryCall extends DatabaseAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+    int queryArgIdx;
+
+    QueryCall() {
+      exists (string m | asExpr().(MethodCallExpr).calls(any(Collection c), m) |
+        m = "count" and queryArgIdx = 0 or
+        m = "distinct" and queryArgIdx = 1 or
+        m = "find" and queryArgIdx = 0
+      )
+    }
+
+    override DataFlow::Node getAQueryArgument() {
+      result = DataFlow::valueNode(astNode.getArgument(queryArgIdx))
+    }
+  }
+
   /**
    * An expression that is interpreted as a MongoDB query.
    */
   class Query extends NoSQL::Query {
     Query() {
-      exists (MethodCallExpr mce, string m | mce.calls(any(Collection c), m) |
-        m = "count" and this = mce.getArgument(0) or
-        m = "distinct" and this = mce.getArgument(1) or
-        m = "find" and this = mce.getArgument(0)
-      )
+      this = any(QueryCall qc).getAQueryArgument().asExpr()
     }
   }
 }

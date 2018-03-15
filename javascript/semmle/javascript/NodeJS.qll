@@ -83,12 +83,12 @@ class NodeModule extends Module {
   override predicate exports(string name, ASTNode export) {
     // a property write whose base is `exports` or `module.exports`
     exists (PropWriteNode pwn | export = pwn |
-      DataFlow::valueNode(pwn.getBase()).(AnalyzedFlowNode).getAValue() = getAModuleExportsValue() and
+      pwn.getBase().analyze().getAValue() = getAModuleExportsValue() and
       name = pwn.getPropertyName()
     ) or
     // an externs definition (where appropriate)
     exists (PropAccess pacc | export = pacc |
-      DataFlow::valueNode(pacc.getBase()).(AnalyzedFlowNode).getAValue() = getAModuleExportsValue() and
+      pacc.getBase().analyze().getAValue() = getAModuleExportsValue() and
       name = pacc.getPropertyName() and
       isExterns() and exists(pacc.getDocumentation())
     )

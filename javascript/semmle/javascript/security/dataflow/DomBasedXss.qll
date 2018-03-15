@@ -105,6 +105,20 @@ class DomSink extends XssSink {
   }
 }
 
+/**
+ * An expression whose value is interpreted as HTML by a DOMParser.
+ */
+class DomParserSink extends XssSink {
+
+  DomParserSink() {
+    exists (NewExpr parser, MethodCallExpr parse |
+      parser.getCallee().accessesGlobal("DOMParser") and
+      parse.calls(any(DataFlowNode e | e.getALocalSource() = parser), "parseFromString") and
+      this.asExpr() = parse.getArgument(0)
+    )
+  }
+  
+}
 
 /**
  * A React `dangerouslySetInnerHTML` attribute, viewed as an XSS sink.

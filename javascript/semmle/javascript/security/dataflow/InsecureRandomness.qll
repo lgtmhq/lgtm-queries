@@ -58,7 +58,6 @@ class InsecureRandomnessDataFlowConfiguration extends TaintTracking::Configurati
   }
 
   override predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
-    super.isAdditionalTaintStep(pred, succ) or
     // Assume that all operations on tainted values preserve taint: crypto is hard
     succ.asExpr().(BinaryExpr).getAnOperand() = pred.asExpr() or
     succ.asExpr().(UnaryExpr).getOperand() = pred.asExpr()

@@ -1170,20 +1170,20 @@ private class RouteInstantiatedController extends Controller {
 /**
  * Dataflow for the arguments of AngularJS dependency-injected functions.
  */
-private class DependencyInjectedArgumentInitializer extends AnalyzedFlowNode {
-  AnalyzedFlowNode service;
+private class DependencyInjectedArgumentInitializer extends DataFlow::AnalyzedValueNode {
+  DataFlow::AnalyzedNode service;
 
   DependencyInjectedArgumentInitializer() {
     exists (AngularJS::InjectableFunction f, SimpleParameter param,
             AngularJS::CustomServiceDefinition def |
-      this.asExpr() = param.getAnInitialUse() and
+      astNode = param.getAnInitialUse() and
       def.getServiceReference() = f.getAResolvedDependency(param) and
       service.asExpr() = def.getAService()
     )
   }
 
   override AbstractValue getAValue() {
-    result = AnalyzedFlowNode.super.getAValue() or
+    result = DataFlow::AnalyzedValueNode.super.getAValue() or
     result = service.getALocalValue()
   }
 }

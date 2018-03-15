@@ -84,6 +84,11 @@ predicate classify(File f, string category) {
   exists (JSParseError err | maybeCausedByTemplate(err) |
     f = err.getFile() and category = "template"
   )
+  or
+  // Polymer templates
+  exists (HTMLElement elt | elt.getName() = "template" |
+    f = elt.getFile() and category = "template"
+  )
 }
 
 from File f, string category

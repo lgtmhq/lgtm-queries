@@ -48,7 +48,7 @@ import semmle.javascript.DataFlow
 import semmle.javascript.dataflow.DataFlow
 import semmle.javascript.dataflow.TaintTracking
 import semmle.javascript.security.dataflow.RemoteFlowSources
-import semmle.javascript.flow.CallGraph
+import semmle.javascript.dataflow.CallGraph
 import semmle.javascript.frameworks.AngularJS
 import semmle.javascript.frameworks.AWS
 import semmle.javascript.frameworks.Azure
@@ -68,6 +68,7 @@ import semmle.javascript.linters.JSLint
 import semmle.javascript.XML
 import semmle.javascript.TypeScript
 import semmle.javascript.QualifiedNames
+import semmle.javascript.Concepts
 import semmle.javascript.Constants
 
 import semmle.javascript.flow.Tracking

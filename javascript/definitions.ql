@@ -42,7 +42,7 @@ string refKind(RefExpr r) {
  * Gets a class, function or object literal `va` may refer to.
  */
 ASTNode lookupDef(VarAccess va) {
-  exists (AbstractValue av | av = DataFlow::valueNode(va).(AnalyzedFlowNode).getAValue() |
+  exists (AbstractValue av | av = va.analyze().getAValue() |
     result = av.(AbstractClass).getClass() or
     result = av.(AbstractFunction).getFunction() or
     result = av.(AbstractObjectLiteral).getObjectExpr()
@@ -84,14 +84,24 @@ predicate variableDeclLookup(VarAccess va, VarDecl decl, string kind) {
  */
 predicate importLookup(PathExpr path, Module target, string kind) {
   kind = "I" and
-  target = any(Import i | path = i.getImportedPath()).getImportedModule()
+  (
+   exists (Import i |
+     path = i.getImportedPath() and
+     target = i.getImportedModule()
+   )
+   or
+   exists (ReExportDeclaration red |
+     path = red.getImportedPath() and
+     target = red.getImportedModule()
+   )
+  )
 }
 
 /**
  * Gets a node that may write the property read by `prn`.
  */
 DataFlowNode getAWrite(PropReadNode prn) {
-  exists (AnalyzedFlowNode base, DefiniteAbstractValue baseVal, string propName |
+  exists (DataFlow::AnalyzedNode base, DefiniteAbstractValue baseVal, string propName |
     base.asExpr() = prn.getBase() and propName = prn.getPropertyName() and
     baseVal = base.getAValue().getAPrototype*() |
     // write to a property on baseVal

@@ -44,7 +44,6 @@
 import javascript
 private import AbstractValues
 private import InferredTypes
-private import Analysis
 
 /**
  * An expression that has the right syntactic structure to be used to

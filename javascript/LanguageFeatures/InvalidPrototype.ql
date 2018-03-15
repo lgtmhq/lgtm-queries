@@ -25,13 +25,12 @@
  */
 
 import javascript
-private import semmle.javascript.flow.Analysis
-private import semmle.javascript.flow.InferredTypes
+private import semmle.javascript.dataflow.InferredTypes
 
 /**
  * Holds if the value of `e` is used as a prototype object.
  */
-predicate isProto(AnalyzedFlowNode e) {
+predicate isProto(DataFlow::AnalyzedNode e) {
   // `o.__proto__ = e`, `{ __proto__: e }`, ...
   e.asExpr() = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
   or
@@ -47,7 +46,7 @@ predicate isProto(AnalyzedFlowNode e) {
   )
 }
 
-from AnalyzedFlowNode proto
+from DataFlow::AnalyzedNode proto
 where isProto(proto) and
       forex (InferredType tp | tp = proto.getAType() |
         tp instanceof PrimitiveType and tp != TTNull()

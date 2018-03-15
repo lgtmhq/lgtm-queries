@@ -95,6 +95,11 @@ module Express {
       )
     }
 
+    /** Gets the path associated with the route. */
+    string getPath() {
+      getArgument(0).mayHaveStringValue(result)
+    }
+
     /** Gets the router on which handlers are being registered. */
     RouterDefinition getRouter() {
       result = router
@@ -114,7 +119,7 @@ module Express {
     Expr getRouteHandlerExpr(int index) {
       // The first argument is a URI pattern if it is a string. If it could possibly be
       // a function, we consider it to be a route handler, otherwise a URI pattern.
-      if DataFlow::valueNode(getArgument(0)).(AnalyzedFlowNode).getAType().getTypeofTag() = "function" then
+      if getArgument(0).analyze().getAType().getTypeofTag() = "function" then
         result = getArgument(index)
       else
         (index >= 0 and result = getArgument(index + 1))
@@ -145,6 +150,24 @@ module Express {
      */
     HTTP::RequestMethodName getRequestMethod() {
       result.toLowerCase() = getMethodName()
+    }
+
+    /**
+     * Holds if this registers a route for all request methods.
+     */
+    predicate handlesAllRequestMethods() {
+      getMethodName() = "use" or getMethodName() = "all"
+    }
+
+    /**
+     * Holds if this route setup sets up a route for the same
+     * request method as `that`.
+     */
+    bindingset[that]
+    predicate handlesSameRequestMethodAs(RouteSetup that) {
+      this.handlesAllRequestMethods() or
+      that.handlesAllRequestMethods() or
+      this.getRequestMethod() = that.getRequestMethod()
     }
   }
 
@@ -227,6 +250,42 @@ module Express {
      */
     Express::RouteHandlerExpr getNextMiddleware() {
       result.getPreviousMiddleware() = this
+    }
+
+    /**
+     * Gets a route handler that precedes this one (not necessarily immediately), may handle
+     * same request method, and matches on the same path or a prefix.
+     *
+     * If the preceding handler's path cannot be determined, it is assumed to match.
+     *
+     * Note that this predicate is not complete: path globs such as `'*'` are not currently
+     * handled, and relative paths of subrouters are not modelled. In particular, if an outer
+     * router installs a route handler `r1` on a path that matches the path of a route handler
+     * `r2` installed on a subrouter, `r1` will not be recognized as an ancestor of `r2`.
+     */
+    Express::RouteHandlerExpr getAMatchingAncestor() {
+      result = getPreviousMiddleware+() and
+      exists (RouteSetup resSetup | resSetup = result.getSetup() |
+        // check whether request methods are compatible
+        resSetup.handlesSameRequestMethodAs(setup)
+        and
+        // check whether `resSetup` matches on (a prefix of) the same path as `setup`
+        (
+          // if `result` doesn't specify a path or we cannot determine it, assume
+          // that it matches
+          not exists (resSetup.getPath())
+          or
+          setup.getPath() = resSetup.getPath() + any(string s)
+        )
+      )
+      or
+      // if this is a sub-router, any previously installed middleware for the same
+      // request method will necessarily match
+      exists (RouteHandlerExpr outer |
+        setup.getRouter() = outer.getAsSubRouter() and
+        outer.getSetup().handlesSameRequestMethodAs(setup) and
+        result = outer.getAMatchingAncestor()
+      )
     }
 
     /**
@@ -688,7 +747,7 @@ module Express {
           call.hasOptionArgument(0, "users", users) |
           pwn.getBase().getALocalSource() = users.getALocalSource() and
           (
-            (this = pwn and kind = "user name") or
+            (this = pwn.getPropertyNameExpr() and kind = "user name") or
             (this = pwn.getRhs() and kind = "password")
           )
         )
@@ -701,4 +760,16 @@ module Express {
 
   }
 
+  /** A call to `response.sendFile`, considered as a file system access. */
+  private class ResponseSendFileAsFileSystemAccess extends FileSystemAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    ResponseSendFileAsFileSystemAccess() {
+      asExpr().(MethodCallExpr).calls(any(ResponseExpr res), "sendFile")
+    }
+
+    override DataFlow::Node getAPathArgument() {
+      result = DataFlow::valueNode(astNode.getArgument(0))
+    }
+  }
 }

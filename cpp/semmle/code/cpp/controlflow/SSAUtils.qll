@@ -192,7 +192,7 @@ library class SSAHelper extends int {
      * position `index` in block `b`. This includes definitions from phi nodes.
      */
     predicate ssa_defn(LocalScopeVariable v, ControlFlowNode node, BasicBlock b, int index) {
-        phi_node(v, b) and b.getStart() = node and index = 0
+        phi_node(v, b) and b.getStart() = node and index = -1
         or
         variableUpdate(v, node, b, index)
     }
@@ -219,9 +219,14 @@ library class SSAHelper extends int {
       i = rank[rankix](int j | ssa_defn(v, _, b, j) or ssa_use(v, _, b, j))
     }
 
-    /** Gets the maximum rank index for the given variable and basic block. */
+    /**
+     * Gets the maximum rank index for the given variable `v` and basic block
+     * `b`. This will be the number of defs/uses of `v` in `b` plus one, where
+     * the extra rank at the end represents a position past the last node in
+     * the block.
+     */
     private int lastRank(LocalScopeVariable v, BasicBlock b) {
-      result = max(int rankix | defUseRank(v, b, rankix, _))
+      result = max(int rankix | defUseRank(v, b, rankix, _)) + 1
     }
 
     /**
@@ -236,14 +241,21 @@ library class SSAHelper extends int {
 
     /**
      * Holds if SSA variable `(v, def)` reaches the rank index `rankix` in its
-     * own basic block `b`.
+     * own basic block `b` before being overwritten by another definition of
+     * `v` that comes _at or after_ the reached node. Reaching a node means
+     * that the definition is visible to any _use_ at that node.
      */
     private predicate ssaDefReachesRank(LocalScopeVariable v, ControlFlowNode def, BasicBlock b, int rankix) {
-        ssaDefRank(v, def, b, rankix)
+        // A definition should not reach its own node unless a loop allows it.
+        // When nodes are both definitions and uses for the same variable, the
+        // use is understood to happen _before_ the definition. Phi nodes are
+        // at rankidx -1 and will therefore always reach the first node in the
+        // basic block.
+        ssaDefRank(v, def, b, rankix-1)
         or
         (ssaDefReachesRank(v, def, b, rankix-1) and
          rankix <= lastRank(v, b) and  // Without this, the predicate would be infinite.
-         not ssaDefRank(v, _, b, rankix))
+         not ssaDefRank(v, _, b, rankix-1)) // Range is inclusive of but not past next def.
     }
 
     /** Holds if SSA variable `(v, def)` reaches the end of block `b`. */

@@ -24,14 +24,35 @@
   private import DataFlowPrivate
   private import DataFlowDispatch
 
+
   /**
-   * A global (inter-procedural) data flow configuration.
+   * A configuration of interprocedural data flow analysis. This defines
+   * sources, sinks, and any other configurable aspect of the analysis. Each
+   * use of the global data flow library must define its own unique extension
+   * of this abstract class. To create a configuration, extend this class with
+   * a subclass whose characteristic predicate is a unique singleton string.
+   * For example, write
    *
-   * Each use of the global data flow library must define its own unique extension
-   * of this abstract class. A configuration defines a set of relevant sources
-   * (`isSource`) and sinks (`isSink`), and may additionally prohibit intermediate
-   * flow nodes (`isBarrier`) as well as add custom local data flow steps
-   * (`isAdditionalFlowStep()`).
+   * ```
+   * class MyAnalysisConfiguration extends DataFlow::Configuration {
+   *   MyAnalysisConfiguration() { this = "MyAnalysisConfiguration" }
+   *   // Override `isSource` and `isSink`.
+   *   // Optionally override `isBarrier`.
+   *   // Optionally override `isAdditionalFlowStep`.
+   * }
+   * ```
+   *
+   * Then, to query whether there is flow between some `source` and `sink`,
+   * write
+   *
+   * ```
+   * exists(MyAnalysisConfiguration cfg | cfg.hasFlow(source, sink))
+   * ```
+   *
+   * Multiple configurations can coexist, but two classes extending
+   * `DataFlow::Configuration` should never depend on each other. One of them
+   * should instead depend on a `DataFlow2::Configuration`, a
+   * `DataFlow3::Configuration`, or a `DataFlow4::Configuration`.
    */
   abstract class Configuration extends string {
     bindingset[this]

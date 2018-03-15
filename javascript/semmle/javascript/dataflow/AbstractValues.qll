@@ -52,7 +52,7 @@
  */
 
 import javascript
-private import AbstractValuesImpl
+private import semmle.javascript.dataflow.internal.AbstractValuesImpl
 private import InferredTypes
 
 /**

@@ -17,7 +17,7 @@
  */
 
 import javascript
-private import semmle.javascript.flow.InferredTypes
+private import semmle.javascript.dataflow.InferredTypes
 
 /**
  * A data flow source for untrusted user input used to construct regular expressions.
@@ -76,7 +76,7 @@ class RegExpObjectCoercionSink extends RegExpInjectionSink {
 
   RegExpObjectCoercionSink() {
     exists (MethodCallExpr mce, string methodName |
-      any(AnalyzedFlowNode n | n.asExpr() = mce.getReceiver()).getAType() = TTString() and
+      mce.getReceiver().analyze().getAType() = TTString() and
       mce.getMethodName() = methodName |
       (methodName = "match" and this.asExpr() = mce.getArgument(0) and mce.getNumArgument() = 1) or
       (methodName = "search" and this.asExpr() = mce.getArgument(0) and mce.getNumArgument() = 1)

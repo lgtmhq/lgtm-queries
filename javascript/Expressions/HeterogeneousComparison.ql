@@ -27,8 +27,7 @@
  */
 
 import javascript
-import semmle.javascript.flow.Analysis
-private import semmle.javascript.flow.InferredTypes
+private import semmle.javascript.dataflow.InferredTypes
 
 /**
  * Holds if `left` and `right` are the left and right operands, respectively, of `nd`, which is
@@ -55,7 +54,7 @@ predicate hasImplicitConversionMethod(DefiniteAbstractValue av) {
 /**
  * Gets a type of `operand`, which is an operand of the strict equality test `eq`.
  */
-InferredType strictEqualityOperandType(ASTNode eq, AnalyzedFlowNode operand) {
+InferredType strictEqualityOperandType(ASTNode eq, DataFlow::AnalyzedNode operand) {
   // strict equality tests do no conversion at all
   operand.asExpr() = eq.(StrictEqualityTest).getAChildExpr() and result = operand.getAType() or
 
@@ -70,7 +69,7 @@ InferredType strictEqualityOperandType(ASTNode eq, AnalyzedFlowNode operand) {
  * Holds if `operand` is an operand of the non-strict equality test or relational
  * operator `parent`, and may have a `toString` or `valueOf` method.
  */
-predicate implicitlyConvertedOperand(ASTNode parent, AnalyzedFlowNode operand) {
+predicate implicitlyConvertedOperand(ASTNode parent, DataFlow::AnalyzedNode operand) {
   (parent instanceof NonStrictEqualityTest or parent instanceof RelationalComparison) and
   operand.asExpr() = parent.getAChildExpr() and
   hasImplicitConversionMethod(operand.getAValue())
@@ -80,7 +79,7 @@ predicate implicitlyConvertedOperand(ASTNode parent, AnalyzedFlowNode operand) {
  * Gets a type of `operand`, which is an operand of the non-strict equality test or
  * relational operator `parent`.
  */
-InferredType nonStrictOperandType(ASTNode parent, AnalyzedFlowNode operand) {
+InferredType nonStrictOperandType(ASTNode parent, DataFlow::AnalyzedNode operand) {
   // non-strict equality tests perform conversions
   operand.asExpr() = parent.(NonStrictEqualityTest).getAChildExpr() and
   exists (InferredType tp | tp = operand.getAValue().getType() |
@@ -119,7 +118,7 @@ InferredType nonStrictOperandType(ASTNode parent, AnalyzedFlowNode operand) {
  * Gets a type that `operand`, which is an operand of comparison `parent`,
  * could be converted to at runtime.
  */
-InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
+InferredType convertedOperandType(ASTNode parent, DataFlow::AnalyzedNode operand) {
   result = strictEqualityOperandType(parent, operand)
   or
   // if `operand` might have `toString`/`valueOf`, just assume it could
@@ -134,7 +133,7 @@ InferredType convertedOperandType(ASTNode parent, AnalyzedFlowNode operand) {
  * `leftTypes` and `rightTypes`, respectively, but there is no
  * common type they coerce to.
  */
-predicate isHeterogeneousComparison(ASTNode cmp, AnalyzedFlowNode left, AnalyzedFlowNode right,
+predicate isHeterogeneousComparison(ASTNode cmp, DataFlow::AnalyzedNode left, DataFlow::AnalyzedNode right,
                                     string leftTypes, string rightTypes) {
   comparisonOperands(cmp, left.asExpr(), right.asExpr()) and
   not convertedOperandType(cmp, left) = convertedOperandType(cmp, right) and
@@ -173,7 +172,7 @@ string getDescription(Expr e, string default) {
     result = default
 }
 
-from ASTNode cmp, AnalyzedFlowNode left, AnalyzedFlowNode right, string leftTypes, string rightTypes, string leftExprDescription, string rightExprDescription
+from ASTNode cmp, DataFlow::AnalyzedNode left, DataFlow::AnalyzedNode right, string leftTypes, string rightTypes, string leftExprDescription, string rightExprDescription
 where isHeterogeneousComparison(cmp, left, right, leftTypes, rightTypes) and
       // don't flag unreachable code
       exists (left.getAType()) and exists (right.getAType()) and

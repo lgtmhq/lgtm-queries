@@ -67,3 +67,37 @@ class JsonParseCall extends MethodCallExpr {
     getMethodName() = "parse"
   }
 }
+
+/**
+ * Flow analysis for `this` expressions inside a function that is called with
+ * `Array.prototype.map` or a similar Array function that binds `this`.
+ *
+ * However, since the function could be invoked in another way, we additionally
+ * still infer the ordinary abstract value.
+ */
+private class AnalyzedThisInArrayIterationFunction extends AnalyzedValueNode {
+
+  AnalyzedValueNode thisSource;
+
+  override ThisExpr astNode;
+
+  AnalyzedThisInArrayIterationFunction() {
+    exists(MethodCallExpr bindingCall, string name |
+      name = "filter" or
+      name = "forEach" or
+      name = "map" or
+      name = "some" or
+      name = "every" |
+      name = bindingCall.getMethodName() and
+      2 = bindingCall.getNumArgument() and
+      astNode.getBinder() = bindingCall.getArgument(0).(DataFlowNode).getALocalSource() and
+      thisSource.asExpr() = bindingCall.getArgument(1)
+    )
+  }
+
+  override AbstractValue getALocalValue() {
+    result = thisSource.getALocalValue() or
+    result = AnalyzedValueNode.super.getALocalValue()
+  }
+
+}

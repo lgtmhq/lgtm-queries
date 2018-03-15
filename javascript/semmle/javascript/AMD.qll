@@ -201,7 +201,7 @@ class AMDModuleDefinition extends CallExpr {
    */
   DefiniteAbstractValue getAModuleExportsValue() {
     // implicit exports: anything that is returned from the factory function
-    result = DataFlow::valueNode(getModuleExpr()).(AnalyzedFlowNode).getAValue()
+    result = getModuleExpr().analyze().getAValue()
     or
     // explicit exports: anything assigned to `module.exports`
     exists (AbstractProperty moduleExports, AMDModule m |
@@ -266,7 +266,7 @@ class AMDModule extends Module {
 
   override predicate exports(string name, ASTNode export) {
     exists (PropWriteNode pwn | export = pwn |
-      DataFlow::valueNode(pwn.getBase()).(AnalyzedFlowNode).getAValue() = getDefine().getAModuleExportsValue() and
+      pwn.getBase().analyze().getAValue() = getDefine().getAModuleExportsValue() and
       name = pwn.getPropertyName()
     )
   }

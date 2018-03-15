@@ -12,14 +12,13 @@
 // permissions and limitations under the License.
 
 /**
- * INTERNAL: This is an internal API and subject to change; queries should use
- * `AbstractValues.qll` and `InferredTypes.qll` instead.
+ * INTERNAL: Do not use directly; use `semmle.javascript.dataflow.TypeInference` instead.
  *
  * Provides a representation for abstract values.
  */
 
-import AbstractValues
-private import InferredTypes
+import semmle.javascript.dataflow.AbstractValues
+private import semmle.javascript.dataflow.InferredTypes
 
 /** An abstract value inferred by the flow analysis. */
 newtype TAbstractValue =

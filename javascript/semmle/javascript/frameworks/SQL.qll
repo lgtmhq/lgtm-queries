@@ -81,13 +81,25 @@ private module MySql {
     nd.getALocalSource() = createPool()
   }
 
+  /** A call to the MySql `query` method. */
+  private class QueryCall extends DatabaseAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    QueryCall() {
+      exists (DataFlowNode recv | asExpr().(MethodCallExpr).calls(recv, "query") |
+        isConnection(recv) or isPool(recv)
+      )
+    }
+
+    override DataFlow::Node getAQueryArgument() {
+      result = DataFlow::valueNode(astNode.getArgument(0))
+    }
+  }
+
   /** An expression that is passed to the `query` method and hence interpreted as SQL. */
   class QueryString extends SQL::SqlString {
     QueryString() {
-      exists (DataFlowNode base, MethodCallExpr mce |
-        isConnection(base) or isPool(base) |
-        mce.calls(base, "query") and this = mce.getArgument(0)
-      )
+      this = any(QueryCall qc).getAQueryArgument().asExpr()
     }
   }
 
@@ -173,13 +185,25 @@ private module Postgres {
     nd.getALocalSource() = newPool()
   }
 
+  /** A call to the Postgres `query` method. */
+  private class QueryCall extends DatabaseAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    QueryCall() {
+      exists (DataFlowNode recv | asExpr().(MethodCallExpr).calls(recv, "query") |
+        isClient(recv) or isPool(recv)
+      )
+    }
+
+    override DataFlow::Node getAQueryArgument() {
+      result = DataFlow::valueNode(astNode.getArgument(0))
+    }
+  }
+
   /** An expression that is passed to the `query` method and hence interpreted as SQL. */
   class QueryString extends SQL::SqlString {
     QueryString() {
-      exists (DataFlowNode base, MethodCallExpr mce |
-        isClient(base) or isPool(base) |
-        mce.calls(base, "query") and this = mce.getArgument(0)
-      )
+      this = any(QueryCall qc).getAQueryArgument().asExpr()
     }
   }
 
@@ -228,13 +252,26 @@ private module Sqlite {
     )
   }
 
-  /** An expression that is passed to a method that interprets it as SQL. */
+  /** A call to a Sqlite query method. */
+  private class QueryCall extends DatabaseAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    QueryCall() {
+      exists (DataFlowNode recv, string meth |
+        meth = "all" or meth = "each" or meth = "exec" or meth = "get" or meth = "prepare" or meth = "run" |
+        isDB(recv) and asExpr().(MethodCallExpr).calls(recv, meth)
+      )
+    }
+
+    override DataFlow::Node getAQueryArgument() {
+      result = DataFlow::valueNode(astNode.getArgument(0))
+    }
+  }
+
+  /** An expression that is passed to the `query` method and hence interpreted as SQL. */
   class QueryString extends SQL::SqlString {
     QueryString() {
-      exists (DataFlowNode base, MethodCallExpr mce, string meth |
-        meth = "all" or meth = "each" or meth = "exec" or meth = "get" or meth = "prepare" or meth = "run" |
-        isDB(base) and mce.calls(base, meth) and this = mce.getArgument(0)
-      )
+      this = any(QueryCall qc).getAQueryArgument().asExpr()
     }
   }
 }
@@ -261,23 +298,44 @@ private module MsSql {
     )
   }
 
-  /** Holds if `e` is part of a tagged template evaluated as a query. */
-  predicate isQueryTemplateElement(Expr e) {
-    exists (DataFlowNode mssql, PropAccess query, TaggedTemplateExpr call |
-      isMsSql(mssql) and query.accesses(mssql, "query") and
-      call.getTag().(DataFlowNode).getALocalSource() = query and
-      e = call.getTemplate().getAnElement()
-    )
+  /** A tagged template evaluated as a query. */
+  private class QueryTemplateExpr extends DatabaseAccess, DataFlow::ValueNode {
+    override TaggedTemplateExpr astNode;
+
+    QueryTemplateExpr() {
+      exists (DataFlowNode mssql, PropAccess query |
+        isMsSql(mssql) and query.accesses(mssql, "query") and
+        asExpr().(TaggedTemplateExpr).getTag().(DataFlowNode).getALocalSource() = query
+      )
+    }
+
+    override DataFlow::Node getAQueryArgument() {
+      result = DataFlow::valueNode(astNode.getTemplate().getAnElement())
+    }
+  }
+
+  /** A call to a MsSql query method. */
+  private class QueryCall extends DatabaseAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    QueryCall() {
+      exists (DataFlowNode recv, string meth |
+        asExpr().(MethodCallExpr).calls(recv, meth) and isRequest(recv) |
+        meth = "query" or meth = "batch"
+      )
+    }
+
+    override DataFlow::Node getAQueryArgument() {
+      result = DataFlow::valueNode(astNode.getArgument(0))
+    }
   }
 
   /** An expression that is passed to a method that interprets it as SQL. */
   class QueryString extends SQL::SqlString {
     QueryString() {
-      isQueryTemplateElement(this) or
-      exists (DataFlowNode base, MethodCallExpr query, string meth |
-        meth = "query" or meth = "batch" |
-        isRequest(base) and query.calls(base, meth) and
-        this = query.getArgument(0)
+      exists (DatabaseAccess dba |
+        dba instanceof QueryTemplateExpr or dba instanceof QueryCall |
+        this = dba.getAQueryArgument().asExpr()
       )
     }
   }
@@ -285,7 +343,7 @@ private module MsSql {
   /** An element of a query template, which is automatically sanitized. */
   class QueryTemplateSanitizer extends SQL::SqlSanitizer {
     QueryTemplateSanitizer() {
-      isQueryTemplateElement(this) and
+      this = any(QueryTemplateExpr qte).getAQueryArgument().asExpr() and
       input = this and output = this
     }
   }
@@ -338,14 +396,25 @@ private module Sequelize {
     nd.getALocalSource() = newSequelize()
   }
 
-  /** An expression that is passed as the first argument to `Sequelize.query`. */
+  /** A call to `Sequelize.query`. */
+  private class QueryCall extends DatabaseAccess, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
+
+    QueryCall() {
+      exists (DataFlowNode recv | asExpr().(MethodCallExpr).calls(recv, "query") |
+        isSequelizeInstance(recv)
+      )
+    }
+
+    override DataFlow::Node getAQueryArgument() {
+      result = DataFlow::valueNode(astNode.getArgument(0))
+    }
+  }
+
+  /** An expression that is passed to `Sequelize.query` method and hence interpreted as SQL. */
   class QueryString extends SQL::SqlString {
     QueryString() {
-      exists (MethodCallExpr mce |
-        isSequelizeInstance(mce.getReceiver()) and
-        mce.getMethodName() = "query" and
-        this = mce.getArgument(0)
-      )
+      this = any(QueryCall qc).getAQueryArgument().asExpr()
     }
   }
 

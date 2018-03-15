@@ -108,18 +108,21 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
   /** Gets a parameter of this function. */
   Parameter getAParameter() { params(result,this,_,_) }
 
-  /** Gets the number of parameters of this function. */
+  /**
+   * Gets the number of parameters of this function, _not_ including any
+   * implicit `this` parameter or any `...` varargs pseudo-parameter.
+   */
   int getNumberOfParameters() {
      result = count(this.getAParameter())
   }
 
   /**
-   * Gets the number of parameters of this function, including any implicit
-   * `this` parameter. (This method is overridden in `MemberFunction`,
-   * where the result is adjusted to account for the implicit `this`
-   * parameter.)
+   * Gets the number of parameters of this function, _including_ any implicit
+   * `this` parameter but _not_ including any `...` varargs pseudo-parameter.
    */
   int getEffectiveNumberOfParameters() {
+    // This method is overridden in `MemberFunction`, where the result is
+    // adjusted to account for the implicit `this` parameter.
     result = getNumberOfParameters()
   }
 

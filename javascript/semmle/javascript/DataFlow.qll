@@ -107,6 +107,11 @@ class DataFlowNode extends @dataflownode {
     none()
   }
 
+  /** Gets type inference results for this data flow node. */
+  DataFlow::AnalyzedNode analyze() {
+    result = DataFlow::valueNode(this).analyze()
+  }
+
   /** Gets a textual representation of this element. */
   string toString() { result = this.(ASTNode).toString() }
 
@@ -251,6 +256,17 @@ private class IifeParameterFlow extends VarDefFlow {
   }
 
   override predicate isIncomplete(DataFlowIncompleteness cause) { none() }
+}
+
+/**
+ * An ECMAScript 2015 import, viewed as a contributor to the data flow graph.
+ */
+private class ImportSpecifierFlow extends VarDefFlow, ImportSpecifier {
+
+  override DataFlowNode getSourceNode() {
+    result = getLocal()
+  }
+
 }
 
 /** A parenthesized expression, viewed as a data flow node. */
@@ -432,12 +448,11 @@ private class PropAssignNode extends PropWriteNode, @propaccess {
  * A property of an object literal, viewed as a data flow node that writes
  * to the corresponding property.
  */
-private class PropInitNode extends PropWriteNode, @expr {
-  PropInitNode() { exists (Property vp | this = vp.getNameExpr()) }
+private class PropInitNode extends PropWriteNode, @property {
   /** Gets the property that this node wraps. */
-  private Property getProperty() { this = result.getNameExpr() }
+  private Property getProperty() { result = this }
   override DataFlowNode getBase() { result = getProperty().getObjectExpr() }
-  override Expr getPropertyNameExpr() { result = this }
+  override Expr getPropertyNameExpr() { result = getProperty().getNameExpr() }
   override string getPropertyName() { result = getProperty().getName() }
   override DataFlowNode getRhs() { result = getProperty().(ValueProperty).getInit() }
 }

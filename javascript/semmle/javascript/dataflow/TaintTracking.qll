@@ -27,8 +27,8 @@
  */
 
 import javascript
-import semmle.javascript.flow.CallGraph
-private import semmle.javascript.flow.InferredTypes
+import semmle.javascript.dataflow.CallGraph
+private import semmle.javascript.dataflow.InferredTypes
 
 /**
  * Provides classes for modelling taint propagation.
@@ -84,12 +84,13 @@ module TaintTracking {
      * must be taken into account in the analysis.
      */
     predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
-      pred = succ.(FlowTarget).getATaintSource()
+      none()
     }
 
     final
     override predicate isAdditionalFlowStep(DataFlow::Node pred, DataFlow::Node succ) {
-      isAdditionalTaintStep(pred, succ)
+      isAdditionalTaintStep(pred, succ) or
+      pred = succ.(FlowTarget).getATaintSource()
     }
   }
 
@@ -479,7 +480,7 @@ module TaintTracking {
     Expr x;
 
     UndefinedCheckSanitizer() {
-      exists (IndexExpr idx, AnalyzedFlowNode undef | hasOperands(idx, undef.asExpr()) |
+      exists (IndexExpr idx, DataFlow::AnalyzedNode undef | hasOperands(idx, undef.asExpr()) |
         // one operand is of the form `o[x]`
         idx = getAnOperand() and idx.getPropertyNameExpr() = x and
         // and the other one is guaranteed to be `undefined`

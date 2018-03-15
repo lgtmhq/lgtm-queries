@@ -25,14 +25,13 @@
  */
 
 import javascript
-import semmle.javascript.flow.Analysis
-private import semmle.javascript.flow.InferredTypes
+private import semmle.javascript.dataflow.InferredTypes
 
 /**
  * An expression that appears in a syntactic position where its value may be
  * implicitly converted.
  */
-abstract class ImplicitConversion extends AnalyzedFlowNode {
+abstract class ImplicitConversion extends DataFlow::AnalyzedNode {
   Expr parent;
 
   ImplicitConversion() {

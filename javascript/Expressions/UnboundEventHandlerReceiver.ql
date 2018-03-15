@@ -51,7 +51,7 @@ private DOM::AttributeDefinition getAnEventHandlerAttribute() {
 from MethodDeclaration callback, DOM::AttributeDefinition attribute, ThisExpr unbound
 where
       attribute = getAnEventHandlerAttribute() and
-      DataFlow::valueNode(attribute.getValueNode()).(AnalyzedFlowNode).getAValue().(AbstractFunction).getFunction() = callback.getBody() and
+      attribute.getValueNode().analyze().getAValue().(AbstractFunction).getFunction() = callback.getBody() and
       unbound.getBinder() = callback.getBody() and
       not isBoundInMethod(callback)
 select attribute, "The receiver of this event handler call is unbound, `$@` will be `undefined` in the call to $@", unbound, "this", callback, callback.getName()

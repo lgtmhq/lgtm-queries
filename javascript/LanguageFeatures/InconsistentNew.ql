@@ -26,7 +26,6 @@
  */
 
 import javascript
-import semmle.javascript.flow.CallGraph
 import semmle.javascript.RestrictedLocations
 
 /**

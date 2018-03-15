@@ -68,34 +68,11 @@ class ModulePathSink extends TaintedPathSink, DataFlow::ValueNode {
 }
 
 /**
- * Holds if the `i`th parameter of method `methodName` of the Node.js
- * `fs` module might represent a file path.
- *
- * We determine this by looking for an externs declaration for
- * `fs.methodName` where the `i`th parameter's name is `filename` or
- * `path` or a variation thereof.
- */
-private predicate fsFileParam(string methodName, int i) {
-  exists (ExternalMemberDecl decl, Function f, JSDocParamTag p, string n |
-    decl.hasQualifiedName("fs", methodName) and f = decl.getInit() and
-    p.getDocumentedParameter() = f.getParameter(i).getAVariable() and
-    n = p.getName().toLowerCase() |
-    n = "filename" or n.regexpMatch("(old|new|src|dst|)path")
-  )
-}
-
-/**
- * A path argument to a file system function from Node's `fs` or `graceful-fs`
- * modules.
+ * A path argument to a file system access.
  */
 class FsPathSink extends TaintedPathSink, DataFlow::ValueNode {
   FsPathSink() {
-    exists (MethodCallExpr mce, ModuleInstance fs, int i |
-      mce.getReceiver().(DataFlowNode).getALocalSource() = fs and
-      (fs.getPath() = "fs" or fs.getPath() = "graceful-fs") and
-      astNode = mce.getArgument(i) and
-      fsFileParam(mce.getMethodName(), i)
-    )
+    this = any(FileSystemAccess fs).getAPathArgument()
   }
 }
 
