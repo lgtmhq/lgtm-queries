@@ -13,7 +13,7 @@
 
 /** Provides classes for working with Node.js modules. */
 
-import Modules
+import javascript
 private import FilesInternal
 
 /**
@@ -115,8 +115,12 @@ class NodeModule extends Module {
     )
   }
 
-  /** Gets a reference to `module.exports` in this module. */
-  ExportsAccess getAnExportsAccess() {
+  /**
+   * DEPRECATED: Use type inference instead.
+   *
+   * Gets a reference to `module.exports` in this module.
+   */
+  deprecated ExportsAccess getAnExportsAccess() {
     result.getTopLevel() = this
   }
 
@@ -408,10 +412,12 @@ class ModuleAccess extends VarAccess {
 }
 
 /**
+ * DEPRECATED: Use type inference instead.
+ *
  * A reference to the `exports` property, either through `module` or through its
  * variable alias.
  */
-class ExportsAccess extends Expr {
+deprecated class ExportsAccess extends Expr {
   ExportsAccess() {
     exists (ModuleScope ms |
       this = ms.getVariable("exports").getAnAccess()

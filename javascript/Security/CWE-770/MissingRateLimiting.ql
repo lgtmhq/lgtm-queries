@@ -18,7 +18,7 @@
  *              to denial-of-service attacks.
  * @kind problem
  * @problem.severity error
- * @precision medium
+ * @precision high
  * @id js/missing-rate-limiting
  * @tags security
  *       external/cwe/cwe-770

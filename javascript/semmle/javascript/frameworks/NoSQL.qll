@@ -28,34 +28,30 @@ module NoSQL {
  */
 private module MongoDB {
   /**
-   * Gets an expression that may refer to an import of MongoDB.
+   * Gets an import of MongoDB.
    */
-  private DataFlowNode getAMongoDBInstance() {
-    result.getALocalSource().(ModuleInstance).getPath() = "mongodb"
+  DataFlow::ModuleImportNode mongodb() {
+    result.getPath() = "mongodb"
   }
 
   /**
-   * Gets an expression that may refer to `mongodb.MongoClient`.
+   * Gets an access to `mongodb.MongoClient`.
    */
-  private DataFlowNode getAMongoClient() {
-    result.getALocalSource().(PropAccess).accesses(getAMongoDBInstance(), "MongoClient")
+  DataFlow::SourceNode getAMongoClient() {
+    result = mongodb().getAPropertyRead("MongoClient")
   }
 
   /**
    * Gets an expression that may refer to a MongoDB database connection.
    */
-  private Expr getAMongoDb() {
-    exists (MethodCallExpr connect, Function cb |
-      connect.calls(getAMongoClient(), "connect") and
-      cb = connect.getArgument(1).(DataFlowNode).getALocalSource() and
-      result.mayReferToParameter(cb.getParameter(1))
-    )
+  DataFlow::SourceNode getAMongoDb() {
+    result = getAMongoClient().getAMemberCall("connect").getCallback(1).getParameter(1)
   }
 
   /**
    * An expression that may hold a MongoDB collection.
    */
-  abstract class Collection extends DataFlowNode {
+  abstract class Collection extends Expr {
   }
 
   /**
@@ -63,13 +59,11 @@ private module MongoDB {
    */
   private class CollectionFromDb extends Collection {
     CollectionFromDb() {
-      exists (MethodCallExpr collection | collection.calls(getAMongoDb(), "collection") |
-        this.getALocalSource() = collection
+      exists (DataFlow::CallNode collection |
+        collection = getAMongoDb().getAMethodCall("collection") |
+        collection.flowsToExpr(this)
         or
-        exists (Function cb |
-          cb = collection.getArgument(1).(DataFlowNode).getALocalSource() and
-          this.(Expr).mayReferToParameter(cb.getParameter(1))
-        )
+        collection.getCallback(1).getParameter(0).flowsToExpr(this)
       )
     }
   }
@@ -107,17 +101,17 @@ private module MongoDB {
  */
 private module Mongoose {
   /**
-   * Gets an expression that may refer to an import of Mongoose.
+   * Gets an import of Mongoose.
    */
-  DataFlowNode getAMongooseInstance() {
-    result.getALocalSource().(ModuleInstance).getPath() = "mongoose"
+  DataFlow::ModuleImportNode getAMongooseInstance() {
+    result.getPath() = "mongoose"
   }
 
   /**
    * Gets a call to `mongoose.createConnection`.
    */
   MethodCallExpr createConnection() {
-    result.calls(getAMongooseInstance(), "createConnection")
+    result = getAMongooseInstance().getAMemberCall("createConnection").asExpr()
   }
 
   /**
@@ -125,7 +119,7 @@ private module Mongoose {
    */
   class Model extends MongoDB::Collection {
     Model() {
-      this.getALocalSource().(MethodCallExpr).calls(getAMongooseInstance(), "model")
+      getAMongooseInstance().getAMemberCall("model").flowsToExpr(this)
     }
   }
 

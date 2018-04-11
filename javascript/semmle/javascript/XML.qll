@@ -12,194 +12,279 @@
 // permissions and limitations under the License.
 
 /**
- * Provides classes for working with XML parser APIs.
+ * Provides classes and predicates for working with XML files and their content.
  */
 
-import javascript as js
+import javascript
 
-module XML {
-  /**
-   * A representation of the different kinds of entities in XML.
-   */
-  newtype EntityKind =
-    /** Internal general entity. */
-    InternalEntity()
-    or
-    /** External general entity, either parsed or unparsed. */
-    ExternalEntity(boolean parsed) { parsed = true or parsed = false }
-    or
-    /** Parameter entity, either internal or external. */
-    ParameterEntity(boolean external) { external = true or external = false }
+/** An XML element that has a location. */
+abstract class XMLLocatable extends @xmllocatable {
+  /** The source location for this element. */
+  Location getLocation() { xmllocations(this,result) }
 
   /**
-   * A call to an XML parsing function.
+   * Holds if this element is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
-  abstract class ParserInvocation extends js::InvokeExpr {
-    /** Gets an argument to this call that is parsed as XML. */
-    abstract js::DataFlowNode getSourceArgument();
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
+    exists(File f, Location l | l = this.getLocation() |
+      locations_default(l,f,startline,startcolumn,endline,endcolumn) and
+      filepath = f.getAbsolutePath()
+    )
+  }
 
-    /** Holds if this call to the XML parser resolves entities of the given `kind`. */
-    abstract predicate resolvesEntities(EntityKind kind);
+  /** Gets a textual representation of this element. */
+  abstract string toString();
+}
+
+/**
+ * An `XMLParent` is either an `XMLElement` or an `XMLFile`,
+ * both of which can contain other elements.
+ */
+class XMLParent extends @xmlparent {
+  /**
+   * A printable representation of this XML parent.
+   * (Intended to be overridden in subclasses.)
+   */
+  abstract string getName();
+
+  /** The file to which this XML parent belongs. */
+  XMLFile getFile() { result = this or xmlElements(this,_,_,_,result) }
+
+  /** The child element at a specified index of this XML parent. */
+  XMLElement getChild(int index) { xmlElements(result, _, this, index, _) }
+
+  /** A child element of this XML parent. */
+  XMLElement getAChild() { xmlElements(result,_,this,_,_) }
+
+  /** A child element of this XML parent with the given `name`. */
+  XMLElement getAChild(string name) { xmlElements(result,_,this,_,_) and result.hasName(name) }
+
+  /** A comment that is a child of this XML parent. */
+  XMLComment getAComment() { xmlComments(result,_,this,_) }
+
+  /** A character sequence that is a child of this XML parent. */
+  XMLCharacters getACharactersSet() { xmlChars(result,_,this,_,_,_)  }
+
+  /** The depth in the tree. (Overridden in XMLElement.) */
+  int getDepth() { result = 0 }
+
+  /** The number of child XML elements of this XML parent. */
+  int getNumberOfChildren() {
+    result = count(XMLElement e | xmlElements(e,_,this,_,_))
+  }
+
+  /** The number of places in the body of this XML parent where text occurs. */
+  int getNumberOfCharacterSets() {
+    result = count(int pos | xmlChars(_,_,this,pos,_,_))
   }
 
   /**
-   * An invocation of `libxmljs.parseXml` or `libxmljs.parseXmlString`.
+   * Append the character sequences of this XML parent from left to right, separated by a space,
+   * up to a specified (zero-based) index.
    */
-  class LibXmlJsParserInvocation extends ParserInvocation {
-    LibXmlJsParserInvocation() {
-      exists (js::ModuleInstance libxmljs, string m |
-        libxmljs.getPath() = "libxmljs" and
-        this = libxmljs.getAMethodCall(m) and
-        m.matches("parseXml%")
-      )
-    }
-
-    override js::DataFlowNode getSourceArgument() {
-      result = getArgument(0)
-    }
-
-    override predicate resolvesEntities(EntityKind kind) {
-      // internal entities are always resolved
-      kind = InternalEntity()
-      or
-      // other entities are only resolved if the configuration option `noent` is set to `true`
-      exists (js::Expr noent |
-        hasOptionArgument(1, "noent", noent) and
-        noent.mayHaveBooleanValue(true)
-      )
-    }
+  string charsSetUpTo(int n) {
+    (n = 0 and xmlChars(_,result,this,0,_,_)) or
+    (n > 0 and exists(string chars | xmlChars(_,chars,this,n,_,_) |
+                         result = this.charsSetUpTo(n-1) + " " + chars))
   }
 
-  /**
-   * An invocation of `libxmljs.SaxParser.parseString`.
-   */
-  class LibXmlJsSaxParserInvocation extends ParserInvocation {
-    LibXmlJsSaxParserInvocation() {
-      exists (js::DataFlowNode libxmljs, js::NewExpr saxParser, js::DataFlowNode recv |
-        libxmljs.getALocalSource().(js::ModuleInstance).getPath() = "libxmljs" and
-        saxParser.getCallee().(js::PropAccess).accesses(libxmljs, "SaxParser") and
-        recv.getALocalSource() = saxParser and
-        this.(js::MethodCallExpr).calls(recv, "parseString")
-      )
-    }
-
-    override js::DataFlowNode getSourceArgument() {
-      result = getArgument(0)
-    }
-
-    override predicate resolvesEntities(EntityKind kind) {
-      // entities are resolved by default
-      any()
-    }
+  /** Append all the character sequences of this XML parent from left to right, separated by a space. */
+  string allCharactersString() {
+    exists(int n | n = this.getNumberOfCharacterSets() |
+      (n = 0 and result = "") or
+      (n > 0 and result = this.charsSetUpTo(n-1))
+    )
   }
 
-  /**
-   * An invocation of `libxmljs.SaxPushParser.push`.
-   */
-  class LibXmlJsSaxPushParserInvocation extends ParserInvocation {
-    LibXmlJsSaxPushParserInvocation() {
-      exists (js::DataFlowNode libxmljs, js::NewExpr saxPushParser, js::DataFlowNode recv |
-        libxmljs.getALocalSource().(js::ModuleInstance).getPath() = "libxmljs" and
-        saxPushParser.getCallee().(js::PropAccess).accesses(libxmljs, "SaxPushParser") and
-        recv.getALocalSource() = saxPushParser and
-        this.(js::MethodCallExpr).calls(recv, "push")
-      )
-    }
-
-    override js::DataFlowNode getSourceArgument() {
-      result = getArgument(0)
-    }
-
-    override predicate resolvesEntities(EntityKind kind) {
-      // entities are resolved by default
-      any()
-    }
+  /** The text value contained in this XML parent. */
+  string getTextValue() {
+    result = allCharactersString()
   }
 
-  /**
-   * An invocation of `expat.Parser.parse` or `expat.Parser.write`.
-   */
-  class ExpatParserInvocation extends ParserInvocation {
-    ExpatParserInvocation() {
-      exists (js::DataFlowNode expat, js::NewExpr parser, js::DataFlowNode recv, string m |
-        expat.getALocalSource().(js::ModuleInstance).getPath() = "node-expat" and
-        parser.getCallee().(js::PropAccess).accesses(expat, "Parser") and
-        recv.getALocalSource() = parser and
-        this.(js::MethodCallExpr).calls(recv, m) and
-        (m = "parse" or m = "write")
-      )
-    }
+  /** A printable representation of this XML parent. */
+  string toString() { result = this.getName() }
+}
 
-    override js::DataFlowNode getSourceArgument() {
-      result = getArgument(0)
-    }
-
-    override predicate resolvesEntities(EntityKind kind) {
-      // only internal entities are resolved by default
-      kind = InternalEntity()
-    }
+/** An XML file. */
+class XMLFile extends XMLParent, File {
+  XMLFile() {
+    xmlEncoding(this,_)
   }
 
-  /**
-   * An invocation of `DOMParser.parseFromString`.
-   */
-  private class DOMParserXmlParserInvocation extends XML::ParserInvocation {
-    DOMParserXmlParserInvocation() {
-      exists (js::NewExpr newDOMParser, js::DataFlowNode recv |
-        newDOMParser.getCallee().accessesGlobal("DOMParser") and
-        recv.getALocalSource() = newDOMParser and
-        this.(js::MethodCallExpr).calls(recv, "parseFromString") and
-        // type contains the string `xml`, that is, it's not `text/html`
-        getArgument(1).mayHaveStringValue(any(string tp | tp.matches("%xml%")))
-      )
-    }
+  /** A printable representation of this XML file. */
+  override
+  string toString() { result = XMLParent.super.toString() }
 
-    override js::DataFlowNode getSourceArgument() {
-      result = getArgument(0)
-    }
+  /** The name of this XML file. */
+  override
+  string getName() { result = File.super.getAbsolutePath() }
 
-    override predicate resolvesEntities(XML::EntityKind kind) {
-      kind = InternalEntity()
-    }
+  /** The encoding of this XML file. */
+  string getEncoding() { xmlEncoding(this,result) }
+
+  /** The XML file itself. */
+  override
+  XMLFile getFile() { result = this }
+
+  /** A top-most element in an XML file. */
+  XMLElement getARootElement() { result = this.getAChild() }
+
+  /** A DTD associated with this XML file. */
+  XMLDTD getADTD() { xmlDTDs(result,_,_,_,this) }
+}
+
+/** A "Document Type Definition" of an XML file. */
+class XMLDTD extends @xmldtd {
+  /** The name of the root element of this DTD. */
+  string getRoot() { xmlDTDs(this,result,_,_,_) }
+
+  /** The public ID of this DTD. */
+  string getPublicId() { xmlDTDs(this,_,result,_,_) }
+
+  /** The system ID of this DTD. */
+  string getSystemId() { xmlDTDs(this,_,_,result,_) }
+
+  /** Holds if this DTD is public. */
+  predicate isPublic() { not xmlDTDs(this,_,"",_,_) }
+
+  /** The parent of this DTD. */
+  XMLParent getParent() { xmlDTDs(this,_,_,_,result) }
+
+  /** A printable representation of this DTD. */
+  string toString() {
+    (this.isPublic() and result = this.getRoot() + " PUBLIC '" +
+                                  this.getPublicId() + "' '" +
+                                  this.getSystemId() + "'") or
+    (not this.isPublic() and result = this.getRoot() +
+                                      " SYSTEM '" +
+                                      this.getSystemId() + "'")
+  }
+}
+
+/** An XML tag in an XML file. */
+class XMLElement extends @xmlelement, XMLParent, XMLLocatable {
+  /** Holds if this XML element has the given `name`. */
+  predicate hasName(string name) { name = getName() }
+
+  /** The name of this XML element. */
+  override
+  string getName() { xmlElements(this,result,_,_,_) }
+
+  /** The XML file in which this XML element occurs. */
+  override
+  XMLFile getFile() { xmlElements(this,_,_,_,result) }
+
+  /** The parent of this XML element. */
+  XMLParent getParent() { xmlElements(this,_,result,_,_) }
+
+  /** The index of this XML element among its parent's children. */
+  int getIndex() { xmlElements(this, _, _, result, _) }
+
+  /** Holds if this XML element has a namespace. */
+  predicate hasNamespace() { xmlHasNs(this,_,_) }
+
+  /** The namespace of this XML element, if any. */
+  XMLNamespace getNamespace() { xmlHasNs(this,result,_) }
+
+  /** The index of this XML element among its parent's children. */
+  int getElementPositionIndex() { xmlElements(this,_,_,result,_) }
+
+  /** The depth of this element within the XML file tree structure. */
+  override
+  int getDepth() { result = this.getParent().getDepth() + 1 }
+
+  /** An XML attribute of this XML element. */
+  XMLAttribute getAnAttribute() { result.getElement() = this }
+
+  /** The attribute with the specified `name`, if any. */
+  XMLAttribute getAttribute(string name) {
+    result.getElement() = this and result.getName() = name
   }
 
-  /**
-   * An invocation of `loadXML` on an IE legacy XML DOM or MSXML object.
-   */
-  private class IELegacyXmlParserInvocation extends XML::ParserInvocation {
-    IELegacyXmlParserInvocation() {
-      exists (js::NewExpr activeXObject, string activeXType, js::DataFlowNode recv |
-        activeXObject.getCallee().accessesGlobal("ActiveXObject") and
-        activeXObject.getArgument(0).mayHaveStringValue(activeXType) and
-        activeXType.regexpMatch("Microsoft\\.XMLDOM|Msxml.*\\.DOMDocument.*") and
-        recv.getALocalSource() = activeXObject and
-        this.(js::MethodCallExpr).calls(recv, "loadXML")
-      )
-    }
-
-    override js::DataFlowNode getSourceArgument() {
-      result = getArgument(0)
-    }
-
-    override predicate resolvesEntities(XML::EntityKind kind) {
-      any()
-    }
+  /** Holds if this XML element has an attribute with the specified `name`. */
+  predicate hasAttribute(string name) {
+    exists(XMLAttribute a| a = this.getAttribute(name))
   }
 
-  /**
-   * An invocation of `goog.dom.xml.loadXml`.
-   */
-  private class GoogDomXmlParserInvocation extends XML::ParserInvocation {
-    GoogDomXmlParserInvocation() {
-      this.getCallee().(js::PropAccess).getQualifiedName() = "goog.dom.xml.loadXml"
-    }
-
-    override js::DataFlowNode getSourceArgument() {
-      result = getArgument(0)
-    }
-
-    override predicate resolvesEntities(XML::EntityKind kind) {
-      kind = InternalEntity()
-    }
+  /** The value of the attribute with the specified `name`, if any. */
+  string getAttributeValue(string name) {
+    result = this.getAttribute(name).getValue()
   }
+
+  /** A printable representation of this XML element. */
+  override
+  string toString() { result = XMLParent.super.toString() }
+}
+
+/** An attribute that occurs inside an XML element. */
+class XMLAttribute extends @xmlattribute, XMLLocatable {
+  /** The name of this attribute. */
+  string getName() { xmlAttrs(this,_,result,_,_,_) }
+
+  /** The XML element to which this attribute belongs. */
+  XMLElement getElement() { xmlAttrs(this,result,_,_,_,_) }
+
+  /** Holds if this attribute has a namespace. */
+  predicate hasNamespace() { xmlHasNs(this,_,_) }
+
+  /** The namespace of this attribute, if any. */
+  XMLNamespace getNamespace() { xmlHasNs(this,result,_) }
+
+  /** The value of this attribute. */
+  string getValue() { xmlAttrs(this,_,_,result,_,_) }
+
+  /** A printable representation of this XML attribute. */
+  string toString() { result = this.getName() + "=" + this.getValue() }
+}
+
+/** A namespace used in an XML file */
+class XMLNamespace extends @xmlnamespace {
+  /** The prefix of this namespace. */
+  string getPrefix() { xmlNs(this,result,_,_) }
+
+  /** The URI of this namespace. */
+  string getURI() { xmlNs(this,_,result,_) }
+
+  /** Holds if this namespace has no prefix. */
+  predicate isDefault() { this.getPrefix() = "" }
+
+  /** A printable representation of this XML namespace. */
+  string toString() {
+    (this.isDefault() and result = this.getURI()) or
+    (not this.isDefault() and result = this.getPrefix() + ":" + this.getURI())
+  }
+}
+
+/** A comment of the form `<!-- ... -->` is an XML comment. */
+class XMLComment extends @xmlcomment, XMLLocatable {
+  /** The text content of this XML comment. */
+  string getText() { xmlComments(this,result,_,_) }
+
+  /** The parent of this XML comment. */
+  XMLParent getParent() { xmlComments(this,_,result,_) }
+
+  /** A printable representation of this XML comment. */
+  string toString() { result = this.getText() }
+}
+
+/**
+ * A sequence of characters that occurs between opening and
+ * closing tags of an XML element, excluding other elements.
+ */
+class XMLCharacters extends @xmlcharacters, XMLLocatable {
+  /** The content of this character sequence. */
+  string getCharacters() { xmlChars(this,result,_,_,_,_) }
+
+  /** The parent of this character sequence. */
+  XMLParent getParent() { xmlChars(this,_,result,_,_,_) }
+
+  /** Holds if this character sequence is CDATA. */
+  predicate isCDATA() { xmlChars(this,_,_,_,1,_) }
+
+  /** A printable representation of this XML character sequence. */
+  string toString() { result = this.getCharacters() }
 }

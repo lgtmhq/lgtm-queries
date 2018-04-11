@@ -57,15 +57,10 @@ module DataFlow {
     }
 
     /**
-     * DEPRECATED: This predicate is not scalable enough for use in production queries.
-     *
-     * Gets a source flow node (that is, a node without a predecessor in the data flow
-     * graph) from which data may flow to this node in zero or more local steps.
+     * Gets a source node from which data may flow to this node in zero or more local steps.
      */
-    deprecated Node getALocalSource() {
-      not exists(getAPredecessor()) and result = this
-      or
-      result = getAPredecessor().getALocalSource()
+    SourceNode getALocalSource() {
+      result.flowsTo(this)
     }
 
     /**
@@ -100,11 +95,36 @@ module DataFlow {
     StmtContainer getContainer() { result = getBasicBlock().getContainer() }
 
     /**
+     * Holds if this data flow node accesses the global variable `g`, either directly
+     * or through the `window` object.
+     */
+    predicate accessesGlobal(string g) {
+      globalVarRef(g).flowsTo(this)
+    }
+
+    /** Holds if this node may evaluate to the string `s`. */
+    predicate mayHaveStringValue(string s) {
+      getAPredecessor().mayHaveStringValue(s)
+    }
+
+    /** Holds if this node may evaluate to the Boolean value `b`. */
+    predicate mayHaveBooleanValue(boolean b) {
+      b = analyze().getAValue().(AbstractBoolean).getBooleanValue()
+    }
+
+    /**
+     * Holds if this expression may refer to the initial value of parameter `p`.
+     */
+    predicate mayReferToParameter(SimpleParameter p) {
+      parameterNode(p).(SourceNode).flowsTo(this)
+    }
+
+    /**
      * Holds if this element is at the specified location.
      * The location spans column `startcolumn` of line `startline` to
      * column `endcolumn` of line `endline` in file `filepath`.
      * For more information, see
-     * [LGTM locations](https://lgtm.com/docs/ql/locations).
+     * [LGTM locations](https://lgtm.com/help/ql/locations).
      */
     predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                               int endline, int endcolumn) {
@@ -118,6 +138,26 @@ module DataFlow {
       hasLocationInfo(result.getAbsolutePath(), _, _, _, _)
     }
 
+    /** Gets the start line of this data flow node. */
+    int getStartLine() {
+      hasLocationInfo(_, result, _, _, _)
+    }
+
+    /** Gets the start column of this data flow node. */
+    int getStartColumn() {
+      hasLocationInfo(_, _, result, _, _)
+    }
+
+    /** Gets the end line of this data flow node. */
+    int getEndLine() {
+      hasLocationInfo(_, _, _, result, _)
+    }
+
+    /** Gets the end column of this data flow node. */
+    int getEndColumn() {
+      hasLocationInfo(_, _, _, _, result)
+    }
+
     /** Gets a textual representation of this element. */
     string toString() { none() }
   }
@@ -126,17 +166,20 @@ module DataFlow {
    * An expression, property, or a function/class/namespace/enum declaration, viewed as a node in a data flow graph.
    */
   class ValueNode extends Node, TValueNode {
-
     ASTNode astNode;
 
     ValueNode() {
-      this = TValueNode(astNode) and
-      astNode instanceof DataFlowNode
+      this = TValueNode(astNode)
     }
 
     /** Gets the expression or declaration this node corresponds to. */
     ASTNode getAstNode() {
       result = astNode
+    }
+
+    override predicate mayHaveStringValue(string s) {
+      Node.super.mayHaveStringValue(s) or
+      astNode.(ConstantString).getStringValue() = s
     }
 
     override Expr asExpr() {
@@ -391,6 +434,8 @@ module DataFlow {
     cause = "heap"
   }
 
+  import Nodes
+  import Sources
   import TypeInference
   import Configuration
   import TrackedNodes
@@ -402,6 +447,6 @@ module DataFlow {
 deprecated class FlowTrackingConfiguration = DataFlow::Configuration;
 
 /**
- * DEPRECATED: Use `AnalyzedDataFlowNode` instead.
+ * DEPRECATED: Use `DataFlow::AnalyzedNode` instead.
  */
 deprecated class AnalyzedFlowNode = DataFlow::AnalyzedNode;

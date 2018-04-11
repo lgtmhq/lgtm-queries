@@ -74,7 +74,7 @@ class SelfAttributeRead extends SelfAttribute {
         )
     }
 
-    cached predicate locallyDefined() {
+    pragma [noinline] predicate locallyDefined() {
         exists(SelfAttributeStore store |
             this.getName() = store.getName() and 
             this.getScope() = store.getScope() |

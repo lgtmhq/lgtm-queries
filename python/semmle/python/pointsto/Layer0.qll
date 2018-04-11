@@ -583,8 +583,11 @@ module Layer0PointsTo {
     /** Holds if `obj.name` points to `(value, cls, orig)`. */
     pragma [noinline]
     private predicate class_or_module_attribute(Object obj, string name, Object value, ClassObject cls, ObjectOrCfg orig) {
-        /* Class attributes */
-        Types::class_attribute_lookup(obj, name, value, cls, orig)
+        /* Normal class attributes */
+        Types::class_attribute_lookup(obj, name, value, cls, orig) and not cls = theStaticMethodType()
+        or
+        /* Static methods of the class */
+        exists(CallNode sm | Types::class_attribute_lookup(obj, name, sm, theStaticMethodType(), _) and sm.getArg(0) = value and cls = thePyFunctionType() and orig = value)
         or
         /* Module attributes */
         Layer::module_attribute_points_to(obj, name, value, cls, orig)
@@ -596,6 +599,12 @@ module Layer0PointsTo {
         f.isLoad() and
         exists(string name |
            named_attribute_points_to(f.getObject(name), context, name, value, cls, origin)
+           or
+           /* Static methods on the class of the instance */
+           exists(CallNode sm, ClassObject icls |
+              points_to(f.getObject(name), context, _, icls, _) and
+              Types::class_attribute_lookup(icls, name, sm, theStaticMethodType(), _) and sm.getArg(0) = value and cls = thePyFunctionType() and origin = value
+          )
        )
     }
 

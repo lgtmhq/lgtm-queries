@@ -46,39 +46,26 @@ module SQL {
  * Provides classes modelling the `mysql` package.
  */
 private module MySql {
-  /** Holds if `nd` may contain an import of the `mysql` package. */
-  predicate isMySql(DataFlowNode nd) {
-    nd.getALocalSource().(ModuleInstance).getPath() = "mysql"
+  /** Gets an import of the `mysql` package. */
+  DataFlow::ModuleImportNode mysql() {
+    result.getPath() = "mysql"
   }
 
   /** Gets a call to `mysql.createConnection`. */
-  CallExpr createConnection() {
-    exists (ModuleInstance mysql | mysql.getPath() = "mysql" |
-      result = mysql.getAMethodCall("createConnection")
-    )
+  DataFlow::SourceNode createConnection() {
+    result = mysql().getAMemberCall("createConnection")
   }
 
   /** Gets a call to `mysql.createPool`. */
-  CallExpr createPool() {
-    exists (ModuleInstance mysql | mysql.getPath() = "mysql" |
-      result = mysql.getAMethodCall("createPool")
-    )
+  DataFlow::SourceNode createPool() {
+    result = mysql().getAMemberCall("createPool")
   }
 
-  /** Holds if `nd` may contain a MySQL connection instance. */
-  predicate isConnection(DataFlowNode nd) {
-    nd.getALocalSource() = createConnection()
+  /** Gets a data flow node that contains a freshly created MySQL connection instance. */
+  DataFlow::SourceNode connection() {
+    result = createConnection()
     or
-    exists (DataFlowNode pool, MethodCallExpr getConn, Function cb |
-      isPool(pool) and getConn.calls(pool, "getConnection") and
-      cb = getConn.getArgument(0).(DataFlowNode).getALocalSource() and
-      nd.(Expr).mayReferToParameter(cb.getParameter(1))
-    )
-  }
-
-  /** Holds if `nd` may contain a MySQL pool instance. */
-  predicate isPool(DataFlowNode nd) {
-    nd.getALocalSource() = createPool()
+    result = createPool().getAMethodCall("getConnection").getCallback(0).getParameter(1)
   }
 
   /** A call to the MySql `query` method. */
@@ -86,8 +73,9 @@ private module MySql {
     override MethodCallExpr astNode;
 
     QueryCall() {
-      exists (DataFlowNode recv | asExpr().(MethodCallExpr).calls(recv, "query") |
-        isConnection(recv) or isPool(recv)
+      exists (DataFlow::SourceNode recv |
+        recv = createPool() or recv = connection() |
+        this = recv.getAMethodCall("query")
       )
     }
 
@@ -106,9 +94,9 @@ private module MySql {
   /** A call to the `escape` or `escapeId` method that performs SQL sanitization. */
   class EscapingSanitizer extends SQL::SqlSanitizer, @callexpr {
     EscapingSanitizer() {
-      exists (DataFlowNode base, MethodCallExpr mce, string esc |
-        isMySql(base) or isConnection(base) or isPool(base) |
-        this = mce and mce.calls(base, esc) and
+      exists (DataFlow::SourceNode base, MethodCallExpr mce, string esc |
+        base = mysql() or base = connection() or base = createPool() |
+        this = mce and mce = base.getAMethodCall(esc).asExpr() and
         (esc = "escape" or esc = "escapeId") and
         input = mce.getArgument(0) and
         output = mce
@@ -121,10 +109,10 @@ private module MySql {
     string kind;
 
     Credentials() {
-      exists (CallExpr call, string prop |
+      exists (DataFlow::SourceNode call, string prop |
         (call = createConnection() or call = createPool())
         and
-        call.hasOptionArgument(0, prop, this)
+        call.asExpr().(CallExpr).hasOptionArgument(0, prop, this)
         and
         (
           prop = "user" and kind = "user name" or
@@ -144,45 +132,25 @@ private module MySql {
  */
 private module Postgres {
   /** Gets an expression of the form `new require('pg').Client()`. */
-  NewExpr newClient() {
-    exists (ModuleInstance pg, PropReadNode pgClient |
-      pg.getPath() = "pg" and
-      pgClient.getBase().getALocalSource() = pg and pgClient.getPropertyName() = "Client" and
-      result.getCallee().(DataFlowNode).getALocalSource() = pgClient
-    )
+  DataFlow::SourceNode newClient() {
+    result = DataFlow::moduleImport("pg").getAConstructorInvocation("Client")
   }
 
-  /** Holds if `nd` may contain a Postgres client instance. */
-  predicate isClient(DataFlowNode nd) {
-    nd.getALocalSource() = newClient()
+  /** Gets a data flow node that holds a freshly created Postgres client instance. */
+  DataFlow::SourceNode client() {
+    result = newClient()
     or
     // pool.connect(function(err, client) { ... })
-    exists (DataFlowNode pool, MethodCallExpr getConn, Function cb |
-      isPool(pool) and getConn.calls(pool, "connect") and
-      cb = getConn.getArgument(0).(DataFlowNode).getALocalSource() and
-      nd.(Expr).mayReferToParameter(cb.getParameter(1))
-    )
+    result = newPool().getAMethodCall("connect").getCallback(0).getParameter(1)
   }
 
   /** Gets an expression that constructs a new connection pool. */
-  NewExpr newPool() {
+  DataFlow::SourceNode newPool() {
     // new require('pg').Pool()
-    exists (ModuleInstance pg, PropReadNode pgPool |
-      pg.getPath() = "pg" and
-      pgPool.getBase().getALocalSource() = pg and pgPool.getPropertyName() = "Pool" and
-      result.getCallee().(DataFlowNode).getALocalSource() = pgPool
-    )
+    result = DataFlow::moduleImport("pg").getAConstructorInvocation("Pool")
     or
     // new require('pg-pool')
-    exists (ModuleInstance pgPool |
-      pgPool.getPath() = "pg-pool" and
-      result.getCallee().(DataFlowNode).getALocalSource() = pgPool
-    )
-  }
-
-  /** Holds if `nd` may contain a Postgres pool instance. */
-  predicate isPool(DataFlowNode nd) {
-    nd.getALocalSource() = newPool()
+    result = DataFlow::moduleImport("pg-pool").getAnInstantiation()
   }
 
   /** A call to the Postgres `query` method. */
@@ -190,8 +158,9 @@ private module Postgres {
     override MethodCallExpr astNode;
 
     QueryCall() {
-      exists (DataFlowNode recv | asExpr().(MethodCallExpr).calls(recv, "query") |
-        isClient(recv) or isPool(recv)
+      exists (DataFlow::SourceNode recv |
+        recv = client() or recv = newPool() |
+        this = recv.getAMethodCall("query")
       )
     }
 
@@ -212,10 +181,10 @@ private module Postgres {
     string kind;
 
     Credentials() {
-      exists (NewExpr call, string prop |
+      exists (DataFlow::InvokeNode call, string prop |
         (call = newClient() or call = newPool())
         and
-        call.hasOptionArgument(0, prop, this)
+        this = call.getOptionArgument(0, prop).asExpr()
         and
         (
           prop = "user" and kind = "user name" or
@@ -234,22 +203,17 @@ private module Postgres {
  * Provides classes modelling the `sqlite3` package.
  */
 private module Sqlite {
-  /** Holds if `nd` may contain a reference to the `sqlite3` module. */
-  predicate isSqlite(DataFlowNode nd) {
-    nd.getALocalSource().(ModuleInstance).getPath() = "sqlite3"
+  /** Gets a reference to the `sqlite3` module. */
+  DataFlow::SourceNode sqlite() {
+    result = DataFlow::moduleImport("sqlite3")
     or
-    exists (DataFlowNode sqlite | isSqlite(sqlite) |
-      nd.getALocalSource().(MethodCallExpr).calls(sqlite, "verbose")
-    )
+    result = sqlite().getAMemberCall("verbose")
   }
 
-  /** Holds if `nd` may contain a Sqlite database instance. */
-  predicate isDB(DataFlowNode nd) {
+  /** Gets an expression that constructs a Sqlite database instance. */
+  DataFlow::SourceNode newDb() {
     // new require('sqlite3').Database()
-    exists (PropReadNode db |
-      isSqlite(db.getBase()) and db.getPropertyName() = "Database" and
-      nd.getALocalSource().(NewExpr).getCallee().(DataFlowNode).getALocalSource() = db
-    )
+    result = sqlite().getAConstructorInvocation("Database")
   }
 
   /** A call to a Sqlite query method. */
@@ -257,9 +221,9 @@ private module Sqlite {
     override MethodCallExpr astNode;
 
     QueryCall() {
-      exists (DataFlowNode recv, string meth |
+      exists (string meth |
         meth = "all" or meth = "each" or meth = "exec" or meth = "get" or meth = "prepare" or meth = "run" |
-        isDB(recv) and asExpr().(MethodCallExpr).calls(recv, meth)
+        this = newDb().getAMethodCall(meth)
       )
     }
 
@@ -280,22 +244,18 @@ private module Sqlite {
  * Provides classes modelling the `mssql` package.
  */
 private module MsSql {
-  /** Holds if `nd` may contain a reference to the `mssql` module. */
-  predicate isMsSql(DataFlowNode nd) {
-    nd.getALocalSource().(ModuleInstance).getPath() = "mssql"
+  /** Gets a reference to the `mssql` module. */
+  DataFlow::ModuleImportNode mssql() {
+    result.getPath() = "mssql"
   }
 
-  /** Holds if `nd` may contain a request object. */
-  predicate isRequest(DataFlowNode nd) {
+  /** Gets an expression that creates a request object. */
+  DataFlow::SourceNode request() {
     // new require('mssql').Request()
-    exists (PropReadNode db |
-      isMsSql(db.getBase()) and db.getPropertyName() = "Request" and
-      nd.getALocalSource().(NewExpr).getCallee().(DataFlowNode).getALocalSource() = db
-    ) or
+    result = mssql().getAConstructorInvocation("Request")
+    or
     // request.input(...)
-    exists (DataFlowNode req | isRequest(req) |
-      nd.getALocalSource().(MethodCallExpr).calls(req, "input")
-    )
+    result = request().getAMethodCall("input")
   }
 
   /** A tagged template evaluated as a query. */
@@ -303,10 +263,7 @@ private module MsSql {
     override TaggedTemplateExpr astNode;
 
     QueryTemplateExpr() {
-      exists (DataFlowNode mssql, PropAccess query |
-        isMsSql(mssql) and query.accesses(mssql, "query") and
-        asExpr().(TaggedTemplateExpr).getTag().(DataFlowNode).getALocalSource() = query
-      )
+      mssql().getAPropertyRead("query").flowsToExpr(astNode.getTag())
     }
 
     override DataFlow::Node getAQueryArgument() {
@@ -319,8 +276,7 @@ private module MsSql {
     override MethodCallExpr astNode;
 
     QueryCall() {
-      exists (DataFlowNode recv, string meth |
-        asExpr().(MethodCallExpr).calls(recv, meth) and isRequest(recv) |
+      exists (string meth | this = request().getAMethodCall(meth) |
         meth = "query" or meth = "batch"
       )
     }
@@ -353,16 +309,14 @@ private module MsSql {
     string kind;
 
     Credentials() {
-      exists (DataFlowNode mssql, InvokeExpr call, string prop |
-        isMsSql(mssql)
-        and
+      exists (DataFlow::InvokeNode call, string prop |
         (
-         call.(MethodCallExpr).calls(mssql, "connect")
+         call = mssql().getAMemberCall("connect")
          or
-         call.(NewExpr).getCallee().(PropAccess).accesses(mssql, "ConnectionPool")
+         call = mssql().getAConstructorInvocation("ConnectionPool")
         )
         and
-        call.hasOptionArgument(0, prop, this)
+        this = call.getOptionArgument(0, prop).asExpr()
         and
         (
           prop = "user" and kind = "user name" or
@@ -381,19 +335,14 @@ private module MsSql {
  * Provides classes modelling the `sequelize` package.
  */
 private module Sequelize {
-  /** Holds if `nd` may contain a reference to the `sequelize` module. */
-  predicate isSequelize(DataFlowNode nd) {
-    nd.getALocalSource().(ModuleInstance).getPath() = "sequelize"
+  /** Gets an import of the `sequelize` module. */
+  DataFlow::ModuleImportNode sequelize() {
+    result.getPath() = "sequelize"
   }
 
   /** Gets an expression that creates an instance of the `Sequelize` class. */
-  NewExpr newSequelize() {
-    isSequelize(result.getCallee())
-  }
-
-  /** Holds if `nd` may contain an instance of the `Sequelize` class. */
-  predicate isSequelizeInstance(DataFlowNode nd) {
-    nd.getALocalSource() = newSequelize()
+  DataFlow::SourceNode newSequelize() {
+    result = sequelize().getAnInstantiation()
   }
 
   /** A call to `Sequelize.query`. */
@@ -401,9 +350,7 @@ private module Sequelize {
     override MethodCallExpr astNode;
 
     QueryCall() {
-      exists (DataFlowNode recv | asExpr().(MethodCallExpr).calls(recv, "query") |
-        isSequelizeInstance(recv)
-      )
+      this = newSequelize().getAMethodCall("query")
     }
 
     override DataFlow::Node getAQueryArgument() {
@@ -427,7 +374,7 @@ private module Sequelize {
 
     Credentials() {
       exists (NewExpr ne, string prop |
-        ne = newSequelize()
+        ne = newSequelize().asExpr()
         and
         (
          this = ne.getArgument(1) and prop = "username"

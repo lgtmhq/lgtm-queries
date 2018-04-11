@@ -104,7 +104,7 @@ class SuppressionScope extends @py_comment {
      * The location spans column `startcolumn` of line `startline` to
      * column `endcolumn` of line `endline` in file `filepath`.
      * For more information, see
-     * [LGTM locations](https://lgtm.com/docs/ql/locations).
+     * [LGTM locations](https://lgtm.com/help/ql/locations).
      */
      predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
        this.(SuppressionComment).covers(filepath, startline, startcolumn, endline, endcolumn)

@@ -17,8 +17,7 @@
  * modules.
  */
 
-import Variables
-import Paths
+import javascript
 
 /**
  * A module, which may either be an ECMAScript 2015-style module,
@@ -211,9 +210,12 @@ private predicate isImport(DataFlowNode nd, string moduleName) {
 }
 
 /**
+ * DEPRECATED: Use `DataFlow::moduleImport` and `DataFlow::ModuleImportNode` instead.
+ *
  * A data flow node that holds a module instance, that is, the result of
  * an import of the module.
  */
+deprecated
 class ModuleInstance extends DataFlowNode {
   ModuleInstance() {
     isImport(this, _)

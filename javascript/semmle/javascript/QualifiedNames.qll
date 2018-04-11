@@ -663,4 +663,103 @@ module NameResolution {
     or
     result.(TopLevel).getFile().getBaseName() = "lib.d.ts"
   }
+
+  /**
+   * For internal use.
+   *
+   * A symbol from the TypeScript compiler, used for name binding.
+   *
+   * Symbols correspond to qualified names, represented as a prefix tree.
+   * That is, the parent of a symbol is the symbol corresponding to its prefix.
+   *
+   * There is not a unique symbol per qualified name. That is, there can be
+   * several symbols representing the name `foo.bar`, each one relative to
+   * a different scope.
+   *
+   * The database contains bindings between symbols, types, and AST nodes.
+   */
+  class Symbol extends @symbol {
+    /**
+     * Gets the parent of this symbol, i.e. the prefix of its qualified name.
+     */
+    Symbol getParent() { symbol_parent(this, result) }
+
+    /**
+     * Gets a child of this symbol, i.e. an extension of its qualified name.
+     */
+    Symbol getAChild() { result.getParent() = this }
+
+    /**
+     * Gets the name of this symbol without prefix.
+     */
+    string getName() { symbols(this, _, result) }
+
+    /**
+     * Gets the name of an external module represented by this symbol, if any.
+     */
+    string getExternalModuleName() {
+      symbol_module(this, result)
+    }
+
+    /**
+     * Gets the name of a global variable aliasing this symbol though an `export as X` declaration.
+     */
+    string getGlobalName() {
+      symbol_global(this, result)
+    }
+
+    /**
+     * Gets a type refers to this symbol.
+     */
+    TypeReference getATypeReference() {
+      type_reference_symbol(result, this)
+    }
+
+    /**
+     * Gets a type definition referred to by this symbol.
+     */
+    TypeDefinition getATypeDefinition() {
+      type_definition_symbol(result, this)
+    }
+
+    /**
+     * Holds if this symbol has a child, i.e. an extension of its qualified name.
+     */
+    predicate hasChild() {
+      exists (getAChild())
+    }
+
+    /**
+     * Holds if there exists a type that refers to this symbol.
+     */
+    predicate hasTypeReference() {
+      exists (getATypeReference())
+    }
+
+    /** Holds if this symbol is exported by its parent. */
+    predicate isExportedMember() {
+      this instanceof @member_symbol
+    }
+
+    /** Holds if this is the given qualified name, rooted in the global scope. */
+    predicate hasQualifiedName(string globalName) {
+      globalName = getGlobalName()
+      or
+      exists (string prefix |
+        getParent().hasQualifiedName(prefix) and
+        globalName = prefix + "." + getName())
+    }
+
+    /** Holds if this is the given qualified name, rooted in the given external module. */
+    predicate hasQualifiedName(string moduleName, string exportedName) {
+      moduleName = getParent().getExternalModuleName() and
+      exportedName = getName()
+      or
+      exists (string prefix |
+        getParent().hasQualifiedName(moduleName, prefix) and
+        exportedName = prefix + "." + getName())
+    }
+
+    string toString() { result = getName() }
+  }
 }

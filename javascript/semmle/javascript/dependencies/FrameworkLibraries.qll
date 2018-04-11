@@ -311,6 +311,18 @@ private class JQueryTextExt extends FrameworkLibraryWithGenericURL,
 }
 
 /**
+ * The jQuery DataTables framework.
+ */
+private class JQueryDataTables extends FrameworkLibraryWithGenericURL,
+                                    FrameworkLibraryWithMarkerComment {
+  JQueryDataTables() { this = "jquery-dataTables" }
+  override string getAnAlias() { result = "jquery.dataTables" }
+  override string getAMarkerCommentRegex() {
+    result = "(?s).*@version\\s+(<VERSION>).*@file\\s+jquery\\.dataTables\\.js.*"
+  }
+}
+
+/**
  * The Bootstrap framework.
  */
 private class Bootstrap extends FrameworkLibraryWithGenericURL, FrameworkLibraryWithMarkerComment {

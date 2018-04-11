@@ -241,6 +241,14 @@ class ControlFlowNode extends @py_flow_node {
         FinalPointsTo::points_to(this, _, value, cls, origin)
     }
 
+    /** Gets what this expression might "refer-to" in the given `context`.
+     */
+    predicate refersTo(Context context, Object value, ClassObject cls, ControlFlowNode origin) {
+        not py_special_objects(cls, "_semmle_unknown_type")
+        and
+        FinalPointsTo::points_to(this, context, value, cls, origin)
+    }
+
     /** Whether this flow node might "refer-to" to `value` which is from `origin` 
      * Unlike `this.refersTo(value, _, origin)` this predicate includes results 
      * where the class cannot be inferred. 
@@ -382,7 +390,8 @@ class ControlFlowNode extends @py_flow_node {
     }
 
     /* Gets a CFG node that corresponds to a child of the AST node for this node */
-    cached ControlFlowNode getAChild() {
+    pragma [noinline]
+    ControlFlowNode getAChild() {
         this.getNode().getAChildNode() = result.getNode() and
         result.getBasicBlock().dominates(this.getBasicBlock())
     }
@@ -685,6 +694,8 @@ class DefinitionNode extends ControlFlowNode {
         augstore(_, this)
         or
         exists(Assign a | a.getATarget().(Tuple).getAnElt().getAFlowNode() = this)
+        or
+        exists(Assign a | a.getATarget().(List).getAnElt().getAFlowNode() = this)
     }
 
     /** flow node corresponding to the value assigned for the definition corresponding to this flow node */

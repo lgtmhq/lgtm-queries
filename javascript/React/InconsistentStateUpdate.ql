@@ -32,7 +32,7 @@ import semmle.javascript.frameworks.React
  */
 PropReadNode getAnUnsafeAccess(ReactComponent c) {
   result = c.getAPropRead() or
-  result = c.getAStateAccess()
+  result = c.getAStateAccess().asExpr()
 }
 
 /**
@@ -47,10 +47,48 @@ PropRefNode getAnOutermostUnsafeAccess(ReactComponent c) {
   )
 }
 
+/**
+ * Gets a property write through `setState` for state property `name` of `c`.
+ */
+PropWriteNode getAStateUpdate(ReactComponent c, string name) {
+  exists (DataFlow::ObjectExprNode newState |
+    newState.flowsToExpr(c.getAMethodCall("setState").getArgument(0)) and
+    newState.flowsToExpr(result.getBase()) and
+    result.getPropertyName() = name
+  )
+}
+
+/**
+ * Gets a property write through `setState` for a state property of `c` that is only written at this property write.
+ */
+PropWriteNode getAUniqueStateUpdate(ReactComponent c) {
+  exists (string name |
+    count(getAStateUpdate(c, name)) = 1 and
+    result = getAStateUpdate(c, name)
+  )
+}
+
+/**
+ * Holds for "self dependent" component state updates. E.g. `this.setState({toggled: !this.state.toggled})`.
+ */
+predicate isAStateUpdateFromSelf(ReactComponent c, PropWriteNode pwn, PropReadNode prn) {
+  exists (string name |
+    pwn = getAStateUpdate(c, name) and
+    c.getAStateSource().flowsToExpr(prn.getBase()) and
+    prn.getPropertyName() = name and
+    pwn.getRhs() = prn.(Expr).getParentExpr*() and
+    pwn.getRhs().(Expr).getEnclosingFunction() = prn.(Expr).getEnclosingFunction()
+  )
+}
+
 from ReactComponent c, MethodCallExpr setState, Expr getState
-where setState.getReceiver() = c.getAThisAccess() and
-      setState.getMethodName() = "setState" and
+where setState = c.getAMethodCall("setState") and
       getState = getAnOutermostUnsafeAccess(c) and
       getState.getParentExpr*() = setState.getArgument(0) and
-      getState.getEnclosingFunction() = setState.getEnclosingFunction()
+      getState.getEnclosingFunction() = setState.getEnclosingFunction() and
+      // ignore self-updates that only occur in one location: `setState({toggled: !this.state.toggled})`, they are most likely safe in practice
+      not exists (PropWriteNode pwn |
+        pwn = getAUniqueStateUpdate(c) and
+        isAStateUpdateFromSelf(c, pwn, getState)
+      )
 select setState, "Component state update uses $@.", getState, "potentially inconsistent value"

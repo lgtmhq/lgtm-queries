@@ -16,7 +16,7 @@
  * @description Creating a hash of a password with low computational effort makes the hash vulnerable to password cracking attacks.
  * @kind problem
  * @problem.severity warning
- * @precision medium
+ * @precision high
  * @id js/insufficient-password-hash
  * @tags security
  *       external/cwe/cwe-916

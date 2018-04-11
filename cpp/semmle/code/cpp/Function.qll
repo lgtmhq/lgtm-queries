@@ -685,7 +685,9 @@ class TopLevelFunction extends Function {
  * static member functions.
  */
 class MemberFunction extends Function {
-  MemberFunction() { member(_,_,this) }
+  MemberFunction() {
+    this.isMember()
+  }
 
   /**
    * Gets the number of parameters of this function, including any implicit

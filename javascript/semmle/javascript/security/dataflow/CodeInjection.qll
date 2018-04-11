@@ -88,29 +88,26 @@ class AngularJSExpressionSink extends CodeInjectionSink, DataFlow::ValueNode {
  */
 class EvalJavaScriptSink extends CodeInjectionSink, DataFlow::ValueNode {
   EvalJavaScriptSink() {
-    exists(InvokeExpr c, string callName, int index |
-      astNode = c.getArgument(index) and
-      (
-        (callName = c.getCalleeName() and
-          (
-            callName = "eval" and index = 0 or
-            callName = "Function" or
-            callName = "execScript" and index = 0 or
-            callName = "executeJavaScript" and index = 0 or
-            callName = "execCommand" and index = 0 or
-            callName = "setTimeout" and index = 0 or
-            callName = "setInterval" and index = 0 or
-            callName = "setImmediate" and index = 0
-          )
-        ) or
-        exists (PropReadNode prn |
-          callName = "compile" or
-          callName = "compileStreaming" |
-          prn.getBase().(Expr).accessesGlobal("WebAssembly") and
-          prn.getPropertyName() = callName and
-          c.getCallee().(DataFlowNode).getALocalSource() = prn
-        )
+    exists (DataFlow::InvokeNode c, int index |
+      exists (string callName |
+        c = DataFlow::globalVarRef(callName).getAnInvocation() |
+        callName = "eval" and index = 0 or
+        callName = "Function" or
+        callName = "execScript" and index = 0 or
+        callName = "executeJavaScript" and index = 0 or
+        callName = "execCommand" and index = 0 or
+        callName = "setTimeout" and index = 0 or
+        callName = "setInterval" and index = 0 or
+        callName = "setImmediate" and index = 0
       )
+      or
+      exists (DataFlow::GlobalVarRefNode wasm, string methodName |
+        wasm.getName() = "WebAssembly" and c = wasm.getAMemberCall(methodName) |
+        methodName = "compile" or
+        methodName = "compileStreaming"
+      )
+    |
+    this = c.getArgument(index)
     )
   }
 }

@@ -15,10 +15,7 @@
  * Provides classes for working with the AST-based representation of JavaScript programs.
  */
 
-import Locations
-import Expr
-import Stmt
-import CFG
+import javascript
 
 /**
  * A program element corresponding to JavaScript code, such as an expression
@@ -372,5 +369,28 @@ class StmtContainer extends @stmt_container, ASTNode {
    */
   predicate isStrict() {
     getEnclosingContainer().isStrict()
+  }
+}
+
+/**
+ * Provides a class `ValueNode` encompassing all program elements that evaluate to
+ * a value at runtime.
+ */
+module AST {
+  /**
+   * A program element that evaluates to a value at runtime. This includes expressions,
+   * but also function and class declaration statements, as well as TypeScript
+   * namespace and enum declarations.
+   */
+  class ValueNode extends ASTNode, @dataflownode {
+    /** Gets type inference results for this element. */
+    DataFlow::AnalyzedNode analyze() {
+      result = DataFlow::valueNode(this).analyze()
+    }
+
+    /** Gets the data flow node associated with this program element. */
+    DataFlow::ValueNode flow() {
+      result = DataFlow::valueNode(this)
+    }
   }
 }

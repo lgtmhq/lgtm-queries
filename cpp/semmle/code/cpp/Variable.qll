@@ -134,6 +134,15 @@ class Variable extends Declaration, @variable {
   }
 
   /**
+   * Holds if this variable is constructed from `v` as a result
+   * of template instantiation. If so, it originates either from a template
+   * variable or from a variable nested in a template class.
+   */
+  predicate isConstructedFrom(Variable v) {
+    variable_instantiation(this, v)
+  }
+
+  /**
    * Gets an argument used to instantiate this variable from a template
    * variable.
    */
@@ -342,7 +351,9 @@ class GlobalVariable extends GlobalOrNamespaceVariable {
  * variables, use `Field` instead of `MemberVariable`.
  */
 class MemberVariable extends Variable, @membervariable {
-  MemberVariable() { membervariables(this,_,_) and member(_,_,this) }
+  MemberVariable() {
+    this.isMember()
+  }
 
   /** Holds if this member is private. */
   predicate isPrivate() { this.hasSpecifier("private") }
@@ -356,19 +367,6 @@ class MemberVariable extends Variable, @membervariable {
   override string getName() { membervariables(this,_,result) }
 
   override Type getType() { membervariables(this,result,_) }
-
-  /**
-   * Holds if this variable is constructed from another variable (`v`) as a
-   * result of template instantiation. It originates from a variable
-   * declared in a template class.
-   */
-  predicate isConstructedFrom(MemberVariable v) {
-    exists (Class c, Class d
-    | d.isConstructedFrom(c) and
-      this.getDeclaringType() = d and
-      v.getDeclaringType() = c and
-      v.getName() = this.getName())
-  }
 
   /** Holds if this member is mutable. */
   predicate isMutable() {

@@ -54,7 +54,7 @@ class Module extends Module_, Scope, AstNode {
 
     /** Gets the name of this module */
     string getName() {
-        result = Module_.super.getName()
+        result = Module_.super.getName() and legalIdentifier(result)
         or
         not exists(Module_.super.getName()) and
         result = moduleNameFromFile(this.getPath())
@@ -89,12 +89,7 @@ class Module extends Module_, Scope, AstNode {
 
     /** Gets the source file or folder for this module or package */
     Container getPath() {
-        result = this.getFile()
-        or
-        exists(Module m | 
-            m.getPackage() = this |
-            result = m.getPath().getParent()
-        )
+        py_module_path(this, result)
     }
 
     /** Whether this is a package */
@@ -185,14 +180,22 @@ class Module extends Module_, Scope, AstNode {
     }
 
 }
+ 
+bindingset[name]
+private predicate legalIdentifier(string name) {
+    name.regexpMatch("(\\p{L}|_)(\\p{L}|\\d|_)*(\\.(\\p{L}|_)(\\p{L}|\\d|_)*)*")
+}
 
 private predicate hasInit(Folder f) {
     exists(f.getFile("__init__.py"))
 }
 
 private string moduleNameFromFile(Container file) {
-    result = moduleNameFromFile(file.getParent()) + "." + file.getStem()
-    or
-    hasInit(file) and not hasInit(file.getParent()) and
-    result = file.getStem()
+    legalIdentifier(file.getBaseName()) and
+    (
+        result = moduleNameFromFile(file.getParent()) + "." + file.getStem()
+        or
+        hasInit(file) and result = file.getStem() and
+        (not hasInit(file.getParent()) or not legalIdentifier(file.getParent().getBaseName()))
+    )
 }

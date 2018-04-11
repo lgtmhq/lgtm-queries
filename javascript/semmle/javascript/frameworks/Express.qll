@@ -18,37 +18,57 @@
 import javascript
 import semmle.javascript.frameworks.HTTP
 import semmle.javascript.frameworks.ExpressModules
+private import semmle.javascript.dataflow.InferredTypes
 
 module Express {
   /**
-   * Holds if `e` creates an Express application.
+   * Gets a data flow node that corresponds to an expression that creates a new
+   * Express application.
    */
-  predicate isAppCreation(InvokeExpr e) {
-    exists (ModuleInstance express | express.getPath() = "express" |
+  DataFlow::SourceNode appCreation() {
+    exists (DataFlow::ModuleImportNode express | express.getPath() = "express" |
       // `app = [new] express()`
-      e.getCallee().(DataFlowNode).getALocalSource() = express
+      result = express.getAnInvocation()
       or
       // `app = express.createServer()`
-      e = express.getAMethodCall("createServer")
+      result = express.getAMemberCall("createServer")
     )
   }
 
   /**
+   * Gets a data flow node that corresponds to an expression that creates a new
+   * Express router (possibly an application).
+   */
+  DataFlow::SourceNode routerCreation() {
+    result = appCreation()
+    or
+    // `app = [new] express.Router()`
+    result = DataFlow::moduleImport("express").getAMemberInvocation("Router")
+  }
+
+  /**
+   * DEPRECATED: Use `appCreation()` instead.
+   *
+   * Holds if `e` is an expression that creates a new Express application.
+   */
+  deprecated predicate isAppCreation(InvokeExpr e) {
+    e = appCreation().asExpr()
+  }
+
+  /**
+   * DEPRECATED: Use `appCreation()` instead.
+   *
    * Holds if `e` is an Express application object
    */
-  predicate isApp(Expr e) {
+  deprecated predicate isApp(Expr e) {
     any(Application app).flowsTo(e)
   }
 
   /**
    * Holds if `e` creates an Express router (possibly an application).
    */
-  predicate isRouterCreation(InvokeExpr e) {
-    isAppCreation(e)
-    or
-    exists (ModuleInstance express | express.getPath() = "express" |
-      // `app = [new] express.Router()`
-      e = express.getAMemberInvocation("Router"))
+  deprecated predicate isRouterCreation(InvokeExpr e) {
+    e = routerCreation().asExpr()
   }
 
   /**
@@ -119,7 +139,7 @@ module Express {
     Expr getRouteHandlerExpr(int index) {
       // The first argument is a URI pattern if it is a string. If it could possibly be
       // a function, we consider it to be a route handler, otherwise a URI pattern.
-      if getArgument(0).analyze().getAType().getTypeofTag() = "function" then
+      if getArgument(0).analyze().getAType() = TTFunction() then
         result = getArgument(index)
       else
         (index >= 0 and result = getArgument(index + 1))
@@ -135,11 +155,11 @@ module Express {
       result = max(int i || getRouteHandlerExpr(i) order by i)
     }
 
-    override DataFlowNode getARouteHandler() {
-      result = getARouteHandlerExpr().(DataFlowNode).getALocalSource()
+    override DataFlow::SourceNode getARouteHandler() {
+      result.flowsToExpr(getARouteHandlerExpr())
     }
 
-    override DataFlowNode getServer() {
+    override Expr getServer() {
       result.(Application).getARouteHandler() = getARouteHandler()
     }
 
@@ -180,7 +200,7 @@ module Express {
    * Unlike `RouterHandler`, this is the argument passed to a setup, as opposed to
    * a function that flows into such an argument.
    */
-  class RouteHandlerExpr extends DataFlowNode {
+  class RouteHandlerExpr extends Expr {
     RouteSetup setup;
     int index;
 
@@ -199,7 +219,7 @@ module Express {
      * Gets the function body of this handler, if it is defined locally.
      */
     RouteHandler getBody() {
-      result = getALocalSource()
+      result.(DataFlow::SourceNode).flowsToExpr(this)
     }
 
     /**
@@ -299,12 +319,12 @@ module Express {
   /**
    * A function used as an Express route handler.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
 
     Function function;
 
     RouteHandler() {
-      function = this and
+      function = astNode and
       any(RouteSetup s).getARouteHandler() = this
     }
 
@@ -344,7 +364,7 @@ module Express {
     /**
      * Gets a request body access of this handler.
      */
-    DataFlowNode getARequestBodyAccess() {
+    Expr getARequestBodyAccess() {
       result.(PropAccess).accesses(getARequestExpr(), "body")
     }
   }
@@ -488,28 +508,28 @@ module Express {
    */
   private abstract class ExplicitHeader extends HTTP::ExplicitHeaderDefinition {
 
-    DataFlowNode response;
+    Expr response;
 
     /**
-     * Gets the response object that this header is set on.
+     * Gets the response expression that this header is set on.
      */
-    DataFlowNode getResponse() {
+    Expr getResponse() {
       result = response
     }
   }
 
   /**
-   * Holds if `nd` is an HTTP request object.
+   * Holds if `e` is an HTTP request object.
    */
-  predicate isRequest(DataFlowNode nd) {
-    any(RouteHandler rh).getARequestExpr() = nd
+  predicate isRequest(Expr e) {
+    any(RouteHandler rh).getARequestExpr() = e
   }
 
   /**
-   * Holds if `nd` is an HTTP response object.
+   * Holds if `e` is an HTTP response object.
    */
-  predicate isResponse(DataFlowNode nd) {
-    any(RouteHandler rh).getAResponseExpr() = nd
+  predicate isResponse(Expr e) {
+    any(RouteHandler rh).getAResponseExpr() = e
   }
 
   /**
@@ -525,11 +545,11 @@ module Express {
 
   private abstract class HeaderDefinition extends HTTP::Servers::StandardHeaderDefinition {
     HeaderDefinition() {
-      isResponse(getReceiver())
+      isResponse(astNode.getReceiver())
     }
 
     override RouteHandler getRouteHandler() {
-      getReceiver() = result.getAResponseExpr()
+      astNode.getReceiver() = result.getAResponseExpr()
     }
   }
 
@@ -559,8 +579,8 @@ module Express {
    */
   private class SetOneHeader extends HeaderDefinition {
     SetOneHeader() {
-      getMethodName() = any(string n | n = "set" or n = "header") and
-      getNumArgument() = 2
+      astNode.getMethodName() = any(string n | n = "set" or n = "header") and
+      astNode.getNumArgument() = 2
     }
   }
 
@@ -568,19 +588,21 @@ module Express {
    * An invocation of the `set` or `header` method on an HTTP response object that
    * sets multiple headers.
    */
-  private class SetMultipleHeaders extends ExplicitHeader, MethodCallExpr {
+  private class SetMultipleHeaders extends ExplicitHeader, DataFlow::ValueNode {
+    override MethodCallExpr astNode;
     RouteHandler rh;
 
     SetMultipleHeaders() {
-      getReceiver() = rh.getAResponseExpr() and response = getReceiver() and
-      getMethodName() = any(string n | n = "set" or n = "header") and
-      getNumArgument() = 1
+      astNode.getReceiver() = rh.getAResponseExpr() and
+      response = astNode.getReceiver() and
+      astNode.getMethodName() = any(string n | n = "set" or n = "header") and
+      astNode.getNumArgument() = 1
     }
 
     override predicate definesExplicitly(string headerName, Expr headerValue) {
-      exists (DataFlowNode headers, PropWriteNode pwn |
-        headers = getArgument(0).(DataFlowNode).getALocalSource() and
-        pwn.getBase() = headers and
+      exists (DataFlow::SourceNode headers, PropWriteNode pwn |
+        headers.flowsToExpr(astNode.getArgument(0)) and
+        headers.flowsToExpr(pwn.getBase()) and
         pwn.getPropertyName() = headerName and
         pwn.getRhs() = headerValue
       )
@@ -596,7 +618,7 @@ module Express {
    */
   private class AppendHeader extends HeaderDefinition {
     AppendHeader() {
-      getMethodName() = "append"
+      astNode.getMethodName() = "append"
     }
   }
 
@@ -639,10 +661,10 @@ module Express {
     RouteHandler rh;
 
     TemplateInput() {
-      exists (MethodCallExpr mce, DataFlowNode locals, PropWriteNode pw |
+      exists (MethodCallExpr mce, DataFlow::SourceNode locals, PropWriteNode pw |
         mce.calls(rh.getAResponseExpr(), "render") and
-        mce.getArgument(1).(DataFlowNode).getALocalSource() = locals and
-        pw.getBase().getALocalSource() = locals and
+        locals.flowsToExpr(mce.getArgument(1)) and
+        locals.flowsToExpr(pw.getBase()) and
         pw.getRhs() = this
       )
     }
@@ -656,7 +678,7 @@ module Express {
   private class Application extends HTTP::ServerDefinition, DataFlow::TrackedExpr {
 
     Application() {
-      isAppCreation(this)
+      this = appCreation().asExpr()
     }
 
     /**
@@ -674,7 +696,7 @@ module Express {
   class RouterDefinition extends InvokeExpr, DataFlow::TrackedExpr {
 
     RouterDefinition() {
-      isRouterCreation(this)
+      this = routerCreation().asExpr()
     }
 
     /**
@@ -699,7 +721,7 @@ module Express {
      * Example: `fun` for `router1.use(fun)` or `router.use("/route", fun)`
      */
     HTTP::RouteHandler getARouteHandler() {
-      result = getARouteSetup().getAnArgument().(DataFlowNode).getALocalSource()
+      result.(DataFlow::SourceNode).flowsToExpr(getARouteSetup().getAnArgument())
     }
 
     /**
@@ -738,18 +760,15 @@ module Express {
     string kind;
 
     Credentials() {
-      exists (CallExpr call |
-        exists (ModuleInstance mod |
-          mod.getPath() = "express-basic-auth" |
-          call.getCallee().(DataFlowNode).getALocalSource() = mod
-        ) and
-        exists (DataFlowNode users, PropWriteNode pwn |
-          call.hasOptionArgument(0, "users", users) |
-          pwn.getBase().getALocalSource() = users.getALocalSource() and
-          (
-            (this = pwn.getPropertyNameExpr() and kind = "user name") or
-            (this = pwn.getRhs() and kind = "password")
-          )
+      exists (DataFlow::CallNode call, DataFlow::ModuleImportNode mod |
+        mod.getPath() = "express-basic-auth" and
+        call = mod.getAnInvocation() and
+        exists (DataFlow::ObjectExprNode usersSrc, PropWriteNode pwn |
+          usersSrc.flowsTo(call.getOptionArgument(0, "users")) and
+          usersSrc.flowsToExpr(pwn.getBase()) |
+          this = pwn.getPropertyNameExpr() and kind = "user name"
+          or
+          this = pwn.getRhs() and kind = "password"
         )
       )
     }

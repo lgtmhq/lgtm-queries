@@ -54,6 +54,7 @@ AbstractValue getAnInitialPropertyValue(DefiniteAbstractValue baseVal, string pr
   // class members
   exists (ClassDefinition c, DataFlow::AnalyzedNode init, MemberDefinition m |
     m = c.getMember(propertyName) and
+    not m instanceof AccessorMethodDefinition and
     init = m.getInit().analyze() and
     result = init.getALocalValue() |
     if m.isStatic() then

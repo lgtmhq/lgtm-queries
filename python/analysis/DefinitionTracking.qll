@@ -58,14 +58,24 @@ private predicate jump_to_defn(ControlFlowNode use, Definition defn) {
         jump_to_defn_attribute(use.(AttrNode).getObject(name), name, defn)
     )
     or
-    exists(ImportExprNode imp, PythonModuleObject mod |
-        imp = use and imp.refersTo(mod) and
+    exists(PythonModuleObject mod |
+        use.(ImportExprNode).refersTo(mod) and
         defn.getAstNode() = mod.getModule()
     )
     or
-    exists(ImportMemberNode imp, PythonModuleObject mod, string name |
-        imp = use and imp.getModule(name).refersTo(mod) and
+    exists(PythonModuleObject mod, string name |
+        use.(ImportMemberNode).getModule(name).refersTo(mod) and
         scope_jump_to_defn_attribute(mod.getModule(), name, defn)
+    )
+    or
+    exists(PackageObject package |
+        use.(ImportExprNode).refersTo(package) and
+        defn.getAstNode() = package.getInitModule().getModule()
+    )
+    or
+    exists(PackageObject package, string name |
+        use.(ImportMemberNode).getModule(name).refersTo(package) and
+        scope_jump_to_defn_attribute(package.getInitModule().getModule(), name, defn)
     )
     or
     (use instanceof PyFunctionObject or use instanceof ClassObject) and
@@ -375,7 +385,9 @@ private predicate jump_to_defn_attribute(ControlFlowNode use, string name, Defin
         scope_jump_to_defn_attribute(scope, name, defn) |
         obj.(ClassObject).getPyClass() = scope
         or
-        obj.(ModuleObject).getModule() = scope
+        obj.(PythonModuleObject).getModule() = scope
+        or
+        obj.(PackageObject).getInitModule().getModule() = scope
     )
 }
 

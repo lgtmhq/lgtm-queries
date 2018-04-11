@@ -61,7 +61,7 @@ private class AnalyzedLiteral extends DataFlow::AnalyzedValueNode {
       or
       // flow analysis for regular expression literals
       astNode instanceof RegExpLiteral and
-      result = TAbstractOtherObject()
+      result = TAbstractRegExp()
     )
   }
 }
@@ -106,9 +106,7 @@ private class AnalyzedArrayComprehensionExpr extends DataFlow::AnalyzedValueNode
  * Flow analysis for functions.
  */
 private class AnalyzedFunction extends DataFlow::AnalyzedValueNode {
-  AnalyzedFunction() {
-    astNode instanceof Function
-  }
+  override Function astNode;
 
   override AbstractValue getALocalValue() { result = TAbstractFunction(astNode) }
 }
@@ -117,9 +115,7 @@ private class AnalyzedFunction extends DataFlow::AnalyzedValueNode {
  * Flow analysis for class declarations.
  */
 private class AnalyzedClassDefinition extends DataFlow::AnalyzedValueNode {
-  AnalyzedClassDefinition() {
-    astNode instanceof ClassDefinition
-  }
+  override ClassDefinition astNode;
 
   override AbstractValue getALocalValue() { result = TAbstractClass(astNode) }
 }

@@ -22,25 +22,20 @@ module AWS {
    * Holds if the `i`th argument of `invk` is an object hash for `AWS.Config`.
    */
   private predicate takesConfigurationObject(InvokeExpr invk, int i) {
-    exists (ModuleInstance mod |
+    exists (DataFlow::ModuleImportNode mod |
       mod.getPath() = "aws-sdk" |
-      exists (CallExpr call, PropReadNode update |
-        // `AWS.config.update(nd)`
-        update.getBase() = mod.getAPropertyRead("config") and
-        update.getPropertyName() = "update" and
-        call.getCallee() = update and
-        invk = call and i = 0
-      ) or
-      exists (NewExpr ne |
-        ne.getCallee() = mod.getAPropertyRead("Config") |
+      // `AWS.config.update(nd)`
+      invk = mod.getAPropertyRead("config").getAMemberCall("update").asExpr() and
+      i = 0
+      or
+      exists (DataFlow::SourceNode cfg | cfg = mod.getAConstructorInvocation("Config") |
         // `new AWS.Config(nd)`
-        invk = ne and i = 0 or
-        exists (MethodCallExpr mce |
-          // `var config = new AWS.Config(...); config.update(nd);`
-          mce.getReceiver().(DataFlowNode).getALocalSource() = ne and
-          mce.getMethodName() = "update" and
-          invk = mce and i = 0
-        )
+        invk = cfg.asExpr() and
+        i = 0
+        or
+        // `var config = new AWS.Config(...); config.update(nd);`
+        invk = cfg.getAMemberCall("update").asExpr() and
+        i = 0
       )
     )
   }

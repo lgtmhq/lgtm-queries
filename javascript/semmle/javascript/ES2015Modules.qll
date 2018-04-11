@@ -13,8 +13,7 @@
 
 /** Provides classes for working with ECMAScript 2015 modules. */
 
-import Stmt
-import Modules
+import javascript
 
 /**
  * An ECMAScript 2015 module.
@@ -236,7 +235,7 @@ abstract class ExportDeclaration extends Stmt, @exportdeclaration {
    * exports under the same name. In particular, its source node belongs
    * to module `a` or possibly to some other module from which `a` re-exports.
    */
-  abstract DataFlowNode getSourceNode(string name);
+  abstract DataFlow::Node getSourceNode(string name);
 }
 
 /**
@@ -254,7 +253,7 @@ class BulkReExportDeclaration extends ReExportDeclaration, @exportalldeclaration
     not isShadowedFromBulkExport(this, name)
   }
 
-  override DataFlowNode getSourceNode(string name) {
+  override DataFlow::Node getSourceNode(string name) {
     result = getImportedModule().getAnExport().getSourceNode(name)
   }
 }
@@ -301,8 +300,8 @@ class ExportDefaultDeclaration extends ExportDeclaration, @exportdefaultdeclarat
     )
   }
 
-  override DataFlowNode getSourceNode(string name) {
-    name = "default" and result = getOperand()
+  override DataFlow::Node getSourceNode(string name) {
+    name = "default" and result = DataFlow::valueNode(getOperand())
   }
 }
 
@@ -348,13 +347,13 @@ class ExportNamedDeclaration extends ExportDeclaration, @exportnameddeclaration 
     )
   }
 
-  override DataFlowNode getSourceNode(string name) {
+  override DataFlow::Node getSourceNode(string name) {
     exists (VarDef d | d.getTarget() = getADecl() |
       name = d.getTarget().(VarDecl).getName() and
-      result = d.getSource()
+      result = DataFlow::valueNode(d.getSource())
     ) or
     exists (ExportSpecifier spec | spec = getASpecifier() and name = spec.getExportedName() |
-      not exists(getImportedPath()) and result = spec.getLocal()
+      not exists(getImportedPath()) and result = DataFlow::valueNode(spec.getLocal())
       or
       exists (ReExportDeclaration red | red = this |
         result = red.getImportedModule().getAnExport().getSourceNode(spec.getLocalName())
@@ -517,7 +516,7 @@ class OriginalExportDeclaration extends ExportDeclaration {
     this.(ExportNamedDeclaration).exportsAs(v, name)
   }
 
-  override DataFlowNode getSourceNode(string name) {
+  override DataFlow::Node getSourceNode(string name) {
     result = this.(ExportDefaultDeclaration).getSourceNode(name) or
     result = this.(ExportNamedDeclaration).getSourceNode(name)
   }

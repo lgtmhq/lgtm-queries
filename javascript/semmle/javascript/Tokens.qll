@@ -15,9 +15,7 @@
  * Provides classes for working with the token-based representation of JavaScript programs.
  */
 
-import Locations
-import Files
-import Stmt
+import javascript
 
 /** A token occurring in a piece of JavaScript source code. */
 class Token extends Locatable, @token {

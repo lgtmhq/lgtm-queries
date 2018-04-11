@@ -30,35 +30,151 @@ class Class extends UserType {
   }
 
   /** Gets a child declaration of this class. */
-  Declaration getADeclaration() { result.getDeclaringType() = this }
+  Declaration getADeclaration() { result = this.getAMember() }
 
   /** Gets a type declared in this class. */
-  UserType getANestedType() { result.getDeclaringType() = this }
+  UserType getANestedType() { result = this.getAMember() }
 
-  /** Gets a function declared in this class. */
-  MemberFunction getAMemberFunction() { result.getDeclaringType() = this }
+  /**
+   * Gets a function declared in this class.
+    * For template member functions, results include both the template
+    * and the instantiations of that template. If you only want the
+    * template, then use `getACanonicalMemberFunction()` instead.
+   */
+  MemberFunction getAMemberFunction() { result = this.getAMember() }
 
-  /** Gets a member variable declared in this class. */
-  MemberVariable getAMemberVariable() { result.getDeclaringType() = this }
+  /**
+   * Gets a function declared in this class.
+   * For template member functions, results include only the template.
+   * If you also want instantiations of the template, then use
+   * `getAMemberFunction()` instead.
+   */
+  MemberFunction getACanonicalMemberFunction() {
+    result = this.getACanonicalMember()
+  }
 
-  /** Gets a member declared in this class. */
-  Declaration getAMember() { result.getDeclaringType() = this }
-  Declaration getMember(int index) { member(this,index,result) }
-  int getNumMember() { result = count(this.getAMember()) }
+  /**
+   * Gets a member variable declared in this class.
+   * For template member variables, results include both the template
+   * and the instantiations of that template. If you only want the
+   * template, then use `getACanonicalMemberVariable()` instead.
+   */
+  MemberVariable getAMemberVariable() { result = this.getAMember() }
 
-  /** Gets a private member declared in this class. */
+  /**
+   * Gets a member variable declared in this class.
+   * For template member variables, results include only the template.
+   * If you also want instantiations of the template, then use
+   * `getAMemberVariable()` instead.
+   */
+  MemberVariable getACanonicalMemberVariable() { result = this.getAMember() }
+
+  /**
+   * Gets a member declared in this class. For template members, this
+   * may be either the template or an instantiation of that template.
+   * If you only want the template, see
+   * `getACanonicalMember()`.
+   */
+  Declaration getAMember() { result = this.getAMember(_) }
+
+  /**
+   * Gets a member declared in this class.
+   * If you also want template instantiations of results, see
+   * `getAMember()`.
+   */
+  Declaration getACanonicalMember() { result = this.getCanonicalMember(_) }
+
+  /**
+   * Gets the (zero-based) `index`th member declared in this class.
+   * If you also want template instantiations of results, see
+   * `getAMember(int)`.
+   */
+  Declaration getCanonicalMember(int index) { member(this,index,result) }
+
+  /**
+   * Gets the (zero-based) `index`th canonical member declared in this
+   * class and, if that member is a template, all instantiations of that
+   * template. If you only want the canonical member, see
+   * `getCanonicalMember(int)`.
+   */
+  Declaration getAMember(int index) {
+    result = this.getCanonicalMember(index) or
+    result = this.getCanonicalMember(index).(TemplateClass).getAnInstantiation() or
+    result = this.getCanonicalMember(index).(TemplateFunction).getAnInstantiation() or
+    result = this.getCanonicalMember(index).(TemplateVariable).getAnInstantiation()
+  }
+
+  /**
+   * DEPRECATED: Use `getCanonicalMember(int)` or `getAMember(int)` instead.
+   * Gets the `index`th member of this class.
+   */
+  deprecated Declaration getMember(int index) { member(this,index,result) }
+
+  /**
+   * DEPRECATED: As this includes a somewhat arbitrary number of
+   *             template instantiations, it is unlikely to do what
+   *             you need.
+   * Gets the number of members that this class has. This includes both
+   * templates that are in this class, and instantiations of those
+   * templates.
+   */
+  deprecated int getNumMember() { result = count(this.getAMember()) }
+
+  /**
+   * Gets a private member declared in this class.
+   * For template members, this may be either the template or an
+   * instantiation of that template. For just the template, use
+   * `getAPrivateCanonicalMember()`.
+   */
   Declaration getAPrivateMember() {
     result = this.getAMember() and result.hasSpecifier("private")
   }
 
-  /** Gets a protected member declared in this class. */
+  /**
+   * Gets a private canonical member declared in this class.
+   * If you also want template instantiations of results, see
+   * `getAPrivateMember()`.
+   */
+  Declaration getAPrivateCanonicalMember() {
+    result = this.getACanonicalMember() and result.hasSpecifier("private")
+  }
+
+  /**
+   * Gets a protected member declared in this class.
+   * For template members, this may be either the template or an
+   * instantiation of that template. For just the template, use
+   * `getAProtectedCanonicalMember()`.
+   */
   Declaration getAProtectedMember() {
     result = this.getAMember() and result.hasSpecifier("protected")
   }
 
-  /** Gets a public member declared in this class. */
+  /**
+   * Gets a protected canonical member declared in this class.
+   * If you also want template instantiations of results, see
+   * `getAProtectedMember()`.
+   */
+  Declaration getAProtectedCanonicalMember() {
+    result = this.getACanonicalMember() and result.hasSpecifier("protected")
+  }
+
+  /**
+   * Gets a public member declared in this class.
+   * For template members, this may be either the template or an
+   * instantiation of that template. For just the template, use
+   * `getAPublicCanonicalMember()`.
+   */
   Declaration getAPublicMember() {
     result = this.getAMember() and result.hasSpecifier("public")
+  }
+
+  /**
+   * Gets a public canonical member declared in this class.
+   * If you also want template instantiations of results, see
+   * `getAPublicMember()`.
+   */
+  Declaration getAPublicCanonicalMember() {
+    result = this.getACanonicalMember() and result.hasSpecifier("public")
   }
 
   /** Gets a static member declared in this class. */
@@ -528,9 +644,7 @@ class Class extends UserType {
   }
 
   private Type getAFieldSubobjectType() {
-    exists(Type t | t = this.getAField().getUnderlyingType() |
-      result = stripArrayTypes(t)
-    )
+    result = stripArrayTypes(this.getAField().getUnderlyingType())
   }
 
   private Class getADirectOrVirtualBase() {
@@ -729,7 +843,9 @@ class LocalClass extends Class {
  * A nested class [4140 9.7].
  */
 class NestedClass extends Class {
-  NestedClass() { member(_,_,this) }
+  NestedClass() {
+    this.isMember()
+  }
 
   /** Holds if this member is private. */
   predicate isPrivate() { this.hasSpecifier("private") }
@@ -758,7 +874,10 @@ class AbstractClass extends Class {
  */
 class TemplateClass extends Class {
   TemplateClass() { usertypes(this,_,6) }
-  Class getAnInstantiation() { class_instantiation(result,this) }
+  Class getAnInstantiation() {
+    class_instantiation(result,this) and
+    exists(result.getATemplateArgument())
+  }
 }
 
 /**

@@ -102,7 +102,7 @@ predicate usesDependency(NPMPackage pkg, string name) {
 predicate implicitRequire(NPMPackage pkg, string name) {
   // look for Express `set('view engine', ...)` calls
   exists (MethodCallExpr setViewEngine, string engine |
-    Express::isApp(setViewEngine.getReceiver()) and
+    Express::appCreation().flowsToExpr(setViewEngine.getReceiver()) and
     setViewEngine.getMethodName() = "set" and
     setViewEngine.getArgument(0).getStringValue() = "view engine" and
     setViewEngine.getArgument(1).getStringValue() = engine and

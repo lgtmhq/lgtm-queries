@@ -46,7 +46,7 @@ class Container extends @container, Top {
   /**
    * Gets a URL representing the location of this container.
    *
-   * For more information see https://lgtm.com/docs/ql/locations#providing-urls.
+   * For more information see https://lgtm.com/help/ql/locations#providing-urls.
    */
   abstract string getURL();
 
@@ -137,7 +137,7 @@ class Container extends @container, Top {
     result = getAbsolutePath().regexpCapture(".*/([^/]*?)(?:\\.([^.]*))?", 1)
   }
 
-  /** Gets the parent container of this file or folder. */
+  /** Gets the parent container of this file or folder, if any. */
   Container getParentContainer() {
     containerparent(result, this)
   }

@@ -26,7 +26,7 @@
 
 import javascript
 
-from CallExpr ce
-where ce.getCallee().accessesGlobal("parseInt") and
-      ce.getNumArgument() = 1
-select ce, "Missing radix parameter."
+from DataFlow::CallNode parseInt
+where parseInt = DataFlow::globalVarRef("parseInt").getACall() and
+      parseInt.getNumArgument() = 1
+select parseInt, "Missing radix parameter."

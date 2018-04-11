@@ -34,16 +34,14 @@ predicate isProto(DataFlow::AnalyzedNode e) {
   // `o.__proto__ = e`, `{ __proto__: e }`, ...
   e.asExpr() = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
   or
-  exists (MethodCallExpr me, Expr recv, string n | me.calls(recv, n) |
-    recv.accessesGlobal("Object") and (
-      // Object.create(e)
-      n = "create" and e.asExpr() = me.getArgument(0) or
-      // Object.setPrototypeOf(o, e)
-      n = "setPrototypeOf" and e.asExpr() = me.getArgument(1)
-    ) or
-    // e.isPrototypeOf(o)
-    e.asExpr() = recv and n = "isPrototypeOf"
-  )
+  // Object.create(e)
+  e = DataFlow::globalVarRef("Object").getAMemberCall("create").getArgument(0)
+  or
+  // Object.setPrototypeOf(o, e)
+  e = DataFlow::globalVarRef("Object").getAMemberCall("setPrototypeOf").getArgument(1)
+  or
+  // e.isPrototypeOf(o)
+  any(MethodCallExpr mce).calls(e.asExpr(), "isPrototypeOf")
 }
 
 from DataFlow::AnalyzedNode proto

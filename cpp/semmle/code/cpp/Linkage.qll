@@ -36,12 +36,12 @@ class LinkTarget extends @link_target {
    * into a single dummy link target.
    */
   predicate isDummy() {
-    getBinary().getName() = ""
+    getBinary().getAbsolutePath() = ""
   }
 
   /** Gets a textual representation of this element. */
   string toString() {
-    result = getBinary().getName()
+    result = getBinary().getAbsolutePath()
   }
 
   /**

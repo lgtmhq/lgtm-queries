@@ -63,8 +63,7 @@ class DirectEval extends CallExpr {
  */
 class JsonParseCall extends MethodCallExpr {
   JsonParseCall() {
-    getReceiver().accessesGlobal("JSON") and
-    getMethodName() = "parse"
+    this = DataFlow::globalVarRef("JSON").getAMemberCall("parse").asExpr()
   }
 }
 
@@ -82,7 +81,7 @@ private class AnalyzedThisInArrayIterationFunction extends AnalyzedValueNode {
   override ThisExpr astNode;
 
   AnalyzedThisInArrayIterationFunction() {
-    exists(MethodCallExpr bindingCall, string name |
+    exists(DataFlow::MethodCallNode bindingCall, string name |
       name = "filter" or
       name = "forEach" or
       name = "map" or
@@ -90,8 +89,8 @@ private class AnalyzedThisInArrayIterationFunction extends AnalyzedValueNode {
       name = "every" |
       name = bindingCall.getMethodName() and
       2 = bindingCall.getNumArgument() and
-      astNode.getBinder() = bindingCall.getArgument(0).(DataFlowNode).getALocalSource() and
-      thisSource.asExpr() = bindingCall.getArgument(1)
+      astNode.getBinder() = bindingCall.getCallback(0).getFunction() and
+      thisSource = bindingCall.getArgument(1)
     )
   }
 

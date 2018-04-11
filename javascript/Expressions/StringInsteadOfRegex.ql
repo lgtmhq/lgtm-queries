@@ -47,9 +47,16 @@ predicate isStringSplitOrReplace(MethodCallExpr mce) {
   )
 }
 
+/**
+ * Holds if `nd` may evaluate to `s`.
+ */
+predicate mayReferToString(DataFlow::Node nd, StringLiteral s) {
+  s = nd.asExpr() or mayReferToString(nd.getAPredecessor(), s)
+}
+
 from MethodCallExpr mce, StringLiteral arg, string raw, string s
 where isStringSplitOrReplace(mce) and
-      arg = mce.getArgument(0).(DataFlowNode).getALocalSource() and
+      mayReferToString(mce.getArgument(0).flow(), arg) and
       raw = arg.getRawValue() and
       s = raw.substring(1, raw.length() - 1) and
       s.regexpMatch(getALikelyRegExpPattern())

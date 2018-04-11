@@ -48,7 +48,7 @@ class InsecureRandomnessDataFlowConfiguration extends TaintTracking::Configurati
   override
   predicate isSink(DataFlow::Node sink) {
     sink instanceof InsecureRandomnessSink or
-    sink.asExpr() instanceof SensitiveExpr
+    sink instanceof SensitiveWrite
   }
 
   override
@@ -57,10 +57,21 @@ class InsecureRandomnessDataFlowConfiguration extends TaintTracking::Configurati
     node instanceof InsecureRandomnessSanitizer
   }
 
+  override
+  predicate isSanitizer(DataFlow::Node pred, DataFlow::Node succ) {
+    // stop propagation at the sinks to avoid double reporting
+    isSink(pred)
+  }
+
   override predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
     // Assume that all operations on tainted values preserve taint: crypto is hard
     succ.asExpr().(BinaryExpr).getAnOperand() = pred.asExpr() or
-    succ.asExpr().(UnaryExpr).getOperand() = pred.asExpr()
+    succ.asExpr().(UnaryExpr).getOperand() = pred.asExpr() or
+    exists (DataFlow::MethodCallNode mc |
+      mc = DataFlow::globalVarRef("Math").getAMemberCall(_) and
+      pred = mc.getAnArgument() and succ = mc
+    )
+
   }
 
 }
@@ -68,44 +79,37 @@ class InsecureRandomnessDataFlowConfiguration extends TaintTracking::Configurati
 /**
  * A simple random number generator that is not cryptographically secure.
  */
-class DefaultInsecureRandomnessSource extends InsecureRandomnessSource {
+class DefaultInsecureRandomnessSource extends InsecureRandomnessSource, DataFlow::ValueNode {
+  override CallExpr astNode;
 
   DefaultInsecureRandomnessSource() {
-    exists (Expr callee |
-      this.asExpr().(CallExpr).getCallee().(DataFlowNode).getALocalSource() = callee |
-      exists(ModuleInstance mod, string name |
-        mod.getPath() = name |
-        // require("random-number")();
-        name = "random-number" and
-        callee = mod
-        or
-        // require("random-int")();
-        name = "random-int" and
-        callee = mod
-        or
-        // require("random-float")();
-        name = "random-float" and
-        callee = mod
-        or
-        // require('random-seed').create()();
-        name = "random-seed" and
-        callee = mod.getAMethodCall("create")
-        or
-        // require('unique-random')()();
-        name = "unique-random" and
-        callee = any(CallExpr call | call.getCallee().(DataFlowNode).getALocalSource() = mod)
-      ) or
-      exists(PropAccess mathRandom |
-        // Math.random()
-        mathRandom.accesses(any(Expr e | e.accessesGlobal("Math")), "random") and
-        callee = mathRandom
-      )
-    ) or
-    exists(ModuleInstance mod, NewExpr instance | mod.getPath() = "chance" |
-      // (new require('chance')).<name>(),
-      instance.getCallee().(DataFlowNode).getALocalSource() = mod and
-      this.asExpr().(MethodCallExpr).getReceiver().(DataFlowNode).getALocalSource() = instance
+    exists(DataFlow::ModuleImportNode mod, string name | mod.getPath() = name |
+      // require("random-number")();
+      name = "random-number" and
+      this = mod.getACall()
+      or
+      // require("random-int")();
+      name = "random-int" and
+      this = mod.getACall()
+      or
+      // require("random-float")();
+      name = "random-float" and
+      this = mod.getACall()
+      or
+      // require('random-seed').create()();
+      name = "random-seed" and
+      this = mod.getAMemberCall("create").getACall()
+      or
+      // require('unique-random')()();
+      name = "unique-random" and
+      this = mod.getACall().getACall()
     )
+    or
+    // Math.random()
+    this = DataFlow::globalVarRef("Math").getAMemberCall("random")
+    or
+    // (new require('chance')).<name>()
+    this = DataFlow::moduleImport("chance").getAnInstantiation().getAMemberInvocation(_)
   }
 
 }

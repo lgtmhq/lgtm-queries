@@ -87,6 +87,14 @@ class Expr extends Expr_, AstNode {
         FinalPointsTo::points_to(this.getAFlowNode(), _, value, cls, origin.getAFlowNode())
     }
 
+    /** Gets what this expression might "refer-to" in the given `context`.
+     */
+    predicate refersTo(Context context, Object value, ClassObject cls, AstNode origin) {
+        not py_special_objects(cls, "_semmle_unknown_type")
+        and
+        FinalPointsTo::points_to(this.getAFlowNode(), context, value, cls, origin.getAFlowNode())
+    }
+
     /** Whether this expression might "refer-to" to `value` which is from `origin` 
      * Unlike `this.refersTo(value, _, origin)`, this predicate includes results 
      * where the class cannot be inferred.

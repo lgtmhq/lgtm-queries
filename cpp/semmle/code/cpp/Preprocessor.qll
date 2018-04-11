@@ -212,6 +212,13 @@ class PreprocessorError extends PreprocessorDirective, @ppd_error {
  */
 class PreprocessorUndef extends PreprocessorDirective, @ppd_undef {
   string toString() { result = "#undef " + this.getHead() }
+
+  /**
+   * Gets the name of the macro that is undefined.
+   */
+  string getName() {
+    result = getHead()
+  }
 }
 
 /**

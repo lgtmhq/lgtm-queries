@@ -18,7 +18,6 @@
 import python
 
 import semmle.python.security.TaintTracking
-import semmle.python.web.HttpRedirect
 import semmle.python.security.strings.Basic
 
 FunctionObject flask_redirect() {
@@ -45,7 +44,7 @@ class FlaskRedirect extends TaintSink {
     }
 
     override predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpRedirect
+        kind instanceof ExternalStringKind
     }
 
 }

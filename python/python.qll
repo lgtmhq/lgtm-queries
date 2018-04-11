@@ -38,6 +38,7 @@ import semmle.python.types.ClassObject
 import semmle.python.types.FunctionObject
 import semmle.python.types.ModuleObject
 import semmle.python.types.Version
+import semmle.python.types.Descriptors
 import semmle.python.protocols
 import semmle.python.SSA
 import semmle.python.Assigns

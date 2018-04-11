@@ -20,13 +20,22 @@ import semmle.javascript.frameworks.HTTP
 import semmle.javascript.security.SensitiveActions
 
 module NodeJSLib {
+
+  /**
+   * Gets a reference to the 'process' object.
+   */
+  DataFlow::SourceNode process() {
+    result = DataFlow::globalVarRef("process") or
+    result = DataFlow::moduleImport("process")
+  }
+
   /**
    * Holds if `call` is an invocation of `http.createServer` or `https.createServer`.
    */
   predicate isCreateServer(CallExpr call) {
-    exists (ModuleInstance http |
+    exists (DataFlow::ModuleImportNode http |
       http.getPath() = "http" or http.getPath() = "https" |
-      call = http.getAMethodCall("createServer")
+      call = http.getAMemberCall("createServer").asExpr()
     )
   }
 
@@ -51,12 +60,12 @@ module NodeJSLib {
   /**
    * A Node.js route handler.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
 
     Function function;
 
     RouteHandler() {
-      function = this and
+      function = astNode and
       any(RouteSetup setup).getARouteHandler() = this
     }
 
@@ -161,7 +170,7 @@ module NodeJSLib {
    *
    * DEPRECATED: use `instanceof RequestExpr` instead.
    */
-  deprecated predicate isRequest(DataFlowNode nd) {
+  deprecated predicate isRequest(Expr nd) {
     nd instanceof RequestExpr
   }
 
@@ -170,7 +179,7 @@ module NodeJSLib {
    *
    * DEPRECATED: use `instanceof ResponseExpr` instead.
    */
-  deprecated predicate isResponse(DataFlowNode nd) {
+  deprecated predicate isResponse(Expr nd) {
     nd instanceof ResponseExpr
   }
 
@@ -188,11 +197,11 @@ module NodeJSLib {
       handler = getArgument(1)
     }
 
-    override DataFlowNode getARouteHandler() {
-      result = handler.(DataFlowNode).getALocalSource()
+    override DataFlow::SourceNode getARouteHandler() {
+      result.flowsToExpr(handler)
     }
 
-    override DataFlowNode getServer() {
+    override Expr getServer() {
       result = server
     }
 
@@ -203,7 +212,7 @@ module NodeJSLib {
     ResponseExpr r;
 
     HeaderDefinition(){
-      getReceiver() = r
+      astNode.getReceiver() = r
     }
 
     override HTTP::RouteHandler getRouteHandler(){
@@ -217,7 +226,7 @@ module NodeJSLib {
    */
   private class SetHeader extends HeaderDefinition {
     SetHeader() {
-      getMethodName() = "setHeader"
+      astNode.getMethodName() = "setHeader"
     }
   }
 
@@ -226,14 +235,14 @@ module NodeJSLib {
    */
   private class WriteHead extends HeaderDefinition {
     WriteHead() {
-      getMethodName() = "writeHead" and
-      getNumArgument() > 1
+      astNode.getMethodName() = "writeHead" and
+      astNode.getNumArgument() > 1
     }
 
     override predicate definesExplicitly(string headerName, Expr headerValue) {
-      exists (DataFlowNode headers, PropWriteNode pwn |
-        headers = getLastArgument().(DataFlowNode).getALocalSource() and
-        pwn.getBase() = headers and
+      exists (DataFlow::SourceNode headers, PropWriteNode pwn |
+        headers.flowsToExpr(astNode.getLastArgument()) and
+        headers.flowsToExpr(pwn.getBase()) and
         pwn.getPropertyName() = headerName and
         pwn.getRhs() = headerValue
       )
@@ -243,16 +252,17 @@ module NodeJSLib {
   /**
    * A call to `url.parse` or `querystring.parse`.
    */
-  private class UrlParsingFlowTarget extends TaintTracking::FlowTarget, DataFlow::ValueNode {
+  private class UrlParsingFlowTarget extends TaintTracking::DefaultTaintStep, DataFlow::ValueNode {
     UrlParsingFlowTarget() {
       astNode.(MethodCallExpr).calls(_, "parse")
     }
 
-    override DataFlow::Node getATaintSource() {
-      exists (ModuleInstance m |
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      succ = this and
+      exists (DataFlow::ModuleImportNode m |
         m.getPath() = "url" or m.getPath() = "querystring" |
-        astNode = m.getAMethodCall("parse") and
-        result.asExpr() = astNode.(CallExpr).getArgument(0)
+        this = m.getAMemberCall("parse") and
+        pred.asExpr() = astNode.(CallExpr).getArgument(0)
       )
     }
   }
@@ -260,31 +270,30 @@ module NodeJSLib {
   /**
    * A call to a path-module method that preserves taint.
    */
-  private class PathFlowTarget extends TaintTracking::FlowTarget, DataFlow::ValueNode {
-
+  private class PathFlowTarget extends TaintTracking::DefaultTaintStep, DataFlow::ValueNode {
+    override CallExpr astNode;
     Expr tainted;
 
     PathFlowTarget() {
-      exists (ModuleInstance pathModule, CallExpr call, string methodName |
-        astNode = call and
+      exists (DataFlow::ModuleImportNode pathModule, string methodName |
         pathModule.getPath() = "path" and
-        astNode = pathModule.getAMethodCall(methodName) |
+        this = pathModule.getAMemberCall(methodName) |
         // getters
-        (methodName = "basename" and tainted = call.getArgument(0)) or
-        (methodName = "dirname" and tainted = call.getArgument(0)) or
-        (methodName = "extname" and tainted = call.getArgument(0)) or
+        (methodName = "basename" and tainted = astNode.getArgument(0)) or
+        (methodName = "dirname" and tainted = astNode.getArgument(0)) or
+        (methodName = "extname" and tainted = astNode.getArgument(0)) or
 
         // transformers
-        (methodName = "join" and tainted = call.getAnArgument()) or
-        (methodName = "normalize" and tainted = call.getArgument(0)) or
-        (methodName = "relative" and tainted = call.getArgument([0..1])) or
-        (methodName = "resolve" and tainted = call.getAnArgument()) or
-        (methodName = "toNamespacedPath" and tainted = call.getArgument(0))
+        (methodName = "join" and tainted = astNode.getAnArgument()) or
+        (methodName = "normalize" and tainted = astNode.getArgument(0)) or
+        (methodName = "relative" and tainted = astNode.getArgument([0..1])) or
+        (methodName = "resolve" and tainted = astNode.getAnArgument()) or
+        (methodName = "toNamespacedPath" and tainted = astNode.getArgument(0))
       )
     }
 
-    override DataFlow::Node getATaintSource() {
-        result.asExpr() = tainted
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred.asExpr() = tainted and succ = this
     }
 
   }
@@ -301,7 +310,7 @@ module NodeJSLib {
         mce.calls(any(ResponseExpr e | e.getRouteHandler() = rh), m) and
         this = mce.getArgument(0) and
         // don't mistake callback functions as data
-        not this.(DataFlowNode).getALocalSource() instanceof Function
+        not this.analyze().getAValue() instanceof AbstractFunction
       )
     }
 
@@ -327,9 +336,9 @@ module NodeJSLib {
 
     Credentials() {
       exists (CallExpr call |
-        exists (ModuleInstance http |
+        exists (DataFlow::ModuleImportNode http |
           http.getPath() = "http" or http.getPath() = "https" |
-          call = http.getAMethodCall("request")
+          call = http.getAMemberCall("request").asExpr()
         ) and
         call.hasOptionArgument(0, "auth", this)
       )
@@ -344,20 +353,13 @@ module NodeJSLib {
   /**
    * A call a process-terminating function, such as `process.exit`.
    */
-  class ProcessTermination extends SensitiveAction {
+  class ProcessTermination extends SensitiveAction, DataFlow::ValueNode {
+    override CallExpr astNode;
 
     ProcessTermination() {
-      exists (Expr callee |
-        this.asExpr().(CallExpr).getCallee().(DataFlowNode).getALocalSource() = callee |
-        exists(ModuleInstance mod |
-          mod.getPath() = "exit" and
-          callee = mod
-        ) or
-        exists(PropAccess exit |
-          exit.accesses(any(Expr e | e.accessesGlobal("process")), "exit") and
-          callee = exit
-        )
-      )
+      this = DataFlow::moduleImport("exit").getAnInvocation()
+      or
+      this = process().getAMemberCall("exit")
     }
 
   }
@@ -387,8 +389,9 @@ module NodeJSLib {
     override MethodCallExpr astNode;
 
     NodeJSFileSystemAccess() {
-      exists (ModuleInstance fs | fs.getPath() = "fs" or fs.getPath() = "graceful-fs" |
-        asExpr() = fs.getAMethodCall(_)
+      exists (DataFlow::ModuleImportNode fs |
+        fs.getPath() = "fs" or fs.getPath() = "graceful-fs" |
+        this = fs.getAMemberCall(_)
       )
     }
 
@@ -406,9 +409,7 @@ module NodeJSLib {
     override MethodCallExpr astNode;
 
     ChildProcessMethodCall() {
-      exists (ModuleInstance cp | cp.getPath() = "child_process" |
-        asExpr() = cp.getAMethodCall(_)
-      )
+      this = DataFlow::moduleImport("child_process").getAMemberCall(_)
     }
 
     override DataFlow::Node getACommandArgument() {

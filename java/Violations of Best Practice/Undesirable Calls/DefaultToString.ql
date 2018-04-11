@@ -63,6 +63,7 @@ predicate bad(RefType t) {
   and not t instanceof Array 
   and not t instanceof GenericType
   and not t instanceof BoundedType
+  and t.fromSource()
 }
 
 from Expr e, RefType sourceType

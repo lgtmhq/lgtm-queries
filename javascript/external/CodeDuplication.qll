@@ -25,7 +25,7 @@ string relativePath(File file) {
  * Holds if the `index`-th token of block `copy` is in file `file`, spanning
  * column `sc` of line `sl` to column `ec` of line `el`.
  *
- * For more information, see [LGTM locations](https://lgtm.com/docs/ql/locations).
+ * For more information, see [LGTM locations](https://lgtm.com/help/ql/locations).
  */
 pragma[noinline]
 private predicate tokenLocation(File file, int sl, int sc, int ec, int el, Copy copy, int index) {
@@ -93,7 +93,7 @@ class Copy extends @duplication_or_similarity {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                                              int endline, int endcolumn) {

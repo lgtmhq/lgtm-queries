@@ -15,15 +15,6 @@ import python
 
 import semmle.python.security.strings.Basic
 
-/** Generic Http(s) malicious redirect */
-class ExternalHttpRedirect extends ExternalStringKind {
-
-    ExternalHttpRedirect() {
-        this = "malicious redirect"
-    }
-
-}
-
 import semmle.python.web.django.Redirect
 import semmle.python.web.flask.Redirect
 import semmle.python.web.tornado.Redirect

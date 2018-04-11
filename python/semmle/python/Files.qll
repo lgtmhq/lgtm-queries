@@ -334,7 +334,7 @@ abstract class Container extends @container {
     /**
      * Gets a URL representing the location of this container.
      *
-     * For more information see https://lgtm.com/docs/ql/locations#providing-urls.
+     * For more information see https://lgtm.com/help/ql/locations#providing-urls.
      */
     abstract string getURL();
 

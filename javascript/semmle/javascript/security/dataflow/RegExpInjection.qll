@@ -62,10 +62,7 @@ class RegExpInjectionTaintTrackingConfiguration extends TaintTracking::Configura
  */
 class RegExpObjectCreationSink extends RegExpInjectionSink, DataFlow::ValueNode {
   RegExpObjectCreationSink() {
-    exists (InvokeExpr invk |
-      invk.getCallee().accessesGlobal("RegExp") and
-      astNode = invk.getArgument(0)
-    )
+    this = DataFlow::globalVarRef("RegExp").getAnInvocation().getArgument(0)
   }
 }
 

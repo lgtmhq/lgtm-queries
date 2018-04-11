@@ -15,8 +15,7 @@
  * Provides classes for working with NPM module definitions and dependencies.
  */
 
-import JSON
-import NodeJS
+import javascript
 
 /** A `package.json` configuration object. */
 class PackageJSON extends JSONObject {

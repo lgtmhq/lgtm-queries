@@ -29,9 +29,9 @@ import python
 import semmle.python.strings
 
 predicate string_format(BinaryExpr operation, StrConst str, Object args, AstNode origin) {
-    exists(Object fmt | operation.getOp() instanceof Mod |
-           operation.getLeft().refersTo(fmt, str) and
-           operation.getRight().refersTo(args, origin)
+    exists(Object fmt, Context ctx | operation.getOp() instanceof Mod |
+           operation.getLeft().refersTo(ctx, fmt, _, str) and
+           operation.getRight().refersTo(ctx, args, _, origin)
     )
 }
 

@@ -29,7 +29,7 @@ abstract class XMLLocatable extends @xmllocatable {
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f, Location l | l = this.getLocation() |
       locations_default(l,f,startline,startcolumn,endline,endcolumn) and
-      filepath = f.getFullName()
+      filepath = f.getAbsolutePath()
     )
   }
 

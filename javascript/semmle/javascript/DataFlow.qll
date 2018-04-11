@@ -35,7 +35,7 @@
  * for immediately invoked functions as explained above).
  */
 
-import Expr
+import javascript
 
 /**
  * An expression or function/class declaration, viewed as a node in a data flow graph.
@@ -70,7 +70,7 @@ class DataFlowNode extends @dataflownode {
    * Gets a source flow node (that is, a node without a `localFlowPred()`) from which data
    * may flow to this node in zero or more local steps.
    */
-  cached
+  cached deprecated
   DataFlowNode getALocalSource() {
     isLocalSource(result) and
     (
@@ -431,6 +431,17 @@ abstract class PropWriteNode extends PropRefNode {
    * properties, and most uses of `Object.defineProperty`.
    */
   abstract DataFlowNode getRhs();
+
+  /**
+   * Holds if this data flow node writes the value of `rhs` to property
+   * `prop` of the object that `base` evaluates to.
+   */
+  pragma[noinline]
+  predicate writes(DataFlow::Node base, string prop, DataFlow::Node rhs) {
+    base = DataFlow::valueNode(getBase()) and
+    prop = getPropertyName() and
+    rhs = DataFlow::valueNode(getRhs())
+  }
 }
 
 /**

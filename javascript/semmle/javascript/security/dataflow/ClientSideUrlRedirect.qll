@@ -125,11 +125,10 @@ class LocationSearchSource extends ClientSideUrlRedirectSource {
 class LocationSink extends ClientSideUrlRedirectSink, DataFlow::ValueNode {
   LocationSink() {
     // A call to a `window.navigate` or `window.open`
-    exists (CallExpr windowCall, string name |
-      windowCall.getCallee().accessesGlobal(name) and
-      astNode = windowCall.getArgument(0) |
+    exists (string name |
       name = "navigate" or name = "open" or
-      name = "openDialog" or name = "showModalDialog"
+      name = "openDialog" or name = "showModalDialog" |
+      this = DataFlow::globalVarRef(name).getACall().getArgument(0)
     )
     or
     // A call to `location.replace` or `location.assign`
@@ -173,10 +172,7 @@ abstract class ScriptUrlSink extends ClientSideUrlRedirectSink {
  */
 class WebWorkerScriptUrlSink extends ScriptUrlSink, DataFlow::ValueNode {
   WebWorkerScriptUrlSink() {
-    exists (NewExpr new |
-      new.getCallee().accessesGlobal("Worker") and
-      astNode = new.getArgument(0)
-    )
+    this = DataFlow::globalVarRef("Worker").getAnInstantiation().getArgument(0)
   }
 }
 
@@ -189,7 +185,7 @@ class SrcAttributeUrlSink extends ScriptUrlSink, DataFlow::ValueNode {
       attr.getElement().getName() = eltName and
       (eltName = "script" or eltName = "iframe") and
       attr.getName() = "src" and
-      astNode = attr.getValueNode()
+      this = attr.getValueNode()
     )
   }
 }

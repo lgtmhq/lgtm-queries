@@ -15,9 +15,7 @@
  * Provides classes for working with expressions.
  */
 
-import Locations
-import AST
-import Regexp
+import javascript
 
 /** A program element that is either an expression or a type annotation. */
 class ExprOrType extends @exprortype, Documentable {
@@ -65,7 +63,7 @@ class ExprOrType extends @exprortype, Documentable {
 }
 
 /** An expression. */
-class Expr extends @expr, ExprOrStmt, ExprOrType {
+class Expr extends @expr, ExprOrStmt, ExprOrType, AST::ValueNode {
   /**
    * Gets the statement container (function or toplevel) in which
    * this expression appears.
@@ -136,39 +134,38 @@ class Expr extends @expr, ExprOrStmt, ExprOrType {
    * or through the `window` object.
    */
   predicate accessesGlobal(string g) {
-    // the direct case is handled here, the indirect one in `PropAccess`
-    exists (GlobalVariable gv | gv.getName() = g |
-      this.(DataFlowNode).getALocalSource() = gv.getAnAccess()
-    )
+    flow().accessesGlobal(g)
   }
 
   /**
    * Holds if this expression may evaluate to `s`.
    */
   predicate mayHaveStringValue(string s) {
-    s = this.(DataFlowNode).getALocalSource().(ConstantString).getStringValue()
+    flow().mayHaveStringValue(s)
   }
 
   /**
    * Holds if this expression may evaluate to `b`.
    */
   predicate mayHaveBooleanValue(boolean b) {
-    exists (string v | v = this.(DataFlowNode).getALocalSource().(BooleanLiteral).getValue() |
-      v = "true" and b = true or
-      v = "false" and b = false
-    )
+    flow().mayHaveBooleanValue(b)
   }
 
   /**
    * Holds if this expression may refer to the initial value of parameter `p`.
    */
-  cached predicate mayReferToParameter(SimpleParameter p) {
-    this.(DataFlowNode).getALocalSource() = p.getAnInitialUse()
+  predicate mayReferToParameter(SimpleParameter p) {
+    flow().mayReferToParameter(p)
   }
 
-  /** Gets type inference results for this expression. */
-  DataFlow::AnalyzedNode analyze() {
-    result = DataFlow::valueNode(this).analyze()
+  /**
+   * Gets the static type of this expression, as determined by the TypeScript type system.
+   *
+   * Has no result if the expression is in a JavaScript file or in a TypeScript
+   * file that was extracted without type information.
+   */
+  Type getType() {
+    ast_node_type(this, result)
   }
 }
 
@@ -639,7 +636,7 @@ class InvokeExpr extends @invokeexpr, Expr {
     result = this.getChildExpr(-1)
   }
 
-  /** Return the name of the function or method being invoked, if it can be determined. */
+  /** Gets the name of the function or method being invoked, if it can be determined. */
   string getCalleeName() {
     exists (Expr callee | callee = getCallee().stripParens() |
       result = ((Identifier)callee).getName() or
@@ -709,13 +706,8 @@ class InvokeExpr extends @invokeexpr, Expr {
    *
    * This predicate is an approximation, computed using only local data flow.
    */
-  predicate hasOptionArgument(int i, string name, DataFlowNode value) {
-    exists (ObjectExpr obj, PropWriteNode pwn |
-      obj = getArgument(i).(DataFlowNode).getALocalSource() and
-      pwn.getBase().getALocalSource() = obj and
-      pwn.getPropertyName() = name and
-      value = pwn.getRhs()
-    )
+  predicate hasOptionArgument(int i, string name, Expr value) {
+    value = flow().(DataFlow::InvokeNode).getOptionArgument(i, name).asExpr()
   }
 }
 
@@ -808,12 +800,6 @@ class PropAccess extends @propaccess, Expr {
   override ControlFlowNode getFirstControlFlowNode() {
     result = getBase().getFirstControlFlowNode()
   }
-
-  override predicate accessesGlobal(string g) {
-    // indirect access through 'window'
-    getBase().accessesGlobal("window") and
-    getPropertyName() = g
-  }
 }
 
 /** A dot expression. */
@@ -874,6 +860,10 @@ class UnaryExpr extends @unaryexpr, Expr {
 class NegExpr extends @negexpr, UnaryExpr {
   override string getOperator() {
     result = "-"
+  }
+
+  override int getIntValue() {
+    result = -getOperand().getIntValue()
   }
 }
 

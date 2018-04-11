@@ -81,7 +81,9 @@ class LocalTypedefType extends TypedefType {
 }
 
 class NestedTypedefType extends TypedefType {
-  NestedTypedefType() { member(_,_,this) }
+  NestedTypedefType() {
+    this.isMember()
+  }
 
   /** Whether this member is private. */
   predicate isPrivate() { this.hasSpecifier("private") }

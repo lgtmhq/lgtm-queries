@@ -27,4 +27,4 @@ from DeclStmt ds
 where ds.getADeclaration() instanceof Function
       and not ds.isInMacroExpansion()
       and not exists(MacroInvocation mi | mi.getLocation() = ds.getADeclarationEntry().getLocation())
-select ds, "Functions should always be declared at file scope, not inside blocks."
+select ds, "Functions should be declared at file scope, not inside blocks."

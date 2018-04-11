@@ -13,7 +13,7 @@
 
 /** Provides classes for working with ECMAScript 2015-style template expressions. */
 
-import Expr
+import javascript
 
 /** A tagged template literal expression. */
 class TaggedTemplateExpr extends Expr, @taggedtemplateexpr {

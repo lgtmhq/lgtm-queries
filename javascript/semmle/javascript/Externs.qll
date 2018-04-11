@@ -50,7 +50,7 @@
  * </pre>
  */
 
-import AST
+import javascript
 
 /** A declaration in an externs file. */
 abstract class ExternalDecl extends ASTNode {

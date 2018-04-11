@@ -116,11 +116,16 @@ class Snprintf extends FormattingFunction {
       or hasGlobalName("swprintf") // The s version of wide-char printf is also always the n version
       // Microsoft has _snprintf as well as several other variations
       or hasGlobalName("sprintf_s")
+      or hasGlobalName("snprintf_s")
       or hasGlobalName("swprintf_s")
       or hasGlobalName("_snprintf")
+      or hasGlobalName("_snprintf_s")
       or hasGlobalName("_snprintf_l")
+      or hasGlobalName("_snprintf_s_l")
       or hasGlobalName("_snwprintf")
+      or hasGlobalName("_snwprintf_s")
       or hasGlobalName("_snwprintf_l")
+      or hasGlobalName("_snwprintf_s_l")
       or hasGlobalName("_sprintf_s_l")
       or hasGlobalName("_swprintf_l")
       or hasGlobalName("_swprintf_s_l")
@@ -154,7 +159,8 @@ class Snprintf extends FormattingFunction {
   predicate returnsFullFormatLength() {
     hasGlobalName("snprintf") or
     hasGlobalName("g_snprintf") or
-    hasGlobalName("__builtin___snprintf_chk")
+    hasGlobalName("__builtin___snprintf_chk") or
+    hasGlobalName("snprintf_s")
   }
 
   override int getSizeParameterIndex() {
@@ -255,8 +261,8 @@ predicate callsVariadicFormatter(Function f, int formatParamIndex, boolean wide)
 }
 
 /**
- * A function such as `vprintf` that has a format parameter
- * and a variable argument list of type `va_arg`.  
+ * Holds if `f` is a function such as `vprintf` that has a format parameter
+ * (at `formatParamIndex`) and a variable argument list of type `va_arg`.  
  */
 predicate variadicFormatter(Function f, int formatParamIndex, boolean wide) {
   primitiveVariadicFormatter(f, formatParamIndex, wide)
@@ -893,9 +899,11 @@ class FormatLiteral extends Expr {
     )
   }
 
-  private Type getConversionType8(int n) {
+  private IntPointerType getConversionType8(int n) {
     exists(string cnv | cnv = this.getConversionChar(n) |
-      cnv="n" and not exists(this.getStorePointerConversion(n)) and result instanceof IntPointerType
+      cnv="n" and not exists(this.getStorePointerConversion(n)) and
+      result.getBaseType().(IntType).isSigned() and
+      not result.getBaseType().(IntType).isExplicitlySigned()
     )
   }
   

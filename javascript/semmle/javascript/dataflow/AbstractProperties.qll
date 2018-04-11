@@ -22,38 +22,34 @@ private import semmle.javascript.dataflow.internal.AbstractPropertiesImpl
  * and a property name.
  */
 class AbstractProperty extends TAbstractProperty {
-  AbstractValue base;
-  string prop;
-
-  AbstractProperty() {
-    this = MkAbstractProperty(base, prop)
-  }
+  // Implementation note: Binding `base` and `propertyName` to fields
+  // would be slightly more elegant, but leads to worse performance on very big snapshots.
 
   /** Gets the base object of this abstract property. */
   AbstractValue getBase() {
-    result = base
+    this = MkAbstractProperty(result, _)
   }
 
   /** Gets the property name of this abstract property. */
   string getPropertyName() {
-    result = prop
+    this = MkAbstractProperty(_, result)
   }
 
   /**
    * Gets an initial value that is implicitly assigned to this property.
    */
   AbstractValue getAnInitialValue() {
-    result = getAnInitialPropertyValue(base, prop)
+    result = getAnInitialPropertyValue(getBase(), getPropertyName())
   }
 
   /**
    * Gets a value of this property for the purposes of `AnalyzedNode.getALocalValue`.
    */
   AbstractValue getALocalValue() {
-    result = getAnInitialValue()
+    result = getAnInitialPropertyValue(getBase(), getPropertyName())
     or
-    shouldAlwaysTrackProperties(base) and
-    result = getAnAssignedValue(base, prop)
+    shouldAlwaysTrackProperties(getBase()) and
+    result = getAnAssignedValue(getBase(), getPropertyName())
   }
 
   /**
@@ -61,14 +57,14 @@ class AbstractProperty extends TAbstractProperty {
    */
   AbstractValue getAValue() {
     result = getALocalValue() or
-    result = getAnAssignedValue(base, prop)
+    result = getAnAssignedValue(getBase(), getPropertyName())
   }
 
   /**
    * Gets a textual representation of this element.
    */
   string toString() {
-    result = "property " + prop + " of " + base
+    result = "property " + getPropertyName() + " of " + getBase()
   }
 }
 
@@ -78,7 +74,7 @@ class AbstractProperty extends TAbstractProperty {
  */
 class AbstractProtoProperty extends AbstractProperty {
   AbstractProtoProperty() {
-    prop = "__proto__"
+    getPropertyName() = "__proto__"
   }
 
   override AbstractValue getAValue() {
@@ -88,7 +84,7 @@ class AbstractProtoProperty extends AbstractProperty {
      result instanceof AbstractNull
     )
     or
-    exists (AbstractCallable ctor | base = TAbstractInstance(ctor) |
+    exists (AbstractCallable ctor | getBase() = TAbstractInstance(ctor) |
       // the value of `ctor.prototype`
       exists (AbstractProperty prototype |
         prototype = MkAbstractProperty((AbstractFunction)ctor, "prototype") and
@@ -112,7 +108,6 @@ class AbstractProtoProperty extends AbstractProperty {
  * has to be toplevel predicate to avoid a spurious type join with `AbstractProperty`,
  * which in turn introduces a materialization.
  */
-pragma[noopt]
 private AbstractValue getAnAssignedValue(AbstractValue b, string p) {
   exists (AnalyzedPropertyWrite apw, DataFlow::AnalyzedNode afn |
     apw.writes(b, p, afn) and

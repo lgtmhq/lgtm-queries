@@ -98,7 +98,7 @@ InferredType nonStrictOperandType(ASTNode parent, DataFlow::AnalyzedNode operand
     tp = TTDate() and result = TTString()
     or
     // other objects are converted to strings, numbers or Booleans
-    (tp = TTObject() or tp = TTFunction() or tp = TTClass()) and
+    (tp = TTObject() or tp = TTFunction() or tp = TTClass() or tp = TTRegExp()) and
     (result = TTBoolean() or result = TTNumber() or result = TTString())
     or
     // `undefined` and `null` are equated
@@ -172,11 +172,29 @@ string getDescription(Expr e, string default) {
     result = default
 }
 
-from ASTNode cmp, DataFlow::AnalyzedNode left, DataFlow::AnalyzedNode right, string leftTypes, string rightTypes, string leftExprDescription, string rightExprDescription
+/**
+ * Gets the simpler message of `message1` and `message2` guided by the corresponding `complexity1` and `complexity2`.
+ */
+bindingset[message1, message2, complexity1, complexity2]
+string getTypeDescription(string message1, string message2, int complexity1, int complexity2) {
+  if complexity1 > 4 and complexity2 <= 2 then
+    result = message2
+  else
+    result = message1
+}
+
+from ASTNode cmp,
+     DataFlow::AnalyzedNode left, DataFlow::AnalyzedNode right,
+     string leftTypes, string rightTypes,
+     string leftExprDescription, string rightExprDescription,
+     int leftTypeCount, int rightTypeCount ,
+     string leftTypeDescription, string rightTypeDescription
 where isHeterogeneousComparison(cmp, left, right, leftTypes, rightTypes) and
-      // don't flag unreachable code
-      exists (left.getAType()) and exists (right.getAType()) and
       leftExprDescription = capitalize(getDescription(left.asExpr(), "this expression")) and
-      rightExprDescription = getDescription(right.asExpr(), "an expression")
-select left, leftExprDescription + " is of type " + leftTypes + ", but it is compared to $@ of type " + rightTypes + ".",
+      rightExprDescription = getDescription(right.asExpr(), "an expression") and
+      leftTypeCount = strictcount(left.getAType()) and
+      rightTypeCount = strictcount(right.getAType()) and
+      leftTypeDescription = getTypeDescription("is of type " + leftTypes, "can not be of type " + rightTypes, leftTypeCount, rightTypeCount) and
+      rightTypeDescription = getTypeDescription("of type " + rightTypes, ", which can not be of type " + leftTypes, rightTypeCount, leftTypeCount)
+select left, leftExprDescription + " " + leftTypeDescription + ", but it is compared to $@ " + rightTypeDescription + ".",
        right, rightExprDescription

@@ -25,7 +25,8 @@ import semmle.python.dataflow.SsaDefinitions
 
 module BasePointsTo {
     /** INTERNAL -- Use n.refersTo(value, _, origin) instead */
-    cached predicate points_to(ControlFlowNode f, Object value, ControlFlowNode origin) {
+    pragma [noinline]
+    predicate points_to(ControlFlowNode f, Object value, ControlFlowNode origin) {
     (
             f.isLiteral() and value = f and not f.getNode() instanceof ImmutableLiteral
             or
@@ -53,7 +54,8 @@ predicate varargs_points_to(ControlFlowNode f, ClassObject cls) {
  *
  *  This exists primarily for internal use. Use getAnInferredType() instead.
  */
-cached ClassObject simple_types(Object obj) {
+pragma [noinline]
+ClassObject simple_types(Object obj) {
     result = comprehension(obj.getOrigin())
     or
     result = collection_literal(obj.getOrigin())
@@ -94,7 +96,7 @@ private int tuple_index_value(Object t, int i) {
     )
 }
 
-cached
+pragma [noinline]
 int version_tuple_value(Object t) {
     not exists(tuple_index_value(t, 1)) and result = tuple_index_value(t, 0)*10
     or
@@ -121,48 +123,33 @@ predicate baseless_is_new_style(ClassObject cls) {
  */
 
 /** Gets the base class of built-in class `cls` */
-cached
+pragma [noinline]
 ClassObject builtin_base_type(ClassObject cls) {
     /* The extractor uses the special name ".super." to indicate the super class of a builtin class */
     py_cmembers_versioned(cls, ".super.", result, _)
 }
 
 /** Gets the `name`d attribute of built-in class `cls` */
-cached
+pragma [noinline]
 Object builtin_class_attribute(ClassObject cls, string name) {
     not name = ".super." and
     py_cmembers_versioned(cls, name, result, _)
 }
 
 /** Holds if the `name`d attribute of built-in module `m` is `value` of `cls` */
-cached
+pragma [noinline]
 predicate builtin_module_attribute(ModuleObject m, string name, Object value, ClassObject cls) {
     py_cmembers_versioned(m, name, value, _) and cls = builtin_object_type(value)
 }
 
 /** Gets the (built-in) class of the built-in object `obj` */
-cached
+pragma [noinline]
 ClassObject builtin_object_type(Object obj) {
     py_cobjecttypes(obj, result)
 }
 
-/** Provably extensional names only, to avoid recomputation of 'cached' predicates */
-cached 
-predicate extensional_name(string n) {
-    py_cobjectnames(_, n)
-    or
-    py_cmembers_versioned(_, n, _, _)
-    or
-    variable(_, _, n)
-    or
-    py_strs(n, _, _)
-    or
-    py_special_objects(_, n)
-}
-
-
 /** Holds if this class (not on a super-class) declares name */
-cached
+pragma [noinline]
 predicate class_declares_attribute(ClassObject cls, string name) {
     exists(Class defn |
         defn = cls.getPyClass() and
@@ -546,7 +533,7 @@ predicate refinement_test(ControlFlowNode test, ControlFlowNode use, boolean sen
 }
 
 /** Holds if `f` is an import of the form `from .[...] import name` and the enclosing scope is an __init__ module */
-cached
+pragma [noinline]
 predicate live_import_from_dot_in_init(ImportMemberNode f, EssaVariable var) {
     exists(string name |
         import_from_dot_in_init(f.getModule(name)) and
@@ -571,7 +558,8 @@ Object undefinedVariable() {
 }
 
 /** Gets the `value, cls, origin` that `f` would refer to if it has not been assigned some other value */
-cached predicate potential_builtin_points_to(NameNode f, Object value, ClassObject cls, ControlFlowNode origin) {
+pragma [noinline]
+predicate potential_builtin_points_to(NameNode f, Object value, ClassObject cls, ControlFlowNode origin) {
     f.isGlobal() and f.isLoad() and
     value = builtin_object(f.getId()) and py_cobjecttypes(value, cls) and origin = f
 }
@@ -580,11 +568,23 @@ module BaseFlow {
     /* Helper for this_scope_entry_value_transfer(...). Transfer of values from earlier scope to later on */
     pragma [noinline]
     predicate scope_entry_value_transfer_from_earlier(EssaVariable pred_var, Scope pred_scope, ScopeEntryDefinition succ_def, Scope succ_scope) {
-        pred_var.reachesExit() and
-        pred_var.getScope() = pred_scope and
-        pred_var.getSourceVariable() = succ_def.getSourceVariable() and
-        succ_def.getScope() = succ_scope and
-        pred_scope.precedes(succ_scope)
+        exists(SsaSourceVariable var |
+             pred_var.reachesExit() and
+             pred_var.getScope() = pred_scope and
+             var = pred_var.getSourceVariable() and
+             var = succ_def.getSourceVariable() and
+             succ_def.getScope() = succ_scope 
+             |
+             pred_scope.precedes(succ_scope)
+             or
+             /* If an `__init__` method does not modify the global variable, then
+              * we can skip it and take the value directly from the module.
+              */
+             exists(Scope init |
+                 init.getName() = "__init__" and init.precedes(succ_scope) and pred_scope.precedes(init) and
+                 not var.(Variable).getAStore().getScope() = init and var instanceof GlobalVariable
+             )
+         )
     }
 }
 

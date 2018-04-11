@@ -1777,6 +1777,17 @@ class DeclStmt extends Stmt, @stmt_decl {
   }
 
   /**
+   * Gets the number of declarations declared by this 'declaration' statement.
+   *
+   * For example, for
+   * ```
+   * int i, j;
+   * ```
+   * the result of `getNumDeclarations()` is `2`.
+   */
+  int getNumDeclarations() { result = count(this.getADeclaration()) }
+
+  /**
    * Gets the `i`th declaration declared by this 'declaration' statement.
    *
    * For example, for

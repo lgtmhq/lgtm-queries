@@ -170,7 +170,16 @@ class Object extends @py_object {
         this = findByName0(longName) or
         this = findByName1(longName) or
         this = findByName2(longName) or
-        this = findByName3(longName)
+        this = findByName3(longName) or
+        exists(ClassMethodObject cm |
+            cm.hasLongName(longName) and
+            cm.getFunction() = this
+        )
+        or
+        exists(StaticMethodObject cm |
+            cm.hasLongName(longName) and
+            cm.getFunction() = this
+        )
     }
 
 }

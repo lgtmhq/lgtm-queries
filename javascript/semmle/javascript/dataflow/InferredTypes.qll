@@ -27,7 +27,7 @@
  */
 
 newtype TypeTag = TTNull() or TTUndefined() or TTBoolean() or TTNumber() or TTString()
-               or TTFunction() or TTClass() or TTDate() or TTObject()
+               or TTFunction() or TTClass() or TTDate() or TTRegExp() or TTObject()
 
 /**
  * A `typeof` tag, that is, a possible result of the `typeof` operator.
@@ -85,13 +85,15 @@ class PrimitiveType extends InferredType {
 class NonPrimitiveType extends InferredType {
   NonPrimitiveType() {
     this = TTFunction() or this = TTClass() or
-    this = TTDate() or this = TTObject()
+    this = TTDate() or this = TTRegExp() or
+    this = TTObject()
   }
 
   override string getTypeofTag() {
     this = TTFunction() and result = "function" or
     this = TTClass() and result = "function" or
     this = TTDate() and result = "object" or
+    this = TTRegExp() and (result = "object" or result = "function") or
     this = TTObject() and result = "object"
   }
 
@@ -99,6 +101,7 @@ class NonPrimitiveType extends InferredType {
     this = TTFunction() and result = "function" or
     this = TTClass() and result = "class" or
     this = TTDate() and result = "date" or
+    this = TTRegExp() and result = "regular expression" or
     this = TTObject() and result = "object"
   }
 }
@@ -109,5 +112,6 @@ class NonPrimitiveType extends InferredType {
  * Gets a pretty-printed list of all type tags in alphabetical order.
  */
 string ppAllTypeTags() {
-  result = "boolean, class, date, function, null, number, object, string or undefined"
+  result = "boolean, class, date, function, null, number, object, regular expression,"
+         + "string or undefined"
 }

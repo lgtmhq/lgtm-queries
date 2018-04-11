@@ -18,25 +18,23 @@
 import javascript
 
 /**
- * Holds if `nd` may refer to the jQuery `$` function.
+ * Gets a data flow node that may refer to the jQuery `$` function.
  */
-private predicate isJQueryRef(DataFlowNode nd) {
-  exists (Expr src | src = nd.getALocalSource() |
-   // either a reference to a global variable `$` or `jQuery`
-   src.accessesGlobal("$") or
-   src.accessesGlobal("jQuery") or
-   // or imported from a module named `jquery`
-   src.(ModuleInstance).getPath() = "jquery"
-  )
+private DataFlow::SourceNode jquery() {
+  // either a reference to a global variable `$` or `jQuery`
+  result = DataFlow::globalVarRef(any(string jq | jq = "$" or jq = "jQuery"))
+  or
+  // or imported from a module named `jquery`
+  result = DataFlow::moduleImport("jquery")
 }
 
 /**
- * A node that may refer to a jQuery object.
+ * An expression that may refer to a jQuery object.
  *
- * Note that this class is an over-approximation: `nd instanceof JQueryObject)`
+ * Note that this class is an over-approximation: `nd instanceof JQueryObject`
  * may hold for nodes `nd` that cannot, in fact, refer to a jQuery object.
  */
-abstract class JQueryObject extends DataFlowNode {
+abstract class JQueryObject extends Expr {
 
 }
 
@@ -45,7 +43,8 @@ abstract class JQueryObject extends DataFlowNode {
  */
 private class OrdinaryJQueryObject extends JQueryObject {
   OrdinaryJQueryObject() {
-    exists (JQueryMethodCall jq | jq = this.getALocalSource() |
+    exists (JQueryMethodCall jq |
+      this.flow().getALocalSource().asExpr() = jq and
       // `jQuery.val()` does _not_ return a jQuery object
       jq.getMethodName() != "val"
     )
@@ -59,14 +58,12 @@ class JQueryMethodCall extends CallExpr {
   string name;
 
   JQueryMethodCall() {
-    isJQueryRef(getCallee()) and name = "$"
+    this = jquery().getACall().asExpr() and name = "$"
     or
-    exists (MethodCallExpr mce | mce = this and name = mce.getMethodName() |
-      // initial call
-      isJQueryRef(mce.getReceiver()) or
-      // chained call
-      mce.getReceiver() instanceof JQueryObject
-    )
+    // initial call
+    this = jquery().getAMemberCall(name).asExpr() or
+    // chained call
+    this.(MethodCallExpr).calls(any(JQueryObject jq), name)
   }
 
   /**
@@ -107,7 +104,7 @@ private class JQueryParseXmlCall extends XML::ParserInvocation {
     this.(JQueryMethodCall).getMethodName() = "parseXML"
   }
 
-  override DataFlowNode getSourceArgument() {
+  override Expr getSourceArgument() {
     result = getArgument(0)
   }
 
@@ -125,7 +122,7 @@ private class JQueryDomElementDefinition extends DOM::ElementDefinition, @callex
 
   JQueryDomElementDefinition() {
     this = call and
-    isJQueryRef(call.getCallee()) and
+    call = jquery().getACall().asExpr() and
     exists (string s | s = call.getArgument(0).(Expr).getStringValue() |
       // match an opening angle bracket followed by a tag name, followed by arbitrary
       // text and a closing angle bracket, potentially with whitespace in between
@@ -143,8 +140,8 @@ private class JQueryDomElementDefinition extends DOM::ElementDefinition, @callex
    * For example, in `$("<a/>", { href: "https://semmle.com" })` the second argument
    * specifies the attributes of the new `<a>` element.
    */
-  DataFlowNode getAttributes() {
-    result = this.(CallExpr).getArgument(1).(DataFlowNode).getALocalSource()
+  DataFlow::SourceNode getAttributes() {
+    result.flowsToExpr(call.getArgument(1))
   }
 
   override DOM::ElementDefinition getParent() { none() }
@@ -164,17 +161,19 @@ private abstract class JQueryAttributeDefinition extends DOM::AttributeDefinitio
  */
 private class JQueryAttributeDefinitionInElement extends JQueryAttributeDefinition {
   JQueryDomElementDefinition elt;
+  PropWriteNode pwn;
 
   JQueryAttributeDefinitionInElement() {
-    this.(PropWriteNode).getBase().getALocalSource() = elt.getAttributes()
+    this = pwn and
+    elt.getAttributes().flowsToExpr(pwn.getBase())
   }
 
   override string getName() {
-    result = this.(PropWriteNode).getPropertyName()
+    result = pwn.getPropertyName()
   }
 
-  override DataFlowNode getValueNode() {
-    result = this.(PropWriteNode).getRhs()
+  override DataFlow::Node getValueNode() {
+    result = DataFlow::valueNode(pwn.getRhs())
   }
 
   override DOM::ElementDefinition getElement() {
@@ -201,8 +200,8 @@ private class JQueryAttr2Call extends JQueryAttributeDefinition, @callexpr {
     result = this.(CallExpr).getArgument(0).getStringValue()
   }
 
-  override DataFlowNode getValueNode() {
-    result = this.(CallExpr).getArgument(1)
+  override DataFlow::Node getValueNode() {
+    result = DataFlow::valueNode(this.(CallExpr).getArgument(1))
   }
 
   override DOM::ElementDefinition getElement() {
@@ -214,11 +213,11 @@ private class JQueryAttr2Call extends JQueryAttributeDefinition, @callexpr {
  * Holds if `mce` is a call to `elt.attr(attributes)` or `elt.prop(attributes)`.
  */
 private predicate bulkAttributeInit(MethodCallExpr mce, JQueryDomElementDefinition elt,
-                                    DataFlowNode attributes) {
+                                    DataFlow::SourceNode attributes) {
   mce.getReceiver().(DOM::Element).getDefinition() = elt and
   (mce.getMethodName() = "attr" or mce.getMethodName() = "prop") and
   mce.getNumArgument() = 1 and
-  attributes = mce.getArgument(0).(DataFlowNode).getALocalSource()
+  attributes.flowsToExpr(mce.getArgument(0))
 }
 
 /**
@@ -231,9 +230,9 @@ private class JQueryAttrCall extends JQueryAttributeDefinition, @callexpr {
   PropWriteNode pwn;
 
   JQueryAttrCall() {
-    exists (DataFlowNode attributes |
+    exists (DataFlow::SourceNode attributes |
       bulkAttributeInit(this, elt, attributes) and
-      pwn.getBase().getALocalSource() = attributes
+      attributes.flowsToExpr(pwn.getBase())
     )
   }
 
@@ -241,8 +240,8 @@ private class JQueryAttrCall extends JQueryAttributeDefinition, @callexpr {
     result = pwn.getPropertyName()
   }
 
-  override DataFlowNode getValueNode() {
-    result = pwn.getRhs()
+  override DataFlow::Node getValueNode() {
+    result = DataFlow::valueNode(pwn.getRhs())
   }
 
   override DOM::ElementDefinition getElement() {
@@ -259,9 +258,8 @@ private class JQueryAttr3Call extends JQueryAttributeDefinition, @callexpr {
 
   JQueryAttr3Call() {
     exists (MethodCallExpr mce | this = mce |
-      isJQueryRef(mce.getReceiver()) and
+      mce = jquery().getAMemberCall(any(string m | m = "attr" or m = "prop")).asExpr() and
       mce.getArgument(0).(DOM::Element).getDefinition() = elt and
-      (mce.getMethodName() = "attr" or mce.getMethodName() = "prop") and
       mce.getNumArgument() = 3
     )
   }
@@ -270,8 +268,8 @@ private class JQueryAttr3Call extends JQueryAttributeDefinition, @callexpr {
     result = this.(CallExpr).getArgument(1).getStringValue()
   }
 
-  override DataFlowNode getValueNode() {
-    result = this.(CallExpr).getArgument(2)
+  override DataFlow::Node getValueNode() {
+    result = DataFlow::valueNode(this.(CallExpr).getArgument(2))
   }
 
   override DOM::ElementDefinition getElement() {

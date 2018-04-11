@@ -26,16 +26,36 @@
 
 import javascript
 
-from Assignment assgn, NodeModule m, Variable exportsVar, DataFlowNode exportsVal
-where exportsVar = m.getScope().getVariable("exports") and
-      // `assgn` assigns `exportsVal` to `exports`
-      assgn.getLhs() = exportsVar.getAnAccess() and
-      assgn.getRhs().(DataFlowNode).getALocalSource() = exportsVal and
-      // this is OK if `exportsVal` flows into `module.exports`
-      not exists (PropWriteNode pw |
-        pw.getBase() instanceof ModuleAccess and
-        pw.getPropertyName() = "exports" and
-        pw.getRhs().getALocalSource() = exportsVal and
+/**
+ * Holds if `assign` assigns the value of `nd` to `exportsVar`, which is an `exports` variable
+ */
+predicate exportsAssign(Assignment assgn, Variable exportsVar, DataFlow::Node nd) {
+  exists (NodeModule m |
+    exportsVar = m.getScope().getVariable("exports") and
+    assgn.getLhs() = exportsVar.getAnAccess() and
+    nd = assgn.getRhs().flow()
+  )
+  or
+  exportsAssign(assgn, exportsVar, nd.getASuccessor())
+}
+
+/**
+ * Holds if `pw` assigns the value of `nd` to `module.exports`.
+ */
+predicate moduleExportsAssign(PropWriteNode pw, DataFlow::Node nd) {
+  pw.getBase() instanceof ModuleAccess and
+  pw.getPropertyName() = "exports" and
+  nd.asExpr() = pw.getRhs()
+  or
+  moduleExportsAssign(pw, nd.getASuccessor())
+}
+
+from Assignment assgn, Variable exportsVar, DataFlow::Node exportsVal
+where exportsAssign(assgn, exportsVar, exportsVal) and
+      not exists(exportsVal.getAPredecessor()) and
+      not (
+        // this is OK if `exportsVal` flows into `module.exports`
+        moduleExportsAssign(_, exportsVal) and
         // however, if there are no further uses of `exports` the assignment is useless anyway
         strictcount (exportsVar.getAnAccess()) > 1
       )

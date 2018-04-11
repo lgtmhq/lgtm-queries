@@ -159,12 +159,12 @@ abstract class Declaration extends Locatable, @declaration {
   /** Holds if this declaration is a top-level declaration. */
   predicate isTopLevel() {
     not (this.isMember() or
-    this instanceof EnumConstant or
-    this instanceof Parameter or
-    this instanceof ProxyClass or
-    this instanceof LocalVariable or
-    this instanceof TemplateParameter or
-    this.(UserType).isLocal())
+         this instanceof EnumConstant or
+         this instanceof Parameter or
+         this instanceof ProxyClass or
+         this instanceof LocalVariable or
+         this instanceof TemplateParameter or
+         this.(UserType).isLocal())
   }
 
   /** Holds if this declaration is static. */
@@ -178,8 +178,14 @@ abstract class Declaration extends Locatable, @declaration {
     exists(this.getDeclaringType())
   }
 
-  /** Gets the class where this member is declared, if it is a member. */
-  Class getDeclaringType() { member(result,_,this) }
+  /**
+   * Gets the class where this member is declared, if it is a member.
+   * For templates, both the template itself and all instantiations of
+   * the template are considered to have the same declaring class.
+   */
+  Class getDeclaringType() {
+    this = result.getAMember()
+  }
 }
 
 /**

@@ -32,7 +32,11 @@ class CallOnSelf extends CallExpr {
   CallOnSelf() {
     exists (Function binder |
       binder = getEnclosingFunction().getThisBinder() |
-      this.(MethodCallExpr).getReceiver().(DataFlowNode).getALocalSource().(ThisExpr).getBinder() = binder or
+      exists (DataFlow::ThisNode thiz |
+        this = thiz.getAMethodCall(_).asExpr() and
+        thiz.getBinder().getAstNode() = binder
+      )
+      or
       this.(CallSite).getACallee().(ArrowFunctionExpr).getThisBinder() = binder
     )
   }

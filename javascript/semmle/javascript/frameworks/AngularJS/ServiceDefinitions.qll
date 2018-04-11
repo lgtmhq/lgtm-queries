@@ -108,10 +108,10 @@ class BuiltinServiceReference extends ServiceReference, MkBuiltinServiceReferenc
  * NB: Use `BuiltinServiceReference.getAnAccess` instead of this predicate when possible (they are semantically equivalent for builtin services).
  * This predicate can avoid the non-monotonic recursion that `getAnAccess` can cause.
  */
-predicate isBuiltinServiceRef(Expr ref, string serviceName) {
+DataFlow::ParameterNode builtinServiceRef(string serviceName) {
  exists(InjectableFunction f, BuiltinServiceReference service |
    service.getName() = serviceName and
-   ref.mayReferToParameter(f.getDependencyParameter(serviceName))
+   result = DataFlow::parameterNode(f.getDependencyParameter(serviceName))
  )
 
 }
@@ -264,13 +264,13 @@ private string getBuiltinKind(string name) {
  * A custom AngularJS service, defined through `$provide.service`,
  * `module.controller` or a similar method.
  */
-abstract class CustomServiceDefinition extends Expr {
+abstract class CustomServiceDefinition extends DataFlow::Node {
 
   /** Gets a factory function used to create the defined service. */
-  abstract DataFlowNode getAFactoryFunction();
+  abstract DataFlow::SourceNode getAFactoryFunction();
 
   /** Gets a service defined by this definition. */
-  abstract DataFlowNode getAService();
+  abstract DataFlow::SourceNode getAService();
 
   /** Gets the name of the service defined by this definition. */
   abstract string getName();
@@ -285,27 +285,27 @@ abstract class CustomServiceDefinition extends Expr {
 /**
  * A definition of a custom AngularJS dependency injection service using a "recipe".
  */
-abstract class RecipeDefinition extends MethodCallExpr, CustomServiceDefinition, DependencyInjection {
+abstract class RecipeDefinition extends DataFlow::CallNode, CustomServiceDefinition, DependencyInjection {
 
   string methodName;
 
   string name;
 
   RecipeDefinition() {
-    (isModuleRef(getReceiver(), _) or
-      isBuiltinServiceRef(getReceiver(), "$provide")
-      ) and
-    methodName = getMethodName() and
-    getArgument(0).mayHaveStringValue(name)
+    (
+     this = moduleRef(_).getAMethodCall(methodName) or
+     this = builtinServiceRef("$provide").getAMethodCall(methodName)
+    ) and
+    getArgument(0).asExpr().mayHaveStringValue(name)
   }
 
   override string getName() { result = name }
 
-  override DataFlowNode getAFactoryFunction() {
-    result = getArgument(1).(DataFlowNode).getALocalSource()
+  override DataFlow::SourceNode getAFactoryFunction() {
+    result.flowsTo(getArgument(1))
   }
 
-  override DataFlowNode getAnInjectableFunction() {
+  override DataFlow::Node getAnInjectableFunction() {
     methodName != "value" and
     methodName != "constant" and
     result = getAFactoryFunction()
@@ -325,7 +325,7 @@ abstract class RecipeDefinition extends MethodCallExpr, CustomServiceDefinition,
  */
 private abstract class CustomSpecialServiceDefinition extends CustomServiceDefinition, DependencyInjection {
 
-  override DataFlowNode getAnInjectableFunction() {
+  override DataFlow::Node getAnInjectableFunction() {
     result = getAFactoryFunction()
   }
 
@@ -334,8 +334,8 @@ private abstract class CustomSpecialServiceDefinition extends CustomServiceDefin
 /**
  * Holds if `mce` defines a service of type `moduleMethodName` with name `serviceName` using the `factoryFunction` as the factory function.
  */
-private predicate isCustomServiceDefinitionOnModule(MethodCallExpr mce, string moduleMethodName, string serviceName, DataFlowNode factoryFunction) {
-  isModuleRef(mce.getReceiver(), _) and
+private predicate isCustomServiceDefinitionOnModule(DataFlow::CallNode mce, string moduleMethodName, string serviceName, DataFlow::SourceNode factoryFunction) {
+  mce = moduleRef(_).getAMethodCall(moduleMethodName) and
   (
     moduleMethodName = "controller" or
     moduleMethodName = "filter" or
@@ -343,21 +343,19 @@ private predicate isCustomServiceDefinitionOnModule(MethodCallExpr mce, string m
     moduleMethodName = "component" or
     moduleMethodName = "animation"
   ) and
-  mce.getMethodName() = moduleMethodName and
-  mce.getArgument(0).mayHaveStringValue(serviceName) and
-  factoryFunction = mce.getArgument(1).(DataFlowNode).getALocalSource()
+  mce.getArgument(0).asExpr().mayHaveStringValue(serviceName) and
+  factoryFunction.flowsTo(mce.getArgument(1))
 }
 
-private predicate isCustomServiceDefinitionOnProvider(MethodCallExpr mce, string providerName, string providerMethodName, string serviceName, DataFlowNode factoryFunction) {
-  isBuiltinServiceRef(mce.getReceiver(), providerName) and
-  mce.getMethodName() = providerMethodName and
+private predicate isCustomServiceDefinitionOnProvider(DataFlow::CallNode mce, string providerName, string providerMethodName, string serviceName, DataFlow::SourceNode factoryFunction) {
+  mce = builtinServiceRef(providerName).getAMethodCall(providerMethodName) and
   ((
     mce.getNumArgument() = 1 and
-    mce.hasOptionArgument(0, serviceName, factoryFunction)
+    factoryFunction.flowsTo(mce.getOptionArgument(0, serviceName))
   ) or (
     mce.getNumArgument() = 2 and
-    mce.getArgument(0).mayHaveStringValue(serviceName) and
-    factoryFunction = mce.getArgument(1).(DataFlowNode).getALocalSource()
+    mce.getArgument(0).asExpr().mayHaveStringValue(serviceName) and
+    factoryFunction.flowsTo(mce.getArgument(1))
   ))
 }
 
@@ -368,7 +366,7 @@ class ControllerDefinition extends CustomSpecialServiceDefinition {
 
   string name;
 
-  DataFlowNode factoryFunction;
+  DataFlow::SourceNode factoryFunction;
 
   ControllerDefinition() {
     isCustomServiceDefinitionOnModule(this, "controller", name, factoryFunction) or
@@ -379,11 +377,11 @@ class ControllerDefinition extends CustomSpecialServiceDefinition {
     result = name
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
     result = factoryFunction
   }
 
-  override DataFlowNode getAFactoryFunction() {
+  override DataFlow::SourceNode getAFactoryFunction() {
     result = factoryFunction
   }
 
@@ -396,7 +394,7 @@ class FilterDefinition extends CustomSpecialServiceDefinition {
 
   string name;
 
-  DataFlowNode factoryFunction;
+  DataFlow::SourceNode factoryFunction;
 
   FilterDefinition() {
     isCustomServiceDefinitionOnModule(this, "filter", name, factoryFunction) or
@@ -407,11 +405,14 @@ class FilterDefinition extends CustomSpecialServiceDefinition {
     result = name
   }
 
-  override DataFlowNode getAService() {
-    result = factoryFunction.(InjectableFunction).asFunction().getAReturnedExpr().(DataFlowNode).getALocalSource()
+  override DataFlow::SourceNode getAService() {
+    exists (InjectableFunction f |
+      f = factoryFunction and
+      result.flowsToExpr(f.asFunction().getAReturnedExpr())
+    )
   }
 
-  override DataFlowNode getAFactoryFunction() {
+  override DataFlow::SourceNode getAFactoryFunction() {
     result = factoryFunction
   }
 
@@ -424,7 +425,7 @@ class DirectiveDefinition extends CustomSpecialServiceDefinition {
 
   string name;
 
-  DataFlowNode factoryFunction;
+  DataFlow::SourceNode factoryFunction;
 
   DirectiveDefinition() {
     isCustomServiceDefinitionOnModule(this, "directive", name, factoryFunction) or
@@ -435,14 +436,14 @@ class DirectiveDefinition extends CustomSpecialServiceDefinition {
     result = name
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
     exists (CustomDirective d |
       d.getDefinition() = this and
       result = d.getAnInstantiation()
     )
   }
 
-  override DataFlowNode getAFactoryFunction() {
+  override DataFlow::SourceNode getAFactoryFunction() {
     result = factoryFunction
   }
 
@@ -455,7 +456,7 @@ private class CustomDirectiveControllerDependencyInjection extends DependencyInj
     this instanceof ComponentDefinition
   }
 
-  override DataFlowNode getAnInjectableFunction() {
+  override DataFlow::Node getAnInjectableFunction() {
     exists (CustomDirective d |
       d.getDefinition() = this and
       // NB: can not use `.getController` here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
@@ -472,7 +473,7 @@ class ComponentDefinition extends CustomSpecialServiceDefinition {
 
   string name;
 
-  DataFlowNode config;
+  DataFlow::SourceNode config;
 
   ComponentDefinition() {
     isCustomServiceDefinitionOnModule(this, "component", name, config) or
@@ -483,19 +484,19 @@ class ComponentDefinition extends CustomSpecialServiceDefinition {
     result = name
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
     exists (CustomDirective d |
       d.getDefinition() = this and
       result = d.getAnInstantiation()
     )
   }
 
-  override DataFlowNode getAFactoryFunction() {
+  override DataFlow::SourceNode getAFactoryFunction() {
     none()
   }
 
   /** Gets the configuration object for the defined component. */
-  ObjectExpr getConfig() {
+  DataFlow::SourceNode getConfig() {
     result = config
   }
 
@@ -508,7 +509,7 @@ class AnimationDefinition extends CustomSpecialServiceDefinition {
 
   string name;
 
-  DataFlowNode factoryFunction;
+  DataFlow::SourceNode factoryFunction;
 
   AnimationDefinition() {
     isCustomServiceDefinitionOnModule(this, "animation", name, factoryFunction) or
@@ -519,11 +520,14 @@ class AnimationDefinition extends CustomSpecialServiceDefinition {
     result = name
   }
 
-  override DataFlowNode getAService() {
-     result = factoryFunction.(InjectableFunction).asFunction().getAReturnedExpr().(DataFlowNode).getALocalSource()
+  override DataFlow::SourceNode getAService() {
+    exists (InjectableFunction f |
+      f = factoryFunction and
+      result.flowsToExpr(f.asFunction().getAReturnedExpr())
+    )
   }
 
-  override DataFlowNode getAFactoryFunction() {
+  override DataFlow::SourceNode getAFactoryFunction() {
     result = factoryFunction
   }
 
@@ -537,7 +541,7 @@ class AnimationDefinition extends CustomSpecialServiceDefinition {
 deprecated class ServiceDefinition extends Expr {
 
   ServiceDefinition() {
-    this instanceof FactoryRecipeDefinition
+    DataFlow::valueNode(this) instanceof FactoryRecipeDefinition
   }
 
 }
@@ -589,7 +593,7 @@ class InjectableFunctionServiceRequest extends ServiceRequest {
   InjectableFunction injectedFunction;
 
   InjectableFunctionServiceRequest() {
-    this = injectedFunction
+    DataFlow::valueNode(this) = injectedFunction
   }
 
   /**
@@ -621,10 +625,11 @@ class InjectableFunctionServiceRequest extends ServiceRequest {
 
 }
 
-private DataFlowNode getFactoryFunctionResult(RecipeDefinition def) {
-  exists(Function factoryFunction |
-    factoryFunction = def.getAFactoryFunction().(InjectableFunction).asFunction() and
-    result = factoryFunction.getAReturnedExpr().(DataFlowNode).getALocalSource()
+private DataFlow::SourceNode getFactoryFunctionResult(RecipeDefinition def) {
+  exists(Function factoryFunction, InjectableFunction f |
+    f = def.getAFactoryFunction() and
+    factoryFunction = f.asFunction() and
+    result.flowsToExpr(factoryFunction.getAReturnedExpr())
   )
 }
 
@@ -637,7 +642,7 @@ class FactoryRecipeDefinition extends RecipeDefinition {
     methodName = "factory"
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
 
     /* The Factory recipe constructs a new service using a function
     with zero or more arguments (these are dependencies on other
@@ -656,7 +661,7 @@ class DecoratorRecipeDefinition extends RecipeDefinition {
     methodName = "decorator"
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
 
     /* The return value of the function provided to the decorator
     will take place of the service, directive, or filter being
@@ -675,15 +680,17 @@ class ServiceRecipeDefinition extends RecipeDefinition {
     methodName = "service"
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
 
     /* The service recipe produces a service just like the Value or
     Factory recipes, but it does so by invoking a constructor with
     the new operator. The constructor can take zero or more
     arguments, which represent dependencies needed by the instance
     of this type. */
-
-    result = getAFactoryFunction().(InjectableFunction).asFunction()
+    exists (InjectableFunction f |
+      f = getAFactoryFunction() and
+      result = DataFlow::valueNode(f.asFunction())
+    )
   }
 }
 
@@ -696,7 +703,7 @@ class ValueRecipeDefinition extends RecipeDefinition {
     methodName = "value"
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
     result = getAFactoryFunction()
   }
 }
@@ -710,7 +717,7 @@ class ConstantRecipeDefinition extends RecipeDefinition {
     methodName = "constant"
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
     result = getAFactoryFunction()
   }
 }
@@ -728,7 +735,7 @@ class ProviderRecipeDefinition extends RecipeDefinition {
     result = name or result = name + "Provider"
   }
 
-  override DataFlowNode getAService() {
+  override DataFlow::SourceNode getAService() {
 
     /* The Provider recipe is syntactically defined as a custom type
     that implements a $get method. This method is a factory function
@@ -737,12 +744,13 @@ class ProviderRecipeDefinition extends RecipeDefinition {
     method set to your factory function is automatically created
     under the hood.  */
 
-    exists(Function enclosing, PropWriteNode prop |
-      enclosing = getAFactoryFunction().(InjectableFunction).asFunction() and
+    exists(Function enclosing, PropWriteNode prop, InjectableFunction f |
+      f = getAFactoryFunction() and
+      enclosing = f.asFunction() and
       enclosing = prop.(Expr).getEnclosingFunction() and
       prop.getBase() instanceof ThisExpr and
       prop.getPropertyName() = "$get" and
-      result = prop.getRhs().getALocalSource()
+      result.flowsToExpr(prop.getRhs())
     )
   }
 
@@ -754,7 +762,7 @@ private class ProviderRecipeServiceInjection extends DependencyInjection {
     this instanceof ProviderRecipeDefinition
   }
 
-  override DataFlowNode getAnInjectableFunction() {
+  override DataFlow::Node getAnInjectableFunction() {
     result = this.(ProviderRecipeDefinition).getAService()
   }
 
@@ -773,7 +781,7 @@ class ConfigMethodDefinition extends ModuleApiCall  {
    * Gets a provided configuration method.
    */
   InjectableFunction getConfigMethod() {
-    result = getArgument(0).(DataFlowNode).getALocalSource()
+    result.(DataFlow::SourceNode).flowsTo(getArgument(0))
   }
 }
 
@@ -790,7 +798,7 @@ class RunMethodDefinition extends ModuleApiCall  {
    * Gets a provided run method.
    */
   InjectableFunction getRunMethod() {
-    result = getArgument(0).(DataFlowNode).getALocalSource()
+    result.(DataFlow::SourceNode).flowsTo(getArgument(0))
   }
 }
 

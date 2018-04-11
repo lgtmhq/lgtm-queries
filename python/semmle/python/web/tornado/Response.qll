@@ -16,7 +16,6 @@ import python
 
 import semmle.python.security.TaintTracking
 import semmle.python.security.strings.Basic
-import semmle.python.security.http.Response
 
 import Tornado
 
@@ -61,7 +60,7 @@ class TornadoConnectionWrite extends TaintSink {
     }
 
     override predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpString
+        kind instanceof ExternalStringKind
     }
 
 }
@@ -81,7 +80,7 @@ class TornadoHttpRequestHandlerWrite extends TaintSink {
     }
 
     override predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpString
+        kind instanceof ExternalStringKind
     }
 
 }
@@ -101,7 +100,7 @@ class TornadoHttpRequestHandlerRedirect extends TaintSink {
     }
 
     override predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpString
+        kind instanceof ExternalStringKind
     }
 
 }

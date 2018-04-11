@@ -42,7 +42,6 @@ class EnvironmentRead extends Expr {
   }
 }
 
-
 private predicate readsEnvironment(Expr read, string sourceDescription) {
   exists(FunctionCall call, string name |
     read = call and

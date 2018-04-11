@@ -13,7 +13,7 @@
 
 /** Provides classes for working with HTML documents. */
 
-import Locations
+import javascript
 
 /**
  * An HTML file.

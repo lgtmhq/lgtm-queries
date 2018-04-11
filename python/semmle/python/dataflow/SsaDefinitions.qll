@@ -204,7 +204,7 @@ cached module SsaSource {
     cached predicate multi_assignment_definition(Variable v, ControlFlowNode defn) {
         defn.(NameNode).defines(v) and 
         not exists(defn.(DefinitionNode).getValue()) and
-        exists(TupleNode t | t.getAnElement() = defn)
+        exists(SequenceNode s | s.getAnElement() = defn)
     }
 
     /** Holds if `v` is defined outside its scope and thus *may* be redefined by `call`. */
@@ -216,6 +216,7 @@ cached module SsaSource {
 
     /** Holds if `v` is a non-local to the scope which has `entry` as its entry node */
     cached predicate nonlocal_variable_entry_definition(LocalVariable v, ControlFlowNode entry) {
+        v.getScope() instanceof Function and
         exists(Function f |
             f.getEntryNode() = entry |
             v.getALoad().getScope() = f and

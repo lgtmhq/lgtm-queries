@@ -27,7 +27,7 @@ private import semmle.javascript.dataflow.Refinements
  */
 private class AnalyzedCapturedVariable extends @variable {
   AnalyzedCapturedVariable() {
-    this.(Variable).isCaptured()
+    this.(LocalVariable).isCaptured()
   }
 
   /**
@@ -415,13 +415,11 @@ private class AnalyzedGlobalVarUse extends DataFlow::AnalyzedValueNode {
     result = getAnAssigningPropWrite().getRhs().analyze().getALocalValue()
     or
     // prefer definitions within the same toplevel
-    exists (AnalyzedVarDef def | defIn(gv, def, tl) |
-      result = def.getAnAssignedValue()
-    )
+    result = defIn(gv, tl).getAnAssignedValue()
     or
     // if there aren't any, consider all definitions as sources
-    not defIn(gv, _, tl) and
-    result = gv.(AnalyzedCapturedVariable).getALocalValue()
+    not exists(defIn(gv, tl)) and
+    result = defIn(gv, _).getAnAssignedValue()
   }
 }
 
@@ -437,22 +435,34 @@ private predicate useIn(GlobalVariable gv, GlobalVarAccess gva, TopLevel tl) {
 /**
  * Holds if `def` is a definition of `gv` in `tl`.
  */
-private predicate defIn(GlobalVariable gv, AnalyzedVarDef def, TopLevel tl) {
-  def.getTarget().(VarRef).getVariable() = gv and
-  def.getTopLevel() = tl
+private AnalyzedVarDef defIn(GlobalVariable gv, TopLevel tl) {
+  result.getTarget().(VarRef).getVariable() = gv and
+  result.getTopLevel() = tl
 }
 
 /**
  * Holds if there is a write to a property with the same name as `gv` on an object
  * for which the analysis is incomplete due to the given `reason`.
  */
-
+pragma[noinline]
 private predicate clobberedProp(GlobalVariable gv, DataFlow::Incompleteness reason) {
-  exists (PropWriteNode pwn, AbstractValue baseVal |
+  exists (AnalyzedNode base |
+    potentialPropWriteOfGlobal(base, gv) and
+    indefiniteObjectValue(base.getALocalValue(), reason)
+  )
+}
+
+pragma[noinline]
+private predicate indefiniteObjectValue(AbstractValue val, DataFlow::Incompleteness reason) {
+  val.isIndefinite(reason) and
+  val.getType() = TTObject()
+}
+
+pragma[noinline]
+private predicate potentialPropWriteOfGlobal(AnalyzedNode base, GlobalVariable gv) {
+  exists (PropWriteNode pwn |
     pwn.getPropertyName() = gv.getName() and
-    baseVal = pwn.getBase().analyze().getALocalValue() and
-    baseVal.isIndefinite(reason) and
-    baseVal.getType() = TTObject()
+    base = pwn.getBase().analyze()
   )
 }
 

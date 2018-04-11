@@ -13,14 +13,10 @@
 
 /** Provides classes for working with functions. */
 
-import Locations
-import Stmt
-import Variables
-import AST
-import BasicBlocks
+import javascript
 
 /** A function as defined either by a function declaration or a function expression. */
-class Function extends @function, Parameterized, TypeParameterized, StmtContainer, Documentable {
+class Function extends @function, Parameterized, TypeParameterized, StmtContainer, Documentable, AST::ValueNode {
   /** Gets the `i`th parameter of this function. */
   Parameter getParameter(int i) {
     result = getChildExpr(i)

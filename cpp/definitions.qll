@@ -36,14 +36,14 @@ class Top extends Element {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath,
                             int startline, int startcolumn,
                             int endline, int endcolumn) {
     // Element
     exists(Location l | l = this.getLocation()
-                    and filepath    = l.getFile().getFullName()
+                    and filepath    = l.getFile().getAbsolutePath()
                     and startline   = l.getStartLine()
                     and startcolumn = l.getStartColumn()
                     and endline     = l.getEndLine()
@@ -51,17 +51,11 @@ class Top extends Element {
     or
     // File (does not have a `.getLocation()`)
     exists(File f | f = this
-                and filepath    = f.getFullName()
+                and filepath    = f.getAbsolutePath()
                 and startline   = 1
                 and startcolumn = 1
                 and endline     = 1
                 and endcolumn   = 1)
-  }
-
-  /** Gets a textual representation of this element. */
-  string toString() {
-    result = this.toString() or
-    result = this.(File).toString()
   }
 }
 
@@ -82,7 +76,7 @@ class MacroAccessWithHasLocationInfo extends Top {
     exists(MacroAccess ma, Location l |
            ma = this
        and l = ma.getLocation()
-       and path = l.getFile().getFullName()
+       and path = l.getFile().getAbsolutePath()
        and sl = l.getStartLine()
        and sc = l.getStartColumn()
        and el = sl
@@ -106,7 +100,7 @@ class IncludeWithHasLocationInfo extends Top {
     exists(Include i, Location l |
       i = this and
       l = i.getLocation() and
-      path = l.getFile().getFullName() and
+      path = l.getFile().getAbsolutePath() and
       sl = l.getEndLine() and
       sc = l.getEndColumn() + 1 - i.getIncludeText().length() and
       el = l.getEndLine() and

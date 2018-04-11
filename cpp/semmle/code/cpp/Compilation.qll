@@ -85,8 +85,27 @@ class Compilation extends @compilation {
     compilation_time(this, i, 4, result)
   }
 
-  /** Gets an argument passed to the extractor on this invocation. */
+  /**
+   * Gets an argument passed to the extractor on this invocation.
+   */
   string getAnArgument() { result = getArgument(_) }
+
+  /**
+   * Gets the `i`th argument passed to the extractor on this invocation.
+   *
+   * If the compiler was invoked as `gcc -c f1.c f2.c f3.c` then this
+   * will typically hold for
+   *
+   * i | result
+   * - | ---
+   * 0 | *path to extractor*
+   * 1 | `--mimic`
+   * 2 | `/usr/bin/gcc`
+   * 3 | `-c`
+   * 4 | f1.c
+   * 5 | f2.c
+   * 6 | f3.c
+   */
   string getArgument(int i) {
     compilation_args(this, i, result)
   }

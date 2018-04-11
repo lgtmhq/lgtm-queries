@@ -94,7 +94,7 @@ class ExpressRenderSink extends TaintedPathSink, DataFlow::ValueNode {
  */
 class AngularJSTemplateUrlSink extends TaintedPathSink, DataFlow::ValueNode {
   AngularJSTemplateUrlSink() {
-    astNode = any(AngularJS::CustomDirective d).getMember("templateUrl")
+    this = any(AngularJS::CustomDirective d).getMember("templateUrl")
   }
 }
 

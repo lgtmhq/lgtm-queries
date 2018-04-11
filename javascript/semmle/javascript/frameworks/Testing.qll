@@ -47,7 +47,7 @@ class BDDTest extends Test, @callexpr {
     exists (CallExpr call | call = this |
       call.getCallee().(VarAccess).getName() = "it" and
       exists(call.getArgument(0).getStringValue()) and
-      call.getArgument(1).(DataFlowNode).getALocalSource() instanceof Function
+      call.getArgument(1).analyze().getAValue() instanceof AbstractFunction
     )
   }
 }
@@ -59,19 +59,12 @@ class BDDTest extends Test, @callexpr {
 class XUnitTest extends Test, XUnitFact {
 }
 
-private CallExpr getModuleMethodCall(string path, string methodName) {
-  exists(ModuleInstance m |
-    m.getPath() = path and
-    result = m.getAMethodCall(methodName)
-  )
-}
-
 /**
  * A tape test, that is, an invocation of `require('tape').test`.
  */
 class TapeTest extends Test, @callexpr {
   TapeTest() {
-    this = getModuleMethodCall("tape", "test")
+    this = DataFlow::moduleImport("tape").getAMemberCall("test").asExpr()
   }
 }
 
@@ -80,7 +73,7 @@ class TapeTest extends Test, @callexpr {
  */
 class AvaTest extends Test, @callexpr {
   AvaTest() {
-    this = getModuleMethodCall("ava", "test")
+    this = DataFlow::moduleImport("ava").getAMemberCall("test").asExpr()
   }
 }
 
@@ -89,10 +82,10 @@ class AvaTest extends Test, @callexpr {
  */
 class CucumberTest extends Test, @callexpr {
   CucumberTest() {
-    exists(ModuleInstance m, CallExpr call |
+    exists(DataFlow::ModuleImportNode m, CallExpr call |
       m.getPath() = "cucumber" and
-      call.getCallee().(DataFlowNode).getALocalSource() = m and
-      call.getArgument(0).(DataFlowNode).getALocalSource() instanceof Function and
+      call = m.getAnInvocation().asExpr() and
+      call.getArgument(0).analyze().getAValue() instanceof AbstractFunction and
       this = call
     )
   }

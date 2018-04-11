@@ -16,8 +16,7 @@
  * liveness information for local variables.
  */
 
-import CFG
-import DefUse
+import javascript
 
 /**
  * Holds if `nd` starts a new basic block.

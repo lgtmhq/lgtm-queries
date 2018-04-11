@@ -109,15 +109,12 @@ class DomSink extends XssSink {
  * An expression whose value is interpreted as HTML by a DOMParser.
  */
 class DomParserSink extends XssSink {
-
   DomParserSink() {
-    exists (NewExpr parser, MethodCallExpr parse |
-      parser.getCallee().accessesGlobal("DOMParser") and
-      parse.calls(any(DataFlowNode e | e.getALocalSource() = parser), "parseFromString") and
-      this.asExpr() = parse.getArgument(0)
+    exists (DataFlow::GlobalVarRefNode domParser |
+      domParser.getName() = "DOMParser" and
+      this = domParser.getAnInstantiation().getAMethodCall("parseFromString").getArgument(0)
     )
   }
-  
 }
 
 /**
@@ -128,10 +125,10 @@ class DomParserSink extends XssSink {
  */
 class DangerouslySetInnerHtmlSink extends XssSink, DataFlow::ValueNode {
   DangerouslySetInnerHtmlSink() {
-    exists (JSXAttribute attr, DataFlowNode valueSrc, PropWriteNode pwn |
+    exists (JSXAttribute attr, DataFlow::SourceNode valueSrc, PropWriteNode pwn |
       attr.getName() = "dangerouslySetInnerHTML" and
-      valueSrc = attr.getValue().(DataFlowNode).getALocalSource() and
-      pwn.getBase().getALocalSource() = valueSrc and
+      valueSrc.flowsToExpr(attr.getValue()) and
+      valueSrc.flowsToExpr(pwn.getBase()) and
       pwn.getPropertyName() = "__html" and
       astNode = pwn.getRhs()
     )

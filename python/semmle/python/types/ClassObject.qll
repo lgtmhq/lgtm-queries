@@ -555,7 +555,7 @@ ClassObject theKeyErrorType() {
 }
 
 /** The builtin class of bound methods */
-cached
+pragma [noinline]
 ClassObject theBoundMethodType() {
     if version111plus() then
         py_special_objects(result, "MethodType")

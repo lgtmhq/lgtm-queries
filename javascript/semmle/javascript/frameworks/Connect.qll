@@ -23,22 +23,20 @@ module Connect {
    */
   class ServerDefinition extends HTTP::Servers::StandardServerDefinition, CallExpr {
     ServerDefinition() {
-      exists (ModuleInstance connect | connect.getPath() = "connect" |
-        // `app = connect()`
-        getCallee().(DataFlowNode).getALocalSource() = connect
-      )
+      // `app = connect()`
+      this = DataFlow::moduleImport("connect").getAnInvocation().asExpr()
     }
   }
 
   /**
    * A Connect route handler.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
 
     Function function;
 
     RouteHandler() {
-      function = this and
+      function = astNode and
       any(RouteSetup setup).getARouteHandler() = this
     }
 
@@ -122,11 +120,11 @@ module Connect {
       getMethodName() = "use"
     }
 
-    override DataFlowNode getARouteHandler() {
-      result = getAnArgument().(DataFlowNode).getALocalSource()
+    override DataFlow::SourceNode getARouteHandler() {
+      result.flowsToExpr(getAnArgument())
     }
 
-    override DataFlowNode getServer() {
+    override Expr getServer() {
       result = server
     }
   }
@@ -138,10 +136,7 @@ module Connect {
 
     Credentials() {
       exists (CallExpr call |
-        exists (ModuleInstance mod |
-          mod.getPath() = "basic-auth-connect" |
-          call.getCallee().(DataFlowNode).getALocalSource() = mod
-        ) and
+        call = DataFlow::moduleImport("basic-auth-connect").getAnInvocation().asExpr() and
         call.getNumArgument() = 2 |
         this = call.getArgument(0) and kind = "user name" or
         this = call.getArgument(1) and kind = "password"

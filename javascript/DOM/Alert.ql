@@ -24,6 +24,4 @@
 
 import javascript
 
-from CallExpr alert
-where alert.getCallee().accessesGlobal("alert")
-select alert, "Avoid calling alert."
+select DataFlow::globalVarRef("alert").getACall(), "Avoid calling alert."

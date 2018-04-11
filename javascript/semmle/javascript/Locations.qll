@@ -13,15 +13,13 @@
 
 /** Provides classes for working with locations and program elements that have locations. */
 
-import Files
-import Lines
-import Tokens
+import javascript
 
 /**
  * A location as given by a file, a start line, a start column,
  * an end line, and an end column.
  *
- * For more information about locations see [LGTM locations](https://lgtm.com/docs/ql/locations).
+ * For more information about locations see [LGTM locations](https://lgtm.com/help/ql/locations).
  */
 class Location extends @location {
   /** Gets the file for this location. */
@@ -99,7 +97,7 @@ class Location extends @location {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                                              int endline, int endcolumn) {

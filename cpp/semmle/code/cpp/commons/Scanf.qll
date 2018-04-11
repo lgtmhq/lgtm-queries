@@ -22,9 +22,21 @@ import semmle.code.cpp.Type
  */
 abstract class ScanfFunction extends Function
 {
+  /**
+   * Gets the position at which the input string or stream parameter occurs,
+   * if this function does not read from standard input.
+   */
   abstract int getInputParameterIndex();
+
+  /**
+   * Gets the position at which the format parameter occurs.
+   */
   abstract int getFormatParameterIndex();
 
+  /**
+   * Holds if the default meaning of `%s` is a `wchar_t*` string
+   * (rather than a `char*`).
+   */
   predicate isWideCharDefault()
   {
     exists(getName().indexOf("wscanf"))
@@ -32,8 +44,8 @@ abstract class ScanfFunction extends Function
 }
 
 /**
-  * The standard function `scanf` (and variations)
-  */
+ * The standard function `scanf` (and variations).
+ */
 class Scanf extends ScanfFunction
 {
   Scanf()
@@ -47,13 +59,13 @@ class Scanf extends ScanfFunction
     )
   }
 
-  int getInputParameterIndex() { none() }
-  int getFormatParameterIndex() { result = 0 }
+  override int getInputParameterIndex() { none() }
+  override int getFormatParameterIndex() { result = 0 }
 }
 
 /**
-  * The standard function `fscanf` (and variations)
-  */
+ * The standard function `fscanf` (and variations).
+ */
 class Fscanf extends ScanfFunction
 {
   Fscanf()
@@ -67,13 +79,13 @@ class Fscanf extends ScanfFunction
     )
   }
 
-  int getInputParameterIndex() { result = 0 }
-  int getFormatParameterIndex() { result = 1 }
+  override int getInputParameterIndex() { result = 0 }
+  override int getFormatParameterIndex() { result = 1 }
 }
 
 /**
-  * The standard function `sscanf` (and variations)
-  */
+ * The standard function `sscanf` (and variations).
+ */
 class Sscanf extends ScanfFunction
 {
   Sscanf()
@@ -87,13 +99,13 @@ class Sscanf extends ScanfFunction
     )
   }
 
-  int getInputParameterIndex() { result = 0 }
-  int getFormatParameterIndex() { result = 1 }
+  override int getInputParameterIndex() { result = 0 }
+  override int getFormatParameterIndex() { result = 1 }
 }
 
 /**
-  * The standard(ish) function `snscanf` (and variations)
-  */
+ * The standard(ish) function `snscanf` (and variations).
+ */
 class Snscanf extends ScanfFunction
 {
   Snscanf()
@@ -107,8 +119,8 @@ class Snscanf extends ScanfFunction
     )
   }
 
-  int getInputParameterIndex() { result = 0 }
-  int getFormatParameterIndex() { result = 2 }
+  override int getInputParameterIndex() { result = 0 }
+  override int getFormatParameterIndex() { result = 2 }
 }
 
 /**
@@ -121,30 +133,43 @@ class ScanfFunctionCall extends FunctionCall
     this.getTarget() instanceof ScanfFunction
   }
 
+  /**
+   * Gets the `scanf`-like function that is called.
+   */
   ScanfFunction getScanfFunction()
   {
     result = getTarget()
   }
 
-  /** the index at which the input string or stream occurs in the argument list */
+  /**
+   * Gets the position at which the input string or stream parameter occurs,
+   * if this function call does not read from standard input.
+   */
   int getInputParameterIndex()
   {
     result = getScanfFunction().getInputParameterIndex()
   }
 
-  /** the index at which the format string occurs in the argument list */
+  /**
+   * Gets the position at which the format parameter occurs.
+   */
   int getFormatParameterIndex()
   {
     result = getScanfFunction().getFormatParameterIndex()
   }
 
-  /** the format expression used in this call */
+  /**
+   * Gets the format expression used in this call.
+   */
   Expr getFormat()
   {
     result = this.getArgument(this.getFormatParameterIndex())
   }
 
-  /** Holds if the default meaning of `%s` is a `wchar_t*` (rather than a `char*`). */
+  /**
+   * Holds if the default meaning of `%s` is a `wchar_t*` string
+   * (rather than a `char*`).
+   */
   predicate isWideCharDefault()
   {
     getScanfFunction().isWideCharDefault()
@@ -170,33 +195,42 @@ class ScanfFormatLiteral extends Expr {
     getUse().getTarget().(ScanfFunction).isWideCharDefault()
   }
 
-  /** the format string itself; we perform transformations
-      '%%' is replaced with '_'
-        (avoids accidentally processing them as format specifiers)
-      '%*' is replaced with '_'
-        (%*any is matched but not assigned to an argument)
-  */
+  /**
+   * Gets the format string itself, transformed as follows:
+   *  - '%%' is replaced with '_'
+   *    (this avoids accidentally processing them as format specifiers)
+   *  - '%*' is replaced with '_'
+   *    (%*any is matched but not assigned to an argument)
+   */
   string getFormat() {
     result = this.getValue().replaceAll("%%", "_").replaceAll("%*", "_")
   }
 
-  /** Gets the number of conversion specifiers (not counting `%%` and `%*`...) */
+  /**
+   * Gets the number of conversion specifiers (not counting `%%` and `%*`...).
+   */
   int getNumConvSpec() {
     result = count(this.getFormat().indexOf("%"))
   }
 
-  /** the position in the string at which the nth conversion specifier starts */
+  /**
+   * Gets the position in the string at which the nth conversion specifier starts.
+   */
   int getConvSpecOffset(int n) {
        n = 0 and result = this.getFormat().indexOf("%", 0, 0)
     or n > 0 and exists(int p | n = p + 1 and result = this.getFormat().indexOf("%", 0, this.getConvSpecOffset(p) + 2))
   }
 
-  /** regular expressions to match the individual parts of a conversion specifier */
+  /**
+   * Gets the regular expression to match each individual part of a conversion specifier.
+   */
   private string getMaxWidthRegexp() { result = "(?:[1-9][0-9]*)?" }
   private string getLengthRegexp() { result = "(?:hh?|ll?|L|q|j|z|t)?" }
   private string getConvCharRegexp() { result = "[aAcCdeEfFgGimnopsSuxX]" }
 
-  /** the regular expression used for matching a whole conversion specifier */
+  /**
+   * Gets the regular expression used for matching a whole conversion specifier.
+   */
   string getConvSpecRegexp() {
     // capture groups: 1 - entire conversion spec, including "%"
     //                 2 - maximum width
@@ -205,12 +239,14 @@ class ScanfFormatLiteral extends Expr {
     result = "(\\%("+this.getMaxWidthRegexp()+")("+this.getLengthRegexp()+")("+this.getConvCharRegexp()+")).*"
   }
 
-  /** parse a conversion specifier
-    *  @param n     which conversion specifier to parse
-    *  @param spec  the whole conversion specifier
-    *  @param width the maximum width option of this input (empty string if none is given)
-    *  @param len   the length flag of this input (empty string if none is given)
-    *  @param conv  the conversion character of this input */
+  /**
+   * Holds if the arguments are a parsing of a conversion specifier to this format string.
+   *  @param n     which conversion specifier to parse
+   *  @param spec  the whole conversion specifier
+   *  @param width the maximum width option of this input (empty string if none is given)
+   *  @param len   the length flag of this input (empty string if none is given)
+   *  @param conv  the conversion character of this input
+   */
   predicate parseConvSpec(int n, string spec, string width, string len, string conv) {
     exists(int offset, string fmt, string rst, string regexp |
       offset = this.getConvSpecOffset(n) and
@@ -225,20 +261,31 @@ class ScanfFormatLiteral extends Expr {
     )
   }
 
-  /** the maximum width option of the nth input (empty string if none is given) */
+  /**
+   * Gets the maximum width option of the nth input (empty string if none is given).
+   */
   string getMaxWidthOpt(int n) { exists(string spec, string len, string conv | this.parseConvSpec(n, spec, result, len, conv)) }
 
-  /** the maximum width of the nth input */
+  /**
+   * Gets the maximum width of the nth input.
+   */
   int getMaxWidth(int n) { result = this.getMaxWidthOpt(n).toInt() }
 
-  /** the length flag of the nth conversion specifier */
+  /**
+   * Gets the length flag of the nth conversion specifier.
+   */
   string getLength(int n) { exists(string spec, string width, string conv | this.parseConvSpec(n, spec, width, result, conv)) }
 
-  /** the conversion character of the nth conversion specifier */
+  /**
+   * Gets the conversion character of the nth conversion specifier.
+   */
   string getConversionChar(int n) { exists(string spec, string width, string len | this.parseConvSpec(n, spec, width, len, result)) }
 
-  /** the maximum length of the string that can be produced by the nth conversion specifier of this format string;
-      fails if no estimate is possible (or implemented)  */
+  /**
+   * Gets the maximum length of the string that can be produced by the nth
+   * conversion specifier of this format string; fails if no estimate is
+   * possible (or implemented).
+   */
   int getMaxConvertedLength(int n) {
     (this.getConversionChar(n).toLowerCase() = "s") and
     (result = this.getMaxWidth(n))

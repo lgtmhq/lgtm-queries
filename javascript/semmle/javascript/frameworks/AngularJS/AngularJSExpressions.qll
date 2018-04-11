@@ -35,15 +35,48 @@ abstract class NgSourceProvider extends Locatable {
    */
   abstract predicate providesSourceAt(string src, string path, int startLine, int startColumn, int endLine, int endColumn);
 
+  /**
+   * Gets the enclosing element of the provided source.
+   */
+  abstract DOM::ElementDefinition getEnclosingElement();
+  
 }
 
 /**
  * The source of an AngularJS expression.
  */
-class NgSource extends string {
+private newtype TNgSource = MkNgSource(NgSourceProvider p)
+
+/**
+ * The source of an AngularJS expression.
+ */
+class NgSource extends MkNgSource {
+
+  NgSourceProvider provider;
+
   NgSource() {
-    any(NgSourceProvider p).providesSourceAt(this, _, _, _, _, _)
+    this = MkNgSource(provider)
   }
+
+  /**
+   * Gets the raw text of this source code.
+   */
+  string getText() {
+    provider.providesSourceAt(result, _, _, _, _, _)
+  }
+
+  /**
+   * Gets the provider for this source code.
+   */
+  NgSourceProvider getProvider() {
+    result = provider
+  }
+
+  /** Gets a textual representation of this element. */
+  string toString() {
+    result = getText()
+  }
+
 }
 
 /**
@@ -71,6 +104,10 @@ private class HtmlTextAsNgSourceProvider extends NgSourceProvider, HtmlText {
     getLocation().hasLocationInfo(path, startLine, startColumn, endLine, endColumn) // this is the entire surrounding text element, we could be more precise by counting lines
   }
 
+  override DOM::ElementDefinition getEnclosingElement() {
+    result = getParent()
+  }
+  
 }
 
 /**
@@ -89,6 +126,10 @@ private abstract class HtmlAttributeAsNgSourceProvider extends NgSourceProvider,
 
   /** The offset into the attribute where the expression starts. */
   abstract int getOffset();
+  
+  override DOM::ElementDefinition getEnclosingElement() {
+    result = getElement()
+  }
 
 }
 
@@ -151,12 +192,15 @@ private class HtmlAttributeAsPlainNgSourceProvider extends HtmlAttributeAsNgSour
  */
 private class TemplateFieldNgSourceProvider extends NgSourceProvider {
 
+  AngularJS::GeneralDirective directive;
+
   string source;
 
   int offset;
 
+
   TemplateFieldNgSourceProvider() {
-    this = any(AngularJS::GeneralDirective e).getMember("template") and
+    this = directive.getMember("template").asExpr() and
     source = this.(ConstantString).getStringValue().regexpFind(getInterpolatedExpressionPattern(), _, offset)
   }
 
@@ -164,6 +208,10 @@ private class TemplateFieldNgSourceProvider extends NgSourceProvider {
     src = source and
     getLocation().hasLocationInfo(path, startLine, startColumn - offset, endLine, _) and
     endColumn = startColumn + src.length()-1
+  }
+  
+  override DOM::ElementDefinition getEnclosingElement() {
+    result = directive.getAMatchingElement()
   }
 
 }
@@ -295,7 +343,7 @@ private module Lexer {
   MkNgToken(NgSource src, int start, NgTokenType tp, string text) {
     exists(string allTokenTypePattern |
       allTokenTypePattern =  concat(NgTokenType t, string p | p = t.getPattern() | p, "|") and
-      text = src.regexpFind(allTokenTypePattern, _, start) and
+      text = src.getText().regexpFind(allTokenTypePattern, _, start) and
       text.regexpMatch(tp.getPattern())
     )
   }
@@ -920,3 +968,39 @@ private module Parser {
   TNgEmpty()
 }
 private import Parser
+
+/**
+ * A node in an AngularJS expression that can have dataflow.
+ *
+ * Will eventually be a subtype of `DataFlow::Node`.
+ */
+class NgDataFlowNode extends TNode {
+
+  NgAstNode astNode;
+
+  NgDataFlowNode() {
+    this = astNode
+  }
+
+  /** Gets the AST node this node corresponds to. */
+  NgAstNode getAstNode() {
+    result = astNode
+  }
+
+  /** Gets a textual representation of this element. */
+  string toString() {
+    result = astNode.toString()
+  }
+
+  /**
+   * Gets a scope object for this node.
+   */
+  AngularJS::AngularScope getAScope() {
+    exists (NgToken token, NgSource source |
+      astNode.at(token, _) and
+      token.at(source, _) |
+      result.mayApplyTo(source.getProvider().getEnclosingElement())
+    )
+  }
+
+}

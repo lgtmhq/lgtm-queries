@@ -72,7 +72,7 @@ class Location extends @location {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(
     string filepath, int startline, int startcolumn, int endline, int endcolumn) {
@@ -121,7 +121,7 @@ library class LocationDefault extends Location, @location_default {
     string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f
     | locations_default(this,f,startline,startcolumn,endline,endcolumn)
-    | filepath = f.getName())
+    | filepath = f.getAbsolutePath())
   }
 }
 
@@ -131,7 +131,7 @@ library class LocationStmt extends Location, @location_stmt {
     string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f
     | locations_stmt(this,f,startline,startcolumn,endline,endcolumn)
-    | filepath = f.getName())
+    | filepath = f.getAbsolutePath())
   }
 }
 
@@ -141,7 +141,7 @@ library class LocationExpr extends Location, @location_expr {
     string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     exists(File f
     | locations_expr(this,f,startline,startcolumn,endline,endcolumn)
-    | filepath = f.getName())
+    | filepath = f.getAbsolutePath())
   }
 }
 
@@ -168,7 +168,7 @@ class Locatable extends Element {
  */
 class UnknownLocation extends Location {
   UnknownLocation() {
-    getFile().hasName("")
+    getFile().getAbsolutePath() = ""
   }
 }
 

@@ -193,9 +193,9 @@ private predicate isFieldInitializable(Field field) {
  */
 private int fieldInitializerIndex(Class cls, Field field) {
   exists(int memberIndex | 
-    field = cls.getMember(memberIndex) and
+    field = cls.getCanonicalMember(memberIndex) and
     memberIndex = rank[result + 1](int index |
-      isFieldInitializable(cls.getMember(index))
+      isFieldInitializable(cls.getCanonicalMember(index))
     )
   )
 }

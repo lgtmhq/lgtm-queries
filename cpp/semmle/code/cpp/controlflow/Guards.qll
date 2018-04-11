@@ -63,6 +63,11 @@ class GuardCondition extends Expr {
           rhs = binop.getRightOperand() and
           lhs.controls(controlled, testIsTrue) and
           rhs.controls(controlled, testIsTrue))
+        or
+        exists (GuardCondition ne, GuardCondition operand
+        | this = operand and
+          operand = ne.(NotExpr).getOperand() and
+          ne.controls(controlled, testIsTrue.booleanNot())) 
     }
 
     /** Holds if (determined by this guard) `left < right + k` evaluates to `isLessThan` if this expression evaluates to `testIsTrue`. */
