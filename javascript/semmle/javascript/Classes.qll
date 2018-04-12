@@ -18,8 +18,7 @@
  * and `ClassExpression`, respectively, which are both subclasses of `ClassDefinition`.
  */
 
-import Stmt
-import TypeScript
+import javascript
 
 /**
  * A class or interface definition.
@@ -127,7 +126,7 @@ class ClassOrInterface extends @classorinterface, TypeParameterized {
  * A class definition, that is, either a class declaration statement or a
  * class expression.
  */
-class ClassDefinition extends @classdefinition, ClassOrInterface {
+class ClassDefinition extends @classdefinition, ClassOrInterface, AST::ValueNode {
   /** Gets the identifier naming the defined class, if any. */
   override VarDecl getIdentifier() {
     result = getChildExpr(0)

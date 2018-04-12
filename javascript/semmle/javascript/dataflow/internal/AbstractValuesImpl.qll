@@ -46,6 +46,9 @@ newtype TAbstractValue =
   /** An abstract representation of a non-empty string that does not coerce to a number. */
   TAbstractOtherString()
   or
+  /** An abstract representation of a regular expression object. */
+  TAbstractRegExp()
+  or
   /** An abstract representation of a function object corresponding to function `f`. */
   TAbstractFunction(Function f)
   or
@@ -104,6 +107,9 @@ newtype TAbstractValue =
    * `cause` recording the cause of the incompleteness.
    */
   TIndefiniteAbstractValue(DataFlow::Incompleteness cause)
+  or
+  /** A custom abstract value induced by `tag`. */
+  TCustomAbstractValue(CustomAbstractValueTag tag)
 
 /**
  * Gets a definite abstract value with the given type.

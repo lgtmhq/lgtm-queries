@@ -67,11 +67,12 @@ abstract class AnalyzedPropertyRead extends DataFlow::AnalyzedNode {
  * Flow analysis for (non-numeric) property read accesses.
  */
 private class AnalyzedPropertyAccess extends AnalyzedPropertyRead, DataFlow::ValueNode {
+  override PropAccess astNode;
   DataFlow::AnalyzedNode baseNode;
   string propName;
 
   AnalyzedPropertyAccess() {
-    astNode.(PropAccess).accesses(baseNode.asExpr(), propName) and
+    astNode.accesses(baseNode.asExpr(), propName) and
     not exists(propName.toInt()) and
     astNode instanceof RValue
   }
@@ -106,27 +107,23 @@ abstract class AnalyzedPropertyWrite extends DataFlow::Node {
  * Flow analysis for property writes.
  */
 private class AnalyzedExplicitPropertyWrite extends AnalyzedPropertyWrite, DataFlow::ValueNode {
-  DataFlow::AnalyzedNode baseNode;
-  string prop;
-  DataFlow::AnalyzedNode rhs;
+  AnalyzedExplicitPropertyWrite() { astNode instanceof PropWriteNode }
 
-  AnalyzedExplicitPropertyWrite() {
-    exists (PropWriteNode pwn | astNode = pwn |
-      baseNode = pwn.getBase().analyze() and
-      prop = pwn.getPropertyName() and
-      rhs = pwn.getRhs().analyze()
-    ) and
-    isTrackedPropertyName(prop)
-  }
-
-  override predicate writes(AbstractValue baseVal, string propName, DataFlow::AnalyzedNode source) {
-    baseVal = baseNode.getALocalValue() and
-    propName = prop and
-    source = rhs and
-    shouldTrackProperties(baseVal)
+  override predicate writes(AbstractValue base, string prop, DataFlow::AnalyzedNode source) {
+    explicitPropertyWrite(astNode, base, prop, source)
   }
 }
 
+pragma[noopt]
+private predicate explicitPropertyWrite(PropWriteNode pw, AbstractValue base,
+                                        string prop, DataFlow::Node source) {
+  exists (DataFlow::AnalyzedNode baseNode |
+    pw.writes(baseNode, prop, source) and
+    isTrackedPropertyName(prop) and
+    base = baseNode.getALocalValue() and
+    shouldTrackProperties(base)
+  )
+}
 /**
  * Flow analysis for `arguments.callee`. We assume it is never redefined,
  * which is unsound in practice, but pragmatically useful.

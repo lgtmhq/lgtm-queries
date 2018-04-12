@@ -19,7 +19,7 @@
  *       correctness
  * @problem.severity error
  * @sub-severity low
- * @precision high
+ * @precision medium
  * @id py/uninitialized-local-variable
  */
 

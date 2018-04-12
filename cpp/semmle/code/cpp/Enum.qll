@@ -67,7 +67,9 @@ class LocalEnum extends Enum {
  */
 class NestedEnum extends Enum {
 
-  NestedEnum() { member(_,_,this) }
+  NestedEnum() {
+    this.isMember()
+  }
 
   /** Holds if this member is private. */
   predicate isPrivate() { this.hasSpecifier("private") }

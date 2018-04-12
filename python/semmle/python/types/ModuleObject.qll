@@ -42,7 +42,8 @@ abstract class ModuleObject extends Object {
 
     /** Gets the named attribute of this module. Using attributeRefersTo() instead
      * may provide better results for presentation. */
-    abstract cached Object getAttribute(string name);
+    pragma [noinline]
+    abstract Object getAttribute(string name);
 
     /** Whether the named attribute of this module "refers-to" value, with a known origin.
      */

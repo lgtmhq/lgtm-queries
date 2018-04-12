@@ -78,7 +78,7 @@ class Symbol extends DependsSource {
   Symbol() {
     (
       exists(EnumConstant ec | this = ec and not ec.getDeclaringEnum() instanceof LocalEnum) or
-      (this instanceof Macro and this.getFile().getFullName() != "") or
+      (this instanceof Macro and this.getFile().getAbsolutePath() != "") or
       (this instanceof DeclarationEntry and
         not this.(VariableDeclarationEntry).getVariable() instanceof LocalScopeVariable and
         not this.(FunctionDeclarationEntry).getFunction() instanceof BuiltInFunction and
@@ -156,7 +156,8 @@ predicate dependsOnSimpleInline(Element src, Element dest) {
 }
 
 /**
- * Does a simple, non-template dependency exist between two particular Locations?
+ * Holds if a simple, non-template dependency exists between two Locations
+ * specified by the parameters.
  */
 private predicate dependsLocation(File f1, int sl1, int sc1, int el1, int ec1, File f2, int sl2, int sc2, int el2, int ec2) {
   exists(Element src, Element dest, Location loc1, Location loc2 |
@@ -238,9 +239,10 @@ private predicate dependsOnViaTemplate(Declaration src, Element dest) {
 }
 
 /**
- * Does one dependsOnSimple and any number of dependsOnViaTemplate steps.
+ * Holds if `src` is related to `dest` by one `dependsOnSimple` and any
+ * number of `dependsOnViaTemplate` steps.
  *
- * Consider using Symbol.getADependentElement() rather than directly
+ * Consider using `Symbol.getADependentElement()` rather than directly
  * accessing this predicate.
  */
 predicate dependsOnTransitive(Element src, Element dest) {

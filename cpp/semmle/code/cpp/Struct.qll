@@ -41,7 +41,9 @@ class LocalStruct extends Struct {
  * A C++ nested struct. See 11.12.
  */
 class NestedStruct extends Struct {
-  NestedStruct() { member(_,_,this) }
+  NestedStruct() {
+    this.isMember()
+  }
 
   /** Whether this member is private. */
   predicate isPrivate() { this.hasSpecifier("private") }

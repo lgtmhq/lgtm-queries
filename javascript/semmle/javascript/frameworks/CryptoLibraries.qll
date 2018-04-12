@@ -241,8 +241,6 @@ private module AsmCrypto {
 
     CryptographicAlgorithm algorithm; // non-functional
 
-    MethodCallExpr mce;
-
     Apply() {
       /*
       ```
@@ -253,14 +251,14 @@ private module AsmCrypto {
       require("asmCrypto").<algorithmName>._(<input>)
       ```
        */
-      this = mce and
-      exists(ModuleInstance mod, string algorithmName |
-        mod.getPath() = "asmCrypto" and
-        algorithm.getName() = normalizeName(algorithmName) and
-        mce.getReceiver().(DataFlowNode).getALocalSource() = mod.getAPropertyRead(algorithmName) and
-        input = mce.getAnArgument()
+      exists (DataFlow::CallNode mce | this = mce.asExpr() |
+        exists(DataFlow::ModuleImportNode mod, string algorithmName |
+          mod.getPath() = "asmCrypto" and
+          algorithm.getName() = normalizeName(algorithmName) and
+          mce = mod.getAPropertyRead(algorithmName).getAMemberCall(_) and
+          input = mce.getAnArgument().asExpr()
+        )
       )
-
     }
 
     override Expr getInput() {
@@ -305,17 +303,18 @@ private module BrowserIdCrypto {
       ```
        */
       this = mce and
-      exists(ModuleInstance mod, Expr algorithmNameNode, MethodCallExpr keygen, Function callback, PropReadNode keyPrn |
+      exists(DataFlow::ModuleImportNode mod,
+             DataFlow::Node algorithmNameNode, DataFlow::CallNode keygen,
+             DataFlow::FunctionNode callback, DataFlow::SourceNode keyprn |
         mod.getPath() = "browserid-crypto" and
-        keygen = mod.getAMethodCall("generateKeypair") and
-        keygen.hasOptionArgument(0,  "algorithm", algorithmNameNode) and
-        mayHaveNormalizedStringValue(algorithmNameNode, algorithm.getName()) and
-        keygen.getArgument(1).(DataFlowNode).getALocalSource() = callback and
-        this = mod.getAMethodCall("sign") and
+        keygen = mod.getAMemberCall("generateKeypair") and
+        algorithmNameNode = keygen.getOptionArgument(0, "algorithm") and
+        mayHaveNormalizedStringValue(algorithmNameNode.asExpr(), algorithm.getName()) and
+        callback = keygen.getCallback(1) and
+        this = mod.getAMemberCall("sign").asExpr() and
         mce.getArgument(0) = input and
-        keyPrn.getBase().(Expr).mayReferToParameter(callback.getParameter(1)) and
-        keyPrn.getPropertyName() = "secretKey" and
-        mce.getArgument(1).(DataFlowNode).getALocalSource() = keyPrn
+        keyprn = callback.getParameter(1).getAPropertyRead("secretKey") and
+        keyprn.flowsToExpr(mce.getArgument(1))
       )
     }
 
@@ -342,8 +341,6 @@ private module NodeJSCrypto  {
 
     CryptographicAlgorithm algorithm; // non-functional
 
-    MethodCallExpr mce;
-
     Apply() {
       /*
       ```
@@ -361,18 +358,18 @@ private module NodeJSCrypto  {
       Also matches `createHash`, `createHmac`, `createSign` instead of `createCipher`.
       Also matches `write` instead of `update`.
        */
-      this = mce and
-      exists(ModuleInstance mod, MethodCallExpr createCall, string createSuffix |
-        createSuffix = "Hash" or
-        createSuffix = "Hmac" or
-        createSuffix = "Sign" or
-        createSuffix = "Cipher" |
-        mod.getPath() = "crypto" and
-        createCall = mod.getAMethodCall("create" + createSuffix) and
-        mayHaveNormalizedStringValue(createCall.getArgument(0), algorithm.getName()) and
-        mce.getReceiver().(DataFlowNode).getALocalSource() = createCall and
-        (mce.getMethodName() = "update" or mce.getMethodName() = "write") and
-        mce.getArgument(0) = input
+      exists (DataFlow::CallNode mce | this = mce.asExpr() |
+        exists(DataFlow::ModuleImportNode mod, DataFlow::CallNode createCall, string createSuffix |
+          createSuffix = "Hash" or
+          createSuffix = "Hmac" or
+          createSuffix = "Sign" or
+          createSuffix = "Cipher" |
+          mod.getPath() = "crypto" and
+          createCall = mod.getAMemberCall("create" + createSuffix) and
+          mayHaveNormalizedStringValue(createCall.getArgument(0).asExpr(), algorithm.getName()) and
+          mce = createCall.getAMethodCall(any(string m | m = "update" or m = "write")) and
+          mce.getArgument(0).asExpr() = input
+        )
       )
     }
 
@@ -397,22 +394,22 @@ private module CryptoJS {
   /**
    *  Matches `CryptoJS.<algorithmName>` and `require("crypto-js/<algorithmName>")`
    */
-  private Expr getAlgorithmExpr(CryptographicAlgorithm algorithm) {
+  private DataFlow::SourceNode getAlgorithmExpr(CryptographicAlgorithm algorithm) {
     exists(string algorithmName |
       algorithm.getName() = normalizeName(algorithmName) |
-      exists(ModuleInstance mod |
+      exists(DataFlow::ModuleImportNode mod |
         mod.getPath() = "crypto-js" |
         result = mod.getAPropertyRead(algorithmName) or
         result = mod.getAPropertyRead("Hmac" + algorithmName) // they prefix Hmac
       ) or
-      exists(ModuleInstance mod |
+      exists(DataFlow::ModuleImportNode mod |
         mod.getPath() = "crypto-js/" + algorithmName  and
         result = mod
       )
     )
   }
 
-  private MethodCallExpr getEncryptionApplication(Expr input, CryptographicAlgorithm algorithm) {
+  private DataFlow::CallNode getEncryptionApplication(Expr input, CryptographicAlgorithm algorithm) {
     /*
     ```
     var CryptoJS = require("crypto-js");
@@ -425,12 +422,11 @@ private module CryptoJS {
     ```
     Also matches where `CryptoJS.<algorithmName>` has been replaced by `require("crypto-js/<algorithmName>")`
      */
-    result.getReceiver().(DataFlowNode).getALocalSource() = getAlgorithmExpr(algorithm) and
-    result.getMethodName() = "encrypt" and
-    input = result.getArgument(0)
+    result = getAlgorithmExpr(algorithm).getAMemberCall("encrypt") and
+    input = result.getArgument(0).asExpr()
   }
 
-  private CallExpr getDirectApplication(Expr input, CryptographicAlgorithm algorithm) {
+  private DataFlow::CallNode getDirectApplication(Expr input, CryptographicAlgorithm algorithm) {
     /*
     ```
     var CryptoJS = require("crypto-js");
@@ -444,8 +440,8 @@ private module CryptoJS {
     An `Hmac`-prefix of <algorithmName> is ignored.
     Also matches where `CryptoJS.<algorithmName>` has been replaced by `require("crypto-js/<algorithmName>")`
      */
-    result.getCallee().(DataFlowNode).getALocalSource() = getAlgorithmExpr(algorithm) and
-    input = result.getArgument(0)
+    result = getAlgorithmExpr(algorithm).getACall() and
+    input = result.getArgument(0).asExpr()
   }
 
    private class Apply extends CryptographicOperation {
@@ -455,8 +451,8 @@ private module CryptoJS {
     CryptographicAlgorithm algorithm; // non-functional
 
     Apply() {
-      this = getEncryptionApplication(input, algorithm) or
-      this = getDirectApplication(input, algorithm)
+      this = getEncryptionApplication(input, algorithm).asExpr() or
+      this = getDirectApplication(input, algorithm).asExpr()
     }
 
     override Expr getInput() {
@@ -496,11 +492,11 @@ private module TweetNaCl {
       Also matches the "hash" method name, and the "nacl-fast" module.
       */
       this = mce and
-      exists(ModuleInstance mod, string name |
+      exists(DataFlow::ModuleImportNode mod, string name |
         (name = "hash" and algorithm.getName() = normalizeName("SHA512")) or
         (name = "sign" and algorithm.getName() = normalizeName("ed25519")) |
         (mod.getPath() = "nacl" or mod.getPath() = "nacl-fast") and
-        mce = mod.getAMethodCall(name) and
+        mce = mod.getAMemberCall(name).asExpr() and
         mce.getArgument(0) = input
       )
     }
@@ -530,19 +526,17 @@ private module HashJs {
    * - `require("hash.js/lib/hash/<algorithmName>")`()
    * - `require("hash.js/lib/hash/sha/<sha-algorithm-suffix>")`()
    */
-  private CallExpr getAlgorithmExpr(CryptographicAlgorithm algorithm) {
+  private DataFlow::CallNode getAlgorithmExpr(CryptographicAlgorithm algorithm) {
     exists(string algorithmName |
       algorithm.getName() = normalizeName(algorithmName) |
-      exists(ModuleInstance mod |
-        mod.getPath() = "hash.js" |
-        result = mod.getAMethodCall(algorithmName)
-      ) or
-      exists(ModuleInstance mod |
+      result = DataFlow::moduleImport("hash.js").getAMemberCall(algorithmName)
+      or
+      exists(DataFlow::ModuleImportNode mod |
         mod.getPath() = "hash.js/lib/hash/" + algorithmName or
         exists(string size |
           mod.getPath() = "hash.js/lib/hash/sha/" + size and
           algorithmName = "SHA" + size) |
-        result.getCallee().(DataFlowNode).getALocalSource() = mod
+        result = mod.getACall()
       )
     )
   }
@@ -569,8 +563,7 @@ private module HashJs {
       Also matches where `hash.<algorithmName>()` has been replaced by a more specific require a la `require("hash.js/lib/hash/sha/512")`
        */
       this = mce and
-      mce.getReceiver().(DataFlowNode).getALocalSource() = getAlgorithmExpr(algorithm) and
-      mce.getMethodName() = "update" and
+      mce = getAlgorithmExpr(algorithm).getAMemberCall("update").asExpr() and
       input = mce.getArgument(0)
     }
 
@@ -602,17 +595,15 @@ private module Forge  {
 
     Apply() {
       this = mce and
-      exists(ModuleInstance mod, MethodCallExpr cipher, string algorithmName |
-        mce.getReceiver().(DataFlowNode).getALocalSource() = cipher and
-        mce.getMethodName() = "update" and
+      exists(DataFlow::ModuleImportNode mod, DataFlow::CallNode cipher, string algorithmName |
+        mce = cipher.getAMemberCall("update").asExpr() and
         mce.getArgument(0) = input and
         algorithm.getName() = normalizeName(algorithmName) and
         (mod.getPath() = "forge" or mod.getPath() = "node-forge") |
         exists(string cipherName, string cipherPrefix, string cipherSuffix |
           // `require('forge').cipher.createCipher("3DES-CBC").update("secret");`
-          cipher.getReceiver() = mod.getAPropertyRead("cipher") and
-          cipher.getMethodName() = "createCipher" and
-          cipher.getArgument(0).mayHaveStringValue(cipherName) and
+          cipher = mod.getAPropertyRead("cipher").getAMemberCall("createCipher") and
+          cipher.getArgument(0).asExpr().mayHaveStringValue(cipherName) and
           cipherName = cipherPrefix + "-" + cipherSuffix and
           (
             cipherSuffix = "CBC" or
@@ -623,19 +614,13 @@ private module Forge  {
             cipherSuffix = "OFB"
           ) and
           algorithmName = cipherPrefix
-        ) or
-        (
-          // `require("forge").rc2.createEncryptionCipher().update("secret");`
-          cipher.getReceiver() = mod.getAPropertyRead(algorithmName) and
-          cipher.getMethodName() = "createEncryptionCipher"
-        ) or
-        exists(PropReadNode algorithmObject |
-          // require("forge").md.md5.create().update('The quick brown fox jumps over the lazy dog');
-          algorithmObject.getBase().(DataFlowNode).getALocalSource() = mod.getAPropertyRead("md") and
-          algorithmObject.getPropertyName() = algorithmName and
-          cipher.getReceiver().(DataFlowNode).getALocalSource() = algorithmObject and
-          cipher.getMethodName() = "create"
         )
+        or
+        // `require("forge").rc2.createEncryptionCipher().update("secret");`
+        cipher = mod.getAPropertyRead(algorithmName).getAMemberCall("createEncryptionCipher")
+        or
+        // require("forge").md.md5.create().update('The quick brown fox jumps over the lazy dog');
+        cipher = mod.getAPropertyRead("md").getAPropertyRead(algorithmName).getAMemberCall("create")
       )
     }
 
@@ -667,10 +652,10 @@ private module Md5  {
     Apply() {
       // `require("md5")("message");`
       this = call and
-      exists(ModuleInstance mod |
+      exists(DataFlow::ModuleImportNode mod |
         mod.getPath() = "md5" and
         algorithm.getName() = normalizeName("MD5") and
-        call.getCallee().(DataFlowNode).getALocalSource() = mod and
+        call = mod.getACall().asExpr() and
         call.getArgument(0) = input
       )
     }
@@ -703,7 +688,7 @@ private module Bcrypt  {
     Apply() {
       // `require("bcrypt").hash(password);` with minor naming variations
       this = mce and
-      exists(ModuleInstance mod, string moduleName, string methodName |
+      exists(DataFlow::ModuleImportNode mod, string moduleName, string methodName |
         algorithm.getName() = normalizeName("BCRYPT") and
         (
           moduleName = "bcrypt" or
@@ -714,7 +699,7 @@ private module Bcrypt  {
           methodName = "hashSync"
         ) and
         mod.getPath() = moduleName and
-        mce = mod.getAMethodCall(methodName) and
+        mce = mod.getAMemberCall(methodName).asExpr() and
         mce.getArgument(0) = input
       )
     }
@@ -747,9 +732,9 @@ private module Hasha  {
     Apply() {
       // `require('hasha')('unicorn', { algorithm: "md5" });`
       this = call and
-      exists(ModuleInstance mod, string algorithmName, Expr algorithmNameNode |
+      exists(DataFlow::ModuleImportNode mod, string algorithmName, Expr algorithmNameNode |
         mod.getPath() = "hasha" and
-        call.getCallee().(DataFlowNode).getALocalSource() = mod and
+        call = mod.getACall().asExpr() and
         call.getArgument(0) = input and
         algorithm.getName() = normalizeName(algorithmName) and
         call.hasOptionArgument(1, "algorithm", algorithmNameNode) and

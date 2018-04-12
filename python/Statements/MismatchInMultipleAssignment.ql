@@ -31,21 +31,41 @@ private  int len(ExprList el) {
 	result = count(el.getAnItem())
 }
 
-predicate mismatched(Assign a, int lcount, int rcount) {
-  exists(ExprList l, ExprList r |
-      (((Tuple)a.getATarget()).getElts() = l or ((List)a.getATarget()).getElts() = l)
-      and
-      (((Tuple)a.getValue()).getElts() = r or ((List)a.getValue()).getElts() = r)
-      and
-      lcount = len(l) 
-      and
-      rcount = len(r)
-      and 
-      lcount != rcount
-      and
-      not exists(Starred s | l.getAnItem() = s or r.getAnItem() = s))
+predicate mismatched(Assign a, int lcount, int rcount, Location loc, string sequenceType) {
+    exists(ExprList l, ExprList r |
+        (a.getATarget().(Tuple).getElts() = l or
+         a.getATarget().(List).getElts() = l)
+        and
+        ((a.getValue().(Tuple).getElts() = r and sequenceType = "tuple") or
+         (a.getValue().(List).getElts() = r and sequenceType = "list"))
+        and
+        loc = a.getValue().getLocation() and
+        lcount = len(l) and
+        rcount = len(r) and
+        lcount != rcount and
+        not exists(Starred s | l.getAnItem() = s or r.getAnItem() = s)
+    )
 }
 
-from Assign a, int lcount, int rcount
-where mismatched(a, lcount, rcount)
-select a, "Different number of variables on either side of assignment; " + lcount.toString() + " versus " + rcount.toString() + "."
+predicate mismatched_tuple_rhs(Assign a, int lcount, int rcount, Location loc) {
+    exists(ExprList l, TupleObject r, AstNode origin |
+        (a.getATarget().(Tuple).getElts() = l or
+         a.getATarget().(List).getElts() = l)
+        and
+        a.getValue().refersTo(r, origin) and
+        loc = origin.getLocation() and
+        lcount = len(l) and
+        rcount = r.getLength() and
+        lcount != rcount and
+        not exists(Starred s | l.getAnItem() = s)
+    )
+}
+
+
+from Assign a, int lcount, int rcount, Location loc, string sequenceType
+where
+    mismatched(a, lcount, rcount, loc, sequenceType)
+    or
+    mismatched_tuple_rhs(a, lcount, rcount, loc) and
+    sequenceType = "tuple"
+select a, "Left hand side of assignment contains " + lcount + " variables, but right hand side is a $@ of length " + rcount + "." , loc, sequenceType

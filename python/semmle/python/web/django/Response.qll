@@ -14,7 +14,6 @@
 import python
 import semmle.python.security.TaintTracking
 import semmle.python.security.strings.Basic
-import semmle.python.security.http.Response
 private import semmle.python.web.django.Shared
 
 
@@ -68,7 +67,7 @@ class DjangoResponseWrite extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpString
+        kind instanceof ExternalStringKind
     }
 
     string toString() {
@@ -91,7 +90,7 @@ class DjangoResponseContent extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpString
+        kind instanceof ExternalStringKind
     }
 
     string toString() {

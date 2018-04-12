@@ -66,6 +66,17 @@ class ConditionalBypassDataFlowConfiguration extends TaintTracking::Configuratio
   }
 }
 
+/**
+ * Holds if `bb` dominates the basic block in which `action` occurs.
+ */
+private predicate dominatesSensitiveAction(ReachableBasicBlock bb, SensitiveAction action) {
+  bb = action.getBasicBlock()
+  or
+  exists (ReachableBasicBlock mid |
+    dominatesSensitiveAction(mid, action) and
+    bb = mid.getImmediateDominator()
+  )
+}
 
 /**
  * A conditional that guards a sensitive action, e.g. `ok` in `if (ok) login()`.
@@ -77,7 +88,7 @@ class SensitiveActionGuardConditional extends ConditionalBypassSink {
   SensitiveActionGuardConditional() {
     exists (GuardControlFlowNode guard |
       this.asExpr() = guard.getTest() and
-      guard.getBasicBlock().(ReachableBasicBlock).dominates(action.getBasicBlock())
+      dominatesSensitiveAction(guard.getBasicBlock(), action)
     )
   }
 

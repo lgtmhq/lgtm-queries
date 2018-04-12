@@ -21,7 +21,7 @@
 import python
 
 import semmle.python.security.TaintTracking
-import semmle.python.security.strings.Basic
+import semmle.python.security.strings.Untrusted
 
 
 private StringObject first_part(ControlFlowNode command) {
@@ -61,16 +61,6 @@ abstract class DbCursor extends TaintKind {
 
 }
 
-/** A taint kind representing a (potentially malicious) SQL command.
- */
-class SqlInjection extends ExternalStringKind {
-
-    SqlInjection() {
-        this = "sql.injection"
-    }
-
-}
-
 
 /** A part of a string that appears to be a SQL command and is thus
  * vulnerable to malicious input.
@@ -84,7 +74,7 @@ class SimpleSqlStringInjection extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof SqlInjection
+        kind instanceof ExternalStringKind
     }
 
 }
@@ -112,7 +102,7 @@ class DbConnectionExecuteArgument extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof SqlInjection
+        kind instanceof ExternalStringKind
     }
 }
 

@@ -23,22 +23,20 @@ module Hapi {
    */
   class ServerDefinition extends HTTP::Servers::StandardServerDefinition, NewExpr {
     ServerDefinition() {
-      exists (ModuleInstance hapi | hapi.getPath() = "hapi" |
-        // `server = new Hapi.Server()`
-        this.getCallee() = hapi.getAPropertyRead("Server")
-      )
+      // `server = new Hapi.Server()`
+      this = DataFlow::moduleImport("hapi").getAPropertyRead("Server").getAnInstantiation().asExpr()
     }
   }
 
   /**
    * A Hapi route handler.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
 
     Function function;
 
     RouteHandler() {
-      function = this and
+      function = astNode and
       exists(RouteSetup setup | this = setup.getARouteHandler())
     }
 
@@ -169,7 +167,7 @@ module Hapi {
 
     HeaderDefinition() {
       // request.response.header('Cache-Control', 'no-cache')
-      calls(res, "header")
+      astNode.calls(res, "header")
     }
 
     override RouteHandler getRouteHandler(){
@@ -191,16 +189,17 @@ module Hapi {
       (methodName = "route" or methodName = "ext")
     }
 
-    override DataFlowNode getARouteHandler() {
+    override DataFlow::SourceNode getARouteHandler() {
       // server.route({ handler: fun })
       methodName = "route" and
-      result = any(DataFlowNode n | hasOptionArgument(0, "handler", n)).getALocalSource()
+      result.flowsToExpr(any(Expr e | hasOptionArgument(0, "handler", e)))
       or
       // server.ext('/', fun)
-      methodName = "ext" and result = getArgument(1).(DataFlowNode).getALocalSource()
+      methodName = "ext" and
+      result.flowsToExpr(getArgument(1))
     }
 
-    override DataFlowNode getServer() {
+    override Expr getServer() {
       result = server
     }
   }

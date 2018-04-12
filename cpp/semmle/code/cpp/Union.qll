@@ -42,7 +42,9 @@ class LocalUnion extends Union {
  * A C++ nested union.
  */
 class NestedUnion extends Union {
-  NestedUnion() { member(_,_,this) }
+  NestedUnion() {
+    this.isMember()
+  }
 
   /** Whether this member is private. */
   predicate isPrivate() { this.hasSpecifier("private") }

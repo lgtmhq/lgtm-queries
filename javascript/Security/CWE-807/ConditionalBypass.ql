@@ -16,7 +16,7 @@
  * @description Conditions that the user controls are not suited for making security-related decisions.
  * @kind problem
  * @problem.severity error
- * @precision medium
+ * @precision high
  * @id js/user-controlled-bypass
  * @tags security
  *       external/cwe/cwe-807
@@ -24,6 +24,14 @@
  */
 import javascript
 import semmle.javascript.security.dataflow.ConditionalBypass
+
+/**
+ * Holds if the value of `nd` flows into `guard`.
+ */
+predicate flowsToGuardExpr(DataFlow::Node nd, SensitiveActionGuardConditional guard) {
+  nd = guard or
+  flowsToGuardExpr(nd.getASuccessor(), guard)
+}
 
 /**
  * A comparison that guards a sensitive action, e.g. the comparison in:
@@ -34,7 +42,7 @@ class SensitiveActionGuardComparison extends Comparison {
   SensitiveActionGuardConditional guard;
 
   SensitiveActionGuardComparison() {
-    this = guard.asExpr().(DataFlowNode).getALocalSource()
+    flowsToGuardExpr(DataFlow::valueNode(this), guard)
   }
 
   /**

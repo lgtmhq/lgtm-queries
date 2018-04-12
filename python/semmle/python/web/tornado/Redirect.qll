@@ -18,7 +18,6 @@
 import python
 
 import semmle.python.security.TaintTracking
-import semmle.python.web.HttpRedirect
 import semmle.python.security.strings.Basic
 import Tornado
 
@@ -41,7 +40,7 @@ class TornadoRedirect extends TaintSink {
     }
 
     override predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpRedirect
+        kind instanceof ExternalStringKind
     }
 
 }

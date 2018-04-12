@@ -134,11 +134,7 @@ abstract class RateLimiter extends Express::RouteHandlerExpr {
  */
 class ExpressRateLimit extends RateLimiter {
   ExpressRateLimit() {
-    exists (ModuleInstance expressRateLimit, NewExpr limiter |
-      expressRateLimit.getPath() = "express-rate-limit" and
-      limiter.getCallee().(DataFlowNode).getALocalSource() = expressRateLimit and
-      getALocalSource() = limiter
-    )
+    DataFlow::moduleImport("express-rate-limit").getAnInstantiation().flowsToExpr(this)
   }
 }
 
@@ -147,12 +143,10 @@ class ExpressRateLimit extends RateLimiter {
  */
 class BruteForceRateLimit extends RateLimiter {
   BruteForceRateLimit() {
-    exists (ModuleInstance expressBrute, NewExpr newExpressBrute, PropAccess prevent |
+    exists (DataFlow::ModuleImportNode expressBrute, DataFlow::SourceNode prevent |
       expressBrute.getPath() = "express-brute" and
-      newExpressBrute.getCallee().(DataFlowNode).getALocalSource() = expressBrute and
-      prevent.getBase().(DataFlowNode).getALocalSource() = newExpressBrute and
-      prevent.getPropertyName() = "prevent" and
-      this.getALocalSource() = prevent
+      prevent = expressBrute.getAnInstantiation().getAPropertyRead("prevent") and
+      prevent.flowsToExpr(this)
     )
   }
 }
@@ -162,10 +156,9 @@ class BruteForceRateLimit extends RateLimiter {
  */
 class RouteHandlerLimitedByExpressLimiter extends RateLimitedRouteHandlerExpr {
   RouteHandlerLimitedByExpressLimiter() {
-    exists (ModuleInstance expressLimiter, CallExpr limiter |
+    exists (DataFlow::ModuleImportNode expressLimiter |
       expressLimiter.getPath() = "express-limiter" and
-      limiter.getCallee().(DataFlowNode).getALocalSource() = expressLimiter and
-      this.getSetup().getRouter().flowsTo(limiter.getArgument(0))
+      expressLimiter.getACall().getArgument(0).getALocalSource().asExpr() = this.getSetup().getRouter()
     )
   }
 }

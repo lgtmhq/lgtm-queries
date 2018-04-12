@@ -18,8 +18,8 @@ import semmle.code.cpp.File
  */
 private class GoogleTestHeader extends File {
   GoogleTestHeader() {
-    getFileName() = "gtest.h" and
-    getParent().getShortName() = "gtest"
+    getBaseName() = "gtest.h" and
+    getParentContainer().getBaseName() = "gtest"
   }
 }
 
@@ -38,8 +38,8 @@ private class GoogleTest extends MacroInvocation {
  */
 private class BoostTestFolder extends Folder {
   BoostTestFolder() {
-    getShortName() = "test" and
-    getParent().getShortName() = "boost"
+    getBaseName() = "test" and
+    getParentContainer().getBaseName() = "boost"
   }
 }
 
@@ -49,7 +49,8 @@ private class BoostTestFolder extends Folder {
 private class BoostTest extends MacroInvocation {
   BoostTest() {
     // invocation of a macro from Boost Test.
-    this.getMacro().getFile().getParent().getParent*() instanceof BoostTestFolder
+    this.getMacro().getFile().getParentContainer+()
+      instanceof BoostTestFolder
   }
 }
 
@@ -58,7 +59,7 @@ private class BoostTest extends MacroInvocation {
  */
 private class CppUnitFolder extends Folder {
   CppUnitFolder() {
-    getShortName() = "cppunit"
+    getBaseName() = "cppunit"
   }
 }
 
@@ -67,7 +68,7 @@ private class CppUnitFolder extends Folder {
  */
 private class CppUnitClass extends Class {
   CppUnitClass() {
-    getFile().getParent().getParent*() instanceof CppUnitFolder and
+    getFile().getParentContainer+() instanceof CppUnitFolder and
     getNamespace().getParentNamespace*().getName() = "CppUnit"
   }
 }

@@ -16,7 +16,6 @@ import python
 
 import semmle.python.security.TaintTracking
 import semmle.python.security.strings.Basic
-import semmle.python.security.http.Response
 
 import semmle.python.web.flask.General
 
@@ -32,7 +31,7 @@ class FlaskRoutedResponse extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpString
+        kind instanceof ExternalStringKind
     }
 
     string toString() {
@@ -52,7 +51,7 @@ class FlaskResponseArgument extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpString
+        kind instanceof ExternalStringKind
     }
 
     string toString() {

@@ -12,15 +12,15 @@
 // permissions and limitations under the License.
 
 import python
+import Basic
 
-import semmle.python.security.strings.Basic
+/** A kind of taint representing an externally controlled string.
+ * This class is a simple sub-class of `ExternalStringKind`.
+ */
+class UntrustedStringKind extends ExternalStringKind {
 
-/** Generic Http(s) response taint */
-class ExternalHttpString extends ExternalStringKind {
-
-    ExternalHttpString() {
-        this = "external.html.string"
+    UntrustedStringKind() {
+        this = "externally controlled string"
     }
 
 }
-

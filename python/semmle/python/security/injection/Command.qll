@@ -21,7 +21,7 @@
 import python
 
 import semmle.python.security.TaintTracking
-import semmle.python.security.strings.Basic
+import semmle.python.security.strings.Untrusted
 
 
 private ModuleObject subprocessModule() {
@@ -42,23 +42,6 @@ private Object makeOsCall() {
     )
 }
 
-/** A kind of taint representing an externally controlled string containing
- * a potentially malicious shell command.
- */
-class CommandInjection extends ExternalStringKind {
-
-    CommandInjection() {
-        this = "command.injection"
-    }
-
-    override TaintKind getTaintForFlowStep(ControlFlowNode fromnode, ControlFlowNode tonode) {
-        result = super.getTaintForFlowStep(fromnode, tonode)
-        or
-        tonode.(SequenceNode).getElement(0) = fromnode and result.(FirstElementKind).getItem() = this
-    }
-
-}
-
 /**Special case for first element in sequence. */
 class FirstElementKind extends TaintKind {
 
@@ -72,6 +55,16 @@ class FirstElementKind extends TaintKind {
         this = "sequence[" + result + "][0]"
     }
 
+}
+
+class FirstElementFlow extends TaintFlow {
+
+    FirstElementFlow() { this = "list[0] flow" }
+
+
+    predicate additionalFlowStep(ControlFlowNode fromnode, TaintKind fromkind, ControlFlowNode tonode, TaintKind tokind) {
+        tonode.(SequenceNode).getElement(0) = fromnode and tokind.(FirstElementKind).getItem() = fromkind
+    }
 
 }
 
@@ -98,10 +91,10 @@ class ShellCommand extends TaintSink {
 
     predicate sinks(TaintKind kind) {
         /* Tainted string command */
-        kind instanceof CommandInjection
+        kind instanceof ExternalStringKind
         or
         /* List (or tuple) containing a tainted string command */
-        kind.(ExternalStringSequenceKind).getItem() instanceof CommandInjection
+        kind instanceof ExternalStringSequenceKind
     }
 
 }
@@ -123,7 +116,7 @@ class OsCommandFirstArgument extends TaintSink {
 
     predicate sinks(TaintKind kind) {
         /* Tainted string command */
-        kind instanceof CommandInjection
+        kind instanceof ExternalStringKind
         or
         /* List (or tuple) whose first element is tainted */
         kind instanceof FirstElementKind

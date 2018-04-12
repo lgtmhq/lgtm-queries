@@ -76,7 +76,10 @@ abstract class NPMDependency extends Dependency {
  */
 private Variable getATargetVariable(Import i) {
   // `var v = require('m')` or `var w = require('n').p`
-  result.getAnAssignedExpr().(DataFlowNode).getALocalSource() = propAccessOn*(i)
+  exists (DataFlow::SourceNode pacc |
+    pacc = propAccessOn*(i).flow() and
+    pacc.flowsToExpr(result.getAnAssignedExpr())
+  )
   or
   // `import { x as y }, * as z from 'm'`
   result = i.(ImportDeclaration).getASpecifier().getLocal().getVariable()

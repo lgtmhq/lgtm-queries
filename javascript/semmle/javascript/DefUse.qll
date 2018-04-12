@@ -37,7 +37,7 @@ import javascript
  * the former the point where the value of `rhs` is actually assigned
  * to that reference.
  */
-private predicate defn(ControlFlowNode def, Expr lhs, DataFlowNode rhs) {
+private predicate defn(ControlFlowNode def, Expr lhs, AST::ValueNode rhs) {
   exists (AssignExpr assgn | def = assgn |
     lhs = assgn.getTarget() and rhs = assgn.getRhs()
   ) or
@@ -140,7 +140,7 @@ class LValue extends RefExpr {
   ControlFlowNode getDefNode() { lvalAux(this, result) }
 
   /** Gets the source of the assignment. */
-  DataFlowNode getRhs() { defn(_, this, result) }
+  AST::ValueNode getRhs() { defn(_, this, result) }
 }
 
 /**
@@ -203,7 +203,7 @@ class VarDef extends ControlFlowNode {
    * This predicate is not defined for `VarDef`s where the source is implicit,
    * such as `for-in` loops or parameters.
    */
-  DataFlowNode getSource() {
+  AST::ValueNode getSource() {
     defn(this, _, result)
   }
 

@@ -122,5 +122,5 @@ from FormattingFunctionCall call, Expr sink
 where flowsToExpr(call, sink, true)
 and sink = call.getArgument(call.getTarget().getSizeParameterIndex())
 select
-  call, "The $@ of this snprintf call is derived from it's return value, which may exceed the size of the buffer and overflow.",
+  call, "The $@ of this snprintf call is derived from its return value, which may exceed the size of the buffer and overflow.",
   sink, "size argument"

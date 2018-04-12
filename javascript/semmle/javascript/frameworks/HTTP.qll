@@ -32,7 +32,7 @@ module HTTP {
   /**
    * An expression that sets HTTP response headers.
    */
-  abstract class HeaderDefinition extends Expr {
+  abstract class HeaderDefinition extends DataFlow::Node {
     /**
      * Gets the name of a header set by this definition.
      */
@@ -172,16 +172,19 @@ module HTTP {
    * An expression that sets the `Set-Cookie` header of an HTTP response.
    */
   class SetCookieHeader extends CookieDefinition {
+    HeaderDefinition header;
+
     SetCookieHeader() {
-      this.(HeaderDefinition).getAHeaderName() = "Set-Cookie"
+      this = header.asExpr() and
+      header.getAHeaderName() = "Set-Cookie"
     }
 
     override Expr getHeaderArgument() {
-      this.(ExplicitHeaderDefinition).definesExplicitly("Set-Cookie", result)
+      header.(ExplicitHeaderDefinition).definesExplicitly("Set-Cookie", result)
     }
 
     override RouteHandler getRouteHandler() {
-      result = this.(HeaderDefinition).getRouteHandler()
+      result = header.getRouteHandler()
     }
   }
 
@@ -203,7 +206,7 @@ module HTTP {
   /**
    * A callback for handling a request on some route on a server.
    */
-  abstract class RouteHandler extends DataFlowNode {
+  abstract class RouteHandler extends DataFlow::Node {
     /**
      * Gets a header this handler sets.
      */
@@ -276,7 +279,7 @@ module HTTP {
       /**
        * Gets the server this route handler is registered on.
        */
-      DataFlowNode getServer() {
+      Expr getServer() {
         exists (StandardRouteSetup setup | setup.getARouteHandler() = this |
           result = setup.getServer()
         )
@@ -336,10 +339,12 @@ module HTTP {
     /**
      * A standard header definition.
      */
-    abstract class StandardHeaderDefinition extends ExplicitHeaderDefinition, MethodCallExpr {
+    abstract class StandardHeaderDefinition extends ExplicitHeaderDefinition, DataFlow::ValueNode {
+      override MethodCallExpr astNode;
+
       override predicate definesExplicitly(string headerName, Expr headerValue) {
-        headerName = getArgument(0).(ConstantString).getStringValue() and
-        headerValue = getArgument(1)
+        headerName = astNode.getArgument(0).(ConstantString).getStringValue() and
+        headerValue = astNode.getArgument(1)
       }
 
     }
@@ -352,12 +357,12 @@ module HTTP {
       /**
        * Gets a route handler that is defined by this setup.
        */
-      abstract DataFlowNode getARouteHandler();
+      abstract DataFlow::SourceNode getARouteHandler();
 
       /**
        * Gets the server on which this route setup sets up routes.
        */
-      abstract DataFlowNode getServer();
+      abstract Expr getServer();
     }
 
   }

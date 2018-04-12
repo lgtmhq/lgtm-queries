@@ -38,10 +38,13 @@ abstract class TaintKind extends string {
      */
     TaintKind getTaintOfMethodResult(string name) { none() }
 
-    /** Gets the taint resulting from the addition flow step `fromnode` -> `tonode`. */
+    /** Gets the taint resulting from the flow step `fromnode` -> `tonode`. 
+     */
     TaintKind getTaintForFlowStep(ControlFlowNode fromnode, ControlFlowNode tonode) { none() }
 
-    /** Holds if this kind of taint passes from variable `fromvar` to  variable `tovar`
+    /** DEPRECATED -- Use `TaintFlow::additionalFlowStepVar(EssaVariable fromvar, EssaVariable tovar, TaintKind kind)` instead.
+     *
+     * Holds if this kind of taint passes from variable `fromvar` to  variable `tovar`
      * This predicate is present for completeness. It is unlikely that any `TaintKind`
      * implementation will ever need to override it.
      */
@@ -105,13 +108,35 @@ abstract class Sanitizer extends string {
 
 }
 
+/** An extension to taint-flow. For adding library or framework specific flows.
+ * Examples include flow from a request to untrusted part of that request or
+ * from a socket to data from that socket.
+ */
+abstract class TaintFlow extends string {
+
+    bindingset[this]
+    TaintFlow() { any() }
+
+    /** Holds if `fromnode` being tainted with `fromkind` will result in `tonode` being tainted with `tokind`.
+     * Extensions to `TaintFlow` should override this to provide additional taint steps.
+     */
+    predicate additionalFlowStep(ControlFlowNode fromnode, TaintKind fromkind, ControlFlowNode tonode, TaintKind tokind) { none() }
+
+    /** Holds if this kind of taint passes from variable `fromvar` to variable `tovar`
+     * This predicate is present for completeness. It is unlikely that any `TaintFlow`
+     * implementation will ever need to override it.
+     */
+    predicate additionalFlowStepVar(EssaVariable fromvar,  EssaVariable tovar, TaintKind kind) { none() }
+
+}
+
 /** A source of taintedness.
  * Users of the taint tracking library should override this
  * class to provide their own sources.
  */
 abstract class TaintSource extends @py_flow_node {
 
-    abstract string toString();
+    string toString() { result = "Taint source" }
 
     /**
      * Holds if `this` is a source of taint kind `kind`
@@ -193,7 +218,7 @@ abstract class TaintedDefinition extends EssaNodeDefinition {
  */
 abstract class TaintSink extends  @py_flow_node {
 
-    abstract string toString();
+    string toString() { result = "Taint sink" }
 
     /**
      * Holds if `this` "sinks" taint kind `kind`
@@ -290,28 +315,6 @@ private predicate user_tainted_def(TaintedDefinition def, TaintFlow::TTrackedTai
         n = def.(TaintedDefinition).getDefiningNode()
     )
 }
-
-/* Allow users to define parameters as sources of taint.
- * The class adds a flow step from parameter CFG node to Parameter ESSA definition.
- */
-private class ParameterTaintedDefinition extends TaintedDefinition {
-
-    TaintSource src;
-
-    ParameterTaintedDefinition() {
-        src = this.getDefiningNode()
-    }
-
-    string toString() {
-        result = src.toString()
-    }
-
-    predicate isSourceOf(TaintKind kind, Context context) {
-        src.isSourceOf(kind, context)
-    }
-
-}
-
 
 /** A tainted data flow graph node.
  * This is a triple of `(CFG node, data-flow context, taint)`
@@ -521,6 +524,12 @@ module TaintFlow {
             tocontext = fromnode.getContext()
         )
         or
+        exists(TaintFlow flow, TaintKind tokind |
+            flow.additionalFlowStep(fromnode.getNode(), fromnode.getTaintKind(), tonode, tokind) and
+            totaint = fromnode.getTrackedValue().toKind(tokind) and
+            tocontext = fromnode.getContext()
+        )
+        or
         data_flow_step(fromnode.getContext(), fromnode.getNode(), tocontext, tonode) and
         totaint = fromnode.getTrackedValue()
         or
@@ -668,6 +677,12 @@ module TaintFlow {
             tainted_var(prev, context, origin) and
             origin.getTrackedValue() = taint and
             taint.getKind().additionalFlowStepVar(prev, var)
+        )
+        or
+        exists(TaintFlow flow, TrackedTaint taint, EssaVariable prev |
+            tainted_var(prev, context, origin) and
+            origin.getTrackedValue() = taint and
+            flow.additionalFlowStepVar(prev, var, taint.getKind())
         )
     }
 

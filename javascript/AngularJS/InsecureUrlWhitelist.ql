@@ -34,7 +34,7 @@ predicate isResourceUrlWhitelist(MethodCallExpr setupCall, ArrayExpr list) {
   exists (AngularJS::ServiceReference service |
     service.getName() = "$sceDelegateProvider" and
     setupCall = service.getAMethodCall("resourceUrlWhitelist") and
-    list = setupCall.getArgument(0).(DataFlowNode).getALocalSource()
+    setupCall.getArgument(0).flow().getALocalSource().asExpr() = list
   )
 }
 

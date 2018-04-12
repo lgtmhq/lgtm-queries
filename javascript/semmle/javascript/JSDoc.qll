@@ -13,8 +13,7 @@
 
 /** Provides classes for working with JSDoc comments. */
 
-import Locations
-import Comments
+import javascript
 
 /**
  * A JSDoc comment.

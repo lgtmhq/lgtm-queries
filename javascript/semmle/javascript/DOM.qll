@@ -133,7 +133,7 @@ module DOM {
      * This is undefined for HTML elements, where the attribute value is not
      * computed but specified directly.
      */
-    DataFlowNode getValueNode() {
+    DataFlow::Node getValueNode() {
       none()
     }
 
@@ -141,7 +141,7 @@ module DOM {
      * Gets the value of this attribute, if it can be determined.
      */
     string getStringValue() {
-      result = getValueNode().(Expr).getStringValue()
+      result = getValueNode().asExpr().getStringValue()
     }
 
     /**
@@ -175,10 +175,11 @@ module DOM {
    * A JSX attribute, viewed as an `AttributeDefinition`.
    */
   private class JsxAttributeDefinition extends AttributeDefinition, @jsx_attribute {
-    JsxAttributeDefinition() { this instanceof JSXAttribute }
-    override string getName() { result = this.(JSXAttribute).getName() }
-    override DataFlowNode getValueNode() { result = this.(JSXAttribute).getValue() }
-    override ElementDefinition getElement() { result = this.(JSXAttribute).getElement() }
+    JSXAttribute attr;
+    JsxAttributeDefinition() { this = attr }
+    override string getName() { result = attr.getName() }
+    override DataFlow::Node getValueNode() { result = DataFlow::valueNode(attr.getValue()) }
+    override ElementDefinition getElement() { result = attr.getElement() }
   }
 
   /**
@@ -250,8 +251,12 @@ module DOM {
    */
   private class DefaultElement extends Element {
     DefaultElement() {
-      defn = this or
-      defn = this.(DataFlowNode).getALocalSource().(Element).getDefinition()
+      defn = this
+      or
+      exists (Element that |
+        this.(Expr).flow().getALocalSource().asExpr() = that and
+        defn = that.getDefinition()
+      )
     }
   }
 

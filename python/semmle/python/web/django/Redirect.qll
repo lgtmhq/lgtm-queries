@@ -18,7 +18,6 @@
 import python
 
 import semmle.python.security.TaintTracking
-import semmle.python.web.HttpRedirect
 import semmle.python.security.strings.Basic
 private import semmle.python.web.django.Shared
 
@@ -40,7 +39,7 @@ class DjangoRedirect extends TaintSink {
     }
 
     override predicate sinks(TaintKind kind) {
-        kind instanceof ExternalHttpRedirect
+        kind instanceof ExternalStringKind
     }
 
 }

@@ -18,7 +18,7 @@
  * are either YAML values or alias nodes referring to another YAML value.
  */
 
-import Locations
+import javascript
 
 /**
  * A node in the AST representation of a YAML file, which may either be

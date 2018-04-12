@@ -100,7 +100,7 @@ predicate importLookup(PathExpr path, Module target, string kind) {
 /**
  * Gets a node that may write the property read by `prn`.
  */
-DataFlowNode getAWrite(PropReadNode prn) {
+ASTNode getAWrite(PropReadNode prn) {
   exists (DataFlow::AnalyzedNode base, DefiniteAbstractValue baseVal, string propName |
     base.asExpr() = prn.getBase() and propName = prn.getPropertyName() and
     baseVal = base.getAValue().getAPrototype*() |
@@ -123,7 +123,7 @@ DataFlowNode getAWrite(PropReadNode prn) {
  * only such property write. Parameter `kind` is always bound to `"M"`
  * at the moment.
  */
-predicate propertyLookup(Expr prop, DataFlowNode write, string kind) {
+predicate propertyLookup(Expr prop, ASTNode write, string kind) {
   exists (PropReadNode prn | prop = prn.getPropertyNameExpr() |
     count(getAWrite(prn)) = 1 and
     write = getAWrite(prn) and

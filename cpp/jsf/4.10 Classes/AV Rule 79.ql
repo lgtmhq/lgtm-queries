@@ -249,7 +249,7 @@ where unreleasedResource(r, acquire, f, _) and
           message =
           "Resource " + r.getName() + " is acquired by class " + r.getDeclaringType().getName() +
           " but not released in the destructor. It is released from " + releaseFunction.getName() + " on line " + releaseLine +
-          ", so this function should be called from the destructor."
+          ", so this function may need to be called from the destructor."
         )
         or
         (

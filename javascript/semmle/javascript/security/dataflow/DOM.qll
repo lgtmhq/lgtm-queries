@@ -31,25 +31,25 @@ class DOMGlobalVariable extends GlobalVariable {
   }
 }
 
-/** Holds if `nd` could hold a value that comes from the DOM. */
-predicate isDomValue(DataFlowNode nd) {
-  nd.(VarAccess).getVariable() instanceof DOMGlobalVariable or
-  isDomValue(nd.(PropAccess).getBase()) or
-  isDomValue(nd.getALocalSource())
+private DataFlow::SourceNode domValueSource() {
+  result.asExpr().(VarAccess).getVariable() instanceof DOMGlobalVariable or
+  result = domValueSource().getAPropertyAccess(_)
+}
+
+/** Holds if `e` could hold a value that comes from the DOM. */
+predicate isDomValue(Expr e) {
+  domValueSource().flowsToExpr(e)
 }
 
 /** Holds if `e` could refer to the `location` property of a DOM node. */
 predicate isLocation(Expr e) {
-  exists (PropAccess pacc | pacc = e |
-    isDomValue(pacc.getBase()) and pacc.getPropertyName() = "location"
-  )
-  or
+  e = domValueSource().getAPropertyAccess("location").asExpr() or
   e.accessesGlobal("location")
 }
 
-/** Holds if `nd` could refer to the `document` object. */
-predicate isDocument(DataFlowNode nd) {
-  nd.getALocalSource().(Expr).accessesGlobal("document")
+/** Holds if `e` could refer to the `document` object. */
+predicate isDocument(Expr e) {
+  DataFlow::globalVarRef("document").flowsToExpr(e)
 }
 
 /** Holds if `e` could refer to the document URL. */

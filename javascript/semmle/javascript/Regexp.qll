@@ -18,8 +18,7 @@
  * terms.
  */
 
-import Locations
-import Expr
+import javascript
 
 /**
  * An element containing a regular expression term, that is, either

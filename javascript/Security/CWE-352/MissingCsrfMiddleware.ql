@@ -26,35 +26,28 @@
 import javascript
 
 /**
- * Creation of a route handler that parses cookies.
+ * Gets an expression that creates a route handler that parses cookies.
  *
  * A router handler following after cookie parsing is assumed to depend on
  * cookies, and thus require CSRF protection.
  */
-private predicate isCookieMiddlewareCreation(InvokeExpr e) {
-  exists (ModuleInstance mod | e.getCallee().(DataFlowNode).getALocalSource() = mod |
+DataFlow::CallNode cookieMiddlewareCreation() {
+  exists (DataFlow::ModuleImportNode mod | result = mod.getACall() |
     mod.getPath() = "cookie-parser" or
     mod.getPath() = "cookie-session" or
     mod.getPath() = "express-session")
 }
 
 /**
- * Checks if `e` is a cookie-parsing middleware.
- */
-predicate isCookieMiddleware(DataFlowNode e) {
-  isCookieMiddlewareCreation(e.getALocalSource())
-}
-
-/**
  * Checks if `expr` is preceded by the cookie middleware `cookie`.
  */
 predicate hasCookieMiddleware(Express::RouteHandlerExpr expr, Express::RouteHandlerExpr cookie) {
-  isCookieMiddleware(cookie) and
+  cookieMiddlewareCreation().flowsToExpr(cookie) and
   expr.getAMatchingAncestor() = cookie
 }
 
 /**
- * An expression that creates a route handler which protects against CSRF attacks.
+ * Gets an expression that creates a route handler which protects against CSRF attacks.
  *
  * Any route handler registered downstream from this type of route handler will
  * be considered protected.
@@ -71,21 +64,17 @@ predicate hasCookieMiddleware(Express::RouteHandlerExpr expr, Express::RouteHand
  *
  * Currently the predicate only detects `csurf`-based protectors.
  */
-predicate isCsrfMiddlewareCreation(InvokeExpr expr) {
-  exists (ModuleInstance mod | expr.getCallee().(DataFlowNode).getALocalSource() = mod |
-    mod.getPath() = "csurf")
-}
-
-/** Checks if any kind of CSRF protector can reach `node`. */
-predicate isCsrfMiddleware(DataFlowNode expr) {
-  isCsrfMiddlewareCreation(expr.getALocalSource())
+DataFlow::CallNode csrfMiddlewareCreation() {
+  exists (DataFlow::ModuleImportNode mod | result = mod.getACall() |
+    mod.getPath() = "csurf"
+  )
 }
 
 /**
  * Holds if the given route handler is protected by CSRF middleware.
  */
 predicate hasCsrfMiddleware(Express::RouteHandlerExpr handler) {
-  isCsrfMiddleware(handler.getAMatchingAncestor())
+  csrfMiddlewareCreation().flowsToExpr(handler.getAMatchingAncestor())
 }
 
 from Express::RouterDefinition router, Express::RouteSetup setup, Express::RouteHandlerExpr handler,

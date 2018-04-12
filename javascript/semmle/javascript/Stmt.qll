@@ -13,10 +13,7 @@
 
 /** Provides classes for working with statements. */
 
-import Locations
-import AST
-import Variables
-import Tokens
+import javascript
 
 /** A statement. */
 class Stmt extends @stmt, ExprOrStmt, Documentable {

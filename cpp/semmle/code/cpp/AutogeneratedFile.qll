@@ -32,7 +32,7 @@ predicate hasPragmaDifferentFile(File f) {
   exists (PreprocessorLine pl, string s |
     pl.getFile() = f and
     pl.getHead().splitAt(" ", 1) = s and /* Zero index is line number, one index is file reference */
-    not ("\"" + f.getFileName() + "\"" = s))
+    not ("\"" + f.getAbsolutePath() + "\"" = s))
 }
 
 /**

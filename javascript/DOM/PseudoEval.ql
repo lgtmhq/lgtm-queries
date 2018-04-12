@@ -29,35 +29,34 @@ import javascript
  * A call to either `setTimeout` or `setInterval` where
  * a string literal is passed as first argument.
  */
-class EvilTwin extends CallExpr {
+class EvilTwin extends DataFlow::CallNode {
   EvilTwin() {
-    exists (Expr callee | callee = this.getCallee() |
-      callee.accessesGlobal("setTimeout") or
-      callee.accessesGlobal("setInterval")
-    ) and
-    getArgument(0) instanceof ConstantString
+    exists (string fn | fn = "setTimeout" or fn = "setInterval" |
+      this = DataFlow::globalVarRef(fn).getACall() and
+      getArgument(0).asExpr() instanceof ConstantString
+    )
   }
 }
 
 /** A call to `document.write` or `document.writeln`. */
-class DocumentWrite extends CallExpr {
+class DocumentWrite extends DataFlow::CallNode {
   DocumentWrite() {
-    exists (DotExpr callee | callee = this.getCallee() |
-      callee.getBase().accessesGlobal("document") and
-      callee.getPropertyName().regexpMatch("write(ln)?")
+    exists (string writeln |
+      this = DataFlow::globalVarRef("document").getAMemberCall(writeln) and
+      writeln.regexpMatch("write(ln)?")
     )
   }
 }
 
 /** A call to `window.execScript`. */
-class ExecScript extends CallExpr {
+class ExecScript extends DataFlow::CallNode {
   ExecScript() {
-    this.getCallee().accessesGlobal("execScript")
+    this = DataFlow::globalVarRef("execScript").getACall()
   }
 }
 
 /** A call to a DOM function that may evaluate a string as code. */
-class PseudoEval extends CallExpr {
+class PseudoEval extends DataFlow::Node {
   PseudoEval() {
     this instanceof EvilTwin or
     this instanceof DocumentWrite or

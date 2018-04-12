@@ -110,6 +110,33 @@ private predicate joinStep(TypeFlowNode n1, TypeFlowNode n2) {
   joinStep0(n1, n2) and not isNull(n1)
 }
 
+private predicate joinStepRank1(int r, TypeFlowNode n1, TypeFlowNode n2) {
+  n1 = rank[r](TypeFlowNode n | joinStep(n, n2) | n order by n.getLocation().getStartLine(), n.getLocation().getStartColumn())
+}
+
+private predicate joinStepRank2(int r2, int r1, TypeFlowNode n) {
+  r1 = rank[r2](int r | joinStepRank1(r, _, n) | r)
+}
+
+private predicate joinStepRank(int r, TypeFlowNode n1, TypeFlowNode n2) {
+  exists(int r1 |
+    joinStepRank1(r1, n1, n2) and
+    joinStepRank2(r, r1, n2)
+  )
+}
+
+private int lastRank(TypeFlowNode n) { result = max(int r | joinStepRank(r, _, n)) }
+
+private predicate exactTypeRank(int r, TypeFlowNode n, RefType t) {
+  forall(TypeFlowNode mid | joinStepRank(r, mid, n) | exactType(mid, t)) and
+  joinStepRank(r, _, n)
+}
+
+private predicate exactTypeJoin(int r, TypeFlowNode n, RefType t) {
+  exactTypeRank(1, n, t) and r = 1 or
+  exactTypeJoin(r-1, n, t) and exactTypeRank(r, n, t)
+}
+
 /**
  * Holds if the runtime type of `n` is exactly `t` and if this bound is a
  * non-trivial lower bound, that is, `t` has a subtype.
@@ -121,7 +148,9 @@ private predicate exactType(TypeFlowNode n, RefType t) {
     exists(RefType sub | sub.getASourceSupertype() = t.getSourceDeclaration())
   ) or
   exists(TypeFlowNode mid | exactType(mid, t) and step(mid, n)) or
-  forex(TypeFlowNode mid | joinStep(mid, n) | exactType(mid, t))
+  // The following is an optimized version of
+  // `forex(TypeFlowNode mid | joinStep(mid, n) | exactType(mid, t))`
+  exactTypeJoin(lastRank(n), n, t)
 }
 
 /** Holds if `e` occurs in a position where type information is discarded. */
@@ -174,15 +203,20 @@ private predicate typeFlowJoinCand(TypeFlowNode n, RefType t) {
 
 /**
  * Holds if `t` is a candidate bound for `n` that is also valid for data coming
- * through the edge from `mid` to `n`.
+ * through the edges into `n` ranked from `1` to `r`.
  */
-private predicate typeFlowJoinEdge(TypeFlowNode mid, TypeFlowNode n, RefType t) {
-  joinStep(mid, n) and
-  typeFlowJoinCand(n, t) and
-  exists(RefType midtyp |
-    exactType(mid, midtyp) or typeFlow(mid, midtyp)
-    |
-    midtyp.getASupertype*() = t
+private predicate typeFlowJoin(int r, TypeFlowNode n, RefType t) {
+  (
+    r = 1 and typeFlowJoinCand(n, t)
+    or
+    typeFlowJoin(r-1, n, t) and joinStepRank(r, _, n)
+  ) and
+  forall(TypeFlowNode mid | joinStepRank(r, mid, n) |
+    exists(RefType midtyp |
+      exactType(mid, midtyp) or typeFlow(mid, midtyp)
+      |
+      midtyp.getASupertype*() = t
+    )
   )
 }
 
@@ -194,7 +228,7 @@ private predicate typeFlow(TypeFlowNode n, RefType t) {
   exists(Expr e | n.asExpr() = e and upcast(e) and t = e.getType()) or
   upcastEnhancedForStmt(n.asSsa(), t) or
   exists(TypeFlowNode mid | typeFlow(mid, t) and step(mid, n)) or
-  forex(TypeFlowNode mid | joinStep(mid, n) | typeFlowJoinEdge(mid, n, t))
+  typeFlowJoin(lastRank(n), n, t)
 }
 
 /**

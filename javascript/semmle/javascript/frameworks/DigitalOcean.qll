@@ -26,9 +26,8 @@ module DigitalOcean {
     string kind;
 
     Credentials() {
-      exists (ModuleInstance mod, MethodCallExpr mce |
-        mod.getPath() = "digitalocean" and
-        mce = mod.getAMethodCall("client") |
+      exists (MethodCallExpr mce |
+        mce = DataFlow::moduleImport("digitalocean").getAMemberCall("client").asExpr() |
         this = mce.getArgument(0) and kind = "token"
       )
     }

@@ -90,6 +90,7 @@ abstract class StructurallyCompared extends ASTNode {
     result = candidate() and kindAndArity(result, kind, numChildren)
   }
 
+  pragma[noinline]
   private ASTNode uncleKind(int kind, int numChildren) {
     exists(int i | result = getAStructuralUncle(i).getChild(i)) and kindAndArity(result, kind, numChildren)
   }

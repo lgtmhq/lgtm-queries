@@ -15,7 +15,7 @@ import semmle.code.cpp.exprs.Expr
 import semmle.code.cpp.controlflow.SSA
 
 /**
- * Can a value flow directly from one expr to another?
+ * Holds if a value can flow directly from one expr to another.
  */
 predicate canValueFlow(Expr fromExpr, Expr toExpr)
 {
@@ -40,8 +40,7 @@ predicate canValueFlow(Expr fromExpr, Expr toExpr)
 }
 
 /**
- * An analysed null terminated string.  Returns maximum string length (including null) when
- * it can be calculated.
+ * An analysed null terminated string.
  */
 class AnalysedString extends Expr
 {
@@ -51,9 +50,13 @@ class AnalysedString extends Expr
     this.getType().getUnspecifiedType() instanceof PointerType
   }
 
+  /**
+   * Gets the maximum length (including null) this string can be, when this
+   * can be calculated.
+   */
   int getMaxLength()
   {
-    // otherwise, take the longest AnalysedString it's value could 'flow' from; however if even one doesn't
+    // take the longest AnalysedString it's value could 'flow' from; however if even one doesn't
     // return a value (this essentially means 'infinity') we can't return a value either.
     result = max(AnalysedString expr, int toMax | (canValueFlow*(expr, this)) and (toMax = expr.(StringLiteral).getOriginalLength()) | toMax) // maximum length
     and

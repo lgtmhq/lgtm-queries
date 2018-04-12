@@ -13,7 +13,7 @@
 
 /** Provides classes for restricting the locations reported for program elements. */
 
-import Locations
+import javascript
 
 /**
  * A program element with its location restricted to its first line, unless the element
@@ -27,7 +27,7 @@ class FirstLineOf extends Locatable {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                                              int endline, int endcolumn) {
@@ -55,7 +55,7 @@ class LastLineOf extends Locatable {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn,
                                              int endline, int endcolumn) {

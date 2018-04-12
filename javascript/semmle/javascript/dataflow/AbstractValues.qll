@@ -124,7 +124,7 @@ class AbstractValue extends TAbstractValue {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `f`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string f, int startline, int startcolumn,
                                       int endline, int endcolumn) {
@@ -232,6 +232,17 @@ class AbstractOtherString extends PrimitiveAbstractValue, TAbstractOtherString {
   override PrimitiveType getType() { result = TTString() }
   override predicate isCoercibleToNumber() { none() }
   override string toString() { result = "non-empty, non-numeric string" }
+}
+
+/**
+ * An abstract value representing a regular expression.
+ */
+class AbstractRegExp extends DefiniteAbstractValue, TAbstractRegExp {
+  override boolean getBooleanValue() { result = true }
+  override InferredType getType() { result = TTRegExp() }
+  override predicate isCoercibleToNumber() { none() }
+  override PrimitiveAbstractValue toPrimitive() { result = TAbstractOtherString() }
+  override string toString() { result = "regular expression" }
 }
 
 /**
@@ -425,7 +436,9 @@ class IndefiniteFunctionOrClass extends AbstractValue, TIndefiniteFunctionOrClas
  */
 class IndefiniteObject extends AbstractValue, TIndefiniteObject {
   override boolean getBooleanValue() { result = true }
-  override InferredType getType() { result = TTDate() or result = TTObject() }
+  override InferredType getType() {
+    result = TTDate() or result = TTRegExp() or result = TTObject()
+  }
   override predicate isCoercibleToNumber() { any() }
   override PrimitiveAbstractValue toPrimitive() {
     result.getType() = TTString() or result.getType() = TTNumber()
@@ -471,4 +484,70 @@ class IndefiniteAbstractValue extends AbstractValue, TIndefiniteAbstractValue {
       result = abstractValueOfType(any(PrimitiveType pt))
     )
   }
+}
+
+/**
+ * A string tag corresponding to a custom abstract value.
+ */
+abstract class CustomAbstractValueTag extends string {
+  bindingset[this] CustomAbstractValueTag() { any() }
+
+  /**
+   * Gets the type of some concrete value represented by this
+   * abstract value.
+   */
+  abstract InferredType getType();
+
+  /**
+   * Gets the Boolean value some concrete value represented by this
+   * abstract value coerces to.
+   */
+  abstract boolean getBooleanValue();
+
+  /**
+   * Gets an abstract primitive value this abstract value coerces to.
+   *
+   * This abstractly models the `ToPrimitive` coercion described in the
+   * ECMAScript language specification.
+   */
+  abstract PrimitiveAbstractValue toPrimitive();
+
+  /**
+   * Holds if this abstract value is coercible to a number, that is, it
+   * represents at least one concrete value for which the `ToNumber`
+   * conversion does not yield `NaN`.
+   */
+  abstract predicate isCoercibleToNumber();
+
+  /**
+   * Holds if this abstract value is an indefinite value arising from the
+   * incompleteness `cause`.
+   */
+  predicate isIndefinite(DataFlow::Incompleteness cause) {
+    none()
+  }
+
+  /** Gets a textual representation of this abstract value. */
+  abstract string describe();
+}
+
+/**
+ * A custom abstract value corresponding to an abstract value tag.
+ */
+class CustomAbstractValue extends AbstractValue, TCustomAbstractValue {
+  CustomAbstractValueTag tag;
+
+  CustomAbstractValue() { this = TCustomAbstractValue(tag) }
+
+  /** Gets the tag that this abstract value corresponds to. */
+  CustomAbstractValueTag getTag() { result = tag }
+
+  override boolean getBooleanValue() { result = tag.getBooleanValue() }
+  override InferredType getType() { result = tag.getType() }
+  override predicate isCoercibleToNumber() { tag.isCoercibleToNumber() }
+  override PrimitiveAbstractValue toPrimitive() { result = tag.toPrimitive() }
+  override predicate isIndefinite(DataFlow::Incompleteness cause) {
+    tag.isIndefinite(cause)
+  }
+  override string toString() { result = tag.describe() }
 }

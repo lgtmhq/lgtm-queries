@@ -19,7 +19,7 @@ import javascript
  * Declarations that declare an alias for a namespace (i.e. an import) are not
  * considered to be namespace definitions.
  */
-class NamespaceDefinition extends Stmt, @namespacedefinition {
+class NamespaceDefinition extends Stmt, @namespacedefinition, AST::ValueNode {
   /**
    * Gets the identifier naming the namespace.
    */
@@ -145,6 +145,13 @@ class TypeDefinition extends ASTNode, @typedefinition {
    */
   TypeName getTypeName() {
     result = NameResolution::getTypeNameFromDefinition(this)
+  }
+
+  /**
+   * Gets the type defined by this declaration.
+   */
+  Type getType() {
+    ast_node_type(getIdentifier(), result)
   }
 }
 
@@ -685,6 +692,16 @@ class TypeExpr extends ExprOrType, @typeexpr {
   }
 
   override predicate isAmbient() { any() }
+
+  /**
+   * Gets the static type expressed by this type annotation.
+   *
+   * Has no result if this occurs in a TypeScript file that was extracted
+   * without type information.
+   */
+  Type getType() {
+    ast_node_type(this, result)
+  }
 }
 
 /**
@@ -1329,7 +1346,7 @@ class QualifiedNamespaceAccess extends NamespaceAccess, @qualifiednamespaceacces
  * enum Color { red = 1, green, blue }
  * ```
  */
-class EnumDeclaration extends NamespaceDefinition, @enumdeclaration {
+class EnumDeclaration extends NamespaceDefinition, @enumdeclaration, AST::ValueNode {
   /** Gets the name of this enum, such as `E` in `enum E { A, B }`. */
   Identifier getIdentifier() {
     result = getChildExpr(0)
@@ -1672,3 +1689,253 @@ class TypeRootFolder extends Folder {
     findNodeModulesFolder(searchRoot, getNodeModulesFolder(), result)
   }
 }
+
+/// Types
+
+/**
+ * A static type in the TypeScript type system.
+ *
+ * Types are generally not associated with a specific location or AST node.
+ * For instance, there may be many AST nodes representing different uses of the
+ * `number` keyword, but there only exists one `number` type.
+ */
+class Type extends @type {
+  /**
+   * Gets a string representation of this type.
+   */
+  string toString() { types(this, _, result) }
+
+  /**
+   * Gets the kind of this type, which is an integer value denoting how the
+   * type is stored in the database.
+   *
+   * _Note_: The mapping from types to integers is considered an implementation detail
+   * and may change between versions of the extractor.
+   */
+  int getKind() { types(this, result, _) }
+
+  /**
+   * Gets the `i`th child of this type.
+   */
+  Type getChild(int i) {
+    type_child(result, this, i)
+  }
+
+  /**
+   * Gets the type of the given property of this type.
+   */
+  Type getProperty(string name) {
+    type_property(this, name, result)
+  }
+}
+
+/**
+ * A union type, such as `string | number`.
+ *
+ * Note that the `boolean` type is represented as the union `true | false`,
+ * but is still displayed as `boolean` in string representations.
+ */
+class UnionType extends Type, @uniontype {
+  /**
+   * Gets the `i`th member of this union, starting at 0.
+   */
+  Type getElementType(int i) {
+    result = getChild(i)
+  }
+
+  /**
+   * Gets a member of this union.
+   */
+  Type getAnElementType() {
+    result = getElementType(_)
+  }
+
+  /**
+   * Gets the number of elements in this union.
+   */
+  int getNumElementType() {
+    result = count(getElementType(_))
+  }
+}
+
+/**
+ * The predefined `any` type.
+ */
+class AnyType extends Type, @anytype {}
+
+/**
+ * The predefined `string` type.
+ */
+class StringType extends Type, @stringtype {}
+
+/**
+ * The predefined `number` type.
+ */
+class NumberType extends Type, @numbertype {}
+
+/**
+ * The boolean literal type `true` or `false`.
+ */
+class BooleanLiteralType extends Type, @booleanliteraltype {
+  /**
+   * Gets the boolean value represented by this type.
+   */
+  boolean getValue() {
+    if this instanceof @truetype then
+      result = true
+    else
+      result = false
+  }
+}
+
+/**
+ * The `boolean` type, internally represented as the union type `true | false`.
+ */
+class BooleanType extends UnionType {
+  BooleanType() {
+    getAnElementType() instanceof @truetype and
+    getAnElementType() instanceof @falsetype and
+    count(getAnElementType()) = 2
+  }
+}
+
+/**
+ * A type that refers to a class, interface, enum, or enum member.
+ */
+class TypeReference extends Type, @typereference {
+  private NameResolution::Symbol getSymbol() {
+    type_reference_symbol(this, result)
+  }
+
+  /**
+   * Gets a syntactic declaration of this named type.
+   */
+  TypeDefinition getADefinition() {
+    type_definition_symbol(result, getSymbol())
+  }
+
+  /**
+   * Gets the canonical name of the type being defined.
+   */
+  TypeName getTypeName() {
+    result = getADefinition().getTypeName()
+  }
+
+  /**
+   * Gets the `n`th type argument provided in this type, such as `string` in `Promise<string>`.
+   */
+  Type getTypeArgument(int n) {
+    result = getChild(n)
+  }
+
+  /**
+   * Gets a type argument provided in this type.
+   */
+  Type getATypeArgument() {
+    result = getTypeArgument(_)
+  }
+
+  /**
+   * Holds if type arguments are provided in this type.
+   */
+  predicate hasTypeArguments() {
+    exists (getATypeArgument())
+  }
+
+  /**
+   * Gets the number of type arguments provided in this type.
+   */
+  int getNumTypeArgument() {
+    result = count(getTypeArgument(_))
+  }
+
+  /**
+   * Holds if the referenced type has the given qualified name, rooted in the global scope.
+   *
+   * For example, `type.hasQualifiedName("React.Component")` holds if `type` is an instantiation
+   * of the React `Component` class.
+   */
+  predicate hasQualifiedName(string globalName) {
+    getSymbol().hasQualifiedName(globalName)
+  }
+
+  /**
+   * Holds if the referenced type is exported from the given module under the given qualified name.
+   *
+   * For example, `type.hasQualifiedName("react", "Component")` holds if `type` is an instantiation
+   * of the React `Component` class.
+   */
+  predicate hasQualifiedName(string moduleName, string exportedName) {
+    getSymbol().hasQualifiedName(moduleName, exportedName)
+  }
+}
+
+/**
+ * A type that refers to a class, possibly with type arguments.
+ */
+class ClassType extends TypeReference {
+  ClassDefinition declaration;
+
+  ClassType() { declaration = getADefinition() }
+
+  /**
+   * Gets the declaration of the referenced class.
+   */
+  ClassDefinition getClass() { result = declaration }
+}
+
+/**
+ * A type that refers to an interface, possibly with type arguents.
+ */
+class InterfaceType extends TypeReference {
+  InterfaceDeclaration declaration;
+
+  InterfaceType() { declaration = getADefinition() }
+
+  /**
+   * Gets the declaration of the referenced interface.
+   */
+  InterfaceDeclaration getInterface() { result = declaration }
+}
+
+/**
+ * A type that refers to an enum.
+ */
+class EnumType extends TypeReference {
+  EnumDeclaration declaration;
+
+  EnumType() {
+    declaration = getADefinition()
+  }
+
+  /**
+   * Gets the declaration of the referenced enum.
+   */
+  EnumDeclaration getEnum() { result = declaration }
+}
+
+/**
+ * A type that refers to the value of an enum member.
+ */
+class EnumLiteralType extends TypeReference {
+  EnumMember declaration;
+
+  EnumLiteralType() {
+    declaration = getADefinition()
+  }
+
+  /**
+   * Gets the declaration of the referenced enum member.
+   */
+  EnumMember getEnumMember() { result = declaration }
+}
+
+/**
+ * An anonymous interface type, such as `{ x: number }`.
+ */
+class AnonymousInterfaceType extends Type, @objecttype {}
+
+/**
+ * A type that refers to a type variable.
+ */
+class TypeVariableType extends Type, @typevariabletype {}

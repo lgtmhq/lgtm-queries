@@ -54,6 +54,16 @@ class NosqlInjectionTrackingConfig extends TaintTracking::Configuration {
     super.isSanitizer(node) or
     node instanceof NosqlInjectionSanitizer
   }
+
+  override predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
+    // additional flow step to track taint through NoSQL query objects
+    exists (NoSQL::Query query, PropWriteNode pwn, DataFlow::SourceNode queryObj |
+      queryObj.flowsToExpr(query) and
+      queryObj.flowsTo(succ) and
+      queryObj.flowsToExpr(pwn.getBase()) and
+      pred = DataFlow::valueNode(pwn.getRhs())
+    )
+  }
 }
 
 /**
@@ -89,23 +99,4 @@ class RemoteJson extends NosqlInjectionSource, DataFlow::ValueNode {
 /** An expression interpreted as a NoSQL query, viewed as a sink. */
 class NosqlQuerySink extends NosqlInjectionSink, DataFlow::ValueNode {
   override NoSQL::Query astNode;
-}
-
-/**
- * An additional flow step to track taint through NoSQL query objects.
- */
-class NosqlQueryFlowTarget extends TaintTracking::FlowTarget, DataFlow::ValueNode {
-  NoSQL::Query query;
-  PropWriteNode pwn;
-
-  NosqlQueryFlowTarget() {
-    exists (DataFlowNode queryObj | queryObj = query.(DataFlowNode).getALocalSource() |
-      astNode.(DataFlowNode).getALocalSource() = queryObj and
-      queryObj = pwn.getBase().getALocalSource()
-    )
-  }
-
-  override DataFlow::Node getATaintSource() {
-    result = DataFlow::valueNode(pwn.getRhs())
-  }
 }

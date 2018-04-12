@@ -96,6 +96,42 @@ string extraDetail(HeaderFile hf, SomePreprocessorDirective detail1, SomePreproc
   )
 }
 
+/**
+ * Header file `hf` uses a macro called `macroName`.
+ */
+predicate usesMacro(HeaderFile hf, string macroName) {
+  exists(MacroAccess ma |
+    ma.getFile() = hf and
+    ma.getMacro().getName() = macroName
+  )
+}
+
+/**
+ * File `f` both defines and un-defines a macro called `macroName`.
+ */
+predicate defUndef(File f, string macroName) {
+  exists(Macro m |
+    m.getFile() = f and
+    m.getName() = macroName
+  ) and exists(PreprocessorUndef ud |
+    ud.getFile() = f and
+    ud.getName() = macroName
+  )
+}
+
+/**
+ * Header file `hf` looks like it contains an x-macro called
+ * `macroName`.  That is, a macro that is used to interpret the
+ * data in `hf`, usually defined just before including that file
+ * and undefined immediately afterwards.
+ */
+predicate hasXMacro(HeaderFile hf, string macroName) {
+  usesMacro(hf, macroName) and
+  forex(Include i | i.getIncludedFile() = hf |
+    defUndef(i.getFile(), macroName)
+  )
+}
+
 from HeaderFile hf, string detail, MaybePreprocessorDirective detail1, MaybePreprocessorDirective detail2
 where not hf instanceof IncludeGuardedHeader
   and (if exists(extraDetail(hf, _, _))
@@ -103,8 +139,16 @@ where not hf instanceof IncludeGuardedHeader
     else (detail = "." and
       detail1 instanceof NoPreprocessorDirective and
       detail2 instanceof NoPreprocessorDirective))
-  // Exclude files which consist purely of preprocessor directives.
-  and not hf.(MetricFile).getNumberOfLinesOfCode() = strictcount(PreprocessorDirective ppd | ppd.getFile() = hf)
+  // Exclude files which contain no declaration entries or top level
+  // declarations (e.g. just preprocessor directives; or non-top level
+  // code).
+  and (
+    exists(DeclarationEntry de | de.getFile() = hf) or
+    exists(Declaration d | d.getFile() = hf and d.isTopLevel()) or
+    exists(UsingEntry ue | ue.getFile() = hf)
+  )
+  // Exclude files which look like they contain 'x-macros'
+  and not hasXMacro(hf, _)
   // Exclude files which are always #imported.
   and not forex(Include i | i.getIncludedFile() = hf | i instanceof Import)
   // Exclude files which are only included once.

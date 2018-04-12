@@ -15,7 +15,7 @@
  * Provides classes for working with JSON data.
  */
 
-import AST
+import javascript
 
 /**
  * A JSON-encoded value, which may be a primitive value, an array or an object.

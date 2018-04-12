@@ -16,7 +16,7 @@
  * that denote them.
  */
 
-import Expr
+import javascript
 
 /**
  * Internal representation of paths as lists of components.

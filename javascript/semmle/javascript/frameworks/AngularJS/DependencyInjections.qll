@@ -29,24 +29,19 @@ private import ServiceDefinitions
 /**
  * Holds if `nd` is an `angular.injector()` value
  */
-private predicate isAngularInjector(DataFlowNode nd) {
-  exists(MethodCallExpr mce |
-    nd.getALocalSource() = mce and
-    isAngularRef(mce.getReceiver()) and
-    mce.getMethodName() = "injector"
-  )
+private DataFlow::CallNode angularInjector() {
+  result = angular().getAMemberCall("injector")
 }
 
 /**
  * A call to `$angular.injector().invoke(...)`
  */
-class InjectorInvokeCall extends MethodCallExpr, DependencyInjection {
+class InjectorInvokeCall extends DataFlow::CallNode, DependencyInjection {
   InjectorInvokeCall() {
-    isAngularInjector(this.getReceiver()) and
-    this.getMethodName() = "invoke"
+    this = angularInjector().getAMemberCall("invoke")
   }
 
-  override DataFlowNode getAnInjectableFunction() {
+  override DataFlow::Node getAnInjectableFunction() {
     result = getArgument(0)
   }
 
@@ -55,12 +50,12 @@ class InjectorInvokeCall extends MethodCallExpr, DependencyInjection {
 /**
  * Base class for expressions that dependency-inject some of their input with AngularJS dependency injection services.
  */
-abstract class DependencyInjection extends Expr {
+abstract class DependencyInjection extends DataFlow::ValueNode {
 
   /**
    * Gets a node that will be dependency-injected.
    */
-  abstract DataFlowNode getAnInjectableFunction();
+  abstract DataFlow::Node getAnInjectableFunction();
 
 }
 
@@ -68,7 +63,7 @@ abstract class DependencyInjection extends Expr {
  * An injectable function, that is, a function that could have its dependency
  * parameters automatically provided by the AngularJS `$inject` service.
  */
-abstract class InjectableFunction extends DataFlowNode {
+abstract class InjectableFunction extends DataFlow::ValueNode {
 
   /** Gets the parameter corresponding to dependency `name`. */
   abstract SimpleParameter getDependencyParameter(string name);
@@ -114,7 +109,7 @@ abstract class InjectableFunction extends DataFlowNode {
    * Gets a Custom service corresponding to the dependency-injected `parameter`.
    * (this is a convenience variant of `getAResolvedDependency`)
    */
-  DataFlowNode getCustomServiceDependency(SimpleParameter parameter) {
+  DataFlow::Node getCustomServiceDependency(SimpleParameter parameter) {
     exists(CustomServiceDefinition custom |
       custom.getServiceReference() = getAResolvedDependency(parameter) and
       result = custom.getAService()
@@ -127,22 +122,24 @@ abstract class InjectableFunction extends DataFlowNode {
  * An injectable function that does not explicitly list its dependencies,
  * instead relying on implicit matching by parameter names.
  */
-private class FunctionWithImplicitDependencyAnnotation extends InjectableFunction, @function {
+private class FunctionWithImplicitDependencyAnnotation extends InjectableFunction {
+  override Function astNode;
+
   FunctionWithImplicitDependencyAnnotation() {
-    this = any(DependencyInjection d).getAnInjectableFunction().getALocalSource() and
-    not exists(getAPropertyDependencyInjection(this))
+    this.(DataFlow::FunctionNode).flowsTo(any(DependencyInjection d).getAnInjectableFunction()) and
+    not exists(getAPropertyDependencyInjection(astNode))
   }
 
   override SimpleParameter getDependencyParameter(string name) {
-    result = asFunction().getParameterByName(name)
+    result = astNode.getParameterByName(name)
   }
 
   override SimpleParameter getDependencyDeclaration(int i, string name) {
     result.getName() = name and
-    result = asFunction().getParameter(i)
+    result = astNode.getParameter(i)
   }
 
-  override Function asFunction() { result = this }
+  override Function asFunction() { result = astNode }
 
   override ASTNode getAnExplicitDependencyInjection() {
     none()
@@ -150,30 +147,36 @@ private class FunctionWithImplicitDependencyAnnotation extends InjectableFunctio
 }
 
 private PropWriteNode getAPropertyDependencyInjection(Function function){
-  result.getBase().getALocalSource() = function and
-  result.getPropertyName() = "$inject"
+  exists (DataFlow::FunctionNode ltf |
+    ltf.getAstNode() = function and
+    ltf.flowsToExpr(result.getBase()) and
+    result.getPropertyName() = "$inject"
+  )
 }
 
 /**
  * An injectable function with an `$inject` property that lists its
  * dependencies.
  */
-private class FunctionWithInjectProperty extends InjectableFunction, @function {
+private class FunctionWithInjectProperty extends InjectableFunction {
+  override Function astNode;
   ArrayExpr dependencies;
 
   FunctionWithInjectProperty() {
-    (this = any(DependencyInjection d).getAnInjectableFunction().getALocalSource() or
-      exists(FunctionWithExplicitDependencyAnnotation f | f.asFunction() = this)
-    ) and
+    (
+     this.(DataFlow::FunctionNode).flowsTo(any(DependencyInjection d).getAnInjectableFunction()) or
+     exists(FunctionWithExplicitDependencyAnnotation f | f.asFunction() = astNode)
+    )
+    and
     exists (PropWriteNode pwn |
-      pwn = getAPropertyDependencyInjection(this) and
-      pwn.getRhs().getALocalSource() = dependencies
+      pwn = getAPropertyDependencyInjection(astNode) and
+      pwn.getRhs().(Expr).flow().getALocalSource().asExpr() = dependencies
     )
   }
 
   override SimpleParameter getDependencyParameter(string name) {
-    exists (int i | dependencies.getElement(i).mayHaveStringValue(name) |
-      result = asFunction().getParameter(i)
+    exists (int i | exists(getDependencyDeclaration(i, name)) |
+      result = astNode.getParameter(i)
     )
   }
 
@@ -182,41 +185,41 @@ private class FunctionWithInjectProperty extends InjectableFunction, @function {
     result.(Expr).mayHaveStringValue(name)
   }
 
-  override Function asFunction() { result = this }
+  override Function asFunction() { result = astNode }
 
   override ASTNode getAnExplicitDependencyInjection() {
-    result = getAPropertyDependencyInjection(this)
+    result = getAPropertyDependencyInjection(astNode)
   }
 }
 
 /**
  * An injectable function embedded in an array of dependencies.
  */
-private class FunctionWithExplicitDependencyAnnotation extends InjectableFunction, @arrayexpr {
-  Function function;
+private class FunctionWithExplicitDependencyAnnotation extends InjectableFunction {
+  DataFlow::FunctionNode function;
+  override ArrayExpr astNode;
 
   FunctionWithExplicitDependencyAnnotation() {
-    this = any(DependencyInjection d).getAnInjectableFunction().getALocalSource() and
-    exists (ArrayExpr ae | ae = this |
-      function = ae.getElement(ae.getSize()-1).(DataFlowNode).getALocalSource()
-    )
+    this.(DataFlow::SourceNode).flowsTo(any(DependencyInjection d).getAnInjectableFunction()) and
+    function.flowsToExpr(astNode.getElement(astNode.getSize()-1))
   }
 
   override SimpleParameter getDependencyParameter(string name) {
-    exists (int i | this.(ArrayExpr).getElement(i).mayHaveStringValue(name) |
+    exists (int i | astNode.getElement(i).mayHaveStringValue(name) |
       result = asFunction().getParameter(i)
     )
   }
 
   override ASTNode getDependencyDeclaration(int i, string name) {
-    result = this.(ArrayExpr).getElement(i) and
+    result = astNode.getElement(i) and
     result.(Expr).mayHaveStringValue(name)
   }
 
-  override Function asFunction() { result = function }
+  override Function asFunction() { result = function.getAstNode() }
 
   override ASTNode getAnExplicitDependencyInjection() {
-    result = this or result = asFunction().(InjectableFunction).getAnExplicitDependencyInjection()
+    result = astNode or
+    result = function.(InjectableFunction).getAnExplicitDependencyInjection()
   }
 }
 

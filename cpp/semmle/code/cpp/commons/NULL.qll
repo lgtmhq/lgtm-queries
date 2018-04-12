@@ -26,4 +26,3 @@ class NULL extends Literal {
     exists(NULLMacro nm | this = nm.getAnInvocation().getAnExpandedElement())
   }
 }
-

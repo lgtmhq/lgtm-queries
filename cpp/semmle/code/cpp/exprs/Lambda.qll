@@ -141,7 +141,7 @@ class LambdaCapture extends @lambdacapture {
    */
   MemberVariable getField() {
     exists(LambdaExpression lambda, int index | this = lambda.getCapture(index) |
-      result = lambda.getType().(Closure).getMember(index)
+      result = lambda.getType().(Closure).getCanonicalMember(index)
     )
   }
 

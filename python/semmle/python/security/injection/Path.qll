@@ -14,24 +14,7 @@
 import python
 
 import semmle.python.security.TaintTracking
-import semmle.python.security.strings.Basic
-
-/** A kind of taint representing an externally controlled string containing
- * a potentially malicious path.
- */
-class PathInjection extends ExternalStringKind {
-
-    PathInjection() {
-        this = "path.injection"
-    }
-
-    override TaintKind getTaintForFlowStep(ControlFlowNode fromnode, ControlFlowNode tonode) {
-        result = super.getTaintForFlowStep(fromnode, tonode)
-        or
-        abspath_call(tonode, fromnode) and result instanceof NormalizedPath
-    }
-
-}
+import semmle.python.security.strings.Untrusted
 
 /** Prevents taint flowing through ntpath.normpath()
  * NormalizedPath below handles that case.
@@ -43,7 +26,7 @@ private class PathSanitizer extends Sanitizer {
     }
 
     override predicate sanitizingNode(TaintKind taint, ControlFlowNode node) {
-        taint instanceof PathInjection and
+        taint instanceof ExternalStringKind and
         abspath_call(node, _)
     }
 
@@ -59,16 +42,26 @@ private FunctionObject abspath() {
     )
 }
 
-private predicate abspath_call(CallNode call, ControlFlowNode arg) {
-    call.getFunction().refersTo(abspath()) and
-    arg = call.getArg(0)
-}
-
 /** A path that has been normalized, but not verified to be safe */
 class NormalizedPath extends TaintKind {
 
     NormalizedPath() {
         this = "normalized.path.injection"
+    }
+
+}
+
+private predicate abspath_call(CallNode call, ControlFlowNode arg) {
+    call.getFunction().refersTo(abspath()) and
+    arg = call.getArg(0)
+}
+
+class AbsPath extends TaintFlow {
+
+    AbsPath() { this = "abspath" }
+
+    predicate additionalFlowStep(ControlFlowNode fromnode, TaintKind fromkind, ControlFlowNode tonode, TaintKind tokind) {
+        abspath_call(tonode, fromnode) and tokind instanceof NormalizedPath and fromkind instanceof ExternalStringKind
     }
 
 }
@@ -102,7 +95,7 @@ class OpenNode extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof PathInjection
+        kind instanceof ExternalStringKind
         or
         kind instanceof NormalizedPath
     }

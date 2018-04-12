@@ -24,27 +24,26 @@ module Request {
     string kind;
 
     Credentials() {
-      exists (ModuleInstance mod, CallExpr action |
+      exists (DataFlow::ModuleImportNode mod, DataFlow::CallNode action |
         mod.getPath() = "request" and
         (
           // default form: `request(...)`
-          action.getCallee().(DataFlowNode).getALocalSource() = mod or
+          action = mod.getAnInvocation() or
           // specialized form: `request.get(...)`
-          action = mod.getAMethodCall(any(HTTP::RequestMethodName n).toLowerCase())
+          action = mod.getAMemberCall(any(HTTP::RequestMethodName n).toLowerCase())
         ) |
         exists (MethodCallExpr auth, int argIndex |
           // request.get(url).auth('username', 'password', _, 'token');
-          auth.getReceiver().(DataFlowNode).getALocalSource() = action and
-          auth.getMethodName() = "auth" and
+          auth = action.getAMemberCall("auth").asExpr() and
           this = auth.getArgument(argIndex) |
           (argIndex = 0 and kind = "user name") or
           (argIndex = 1 and kind = "password") or
           (argIndex = 3 and kind = "token")
         ) or
-        exists (DataFlowNode auth, PropWriteNode pwn, string propertyName |
+        exists (DataFlow::ObjectExprNode auth, PropWriteNode pwn, string propertyName |
           // request.get(url, { auth: {user: 'username', pass: 'password', bearer: 'token'}})
-          action.hasOptionArgument(1, "auth", auth) and
-          pwn.getBase().getALocalSource() = auth.getALocalSource() and
+          auth.flowsTo(action.getOptionArgument(1, "auth")) and
+          auth.flowsToExpr(pwn.getBase()) and
           pwn.getPropertyName() = propertyName and
           this = pwn.getRhs() |
           ((propertyName = "user" or propertyName = "username") and kind = "user name") or

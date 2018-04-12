@@ -23,22 +23,20 @@ module Restify {
    */
   class ServerDefinition extends HTTP::Servers::StandardServerDefinition, CallExpr, DataFlow::TrackedExpr {
     ServerDefinition() {
-      exists (ModuleInstance restify | restify.getPath() = "restify" |
-        // `server = restify.createServer()`
-        this = restify.getAMethodCall("createServer")
-      )
+      // `server = restify.createServer()`
+      this = DataFlow::moduleImport("restify").getAMemberCall("createServer").asExpr()
     }
   }
 
   /**
    * A Restify route handler.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
 
     Function function;
 
     RouteHandler() {
-      function = this and
+      function = astNode and
       any(RouteSetup setup).getARouteHandler() = this
     }
 
@@ -163,12 +161,12 @@ module Restify {
 
     HeaderDefinition() {
       // response.header('Cache-Control', 'no-cache')
-      getReceiver() instanceof ResponseExpr and
-      getMethodName() = "header"
+      astNode.getReceiver() instanceof ResponseExpr and
+      astNode.getMethodName() = "header"
     }
 
     override RouteHandler getRouteHandler(){
-      getReceiver() = result.getAResponseExpr()
+      astNode.getReceiver() = result.getAResponseExpr()
     }
 
   }
@@ -186,11 +184,11 @@ module Restify {
       getMethodName() = any(HTTP::RequestMethodName m).toLowerCase()
     }
 
-    override DataFlowNode getARouteHandler() {
-      result = getArgument(1).(DataFlowNode).getALocalSource()
+    override DataFlow::SourceNode getARouteHandler() {
+      result.flowsToExpr(getArgument(1))
     }
 
-    override DataFlowNode getServer() {
+    override Expr getServer() {
       result = server
     }
   }

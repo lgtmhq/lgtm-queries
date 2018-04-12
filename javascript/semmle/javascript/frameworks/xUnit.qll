@@ -22,8 +22,7 @@ private predicate xUnitDetected() {
   // look for `Function.RegisterNamespace("xUnit.js");`
   exists (MethodCallExpr mc |
     mc.getParent() instanceof ExprStmt and
-    mc.getReceiver().accessesGlobal("Function") and
-    mc.getMethodName() = "RegisterNamespace" and
+    mc = DataFlow::globalVarRef("Function").getAMemberCall("RegisterNamespace").asExpr() and
     mc.getNumArgument() = 1 and
     mc.getArgument(0).(ConstantString).getStringValue() = "xUnit.js"
   )
@@ -153,7 +152,7 @@ class XUnitAnnotation extends Expr {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
     // extend location to cover brackets

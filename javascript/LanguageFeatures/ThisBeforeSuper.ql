@@ -58,7 +58,7 @@ predicate unguardedBB(BasicBlock bb, Function ctor) {
  * which is the constructor of a class that has a superclass, without going through
  * a `super` call.
  */
-predicate unguarded(DataFlowNode nd, Function ctor) {
+predicate unguarded(ControlFlowNode nd, Function ctor) {
   exists (BasicBlock bb, int i | nd = bb.getNode(i) |
     unguardedBB(bb, ctor) and
     not bb.getNode([0..i-1]) instanceof SuperCall

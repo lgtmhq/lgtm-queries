@@ -119,15 +119,20 @@ private predicate localFlowStep(DataFlow::Node src, DataFlow::Node trg,
    or
    // extra step: the flow analysis models import specifiers as property reads;
    // they should flow into the SSA variable corresponding to the imported variable
-   exists (ImportSpecifier is, SsaExplicitDefinition ssa |
-     src = DataFlow::valueNode(is) and
-     ssa.getDef() = is and
-     trg = DataFlow::ssaDefinitionNode(ssa)
-   )
+   flowStepThroughImport(src, trg)
    or
    configuration.isAdditionalFlowStep(src, trg)
   ) and
   not configuration.isBarrier(src, trg)
+}
+
+pragma[noinline]
+private predicate flowStepThroughImport(DataFlow::Node src, DataFlow::Node trg) {
+  exists (ImportSpecifier is, SsaExplicitDefinition ssa |
+    src = DataFlow::valueNode(is) and
+    ssa.getDef() = is and
+    trg = DataFlow::ssaDefinitionNode(ssa)
+  )
 }
 
 
@@ -176,8 +181,8 @@ private predicate defOfCapturedVar(SsaExplicitDefinition expl, SsaVariableCaptur
  */
 private predicate forwardFlowFromInput(Function f, SsaDefinition def,
                                        DataFlow::Node sink, Configuration configuration) {
-  hasForwardFlow(f, def, configuration) and
   (
+    hasForwardFlow(f, def, configuration) and
     sink = DataFlow::ssaDefinitionNode(def)
     or
     exists (DataFlow::Node mid | forwardFlowFromInput(f, def, mid, configuration) |
@@ -208,9 +213,9 @@ private predicate hasBackwardFlow(Function f, Configuration configuration) {
  */
 private predicate backwardFlowFromInput(Function f, DataFlow::Node source,
                                         DataFlow::ValueNode sink, Configuration configuration) {
-  hasBackwardFlow(f, configuration) and
   (
-    sink.asExpr() = f.getAReturnedExpr() and source = sink
+    hasBackwardFlow(f, configuration) and
+    returnExpr(f, source, sink)
     or
     exists (DataFlow::Node mid | backwardFlowFromInput(f, mid, sink, configuration) |
       localFlowStep(source, mid, configuration)
@@ -220,6 +225,11 @@ private predicate backwardFlowFromInput(Function f, DataFlow::Node source,
     )
   ) and
   not configuration.isBarrier(source)
+}
+
+pragma[noinline]
+private predicate returnExpr(Function f, DataFlow::Node source, DataFlow::Node sink) {
+  sink.asExpr() = f.getAReturnedExpr() and source = sink
 }
 
 /**

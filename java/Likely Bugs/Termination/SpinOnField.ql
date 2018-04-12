@@ -17,7 +17,7 @@
  *              result in an infinite loop.
  * @kind problem
  * @problem.severity warning
- * @precision very-high
+ * @precision medium
  * @id java/spin-on-field
  * @tags efficiency
  *       correctness
@@ -73,6 +73,7 @@ where loop.getCondition() = expr and
       access.getParent() = expr and
       field = access.getVariable() and
       field.isStatic() and
+      not field.isFinal() and
       not field.isVolatile() and
       field.getType() instanceof RefType
 select access, "Spinning on " + field.getName() + " in " 

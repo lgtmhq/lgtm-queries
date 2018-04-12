@@ -78,6 +78,41 @@ class LocationOverridingMethodAccess extends MethodAccess {
 }
 
 /**
+ * Restricts the location of a type access to exclude
+ * the type arguments and qualifier, if any.
+ */
+class LocationOverridingTypeAccess extends TypeAccess {
+  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+    exists(int slSuper, int scSuper, int elSuper, int ecSuper |
+      super.hasLocationInfo(path, slSuper, scSuper, elSuper, ecSuper) |
+      (
+        if exists(getQualifier())
+        // Note: this needs to be the original (full) location of the qualifier, not the modified one.
+        then exists(Location locQual | locQual = getQualifier().getLocation() |
+          sl = locQual.getEndLine() and
+          sc = locQual.getEndColumn()+2)
+        else (
+          sl = slSuper and
+          sc = scSuper
+        )
+      )
+      and
+      (
+        if (exists(getTypeArgument(_)))
+        // Note: this needs to be the original (full) location of the first type argument, not the modified one.
+        then exists(Location locArg | locArg = getTypeArgument(0).getLocation() |
+          el = locArg.getStartLine() and
+          ec = locArg.getStartColumn()-2
+        ) else (
+          el = elSuper and
+          ec = ecSuper
+        )
+      )
+    )
+  }
+}
+
+/**
  * Restricts the location of a field access to the name of the accessed field only,
  * excluding its qualifier.
  */
@@ -145,7 +180,7 @@ predicate dummyVarAccess(VarAccess va) {
 }
 
 predicate dummyTypeAccess(TypeAccess ta) {
-  exists(FunctionalExpr e | e.getAnonymousClass().getClassInstanceExpr().getTypeName() = ta)
+  exists(FunctionalExpr e | e.getAnonymousClass().getClassInstanceExpr().getTypeName() = ta.getParent*())
 }
 
 from Element e, Element def, string kind

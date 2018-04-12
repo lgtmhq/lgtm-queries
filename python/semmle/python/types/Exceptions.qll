@@ -65,7 +65,8 @@ class RaisingNode extends ControlFlowNode {
         this.quits() and result = builtin_object("SystemExit")
     }
 
-    cached private ClassObject localRaisedType() {
+    pragma [noinline, nomagic]
+    private ClassObject localRaisedType() {
         result.isSubclassOf(theBaseExceptionType()) 
         and
         (
@@ -80,14 +81,8 @@ class RaisingNode extends ControlFlowNode {
           or
           exists(ExceptFlowNode except |
               except = this.getAnExceptionalSuccessor() and
-              except.handles(result) |
-              this.getNode() instanceof Attribute and result = theAttributeErrorType()
-              or
-              this.getNode() instanceof Name and result = theNameErrorType()
-              or
-              this.getNode() instanceof Subscript and result = theIndexErrorType()
-              or
-              this.getNode() instanceof Subscript and result = theKeyErrorType()
+              except.handles(result) and
+              result = this.innateException()
           )
           or
           not exists(ExceptFlowNode except | except = this.getAnExceptionalSuccessor())
@@ -96,6 +91,17 @@ class RaisingNode extends ControlFlowNode {
           or
           this.read_write_call() and result = theIOErrorType()
         )
+    }
+
+    pragma [noinline]
+    ClassObject innateException() {
+        this.getNode() instanceof Attribute and result = theAttributeErrorType()
+        or
+        this.getNode() instanceof Name and result = theNameErrorType()
+        or
+        this.getNode() instanceof Subscript and result = theIndexErrorType()
+        or
+        this.getNode() instanceof Subscript and result = theKeyErrorType()
     }
 
     /** Whether this control flow node raises an exception, 
@@ -275,7 +281,8 @@ class ExceptFlowNode extends ControlFlowNode {
     }
 
     /** Gets the inferred type(s) that are handled by this node, splitting tuples if possible. */
-    cached predicate handledException(Object obj, ClassObject cls, ControlFlowNode origin) {
+    pragma [noinline]
+    predicate handledException(Object obj, ClassObject cls, ControlFlowNode origin) {
         this.handledObject(obj, cls, origin) and not cls = theTupleType()
         or
         not exists(this.getNode().(ExceptStmt).getType()) and obj = theBaseExceptionType() and cls = theTypeType() and

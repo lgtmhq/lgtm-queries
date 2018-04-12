@@ -21,9 +21,10 @@ module PkgCloud {
   /**
    * Holds if the `i`th argument of `invk` is an object hash for pkgcloud client creation.
    */
-  private predicate takesConfigurationObject(InvokeExpr invk, int i) {
-    exists (ModuleInstance mod, DataFlowNode receiver, MethodCallExpr mce, string type |
-      mod.getPath() = "pkgcloud" and
+  private predicate takesConfigurationObject(DataFlow::InvokeNode invk, int i) {
+    exists (DataFlow::ModuleImportNode mod, DataFlow::SourceNode receiver, string type |
+      mod.getPath() = "pkgcloud"
+      and
       (
         type = "compute" or
         type = "storage" or
@@ -34,23 +35,17 @@ module PkgCloud {
         type = "network" or
         type = "orchestration" or
         type = "cdn"
-      ) and
+      )
+      and
       (
         // require('pkgcloud').compute
         receiver = mod.getAPropertyRead(type) or
         // require('pkgcloud').providers.joyent.compute
-        exists (PropReadNode providers, PropReadNode provider, PropReadNode service |
-          // Implementation details: syntactic matching
-          providers = mod.getAPropertyRead("providers") and
-          provider.getBase() = providers and // NB: no restriction on provider name
-          service.getBase() = provider and
-          service.getPropertyName() = type and
-          receiver = service
-        )
-      ) and
-      mce.getReceiver().(DataFlowNode).getALocalSource() = receiver and
-      mce.getMethodName() = "createClient" and
-      invk = mce and i = 0
+        receiver = mod.getAPropertyRead("providers").getAPropertyRead(_).getAPropertyRead(type)
+      )
+      and
+      invk = receiver.getAMemberCall("createClient") and
+      i = 0
     )
   }
 
@@ -62,9 +57,9 @@ module PkgCloud {
     string kind;
 
     Credentials() {
-      exists (string propertyName, InvokeExpr invk, int i |
+      exists (string propertyName, DataFlow::InvokeNode invk, int i |
         takesConfigurationObject(invk, i) and
-        invk.hasOptionArgument(0, propertyName, this) |
+        this = invk.getOptionArgument(0, propertyName).asExpr() |
         /*
          * Catch-all support for the following providers:
          * - Amazon

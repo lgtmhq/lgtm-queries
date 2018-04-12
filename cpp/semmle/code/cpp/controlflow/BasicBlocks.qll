@@ -210,7 +210,7 @@ class BasicBlock extends @cfgnode {
    * The location spans column `startcolumn` of line `startline` to
    * column `endcolumn` of line `endline` in file `filepath`.
    * For more information, see
-   * [LGTM locations](https://lgtm.com/docs/ql/locations).
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
    *
    * Yields no result if this basic block spans multiple source files.
    */

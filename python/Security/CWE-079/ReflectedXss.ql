@@ -34,6 +34,8 @@ import semmle.python.web.HttpRequest
 
 import semmle.python.web.HttpResponse
 
+/* Flow */
+import semmle.python.security.strings.Untrusted
 
 from TaintSource src, TaintSink sink
 where src.flowsToSink(sink)

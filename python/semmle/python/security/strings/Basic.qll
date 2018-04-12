@@ -16,12 +16,13 @@ import python
 
 import semmle.python.security.TaintTracking
 
-/** Generic tainted string kind from an external source */ 
+/** An extensible kind of taint representing an externally controlled string.
+ */
 abstract class ExternalStringKind extends TaintKind {
 
     bindingset[this]
     ExternalStringKind() {
-        any()
+        this = this
     }
 
     override TaintKind getTaintForFlowStep(ControlFlowNode fromnode, ControlFlowNode tonode) {
@@ -32,7 +33,8 @@ abstract class ExternalStringKind extends TaintKind {
             tonode.(BinaryExprNode).getAnOperand() = fromnode or
             os_path_join(fromnode, tonode) or
             str_format(fromnode, tonode) or
-            encode_decode(fromnode, tonode)
+            encode_decode(fromnode, tonode) or
+            to_str(fromnode, tonode)
         )
         or
         tonode.(SequenceNode).getElement(_) = fromnode and result.(ExternalStringSequenceKind).getItem() = this
@@ -189,6 +191,15 @@ private predicate encode_decode(ControlFlowNode fromnode, CallNode tonode) {
         func.getName() = name |
         name = "encode" or name = "decode" or
         name = "decodestring"
+    )
+}
+
+/* tonode = str(fromnode)*/
+private predicate to_str(ControlFlowNode fromnode, CallNode tonode) {
+    tonode.getAnArg() = fromnode and
+    exists(ClassObject str |
+        tonode.getFunction().refersTo(str) |
+        str = theUnicodeType() or str = theBytesType()
     )
 }
 

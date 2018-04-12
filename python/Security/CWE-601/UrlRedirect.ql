@@ -29,6 +29,7 @@ import python
 
 import semmle.python.web.HttpRedirect
 import semmle.python.web.HttpRequest
+import semmle.python.security.strings.Untrusted
 
 from TaintSource src, TaintSink sink
 where src.flowsToSink(sink)

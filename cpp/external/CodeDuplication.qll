@@ -20,7 +20,7 @@ string relativePath(File file) {
 
 private cached
 predicate tokenLocation(string path, int sl, int sc, int ec, int el, Copy copy, int index) {
-  path = copy.sourceFile().getName() and
+  path = copy.sourceFile().getAbsolutePath() and
   tokens(copy, index, sl, sc, ec, el)
 }
 
@@ -76,7 +76,7 @@ class Copy extends @duplication_or_similarity
   }
 
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-      sourceFile().getFullName() = filepath and
+      sourceFile().getAbsolutePath() = filepath and
       startline = sourceStartLine() and
       startcolumn = sourceStartColumn() and
       endline = sourceEndLine() and

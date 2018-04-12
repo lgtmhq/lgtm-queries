@@ -35,7 +35,7 @@ predicate isUnusedParameter(Function f, string msg, Parameter parameter) {
 
 predicate isMissingParameter(AngularJS::InjectableFunction f, string msg, ASTNode location) {
     exists(int paramCount, int injectionCount |
-    location = f and
+    DataFlow::valueNode(location) = f and
     paramCount = f.asFunction().getNumParameter() and
     injectionCount = count(f.getADependencyDeclaration(_)) and
     paramCount < injectionCount and

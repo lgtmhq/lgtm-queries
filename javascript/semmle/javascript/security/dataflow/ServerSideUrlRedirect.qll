@@ -33,7 +33,7 @@ abstract class ServerSideUrlRedirectSink extends DataFlow::Node {
    * Holds if this sink may redirect to a non-local URL.
    */
   predicate maybeNonLocal() {
-    exists (Expr prefix | prefix = getAPrefix(this.asExpr()) |
+    exists (Expr prefix | prefix = getAPrefix(this) |
       not exists(prefix.getStringValue())
       or
       exists (string prefixVal | prefixVal = prefix.getStringValue() |
@@ -49,14 +49,16 @@ abstract class ServerSideUrlRedirectSink extends DataFlow::Node {
 
 /**
  * Gets an expression that may end up being a prefix of the string
- * concatenation `e`.
+ * concatenation `nd`.
  */
-private Expr getAPrefix(Expr e) {
-  exists (Expr src | src = e.(DataFlowNode).getALocalSource() |
-    if (src instanceof AddExpr or src instanceof AssignAddExpr) then
-      result = getAPrefix(src.getChildExpr(0))
+private Expr getAPrefix(DataFlow::Node nd) {
+  if exists(nd.getAPredecessor()) then
+    result = getAPrefix(nd.getAPredecessor())
+  else exists (Expr e | e = nd.asExpr() |
+    if (e instanceof AddExpr or e instanceof AssignAddExpr) then
+      result = getAPrefix(DataFlow::valueNode(e.getChildExpr(0)))
     else
-      result = src
+      result = e
   )
 }
 

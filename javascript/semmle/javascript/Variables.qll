@@ -13,9 +13,7 @@
 
 /** Provides classes for modeling program variables. */
 
-import Expr
-import Locations
-import Functions
+import javascript
 
 /** A scope in which variables can be declared. */
 class Scope extends @scope {

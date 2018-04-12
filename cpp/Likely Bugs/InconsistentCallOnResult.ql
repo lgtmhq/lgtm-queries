@@ -81,6 +81,6 @@ where
   not checkedFunctionCall(unchecked, operation) and
   functionStats(f, operation, _, _, percent) and
   percent >= 70
-  and unchecked.getFile().getFullName().matches("%fbcode%")
-  and not unchecked.getFile().getFullName().matches("%\\_build%")
+  and unchecked.getFile().getAbsolutePath().matches("%fbcode%")
+  and not unchecked.getFile().getAbsolutePath().matches("%\\_build%")
 select unchecked, "After " + percent.toString() + "% of calls to " + f.getName() + " there is a call to " + operation + " on the return value. The call may be missing in this case."

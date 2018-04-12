@@ -158,6 +158,10 @@ predicate trivialConversion(ExpectedType expected, Type actual) {
         // (this permits signedness changes)
         expected.(IntegralType).getSize() = actualU.(IntegralType).getSize()
       ) or (
+        // allow a pointer to any integral type of the same size
+        // (this permits signedness changes)
+        expected.(PointerType).getBaseType().(IntegralType).getSize() = actualU.(PointerType).getBaseType().(IntegralType).getSize()
+      ) or (
         // allow expected, or a typedef or specified version of expected
         expected = getAnUnderlyingExpectedType(actual)
       )
@@ -185,4 +189,4 @@ where (
         )
       )
       and not arg.isAffectedByMacro()
-select arg, "This argument should be of type "+expected.getName()+" but is of type "+actual.getUnspecifiedType().getName()
+select arg, "This argument should be of type '"+expected.getName()+"' but is of type '"+actual.getUnspecifiedType().getName() + "'"

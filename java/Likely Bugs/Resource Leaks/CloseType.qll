@@ -185,6 +185,36 @@ predicate escapingCloseableInit(CloseableInitExpr cie) {
     ) or
     wrappingResource.getEnclosingStmt() instanceof ReturnStmt or
     getCloseableVariable(wrappingResource).getAnAccess().getEnclosingStmt() instanceof ReturnStmt
+    or
+    exists(Parameter p0 |
+      escapingMethodParameterClosable(p0)
+      |
+      p0.getAnArgument() = wrappingResource or
+      exists(LocalVariableDecl v |
+        p0.getAnArgument() = v.getAnAccess() and flowsInto(wrappingResource, v)
+      )
+    )
+  )
+}
+
+/**
+ * Holds if `p` is a closable that escapes by an assignment to a field.
+ */
+private
+predicate escapingMethodParameterClosable(Parameter p) {
+  p.getCallable() instanceof Method and
+  exists(Expr wrappingResource |
+    closeableType(p.getType()) and (transitiveCloseableInit(wrappingResource, p.getAnAccess()) or wrappingResource = p.getAnAccess())
+    |
+    exists(Field f | flowsInto(wrappingResource, f)) or
+    exists(Parameter p0 |
+      escapingMethodParameterClosable(p0)
+      |
+      p0.getAnArgument() = wrappingResource or
+      exists(LocalVariableDecl v |
+        p0.getAnArgument() = v.getAnAccess() and flowsInto(wrappingResource, v)
+      )
+    )
   )
 }
 

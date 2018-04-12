@@ -49,11 +49,7 @@ module ExpressLibraries {
    */
   class XFrameOptionsRouteHandler extends HTTP::RouteHandler {
     XFrameOptionsRouteHandler() {
-      exists (ModuleInstance m, InvokeExpr e |
-        "x-frame-options" = m.getPath() and
-        e.getCallee().(DataFlowNode).getALocalSource() = m and
-        this = e
-      )
+      this = DataFlow::moduleImport("x-frame-options").getAnInvocation()
     }
 
     override HTTP::HeaderDefinition getAResponseHeader(string name) {
@@ -87,11 +83,7 @@ module ExpressLibraries {
    */
   class FrameGuardRouteHandler extends HTTP::RouteHandler {
     FrameGuardRouteHandler() {
-      exists (ModuleInstance m, InvokeExpr e |
-        "frameguard" = m.getPath() and
-        e.getCallee().(DataFlowNode).getALocalSource() = m and
-        this = e
-      )
+      this = DataFlow::moduleImport("frameguard").getAnInvocation()
     }
 
     override HTTP::HeaderDefinition getAResponseHeader(string name) {
@@ -125,14 +117,9 @@ module ExpressLibraries {
    */
   class HelmetRouteHandler extends HTTP::RouteHandler {
     HelmetRouteHandler() {
-      exists (ModuleInstance m | "helmet" = m.getPath() |
-        exists(InvokeExpr invk | this = invk |
-          invk.getCallee().(DataFlowNode).getALocalSource() = m
-        )  or
-        exists(MethodCallExpr mce | this = mce |
-          mce.getReceiver().(DataFlowNode).getALocalSource() = m and
-          mce.getMethodName() = "frameguard"
-        )
+      exists (DataFlow::ModuleImportNode m | "helmet" = m.getPath() |
+        this = m.getAnInvocation()  or
+        this = m.getAMemberInvocation("frameguard")
       )
     }
 

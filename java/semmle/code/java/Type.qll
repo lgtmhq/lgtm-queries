@@ -254,6 +254,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
    * of itself, namely the corresponding raw type, and this case is thus
    * explicitly excluded. See also `getSourceDeclaration()`.
    */
+  pragma[noinline]
   RefType getASourceSupertype() {
     result = this.getASupertype().getSourceDeclaration() and
     result != this

@@ -112,12 +112,13 @@ private class AnalyzedThisInBoundFunction extends AnalyzedThisExpr {
       name = "bind" or
       name = "call" or
       name = "apply" |
-      binderRef.(DataFlowNode).getALocalSource() = binder and
+      binderRef.flow().getALocalSource() = DataFlow::valueNode(binder) and
       bindingCall.calls(binderRef, name) and
       thisSource.asExpr() = bindingCall.getArgument(0)
-    ) or
+    )
+    or
     exists(FunctionBindExpr binding |
-      binding.getCallee().(DataFlowNode).getALocalSource() = binder and
+      binding.getCallee().flow().getALocalSource() = DataFlow::valueNode(binder) and
       thisSource.asExpr() = binding.getObject()
     )
   }
@@ -205,3 +206,4 @@ private class AnalyzedThisInPropertyFunction extends AnalyzedThisExpr {
     result = AnalyzedThisExpr.super.getALocalValue()
   }
 }
+

@@ -29,25 +29,25 @@ import javascript
 /**
  * A call to `new Function(...)`.
  */
-class NewFunction extends NewExpr {
+class NewFunction extends DataFlow::NewNode {
   NewFunction() {
-    this.getCallee().accessesGlobal("Function")
+    this = DataFlow::globalVarRef("Function").getAnInvocation()
   }
 }
 
 /**
  * A call to `eval`.
  */
-class EvalCall extends CallExpr {
+class EvalCall extends DataFlow::CallNode {
   EvalCall() {
-    this.getCallee().accessesGlobal("eval")
+    this = DataFlow::globalVarRef("eval").getACall()
   }
 }
 
 /**
  * A call to `new Function(...)` or `eval`.
  */
-class EvalUse extends InvokeExpr {
+class EvalUse extends DataFlow::Node {
   EvalUse() {
     this instanceof NewFunction or this instanceof EvalCall
   }

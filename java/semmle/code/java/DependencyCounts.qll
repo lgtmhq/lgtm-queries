@@ -33,6 +33,7 @@ import Expr
  * on the type `String` but not on the parameterized types `List<Set<String>>`
  * or `Set<String>`.
  */
+pragma[nomagic]
 predicate numDepends(RefType t, RefType dep, int value) {
   // Type `t` is neither a parameterized nor a raw type and is distinct from `dep`.
   not isParameterized(t) and

@@ -59,19 +59,20 @@ class UnsafeDeserializationTrackingConfig extends TaintTracking::Configuration {
  */
 class JsYamlUnsafeLoad extends UnsafeDeserializationSink {
   JsYamlUnsafeLoad() {
-    exists (ModuleInstance mi | mi.getPath() = "js-yaml" |
+    exists (DataFlow::ModuleImportNode mi | mi.getPath() = "js-yaml" |
       // the first argument to a call to `load` or `loadAll`
       exists (string n | n = "load" or n = "loadAll" |
-        this.asExpr() = mi.getAMethodCall(n).getArgument(0)
+        this = mi.getAMemberCall(n).getArgument(0)
       )
       or
       // the first argument to a call to `safeLoad` or `safeLoadAll` where
       // the schema is specified to be `DEFAULT_FULL_SCHEMA`
-      exists (string n, CallExpr c, DataFlowNode fullSchema | n = "safeLoad" or n = "safeLoadAll" |
-        c = mi.getAMethodCall(n) and
-        this.asExpr() = c.getArgument(0) and
-        c.hasOptionArgument(c.getNumArgument()-1, "schema", fullSchema) and
-        fullSchema.getALocalSource() = mi.getAPropertyRead("DEFAULT_FULL_SCHEMA")
+      exists (string n, DataFlow::CallNode c, DataFlow::Node fullSchema |
+        n = "safeLoad" or n = "safeLoadAll" |
+        c = mi.getAMemberCall(n) and
+        this = c.getArgument(0) and
+        fullSchema = c.getOptionArgument(c.getNumArgument()-1, "schema") and
+        mi.getAPropertyRead("DEFAULT_FULL_SCHEMA").flowsTo(fullSchema)
       )
     )
   }

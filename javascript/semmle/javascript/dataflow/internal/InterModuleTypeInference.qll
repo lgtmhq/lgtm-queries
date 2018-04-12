@@ -236,7 +236,7 @@ private class AnalyzedValueExport extends AnalyzedPropertyWrite, DataFlow::Value
   string name;
 
   AnalyzedValueExport() {
-    astNode = export.getSourceNode(name)
+    this = export.getSourceNode(name)
   }
 
   override predicate writes(AbstractValue baseVal, string propName, DataFlow::AnalyzedNode source) {

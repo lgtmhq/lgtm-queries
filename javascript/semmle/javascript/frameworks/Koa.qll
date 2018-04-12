@@ -23,10 +23,8 @@ module Koa {
    */
   class AppDefinition extends HTTP::Servers::StandardServerDefinition, NewExpr {
     AppDefinition() {
-      exists (ModuleInstance koa | koa.getPath() = "koa" |
-        // `app = new Koa()`
-        this.getCallee().(DataFlowNode).getALocalSource() = koa
-      )
+      // `app = new Koa()`
+      this = DataFlow::moduleImport("koa").getAnInvocation().asExpr()
     }
   }
 
@@ -38,10 +36,10 @@ module Koa {
 
     HeaderDefinition() {
       // ctx.set('Cache-Control', 'no-cache');
-      calls(rh.getAContextExpr(), "set")
+      astNode.calls(rh.getAContextExpr(), "set")
       or
       // ctx.response.header('Cache-Control', 'no-cache')
-      calls(rh.getAResponseExpr(), "header")
+      astNode.calls(rh.getAResponseExpr(), "header")
     }
 
     override RouteHandler getRouteHandler(){
@@ -52,11 +50,11 @@ module Koa {
   /**
    * A Koa route handler.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler {
+  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
     Function function;
 
     RouteHandler() {
-      function = this and
+      function = astNode and
       any(RouteSetup setup).getARouteHandler() = this
     }
 
@@ -90,7 +88,7 @@ module Koa {
     ContextSource() {
       this = DataFlow::parameterNode(rh.getContextParameter())
       or
-      asExpr().(ThisExpr).getBinder() = rh
+      DataFlow::valueNode(asExpr().(ThisExpr).getBinder()) = rh
     }
 
     /**
@@ -177,7 +175,7 @@ module Koa {
     string kind;
 
     RequestInputAccess() {
-      exists (DataFlowNode request | request = rh.getARequestExpr() |
+      exists (Expr request | request = rh.getARequestExpr() |
         // `ctx.request.body`
         kind = "body" and
         this.asExpr().(PropAccess).accesses(request, "body")
@@ -241,11 +239,11 @@ module Koa {
       getMethodName() = "use"
     }
 
-    override DataFlowNode getARouteHandler() {
-      result = getArgument(0).(DataFlowNode).getALocalSource()
+    override DataFlow::SourceNode getARouteHandler() {
+      result.flowsToExpr(getArgument(0))
     }
 
-    override DataFlowNode getServer() {
+    override Expr getServer() {
       result = server
     }
   }

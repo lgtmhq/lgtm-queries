@@ -28,7 +28,7 @@ import cpp
 from EqualityOperation t, RemExpr lhs, Literal rhs
 where t.getLeftOperand() = lhs and
       t.getRightOperand() = rhs and
-      lhs.getLeftOperand().getActualType().(IntegralType).isSigned() and
+      lhs.getLeftOperand().getType().getUnspecifiedType().(IntegralType).isSigned() and
       lhs.getRightOperand().getValue() = "2" and
       rhs.getValue() = "1"
 select t, "Possibly invalid test for oddness. This will fail for negative numbers."

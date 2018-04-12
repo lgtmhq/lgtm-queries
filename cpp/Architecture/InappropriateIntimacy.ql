@@ -76,4 +76,4 @@ where highDependencyCount(a, b, ca) and
       not b instanceof HeaderFile and
       b.getShortName().trim().length() > 0
 select a, "File is too closely tied to $@ (" + ca.toString() + " dependencies one way and " + cb.toString() + " the other).",
-       b, b.getFileName()
+       b, b.getBaseName()

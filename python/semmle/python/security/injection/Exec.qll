@@ -21,15 +21,8 @@
 import python
 
 import semmle.python.security.TaintTracking
-import semmle.python.security.strings.Basic
+import semmle.python.security.strings.Untrusted
 
-class ExecInjection extends ExternalStringKind {
-
-    ExecInjection() {
-        this = "exec.injection"
-    }
-
-}
 
 private FunctionObject exec_or_eval() {
     result = builtin_object("exec")
@@ -56,7 +49,7 @@ class StringEvaluationNode extends TaintSink {
     }
 
     predicate sinks(TaintKind kind) {
-        kind instanceof ExecInjection
+        kind instanceof ExternalStringKind
     }
 
 }

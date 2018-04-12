@@ -21,6 +21,8 @@
  * @problem.severity warning
  * @precision high
  * @id cpp/return-c-str-of-std-string
+ * @tags reliability
+ *       correctness
  */
 
 import cpp
@@ -71,7 +73,7 @@ predicate flowFunction(Function fcn, int argIndex) {
   (fcn.getQualifiedName() = "art::JNI::NewStringUTF" and argIndex = 1)
   or
   (fcn.getQualifiedName() = "art::CheckJNI::NewStringUTF" and argIndex = 1)
-  
+
   // Add other functions that behave like NewStringUTF here.
 }
 

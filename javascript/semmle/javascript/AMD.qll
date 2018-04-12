@@ -16,7 +16,7 @@
  * [Asynchronous Module Definitions](https://github.com/amdjs/amdjs-api/wiki/AMD).
  */
 
-import Modules
+import javascript
 
 /**
  * An AMD `define` call.
@@ -65,36 +65,44 @@ class AMDModuleDefinition extends CallExpr {
   }
 
   /**
+   * DEPRECATED: Use `getFactoryNode` instead.
+   *
    * Gets the factory expression of this module definition,
    * which may be a function or a literal.
    */
+  deprecated
   Expr getFactoryExpr() {
-    result = getLastArgument().(DataFlowNode).getALocalSource() and
-    (result instanceof Function or
-     result instanceof Literal or
-     result instanceof ArrayExpr or
-     result instanceof ObjectExpr)
+    result = getFactoryNode().asExpr()
+  }
+
+  /**
+   * Gets a data flow node containing the factory value of this module definition.
+   */
+  pragma[nomagic]
+  DataFlow::SourceNode getFactoryNode() {
+    result.flowsToExpr(getLastArgument()) and
+    result instanceof DataFlow::ValueNode
   }
 
   /** Gets the expression defining this module. */
   Expr getModuleExpr() {
-    exists (Expr f | f = getFactoryExpr() |
-      if f instanceof Function then
-        exists (ReturnStmt ret | ret.getContainer() = f |
+    exists (DataFlow::Node f | f = getFactoryNode() |
+      if f instanceof DataFlow::FunctionNode then
+        exists (ReturnStmt ret | ret.getContainer() = f.(DataFlow::FunctionNode).getAstNode() |
           result = ret.getExpr()
         )
       else
-        result = f
+        result = f.asExpr()
     )
   }
 
   /**
    * Holds if `p` is the parameter corresponding to dependency `dep`.
    */
-  private predicate dependencyParameter(PathExpr dep, Parameter p) {
+  predicate dependencyParameter(PathExpr dep, Parameter p) {
     exists (int i |
       dep = getDependency(i) and
-      p = getFactoryExpr().(Function).getParameter(i)
+      p = getFactoryParameter(i)
     )
   }
 
@@ -121,7 +129,7 @@ class AMDModuleDefinition extends CallExpr {
    * Gets the `i`th parameter of the factory function of this module.
    */
   private SimpleParameter getFactoryParameter(int i) {
-    result = getFactoryExpr().(Function).getParameter(i)
+    getFactoryNode().(DataFlow::FunctionNode).getParameter(i) = DataFlow::parameterNode(result)
   }
 
   /**
@@ -167,6 +175,7 @@ class AMDModuleDefinition extends CallExpr {
    * Gets an access to this module's `exports`, either through the corresponding
    * parameter or through `module.exports`.
    */
+  deprecated
   private Expr getAnExportsAccess() {
     result = getExportsParameter().getVariable().getAnAccess() or
     exists (PropAccess pacc | result = pacc |

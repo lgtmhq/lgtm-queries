@@ -90,7 +90,8 @@ module TaintTracking {
     final
     override predicate isAdditionalFlowStep(DataFlow::Node pred, DataFlow::Node succ) {
       isAdditionalTaintStep(pred, succ) or
-      pred = succ.(FlowTarget).getATaintSource()
+      pred = succ.(FlowTarget).getATaintSource() or
+      any(DefaultTaintStep dts).step(pred, succ)
     }
   }
 
@@ -167,7 +168,7 @@ module TaintTracking {
   }
 
   /**
-   * A taint propagating data flow edge, represented by its target node.
+   * A custom taint-propagating data flow edge, represented by its target node.
    */
   abstract class FlowTarget extends DataFlow::Node {
     /** Gets another data flow node from which taint is propagated to this node. */
@@ -175,47 +176,64 @@ module TaintTracking {
   }
 
   /**
+   * A standard taint-propagating data flow edge.
+   *
+   * Note: For performance reasons, all subclasses of this class should be part
+   * of the standard library. Use `FlowTarget` for analysis-specific flow edges.
+   */
+  abstract class DefaultTaintStep extends DataFlow::Node {
+    /**
+     * Holds if `pred` &rarr; `succ` should be considered a taint-propagating
+     * data flow edge.
+     */
+    abstract cached predicate step(DataFlow::Node pred, DataFlow::Node succ);
+  }
+
+  /**
    * A taint propagating data flow edge through object or array elements and
    * promises.
    */
-  private class DefaultFlowTarget extends FlowTarget {
-    DefaultFlowTarget() {
+  private class HeapTaintStep extends DefaultTaintStep {
+    HeapTaintStep() {
       this = DataFlow::valueNode(_) or
       this = DataFlow::parameterNode(_)
     }
 
-    override DataFlow::ValueNode getATaintSource() {
-      exists (Expr e, Expr f | e = this.asExpr() and f = result.asExpr() |
-        // iterating over a tainted iterator taints the loop variable
-        exists (EnhancedForLoop efl | f = efl.getIterationDomain() |
-          e = efl.getAnIterationVariable().getAnAccess()
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      succ = this and
+      (
+        exists (Expr e, Expr f | e = this.asExpr() and f = pred.asExpr() |
+          // iterating over a tainted iterator taints the loop variable
+          exists (EnhancedForLoop efl | f = efl.getIterationDomain() |
+            e = efl.getAnIterationVariable().getAnAccess()
+          )
+          or
+          // arrays with tainted elements and objects with tainted property names are tainted
+          e.(ArrayExpr).getAnElement() = f or
+          exists (Property prop | e.(ObjectExpr).getAProperty() = prop |
+            prop.isComputed() and f = prop.getNameExpr()
+          )
+          or
+          // reading from a tainted object yields a tainted result
+          e.(PropAccess).getBase() = f
+          or
+          // awaiting a tainted expression gives a tainted result
+          e.(AwaitExpr).getOperand() = f
+          or
+          // comparing a tainted expression against a constant gives a tainted result
+          e.(Comparison).hasOperands(f, any(ConstantExpr c))
         )
         or
-        // arrays with tainted elements and objects with tainted property names are tainted
-        e.(ArrayExpr).getAnElement() = f or
-        exists (Property prop | e.(ObjectExpr).getAProperty() = prop |
-          prop.isComputed() and f = prop.getNameExpr()
+        // `array.map(function (elt, i, ary) { ... })`: if `array` is tainted, then so are
+        // `elt` and `ary`; similar for `forEach`
+        exists (MethodCallExpr m, Function f, int i, SimpleParameter p |
+          (m.getMethodName() = "map" or m.getMethodName() = "forEach") and
+          (i = 0 or i = 2) and
+          m.getArgument(0).analyze().getAValue().(AbstractFunction).getFunction() = f and
+          p = f.getParameter(i) and
+          this = DataFlow::parameterNode(p) and
+          pred.asExpr() = m.getReceiver()
         )
-        or
-        // reading from a tainted object yields a tainted result
-        e.(PropAccess).getBase() = f
-        or
-        // awaiting a tainted expression gives a tainted result
-        e.(AwaitExpr).getOperand() = f
-        or
-        // comparing a tainted expression against a constant gives a tainted result
-        e.(Comparison).hasOperands(f, any(ConstantExpr c))
-      )
-      or
-      // `array.map(function (elt, i, ary) { ... })`: if `array` is tainted, then so are
-      // `elt` and `ary`; similar for `forEach`
-      exists (MethodCallExpr m, Function f, int i, SimpleParameter p |
-        (m.getMethodName() = "map" or m.getMethodName() = "forEach") and
-        (i = 0 or i = 2) and
-        f = m.getArgument(0).(DataFlowNode).getALocalSource() and
-        p = f.getParameter(i) and
-        this = DataFlow::parameterNode(p) and
-        result.asExpr() = m.getReceiver()
       )
     }
   }
@@ -230,22 +248,22 @@ module TaintTracking {
    * a map, not as a real object. In this case, it makes sense to consider the entire
    * map to be tainted as soon as one of its entries is.
    */
-  private class DictionaryFlowTarget extends FlowTarget, DataFlow::ValueNode {
+  private class DictionaryTaintStep extends DefaultTaintStep, DataFlow::ValueNode {
+    override VarAccess astNode;
     DataFlow::Node source;
 
-    DictionaryFlowTarget() {
-      asExpr() instanceof VarAccess and
-      exists (AssignExpr assgn, IndexExpr idx, ObjectExpr obj |
+    DictionaryTaintStep() {
+      exists (AssignExpr assgn, IndexExpr idx, AbstractObjectLiteral obj |
         assgn.getTarget() = idx and
-        idx.getBase().(DataFlowNode).getALocalSource() = obj and
+        idx.getBase().analyze().getAValue() = obj and
         not exists(idx.getPropertyName()) and
-        astNode.(DataFlowNode).getALocalSource() = obj and
+        astNode.analyze().getAValue() = obj and
         source = DataFlow::valueNode(assgn.getRhs())
       )
     }
 
-    override DataFlow::Node getATaintSource() {
-      result = source
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred = source and succ = this
     }
   }
 
@@ -256,82 +274,85 @@ module TaintTracking {
    * Note that since we cannot easily distinguish string append from addition, we consider
    * any `+` operation to propagate taint.
    */
-  private class StringManipulationFlowTarget extends FlowTarget, DataFlow::ValueNode {
-    override DataFlow::Node getATaintSource() {
-      // addition propagates taint
-      astNode.(AddExpr).getAnOperand() = result.asExpr() or
-      astNode.(AssignAddExpr).getAChildExpr() = result.asExpr() or
-      exists (SsaExplicitDefinition ssa |
-        astNode = ssa.getVariable().getAUse() and
-        result.asExpr().(AssignAddExpr) = ssa.getDef()
-      )
-      or
-      // templating propagates taint
-      astNode.(TemplateLiteral).getAnElement() = result.asExpr()
-      or
-      // other string operations that propagate taint
-      exists (string name | name = astNode.(MethodCallExpr).getMethodName() |
-        result.asExpr() = astNode.(MethodCallExpr).getReceiver() and
-        ( // sorted, interesting, properties of String.prototype
-          name = "anchor" or
-          name = "big" or
-          name = "blink" or
-          name = "bold" or
-          name = "concat" or
-          name = "fixed" or
-          name = "fontcolor" or
-          name = "fontsize" or
-          name = "italics" or
-          name = "link" or
-          name = "padEnd" or
-          name = "padStart" or
-          name = "repeat" or
-          name = "replace" or
-          name = "slice" or
-          name = "small" or
-          name = "split" or
-          name = "strike" or
-          name = "sub" or
-          name = "substr" or
-          name = "substring" or
-          name = "sup" or
-          name = "toLocaleLowerCase" or
-          name = "toLocaleUpperCase" or
-          name = "toLowerCase" or
-          name = "toString" or
-          name = "toUpperCase" or
-          name = "trim" or
-          name = "trimLeft" or
-          name = "trimRight" or
-          name = "valueOf"
-        ) or
-        exists (int i | result.asExpr() = astNode.(MethodCallExpr).getArgument(i) |
-          name = "concat" or
-          name = "replace" and i = 1
+  private class StringManipulationTaintStep extends DefaultTaintStep, DataFlow::ValueNode {
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      succ = this and
+      (
+        // addition propagates taint
+        astNode.(AddExpr).getAnOperand() = pred.asExpr() or
+        astNode.(AssignAddExpr).getAChildExpr() = pred.asExpr() or
+        exists (SsaExplicitDefinition ssa |
+          astNode = ssa.getVariable().getAUse() and
+          pred.asExpr().(AssignAddExpr) = ssa.getDef()
         )
-      )
-      or
-      // standard library constructors that propagate taint: `RegExp` and `String`
-      exists (InvokeExpr invk, string gv |
-        invk = astNode and
-        invk.getCallee().accessesGlobal(gv) and
-        result = DataFlow::valueNode(invk.getArgument(0)) |
-        gv = "RegExp" or gv = "String"
-      )
-      or
-      // String.fromCharCode and String.fromCodePoint
-      exists (int i, MethodCallExpr mce |
-        mce = astNode and
-        result.asExpr() = mce.getArgument(i) and
-        (mce.getMethodName() = "fromCharCode" or mce.getMethodName() = "fromCodePoint")
-      )
-      or
-      // `(encode|decode)URI(Component)?` and `escape` propagate taint
-      exists (CallExpr c, string name |
-        c = astNode and c.getCallee().accessesGlobal(name) and
-        result = DataFlow::valueNode(c.getArgument(0)) |
-        name = "encodeURI" or name = "decodeURI" or
-        name = "encodeURIComponent" or name = "decodeURIComponent"
+        or
+        // templating propagates taint
+        astNode.(TemplateLiteral).getAnElement() = pred.asExpr()
+        or
+        // other string operations that propagate taint
+        exists (string name | name = astNode.(MethodCallExpr).getMethodName() |
+          pred.asExpr() = astNode.(MethodCallExpr).getReceiver() and
+          ( // sorted, interesting, properties of String.prototype
+            name = "anchor" or
+            name = "big" or
+            name = "blink" or
+            name = "bold" or
+            name = "concat" or
+            name = "fixed" or
+            name = "fontcolor" or
+            name = "fontsize" or
+            name = "italics" or
+            name = "link" or
+            name = "padEnd" or
+            name = "padStart" or
+            name = "repeat" or
+            name = "replace" or
+            name = "slice" or
+            name = "small" or
+            name = "split" or
+            name = "strike" or
+            name = "sub" or
+            name = "substr" or
+            name = "substring" or
+            name = "sup" or
+            name = "toLocaleLowerCase" or
+            name = "toLocaleUpperCase" or
+            name = "toLowerCase" or
+            name = "toString" or
+            name = "toUpperCase" or
+            name = "trim" or
+            name = "trimLeft" or
+            name = "trimRight" or
+            name = "valueOf"
+          ) or
+          exists (int i | pred.asExpr() = astNode.(MethodCallExpr).getArgument(i) |
+            name = "concat" or
+            name = "replace" and i = 1
+          )
+        )
+        or
+        // standard library constructors that propagate taint: `RegExp` and `String`
+        exists (DataFlow::InvokeNode invk, string gv |
+          gv = "RegExp" or gv = "String" |
+          this = invk and
+          invk = DataFlow::globalVarRef(gv).getAnInvocation() and
+          pred = invk.getArgument(0)
+        )
+        or
+        // String.fromCharCode and String.fromCodePoint
+        exists (int i, MethodCallExpr mce |
+          mce = astNode and
+          pred.asExpr() = mce.getArgument(i) and
+          (mce.getMethodName() = "fromCharCode" or mce.getMethodName() = "fromCodePoint")
+        )
+        or
+        // `(encode|decode)URI(Component)?` and `escape` propagate taint
+        exists (DataFlow::CallNode c, string name |
+          this = c and c = DataFlow::globalVarRef(name).getACall() and
+          pred = c.getArgument(0) |
+          name = "encodeURI" or name = "decodeURI" or
+          name = "encodeURIComponent" or name = "decodeURIComponent"
+        )
       )
     }
   }
@@ -339,17 +360,31 @@ module TaintTracking {
   /**
    * A taint propagating data flow edge arising from JSON parsing or unparsing.
    */
-  private class JsonManipulationFlowTarget extends FlowTarget, DataFlow::ValueNode {
-    JsonManipulationFlowTarget() {
-      exists (MethodCallExpr mce, string methodName |
-        mce = astNode and methodName = mce.getMethodName() and
-        mce.getReceiver().accessesGlobal("JSON") |
-        methodName = "parse" or methodName = "stringify"
+  private class JsonManipulationTaintStep extends DefaultTaintStep, DataFlow::MethodCallNode {
+    JsonManipulationTaintStep() {
+      exists (string methodName |
+        methodName = "parse" or methodName = "stringify" |
+        this = DataFlow::globalVarRef("JSON").getAMemberCall(methodName)
       )
     }
 
-    override DataFlow::Node getATaintSource() {
-      result.asExpr() = astNode.(CallExpr).getArgument(0)
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred = getArgument(0) and succ = this
+    }
+  }
+
+  /**
+   * A taint-propagating data flow edge arising from a destructuring assignment.
+   */
+  private class DestructuringAssignTaintStep extends DefaultTaintStep, DataFlow::SsaDefinitionNode {
+    override SsaExplicitDefinition ssa;
+
+    DestructuringAssignTaintStep() {
+      ssa.getDef().getTarget() instanceof DestructuringPattern
+    }
+
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred = DataFlow::valueNode(ssa.getDef().getSource()) and succ = this
     }
   }
 
@@ -357,40 +392,41 @@ module TaintTracking {
    * Holds if `params` is a `URLSearchParams` object providing access to
    * the parameters encoded in `input`.
    */
-  predicate isUrlSearchParams(DataFlow::Node params, DataFlow::Node input) {
-    exists (NewExpr urlSearchParams | urlSearchParams = params.asExpr() |
-      urlSearchParams.getCallee().accessesGlobal("URLSearchParams") and
-      input = DataFlow::valueNode(urlSearchParams.getArgument(0))
+  predicate isUrlSearchParams(DataFlow::SourceNode params, DataFlow::Node input) {
+    exists (DataFlow::GlobalVarRefNode urlSearchParams, NewExpr newUrlSearchParams |
+      urlSearchParams.getName() = "URLSearchParams" and
+      newUrlSearchParams = urlSearchParams.getAnInstantiation().asExpr() and
+      params.asExpr() = newUrlSearchParams and
+      input.asExpr() = newUrlSearchParams.getArgument(0)
     )
     or
-    exists (NewExpr url, DataFlowNode recv |
-      params.asExpr().(PropAccess).accesses(recv, "searchParams") and
-      recv.getALocalSource() = url and
-      url.getCallee().accessesGlobal("URL") and
-      input = DataFlow::valueNode(url.getArgument(0))
+    exists (DataFlow::NewNode newUrl |
+      newUrl = DataFlow::globalVarRef("URL").getAnInstantiation() and
+      params = newUrl.getAPropertyRead("searchParams") and
+      input = newUrl.getArgument(0)
     )
   }
 
   /**
    * A taint propagating data flow edge arising from URL parameter parsing.
    */
-  private class UrlSearchParamsFlowTarget extends FlowTarget, DataFlow::ValueNode {
+  private class UrlSearchParamsTaintStep extends DefaultTaintStep, DataFlow::ValueNode {
     DataFlow::Node source;
 
-    UrlSearchParamsFlowTarget() {
+    UrlSearchParamsTaintStep() {
       // either this is itself an `URLSearchParams` object
       isUrlSearchParams(this, source)
       or
       // or this is a call to `get` or `getAll` on a `URLSearchParams` object
-      exists (DataFlowNode recv, string m |
-        astNode.(MethodCallExpr).calls(recv, m) and
-        isUrlSearchParams(DataFlow::valueNode(recv.getALocalSource()), source) and
+      exists (DataFlow::SourceNode searchParams, string m |
+        isUrlSearchParams(searchParams, source) and
+        this = searchParams.getAMethodCall(m) and
         m.matches("get%")
       )
     }
 
-    override DataFlow::Node getATaintSource() {
-      result = source
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred = source and succ = this
     }
   }
 
@@ -412,19 +448,18 @@ module TaintTracking {
     Expr expr;
 
     SanitizingRegExpTest() {
-      exists (MethodCallExpr mce, DataFlowNode base, string m, DataFlowNode firstArg |
+      exists (MethodCallExpr mce, Expr base, string m, Expr firstArg |
         mce = this and mce.calls(base, m) and firstArg = mce.getArgument(0) |
         // /re/.test(u) or /re/.exec(u)
-        base.getALocalSource() instanceof RegExpLiteral and
+        base.analyze().getAType() = TTRegExp() and
         (m = "test" or m = "exec") and
         firstArg = expr
         or
         // u.match(/re/) or u.match("re")
         base = expr and
         m = "match" and
-        (
-         firstArg.getALocalSource() instanceof RegExpLiteral or
-         firstArg.getALocalSource() instanceof ConstantString
+        exists (InferredType firstArgType | firstArgType = firstArg.analyze().getAType() |
+          firstArgType = TTRegExp() or firstArgType = TTString()
         )
       )
       or
@@ -504,7 +539,7 @@ module TaintTracking {
         // one operand is of the form `o.indexOf(x)`
         indexOf.getMethodName() = "indexOf" and
         // and the other one is -1
-        index.(DataFlowNode).getALocalSource().(NegExpr).getOperand().(NumberLiteral).getIntValue() = 1
+        index.getIntValue() = -1
       )
     }
 

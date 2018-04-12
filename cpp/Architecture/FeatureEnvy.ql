@@ -81,4 +81,4 @@ where dependsHighlyOn(f, other, depCount) and
           else                       selfDeps = "only " + selfCount.toString() + " dependencies"
 select f, "Function " + f.getName() + " could be moved to file $@" +
        " since it has " + depCount.toString() + " dependencies to that file, but " +
-       selfDeps + " to its own file.", other, other.getFileName()
+       selfDeps + " to its own file.", other, other.getBaseName()

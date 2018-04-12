@@ -18,13 +18,19 @@
 import javascript
 
 /**
- * Holds if `nd` may refer to the 'React' object.
+ * Gets a reference to the 'React' object.
  */
-predicate isReactRef(DataFlowNode nd) {
-  exists (Expr src | src = nd.getALocalSource() |
-    src.accessesGlobal("React") or
-    src.(ModuleInstance).getPath() = "react"
-  )
+DataFlow::SourceNode react() {
+  result = DataFlow::globalVarRef("React")
+  or
+  result = DataFlow::moduleImport("react")
+}
+
+/**
+ * DEPRECATED: Use `react()` instead.
+ */
+deprecated predicate isReactRef(DataFlowNode nd) {
+  react().flowsToExpr(nd)
 }
 
 /**
@@ -37,18 +43,30 @@ abstract class ReactComponent extends ASTNode {
   abstract Function getInstanceMethod(string name);
 
   /**
-   * Gets a reference to `this` in this component.
+   * Gets the abstract value that represents this component.
    */
-  ThisExpr getAThisAccess() {
-    result.getBinder() = getInstanceMethod(_)
+  abstract AbstractValue getAbstractComponent();
+
+  /**
+   * Holds if `e` is a reference to this component.
+   */
+  predicate isRef(Expr e) {
+    e.analyze().getAValue() = getAbstractComponent()
+  }
+
+  /**
+   * Gets a `this` access in an instance method of this component.
+   */
+  DataFlow::SourceNode getAThisAccess() {
+    result.asExpr().(ThisExpr).getBinder() = getInstanceMethod(_)
   }
 
   /**
    * Gets a reference to the `props` object of this component.
    */
-  DataFlowNode getAPropsSource() {
-    exists (PropRefNode prn | prn = result |
-      prn.getBase().getALocalSource() = getAThisAccess() and
+  DataFlow::SourceNode getAPropsSource() {
+    exists (PropRefNode prn | result = DataFlow::valueNode(prn) |
+      isRef(prn.getBase()) and
       prn.getPropertyName() = "props"
     )
   }
@@ -56,9 +74,9 @@ abstract class ReactComponent extends ASTNode {
   /**
    * Gets a reference to the `state` object of this component.
    */
-  DataFlowNode getAStateSource() {
-    exists (PropRefNode prn | prn = result |
-      prn.getBase().getALocalSource() = getAThisAccess() and
+  DataFlow::SourceNode getAStateSource() {
+    exists (PropRefNode prn | result = DataFlow::valueNode(prn) |
+      isRef(prn.getBase()) and
       prn.getPropertyName() = "state"
     )
   }
@@ -67,7 +85,7 @@ abstract class ReactComponent extends ASTNode {
    * Gets an expression that reads a prop of this component.
    */
   PropReadNode getAPropRead() {
-    result.getBase().getALocalSource() = getAPropsSource()
+    getAPropsSource().flowsToExpr(result.getBase())
   }
 
   /**
@@ -82,16 +100,19 @@ abstract class ReactComponent extends ASTNode {
    * Gets an expression that accesses a (transitive) property
    * of the state object of this component.
    */
-  PropRefNode getAStateAccess() {
-    result = getAStateSource() or
-    result.getBase().getALocalSource() = getAStateAccess()
+  DataFlow::SourceNode getAStateAccess() {
+    result = getAStateSource()
+    or
+    exists (PropRefNode prn | result = DataFlow::valueNode(prn) |
+      getAStateAccess().flowsToExpr(prn.getBase())
+    )
   }
 
   /**
    * Holds if this component specifies default values for (some of) its props.
    */
   predicate hasDefaultProps() {
-    exists (PropWriteNode pwn | pwn.getBase().getALocalSource() = this |
+    exists (PropWriteNode pwn | isRef(pwn.getBase()) |
       pwn.getPropertyName() = "defaultProps"
     )
   }
@@ -101,6 +122,14 @@ abstract class ReactComponent extends ASTNode {
    */
   Function getRenderMethod() {
     result = getInstanceMethod("render")
+  }
+
+  /**
+   * Gets a call to method `name` on this component.
+   */
+  MethodCallExpr getAMethodCall(string name) {
+    isRef(result.getReceiver()) and
+    result.getMethodName() = name
   }
 
 }
@@ -125,9 +154,14 @@ class FunctionalComponent extends ReactComponent, Function {
     name = "render" and result = this
   }
 
-  override DataFlowNode getAPropsSource() {
-    result.(VarRef).getVariable().getADeclaration() = getParameter(0)
+  override DataFlow::SourceNode getAPropsSource() {
+    result = DataFlow::parameterNode(getParameter(0))
   }
+
+  override AbstractValue getAbstractComponent() {
+    result = TAbstractInstance(TAbstractFunction(this))
+  }
+
 }
 
 /**
@@ -150,22 +184,25 @@ class ES2015Component extends ReactComponent, ClassDefinition {
     )
   }
 
-  override ThisExpr getAThisAccess() {
-    result = ReactComponent.super.getAThisAccess() or
-    result.getBinder() = getConstructor().getInit()
+  override AbstractValue getAbstractComponent() {
+    result = TAbstractInstance(TAbstractClass(this))
   }
 
 }
 
 /**
- * A legacy React component implemented using `React.createClass`.
+ * A legacy React component implemented using `React.createClass` or `create-react-class`.
  */
 class ES5Component extends ReactComponent, ObjectExpr {
   ES5Component() {
-    exists (MethodCallExpr create |
-      isReactRef(create.getReceiver()) and
-      create.getMethodName() = "createClass" and
-      create.getArgument(0).(DataFlowNode).getALocalSource() = this
+    exists (DataFlow::CallNode create |
+      // React.createClass({...})
+      create = react().getAMethodCall("createClass")
+      or
+      // require('create-react-class')({...})
+      create = DataFlow::moduleImport("create-react-class").getACall()
+      |
+      create.getArgument(0).getALocalSource().asExpr() = this
     )
   }
 
@@ -176,6 +213,11 @@ class ES5Component extends ReactComponent, ObjectExpr {
   override predicate hasDefaultProps() {
     exists (getInstanceMethod("getDefaultProps"))
   }
+
+  override AbstractValue getAbstractComponent() {
+    result = TAbstractObjectLiteral(this)
+  }
+
 }
 
 /**
@@ -199,8 +241,7 @@ private class CreateElementDefinition extends ReactElementDefinition {
   CreateElementDefinition() {
     exists (MethodCallExpr mce |
       mce = this and
-      isReactRef(mce.getReceiver()) and
-      mce.getMethodName() = "createElement" and
+      mce = react().getAMethodCall("createElement").asExpr() and
       mce.getArgument(0).mayHaveStringValue(tagName)
     )
   }
@@ -219,17 +260,48 @@ private class FactoryDefinition extends ReactElementDefinition {
   string tagName;
 
   FactoryDefinition() {
-    exists (MethodCallExpr mce, CallExpr call |
-      call = this and
-      isReactRef(mce.getReceiver()) and
-      mce.getMethodName() = "createFactory" and
-      mce.getArgument(0).mayHaveStringValue(tagName) and
-      call.getCallee().(DataFlowNode).getALocalSource() = mce
+    exists (DataFlow::CallNode mce |
+      mce = react().getAMethodCall("createFactory") and
+      mce.getArgument(0).asExpr().mayHaveStringValue(tagName) and
+      this = mce.getACall().asExpr()
     )
   }
 
   override string getName() {
     result = tagName
+  }
+
+}
+
+/**
+ * Flow analysis for `this` expressions inside a function that is called with
+ * `React.Children.map` or a similar library function that binds `this` of a
+ * callback.
+ *
+ * However, since the function could be invoked in another way, we additionally
+ * still infer the ordinary abstract value.
+ */
+private class AnalyzedThisInBoundCallback extends AnalyzedValueNode {
+
+  AnalyzedValueNode thisSource;
+
+  override ThisExpr astNode;
+
+  AnalyzedThisInBoundCallback() {
+    exists(DataFlow::CallNode bindingCall, string binderName |
+      // React.Children.map or React.Children.forEach
+      binderName = "map" or
+      binderName = "forEach" |
+      bindingCall = react().getAPropertyRead("Children").getAMemberCall(binderName) and
+      3 = bindingCall.getNumArgument() and
+      astNode.getBinder() = bindingCall.getCallback(1).getFunction() and
+      thisSource = bindingCall.getArgument(2)
+    )
+  }
+
+  override AbstractValue getALocalValue() {
+    result = thisSource.getALocalValue() or
+    result = AnalyzedValueNode.super.getALocalValue()
   }
 
 }

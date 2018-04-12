@@ -185,7 +185,7 @@ class Element extends @element {
           this.(MacroInvocation),
           result.(FunctionDeclarationEntry).getLocation())
         or
-        member(result, _, this)
+        this = result.(Class).getAMember()
         or
         exprcontainers(this, result)
         or

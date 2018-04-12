@@ -26,7 +26,7 @@ import javascript
 
 /** A regular expression that identifies strings that look like they represent secret data that are not passwords. */
 private string suspiciousNonPassword() {
-  result = "(?is).*(account|accnt|(?<!un)trusted).*"
+  result = "(?is).*(secret|account|accnt|(?<!un)trusted).*"
 }
 /** A regular expression that identifies strings that look like they represent secret data that are passwords. */
 private string suspiciousPassword() {
@@ -69,7 +69,36 @@ abstract class SensitiveVariableAccess extends SensitiveExpr {
 
   SensitiveVariableAccess() {
     this.(VarAccess).getName() = name or
-    this.(PropAccess).getPropertyName() = name
+    this.(PropReadNode).getPropertyName() = name
+  }
+
+}
+
+/** A write to a location that might contain sensitive data. */
+abstract class SensitiveWrite extends DataFlow::Node { }
+
+/** A write to a variable or property that might contain sensitive data. */
+private class BasicSensitiveWrite extends SensitiveWrite {
+
+  BasicSensitiveWrite() {
+    exists (string name |
+      name.regexpMatch(suspicious()) and
+      not name.regexpMatch(nonSuspicious()) |
+      exists (PropWriteNode pwn |
+        pwn.getPropertyName() = name and
+        pwn.getRhs() = this.asExpr()
+      ) or
+      exists (VarDef v |
+        v.getAVariable().getName() = name |
+        if exists (v.getSource()) then
+          v.getSource() = this.asExpr()
+        else
+          exists (SsaExplicitDefinition ssa |
+            DataFlow::ssaDefinitionNode(ssa) = this and
+            ssa.getDef() = v
+          )
+      )
+    )
   }
 
 }

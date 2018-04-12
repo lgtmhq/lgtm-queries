@@ -31,9 +31,12 @@ private predicate isBoundInMethod(MethodDeclaration method) {
     not bindingMethod.isStatic() and
     reassign.(Expr).getEnclosingFunction() = bindingMethod.getBody() and
     // this.<methodName> = <expr>.bind(...)
-    reassign.getBase().(DataFlowNode).getALocalSource() instanceof ThisExpr and
-    reassign.getPropertyName() = method.getName() and
-    reassign.getRhs().(DataFlowNode).getALocalSource().(MethodCallExpr).getMethodName() = "bind"
+    exists (DataFlow::ThisNode thiz, DataFlow::MethodCallNode bind |
+      thiz.flowsToExpr(reassign.getBase()) and
+      reassign.getPropertyName() = method.getName() and
+      bind.getMethodName() = "bind" and
+      bind.flowsToExpr(reassign.getRhs())
+    )
   )
 }
 
@@ -42,9 +45,9 @@ private predicate isBoundInMethod(MethodDeclaration method) {
  */
 private DOM::AttributeDefinition getAnEventHandlerAttribute() {
   exists (ReactComponent c, JSXNode rendered, string attributeName |
-      rendered = c.getRenderMethod().getAReturnedExpr().(DataFlowNode).getALocalSource() and
-      result = rendered.getABodyElement*().(JSXElement).getAttributeByName(attributeName) and
-      attributeName.regexpMatch("on[A-Z][a-zA-Z]+") // camelCased with 'on'-prefix
+    c.getRenderMethod().getAReturnedExpr().flow().getALocalSource().asExpr() = rendered and
+    result = rendered.getABodyElement*().(JSXElement).getAttributeByName(attributeName) and
+    attributeName.regexpMatch("on[A-Z][a-zA-Z]+") // camelCased with 'on'-prefix
   )
 }
 

@@ -15,8 +15,7 @@
  * Provides classes for working with call graphs derived from intra-procedural data flow.
  */
 
-import semmle.javascript.Expr
-import TypeInference
+import javascript
 private import InferredTypes
 
 /**
