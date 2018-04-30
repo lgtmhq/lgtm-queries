@@ -161,11 +161,11 @@ private abstract class JQueryAttributeDefinition extends DOM::AttributeDefinitio
  */
 private class JQueryAttributeDefinitionInElement extends JQueryAttributeDefinition {
   JQueryDomElementDefinition elt;
-  PropWriteNode pwn;
+  DataFlow::PropWrite pwn;
 
   JQueryAttributeDefinitionInElement() {
-    this = pwn and
-    elt.getAttributes().flowsToExpr(pwn.getBase())
+    this = pwn.getAstNode() and
+    elt.getAttributes().flowsTo(pwn.getBase())
   }
 
   override string getName() {
@@ -173,7 +173,7 @@ private class JQueryAttributeDefinitionInElement extends JQueryAttributeDefiniti
   }
 
   override DataFlow::Node getValueNode() {
-    result = DataFlow::valueNode(pwn.getRhs())
+    result = pwn.getRhs()
   }
 
   override DOM::ElementDefinition getElement() {
@@ -227,12 +227,12 @@ private predicate bulkAttributeInit(MethodCallExpr mce, JQueryDomElementDefiniti
  */
 private class JQueryAttrCall extends JQueryAttributeDefinition, @callexpr {
   JQueryDomElementDefinition elt;
-  PropWriteNode pwn;
+  DataFlow::PropWrite pwn;
 
   JQueryAttrCall() {
     exists (DataFlow::SourceNode attributes |
       bulkAttributeInit(this, elt, attributes) and
-      attributes.flowsToExpr(pwn.getBase())
+      attributes.flowsTo(pwn.getBase())
     )
   }
 
@@ -241,7 +241,7 @@ private class JQueryAttrCall extends JQueryAttributeDefinition, @callexpr {
   }
 
   override DataFlow::Node getValueNode() {
-    result = DataFlow::valueNode(pwn.getRhs())
+    result = pwn.getRhs()
   }
 
   override DOM::ElementDefinition getElement() {

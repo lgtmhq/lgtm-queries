@@ -57,6 +57,30 @@ class ServletRequestGetParameterMethod extends Method {
 }
 
 /**
+ * The method `getParameterNames()` declared in `javax.servlet.ServletRequest`.
+ */
+library
+class ServletRequestGetParameterNamesMethod extends Method {
+  ServletRequestGetParameterNamesMethod() {
+    getDeclaringType() instanceof ServletRequest and
+    hasName("getParameterNames") and
+    getNumberOfParameters() = 0
+  }
+}
+
+/**
+ * The method `getParameterMap()` declared in `javax.servlet.ServletRequest`.
+ */
+library
+class ServletRequestGetParameterMapMethod extends Method {
+  ServletRequestGetParameterMapMethod() {
+    getDeclaringType() instanceof ServletRequest and
+    hasName("getParameterMap") and
+    getNumberOfParameters() = 0
+  }
+}
+
+/**
  * The method `getQueryString()` declared in `javax.servlet.http.HttpServletRequest`.
  */
 library

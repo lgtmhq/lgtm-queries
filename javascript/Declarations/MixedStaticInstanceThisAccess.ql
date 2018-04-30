@@ -52,7 +52,16 @@ where
         exists (MethodDefinition toMethodWithSameKind |
             isLocalMethodAccess(access, fromMethod, toMethodWithSameKind) and
             fromKind = getKind(toMethodWithSameKind)
-        ) or
+        )
+        or
+        // there is a dynamically assigned second member with the same name and the right kind
+        exists (AnalyzedPropertyWrite apw, AbstractClass declaringClass, AbstractValue base |
+          "static" = fromKind and base = declaringClass or
+          "instance" = fromKind and base = TAbstractInstance(declaringClass) |
+          declaringClass = TAbstractClass(fromMethod.getDeclaringClass()) and
+          apw.writes(base, access.getPropertyName(), _)
+        )
+        or
         // the access is an assignment, probably deliberate
         access instanceof LValue
     )

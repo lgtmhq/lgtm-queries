@@ -42,6 +42,39 @@ class Field extends MemberVariable {
     result = mostDerivedClass.getABaseClassByteOffset(getDeclaringType()) +
       getByteOffset()
   }
+
+  /**
+   * Holds if the field can be initialized as part of an initializer list. For
+   * example, in:
+   *
+   * struct S {
+   *   unsigned int a : 5;
+   *   unsigned int : 5;
+   *   unsigned int b : 5; 
+   * };
+   *
+   * Fields `a` and `b` are initializable, but the unnamed bitfield is not.
+   */
+  predicate isInitializable() {
+    // All non-bitfield fields are initializable. This predicate is overridden
+    // in `BitField` to handle the anonymous bitfield case.
+    any()
+  }
+
+  /**
+   * Gets the zero-based index of the specified field within its enclosing
+   * class, counting only fields that can be initialized. This is the order in
+   * which the field will be initialized, whether by an initializer list or in a
+   * constructor.
+   */
+  final int getInitializationOrder() {
+    exists(Class cls, int memberIndex | 
+      this = cls.getCanonicalMember(memberIndex) and
+      memberIndex = rank[result + 1](int index |
+        cls.getCanonicalMember(index).(Field).isInitializable()
+      )
+    )
+  }
 }
 
 /**
@@ -78,5 +111,10 @@ class BitField extends Field {
 
   predicate isAnonymous() {
     hasName("(unnamed bitfield)")
+  }
+
+  override predicate isInitializable() {
+    // Anonymous bitfields are not initializable.
+    not isAnonymous()
   }
 }

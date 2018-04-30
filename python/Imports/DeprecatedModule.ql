@@ -15,8 +15,7 @@
  * @name Import of deprecated module
  * @description Import of a deprecated module
  * @kind problem
- * @tags changeability
- *       maintainability
+ * @tags maintainability
  *       external/cwe/cwe-477
  * @problem.severity warning
  * @sub-severity high

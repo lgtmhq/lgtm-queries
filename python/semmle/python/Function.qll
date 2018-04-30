@@ -270,6 +270,20 @@ class Parameter extends Parameter_ {
         )
     }
 
+    /** Holds if this parameter is a 'varargs' parameter.
+     * The `varargs` in `f(a, b, *varargs)`.
+     */
+    predicate isVarargs() {
+        exists(Function func | func.getVararg() = this)
+    }
+
+    /** Holds if this parameter is a 'kwargs' parameter.
+     * The `kwargs` in `f(a, b, **kwargs)`.
+     */
+    predicate isKwargs() {
+        exists(Function func | func.getKwarg() = this)
+    }
+
 }
 
 /** An expression that generates a callable object, either a function expression or a lambda */

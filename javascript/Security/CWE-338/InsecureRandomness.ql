@@ -24,8 +24,8 @@
  *       external/cwe/cwe-338
  */
 import javascript
-import semmle.javascript.security.dataflow.InsecureRandomness
+import semmle.javascript.security.dataflow.InsecureRandomness::InsecureRandomness
 
-from InsecureRandomnessDataFlowConfiguration cfg, DataFlow::Node source, DataFlow::Node sink
+from Configuration cfg, Source source, Sink sink
 where cfg.flowsFrom(sink, source)
 select sink, "Cryptographically insecure $@ in a security context.", source, "random value"

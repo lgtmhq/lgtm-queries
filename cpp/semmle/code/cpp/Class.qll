@@ -449,8 +449,7 @@ class Class extends UserType {
     this.getABaseClass() = that
   }
 
-  /** Holds if this type refers to type `t` directly */
-  predicate refersToDirectly(Type t) {
+  override predicate refersToDirectly(Type t) {
     t = this.getATemplateArgument() or
     class_instantiation(this, t)
   }
@@ -573,14 +572,9 @@ class Class extends UserType {
   /** Gets a friend declaration in this class. */
   FriendDecl getAFriendDecl() { result.getDeclaringClass() = this }
 
-  /**
-   * Descriptive string for a type (debug - expensive). Overridden
-   * method. See `Type.explain()`.
-   */
-  string explain() { result = "class " + this.getName() }
+  override string explain() { result = "class " + this.getName() }
 
-  /** See `Type.isDeeplyConst()` and `Type.isDeeplyConstBelow()`. Internal. */
-  predicate isDeeplyConstBelow() { any() } // No subparts
+  override predicate isDeeplyConstBelow() { any() } // No subparts
 
   /**
    * The alignment of this type in bytes (on the machine where facts were
@@ -628,8 +622,7 @@ class Class extends UserType {
     exists(MemberFunction f | f.getDeclaringType() = getABaseClass*() and f.isVirtual())
   }
 
-  /** Holds if this class involves a template parameter. */
-  predicate involvesTemplateParameter() {
+  override predicate involvesTemplateParameter() {
     getATemplateArgument().involvesTemplateParameter()
   }
 

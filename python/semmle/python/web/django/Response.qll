@@ -44,7 +44,7 @@ class DjangoResponseSource extends TaintSource {
     DjangoResponseSource() {
         exists(ClassObject cls |
             cls.getAnImproperSuperType() = djangoHttpResponseClass() and
-            this.(CallNode).getFunction().refersTo(cls)
+            cls.getACall() = this
         )
     }
 

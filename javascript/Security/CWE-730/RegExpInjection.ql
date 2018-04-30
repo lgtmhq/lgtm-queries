@@ -26,8 +26,8 @@
  */
 
 import javascript
-import semmle.javascript.security.dataflow.RegExpInjection
+import semmle.javascript.security.dataflow.RegExpInjection::RegExpInjection
 
-from RegExpInjectionTaintTrackingConfiguration c, DataFlow::Node source, DataFlow::Node sink
+from Configuration c, Source source, Sink sink
 where c.flowsFrom(sink, source)
 select sink, "This regular expression is constructed from a $@.", source, "user-provided value"

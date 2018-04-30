@@ -24,7 +24,7 @@
 import javascript
 
 /**
- * Extensible class for AngularJS expression source providers (e.g. `id="{{myId}}"`` of `<div id="{{myId}}" class="left"/>`).
+ * Extensible class for AngularJS expression source providers (e.g. `id="{{myId}}"` of `<div id="{{myId}}" class="left"/>`).
  */
 abstract class NgSourceProvider extends Locatable {
 

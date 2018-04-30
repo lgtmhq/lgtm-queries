@@ -27,6 +27,7 @@
  */
 import cpp
 import Buffer
+private import semmle.code.cpp.valuenumbering.GlobalValueNumbering
 
 predicate isSizePlus(Expr e, BufferSizeExpr baseSize, int plus)
 {
@@ -77,32 +78,6 @@ predicate strncpyFunction(Function f, int argDest, int argSrc, int argLimit)
   )
 }
 
-/**
- * Holds if `a` and `b` access the same value, where `a` is in a source or
- * destination argument to `strncpy`.
- */
-predicate sameAccess(VariableAccess a, VariableAccess b) {
-  // Base case: unqualified access to the same variable
-  a.getTarget() = b.getTarget() and
-  not exists(a.getQualifier()) and
-  not exists(b.getQualifier()) and
-  // Manual magic: `a` is a source or destination argument to `strncpy`.
-  exists(FunctionCall fc, int argDest, int argSrc, VariableAccess top |
-    strncpyFunction(fc.getTarget(), argDest, argSrc, _) and
-    top.getQualifier*() = a
-  |
-    top = fc.getArgument(argDest)
-    or
-    top = fc.getArgument(argSrc)
-  )
-  or
-  // Recursive case: if `a` and `b` access the same variable, then `a.f` and
-  // `b.f` do as well.
-  a.getTarget() = b.getTarget() and
-  sameAccess(a.getQualifier(),
-             b.getQualifier())
-}
-
 string nthString (int num) {
   (
     num = 0 and
@@ -116,20 +91,43 @@ string nthString (int num) {
   )
 }
 
-from FunctionCall fc, int argDest, int argSrc, int argLimit,
-     VariableAccess copyDest, VariableAccess copySource,
-     VariableAccess takenSizeOf, BufferSizeExpr sizeExpr,
-     int plus, string name, string nth
+/**
+ * Gets the size of the expression, if it is initialized
+ * with a fixed size array.
+ */
+int arrayExprFixedSize(Expr e) {
+  result = e.getType().getUnspecifiedType().(ArrayType).getSize()
+  or
+  result = e.(NewArrayExpr).getAllocatedType().(ArrayType).getSize()
+  or
+  exists (SsaDefinition def, LocalVariable v
+  | not (e.getType().getUnspecifiedType() instanceof ArrayType) and
+    e = def.getAUse(v) and
+    result = arrayExprFixedSize(def.getDefiningValue(v)))
+}
+
+from Function f, FunctionCall fc, int argDest, int argSrc, int argLimit, int charSize,
+     Access copyDest, Access copySource, string name, string nth
 where
-  strncpyFunction(fc.getTarget(), argDest, argSrc, argLimit) and
+  f = fc.getTarget() and
+  strncpyFunction(f, argDest, argSrc, argLimit) and
   copyDest = fc.getArgument(argDest) and
   copySource = fc.getArgument(argSrc) and
-  sizeExpr = fc.getArgument(argLimit).getAChild*() and
-  isSizePlus(fc.getArgument(argLimit), sizeExpr, plus) and
-  plus >= 0 and
-  takenSizeOf = sizeExpr.getArg() and
-  sameAccess(copySource, takenSizeOf) and // e.g. strncpy(x, y, strlen(y))
-  not sameAccess(copyDest, takenSizeOf) // e.g. strncpy(y, y, strlen(y))
+  // Some of the functions operate on a larger char type, like `wchar_t`, so we
+  // need to take this into account in the fixed size case.
+  charSize = f.getParameter(argDest).getType().getUnspecifiedType().(PointerType).getBaseType().getSize() and
+  if exists (fc.getArgument(argLimit).getValue().toInt()) then (
+    // Fixed sized case
+    arrayExprFixedSize(copyDest) < charSize * fc.getArgument(argLimit).getValue().toInt()
+  ) else exists (Access takenSizeOf, BufferSizeExpr sizeExpr, int plus |
+    // Variable sized case
+    sizeExpr = fc.getArgument(argLimit).getAChild*() and
+    isSizePlus(fc.getArgument(argLimit), sizeExpr, plus) and
+    plus >= 0 and
+    takenSizeOf = sizeExpr.getArg() and
+    globalValueNumber(copySource) = globalValueNumber(takenSizeOf) and // e.g. strncpy(x, y, strlen(y))
+    globalValueNumber(copyDest) != globalValueNumber(takenSizeOf) // e.g. strncpy(y, y, strlen(y))
+  )
   and name = fc.getTarget().getName()
   and nth = nthString(argLimit)
 select fc, "Potentially unsafe call to " + name + "; " + nth + " argument should be size of destination."

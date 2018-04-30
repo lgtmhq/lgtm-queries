@@ -15,8 +15,7 @@
  * @name 'apply' function used
  * @description The builtin function 'apply' is obsolete and should not be used.
  * @kind problem
- * @tags changeability
- *       maintainability
+ * @tags maintainability
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high

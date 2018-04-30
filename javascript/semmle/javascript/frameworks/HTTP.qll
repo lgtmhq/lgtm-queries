@@ -199,11 +199,6 @@ module HTTP {
   }
 
   /**
-   * DEPRECATED: Use `ServerDefinition` instead.
-   */
-  deprecated class Server = ServerDefinition;
-
-  /**
    * A callback for handling a request on some route on a server.
    */
   abstract class RouteHandler extends DataFlow::Node {

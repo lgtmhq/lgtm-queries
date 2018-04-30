@@ -253,6 +253,11 @@ class StringLiteral extends @stringliteral, Literal {
 
 /** A regular expression literal. */
 class RegExpLiteral extends @regexpliteral, Literal, RegExpParent {
+  /** Gets the root term of this regular expression literal. */
+  RegExpTerm getRoot() {
+    this = result.getParent()
+  }
+
   /** Gets the flags of this regular expression. */
   string getFlags() {
     result = getValue().regexpCapture(".*/(\\w*)$", 1)

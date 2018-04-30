@@ -64,7 +64,7 @@ ClassObject simple_types(Object obj) {
     or
     obj.getOrigin() instanceof Module and result = theModuleType()
     or
-    py_cobjecttypes(obj, result)
+    result = builtin_object_type(obj)
 }
 
 private ClassObject comprehension(Expr e) {
@@ -107,6 +107,23 @@ int version_tuple_value(Object t) {
     tuple_index_value(t, 2) > 0 and result = tuple_index_value(t, 0)*10 + tuple_index_value(t, 1) + 1
 }
 
+/** Choose a version numbers that represent the extreme of supported versions. */
+private int major_minor() {
+    if major_version() = 3 then
+        (result = 33 or result = 37)  // 3.3 to 3.7
+    else
+        (result = 25 or result = 27) // 2.5 to 2.7
+}
+
+/** Compares the given tuple object to both the maximum and minimum possible sys.version_info values */
+int version_tuple_compare(Object t) {
+    version_tuple_value(t) <  major_minor() and result = -1
+    or
+    version_tuple_value(t) =  major_minor() and result = 0
+    or
+    version_tuple_value(t) >  major_minor() and result = 1
+}
+
 /* Holds if `cls` is a new-style class if it were to have no explicit base classes */
 predicate baseless_is_new_style(ClassObject cls) {
     cls.isBuiltin()
@@ -145,7 +162,9 @@ predicate builtin_module_attribute(ModuleObject m, string name, Object value, Cl
 /** Gets the (built-in) class of the built-in object `obj` */
 pragma [noinline]
 ClassObject builtin_object_type(Object obj) {
-    py_cobjecttypes(obj, result)
+    py_cobjecttypes(obj, result) and not obj = unknownValue()
+    or
+    obj = unknownValue() and result = theUnknownType()
 }
 
 /** Holds if this class (not on a super-class) declares name */
@@ -293,7 +312,11 @@ class ParameterDefinition extends PyNodeDefinition {
     }
 
     ControlFlowNode getDefault() {
-        result.getNode() = this.getDefiningNode().getNode().(Parameter).getDefault()
+        result.getNode() = this.getParameter().getDefault()
+    }
+
+    Parameter getParameter() {
+        result = this.getDefiningNode().getNode()
     }
 
 }
@@ -557,11 +580,20 @@ Object undefinedVariable() {
     py_special_objects(result, "_semmle_undefined_value")
 }
 
+/** Gets the pseudo-object representing an unknown value */
+Object unknownValue() {
+    py_special_objects(result, "_1")
+}
+
 /** Gets the `value, cls, origin` that `f` would refer to if it has not been assigned some other value */
 pragma [noinline]
 predicate potential_builtin_points_to(NameNode f, Object value, ClassObject cls, ControlFlowNode origin) {
-    f.isGlobal() and f.isLoad() and
-    value = builtin_object(f.getId()) and py_cobjecttypes(value, cls) and origin = f
+    f.isGlobal() and f.isLoad() and origin = f and
+    (
+        value = builtin_object(f.getId()) and py_cobjecttypes(value, cls)
+        or
+        not exists(builtin_object(f.getId())) and value = unknownValue() and cls = theUnknownType()
+    )
 }
 
 module BaseFlow {

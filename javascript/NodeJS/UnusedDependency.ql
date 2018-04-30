@@ -20,7 +20,7 @@
  * @id js/node/unused-npm-dependency
  * @tags maintainability
  *       frameworks/node.js
- * @precision very-high
+ * @precision medium
  */
 
 import javascript

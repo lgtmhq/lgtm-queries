@@ -71,11 +71,10 @@ import semmle.javascript.frameworks.PkgCloud
 import semmle.javascript.frameworks.React
 import semmle.javascript.frameworks.Request
 import semmle.javascript.frameworks.SQL
+import semmle.javascript.frameworks.UriLibraries
 import semmle.javascript.frameworks.XmlParsers
 import semmle.javascript.frameworks.xUnit
 import semmle.javascript.linters.ESLint
 import semmle.javascript.linters.JSLint
 import semmle.javascript.linters.Linting
 import semmle.javascript.security.dataflow.RemoteFlowSources
-
-import semmle.javascript.flow.Tracking

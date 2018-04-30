@@ -47,9 +47,12 @@ private string nonSuspicious() {
 }
 
 /** An expression that might contain sensitive data. */
-abstract class SensitiveExpr extends Expr { }
+abstract class SensitiveExpr extends Expr {
+  /** Gets a human-readable description of this expression for use in alert messages. */
+  abstract string describe();
+}
 
-/** A method access that might produce sensitive data. */
+/** A function call that might produce sensitive data. */
 class SensitiveCall extends SensitiveExpr, InvokeExpr {
   SensitiveCall() {
     this.getCalleeName() instanceof SensitiveDataFunctionName or
@@ -60,18 +63,28 @@ class SensitiveCall extends SensitiveExpr, InvokeExpr {
       not s.regexpMatch(nonSuspicious())
     )
   }
+
+  override string describe() {
+    result = "a call to " + getCalleeName()
+  }
 }
 
 /** An access to a variable or property that might contain sensitive data. */
 abstract class SensitiveVariableAccess extends SensitiveExpr {
-
   string name;
 
   SensitiveVariableAccess() {
-    this.(VarAccess).getName() = name or
-    this.(PropReadNode).getPropertyName() = name
+    this.(VarAccess).getName() = name
+    or
+    exists (DataFlow::PropRead pr |
+      this = pr.asExpr() and
+      pr.getPropertyName() = name
+    )
   }
 
+  override string describe() {
+    result = "an access to " + name
+  }
 }
 
 /** A write to a location that might contain sensitive data. */
@@ -84,9 +97,9 @@ private class BasicSensitiveWrite extends SensitiveWrite {
     exists (string name |
       name.regexpMatch(suspicious()) and
       not name.regexpMatch(nonSuspicious()) |
-      exists (PropWriteNode pwn |
+      exists (DataFlow::PropWrite pwn |
         pwn.getPropertyName() = name and
-        pwn.getRhs() = this.asExpr()
+        pwn.getRhs() = this
       ) or
       exists (VarDef v |
         v.getAVariable().getName() = name |

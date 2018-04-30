@@ -26,8 +26,8 @@
  */
 
 import javascript
-import semmle.javascript.security.dataflow.CodeInjection
+import semmle.javascript.security.dataflow.CodeInjection::CodeInjection
 
-from CodeInjectionDataFlowConfiguration codeInjection, DataFlow::Node source, DataFlow::Node sink
+from Configuration codeInjection, Source source, Sink sink
 where codeInjection.flowsFrom(sink, source)
 select sink, "$@ flows to here and is interpreted as code.", source, "User-provided value"

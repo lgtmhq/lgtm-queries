@@ -57,13 +57,15 @@ class FirstElementKind extends TaintKind {
 
 }
 
-class FirstElementFlow extends TaintFlow {
+class FirstElementFlow extends DataFlowExtension::DataFlowNode {
 
-    FirstElementFlow() { this = "list[0] flow" }
+    FirstElementFlow() {
+        this = any(SequenceNode s).getElement(0)
+    }
 
-
-    predicate additionalFlowStep(ControlFlowNode fromnode, TaintKind fromkind, ControlFlowNode tonode, TaintKind tokind) {
-        tonode.(SequenceNode).getElement(0) = fromnode and tokind.(FirstElementKind).getItem() = fromkind
+    override
+    ControlFlowNode getASuccessorNode(TaintKind fromkind, TaintKind tokind) {
+        result.(SequenceNode).getElement(0) = this and tokind.(FirstElementKind).getItem() = fromkind
     }
 
 }

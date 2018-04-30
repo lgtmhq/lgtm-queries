@@ -239,7 +239,7 @@ class ClassObject extends Object {
     }
 
     string toString() {
-        this.isC() and result = "builtin-class " + this.getName()
+        this.isC() and result = "builtin-class " + this.getName() and not this = theUnknownType()
         or
         not this.isC() and result = "class " + this.getName()
     }
@@ -251,24 +251,24 @@ class ClassObject extends Object {
         result = FinalPointsTo::Types::next_in_mro(this, sup)
     }
 
-    /** The MRO for this class. ClassObject `sup` occurs at `index` in the list of classes. 
+    /** Gets the MRO for this class. ClassObject `sup` occurs at `index` in the list of classes.
      * `this` has an index of `1`, the next class in the MRO has an index of `2`, and so on.
      */
     ClassObject getMroItem(int index) {
         result = FinalPointsTo::Types::get_mro_item(this, index)
     }
 
-    /** This class has duplicate base classes */
+    /** Holds if this class has duplicate base classes */
     predicate hasDuplicateBases() {
         exists(ClassObject base, int i, int j | i != j and base = this.getBaseType(i) and base = this.getBaseType(j))
     }
 
-    /** Whether this class is an iterable. */
+    /** Holds if this class is an iterable. */
     predicate isIterable() {
         this.hasAttribute("__iter__") or this.hasAttribute("__getitem__")
     }
 
-    /** Whether this class is an iterator. */
+    /** Holds if this class is an iterator. */
     predicate isIterator() {
         this.hasAttribute("__iter__") and 
         (major_version() = 3 and this.hasAttribute("__next__")
@@ -288,7 +288,7 @@ class ClassObject extends Object {
         this = theGeneratorType()
     }
 
-    /** Whether this class is an improper subclass of the other class.
+    /** Holds if this class is an improper subclass of the other class.
      *  True if this is a sub-class of other or this is the same class as other.
      *
      *  Equivalent to the Python builtin function issubclass().
@@ -302,19 +302,19 @@ class ClassObject extends Object {
         this.isContainer()
     }
 
-    /** Whether this class is a container(). That is, does it have a __getitem__ method.*/
+    /** Holds if this class is a container(). That is, does it have a __getitem__ method.*/
     predicate isContainer() {
         exists(this.lookupAttribute("__getitem__"))
     }
 
-    /** Whether this class is a mapping. */
+    /** Holds if this class is a mapping. */
     predicate isMapping() {
         exists(this.lookupAttribute("__getitem__"))
         and
         not this.isSequence()
     }
 
-    /** Whether this class is probably a sequence. */
+    /** Holds if this class is probably a sequence. */
     predicate isSequence() {
         /* To determine whether something is a sequence or a mapping is not entirely clear,
          * so we need to guess a bit. 
@@ -354,19 +354,19 @@ class ClassObject extends Object {
         )
     }
 
-    /** Whether this class is unhashable */
+    /** Holds if this class is unhashable */
     predicate unhashable() {
         this.lookupAttribute("__hash__") = theNoneObject()
         or
         ((FunctionObject)this.lookupAttribute("__hash__")).neverReturns() 
     }
 
-    /** Whether this class is a descriptor */
+    /** Holds if this class is a descriptor */
     predicate isDescriptorType() {
         this.hasAttribute("__get__") 
     }
 
-    /** Whether this class is an overriding descriptor */
+    /** Holds if this class is an overriding descriptor */
     predicate isOverridingDescriptorType() {
         this.hasAttribute("__get__") and this.hasAttribute("__set__") 
     }
@@ -376,6 +376,17 @@ class ClassObject extends Object {
             init = this.lookupAttribute("__init__") and
             init.getACallee*() = result
         )
+    }
+
+    boolean booleanValue() {
+        result = true
+    }
+
+    /** Gets a call to this class. Note that the call may not create a new instance of
+     * this class, as that depends on the `__new__` method of this class.
+     */
+    CallNode getACall() {
+        result.getFunction().refersTo(this)
     }
 
 }

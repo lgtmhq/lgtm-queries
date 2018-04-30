@@ -211,6 +211,23 @@ class AnalyzedRequireCall extends AnalyzedPropertyRead, DataFlow::ValueNode {
     propName = "exports"
   }
 }
+
+/**
+ * Flow analysis for special TypeScript `require` calls in an import-assignment.
+ */
+class AnalyzedExternalModuleReference extends AnalyzedPropertyRead, DataFlow::ValueNode {
+  Module required;
+
+  AnalyzedExternalModuleReference() {
+    required = astNode.(ExternalModuleReference).getImportedModule()
+  }
+
+  override predicate reads(AbstractValue base, string propName) {
+    base = TAbstractModuleObject(required) and
+    propName = "exports"
+  }
+}
+
 /**
  * Flow analysis for AMD exports.
  */

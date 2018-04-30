@@ -15,8 +15,7 @@
  * @name Deprecated slice method
  * @description Defining special methods for slicing has been deprecated since Python 2.0.
  * @kind problem
- * @tags changeability
- *       maintainability
+ * @tags maintainability
  * @problem.severity warning
  * @sub-severity high
  * @precision very-high

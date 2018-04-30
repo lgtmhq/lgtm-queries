@@ -238,7 +238,8 @@ private predicate bbSuccessorEntryReachesDefOrUse(BasicBlock bb, SemanticStackVa
   exists(BasicBlock succ, boolean succSkipsFirstLoopAlwaysTrueUponEntry |
     bbSuccessorEntryReachesLoopInvariant(bb, succ, skipsFirstLoopAlwaysTrueUponEntry, succSkipsFirstLoopAlwaysTrueUponEntry) |
     bbEntryReachesDefOrUseLocally(succ, v, defOrUse) and
-    succSkipsFirstLoopAlwaysTrueUponEntry = false
+    succSkipsFirstLoopAlwaysTrueUponEntry = false and
+    not excludeReachesFunction(bb.getEnclosingFunction())
     or
     not bbBarrierAt(succ, _, v, _) and
     bbSuccessorEntryReachesDefOrUse(succ, v, defOrUse, succSkipsFirstLoopAlwaysTrueUponEntry)
@@ -407,5 +408,22 @@ predicate useOfVarActual(SemanticStackVariable v, VariableAccess use) {
     c.getArgument(i) = use and
     c.getTarget().hasEntryPoint() and
     not exists(c.getTarget().getParameter(i).getAnAccess())
+  )
+}
+
+/**
+ * A function that should be excluded from 'reaches' analysis.
+ * 
+ * The current implementation performs badly in some cases where a
+ * function has both a huge number of def/uses and a huge number of
+ * basic blocks, typically in generated code.  We exclude these
+ * functions based on the former because it is cheaper to calculate.
+ */
+private predicate excludeReachesFunction(Function f) {
+  exists(int defOrUses |
+    defOrUses =
+      count(Def def | def.(ControlFlowNode).getControlFlowScope() = f) +
+      count(Use use | use.(ControlFlowNode).getControlFlowScope() = f) and
+    defOrUses >= 13000
   )
 }

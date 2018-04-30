@@ -165,46 +165,6 @@ class AMDModuleDefinition extends CallExpr {
   }
 
   /**
-   * Gets an access to this module's `module` parameter, if any.
-   */
-  private VarAccess getAModuleAccess() {
-    result = getModuleParameter().getVariable().getAnAccess()
-  }
-
-  /**
-   * Gets an access to this module's `exports`, either through the corresponding
-   * parameter or through `module.exports`.
-   */
-  deprecated
-  private Expr getAnExportsAccess() {
-    result = getExportsParameter().getVariable().getAnAccess() or
-    exists (PropAccess pacc | result = pacc |
-      pacc.getBase().(DataFlowNode).getALocalSource() = getAModuleAccess() and
-      pacc.getPropertyName() = "exports"
-    )
-  }
-
-  /**
-   * DEPRECATED: Use `getAModuleExportsValue` instead.
-   *
-   * Gets an expression that may be exported by this module.
-   *
-   * This includes both expressions returned from the factory function and expressions
-   * assigned to `module.exports`. The `exports` parameter itself is always implicitly
-   * exported.
-   */
-  deprecated
-  DataFlowNode getAnExportedExpr() {
-    result = getModuleExpr() or
-    result = getAnExportsAccess() or
-    exists (Assignment assgn |
-      assgn.getTarget() instanceof PropAccess and
-      assgn.getTarget() = getAnExportsAccess() and
-      result = assgn.getRhs().(DataFlowNode).getALocalSource()
-    )
-  }
-
-  /**
    * Gets an abstract value representing one or more values that may flow
    * into this module's `module.exports` property.
    */
@@ -274,7 +234,7 @@ class AMDModule extends Module {
   }
 
   override predicate exports(string name, ASTNode export) {
-    exists (PropWriteNode pwn | export = pwn |
+    exists (DataFlow::PropWrite pwn | export = pwn.getAstNode() |
       pwn.getBase().analyze().getAValue() = getDefine().getAModuleExportsValue() and
       name = pwn.getPropertyName()
     )

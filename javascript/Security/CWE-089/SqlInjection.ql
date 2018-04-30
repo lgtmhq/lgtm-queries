@@ -27,7 +27,15 @@ import javascript
 import semmle.javascript.security.dataflow.SqlInjection
 import semmle.javascript.security.dataflow.NosqlInjection
 
+predicate sqlInjection(SqlInjection::Source source, SqlInjection::Sink sink) {
+  any(SqlInjection::Configuration cfg).flowsFrom(sink, source)
+}
+
+predicate nosqlInjection(NosqlInjection::Source source, NosqlInjection::Sink sink) {
+  any(NosqlInjection::Configuration cfg).flowsFrom(sink, source)
+}
+
 from DataFlow::Node source, DataFlow::Node sink
-where any(SqlInjectionTrackingConfig cfg).flowsFrom(sink, source) or
-      any(NosqlInjectionTrackingConfig cfg).flowsFrom(sink, source)
+where sqlInjection(source, sink) or
+      nosqlInjection(source, sink)
 select sink, "This query depends on $@.", source, "a user-provided value"

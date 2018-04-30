@@ -35,7 +35,7 @@ hasMultiScopeNode(Function f) {
 }
 
 /** Holds if `entry` is the entry point of a function. */
-private predicate functionEntry(ControlFlowNode entry) {
+predicate functionEntry(ControlFlowNode entry) {
   exists (Function function |
     function.getEntryPoint() = entry
     and not hasMultiScopeNode(function))

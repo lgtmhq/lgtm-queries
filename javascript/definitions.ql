@@ -100,12 +100,15 @@ predicate importLookup(PathExpr path, Module target, string kind) {
 /**
  * Gets a node that may write the property read by `prn`.
  */
-ASTNode getAWrite(PropReadNode prn) {
+ASTNode getAWrite(DataFlow::PropRead prn) {
   exists (DataFlow::AnalyzedNode base, DefiniteAbstractValue baseVal, string propName |
-    base.asExpr() = prn.getBase() and propName = prn.getPropertyName() and
+    base = prn.getBase() and propName = prn.getPropertyName() and
     baseVal = base.getAValue().getAPrototype*() |
     // write to a property on baseVal
-    DataFlow::valueNode(result).(AnalyzedPropertyWrite).writes(baseVal, propName, _)
+    exists (AnalyzedPropertyWrite apw |
+      result = apw.getAstNode() and
+      apw.writes(baseVal, propName, _)
+    )
     or
     // non-static class members aren't covered by `AnalyzedPropWrite`, so have to be handled
     // separately
@@ -124,7 +127,7 @@ ASTNode getAWrite(PropReadNode prn) {
  * at the moment.
  */
 predicate propertyLookup(Expr prop, ASTNode write, string kind) {
-  exists (PropReadNode prn | prop = prn.getPropertyNameExpr() |
+  exists (DataFlow::PropRead prn | prop = prn.getPropertyNameExpr() |
     count(getAWrite(prn)) = 1 and
     write = getAWrite(prn) and
     kind = "M"

@@ -339,14 +339,14 @@ class ModuleMetrics extends Module {
     int getAfferentCoupling() {
         result = count(ModuleMetrics t | t.dependsOn(this))
     }
-  
+
     /** The efferent coupling of a class is the number of classes that
      *  it directly depends on.
      */
     int getEfferentCoupling() {
           result = count(ModuleMetrics t | this.dependsOn(t))
     }
-    
+
     private predicate dependsOn(Module other) {
         other != this and
         (

@@ -28,10 +28,11 @@
 
 import javascript
 import semmle.javascript.security.dataflow.MissingRateLimiting
+import semmle.javascript.RestrictedLocations
 
 from ExpensiveRouteHandler r, Express::RouteHandlerExpr rhe,
      string explanation, DataFlow::Node reference, string referenceLabel
 where r = rhe.getBody() and
       r.explain(explanation, reference, referenceLabel) and
       not rhe instanceof RateLimitedRouteHandlerExpr
-select rhe, "This route handler " + explanation + ", but is not rate-limited.", reference, referenceLabel
+select (FirstLineOf)rhe, "This route handler " + explanation + ", but is not rate-limited.", reference, referenceLabel

@@ -81,6 +81,7 @@ class UnitializedSanitizer extends Sanitizer {
 
     UnitializedSanitizer() { this = "use of variable" }
 
+    override
     predicate sanitizingDefinition(TaintKind taint, EssaDefinition def) {
         // An assignment cannot leave a variable uninitialized
         taint instanceof Uninitialized and
@@ -90,17 +91,38 @@ class UnitializedSanitizer extends Sanitizer {
             def instanceof ExceptionCapture
             or
             def instanceof ParameterDefinition
+            or
+            /* A use is a "sanitizer" of "uninitialized", as any use of an undefined
+             * variable will raise, making the subsequent code unreacahable.
+             */
+            exists(def.(EssaNodeRefinement).getInput().getASourceUse())
+            or
+            exists(def.(PhiFunction).getAnInput().getASourceUse())
+            or
+            exists(def.(EssaEdgeRefinement).getInput().getASourceUse())
         )
     }
 
-    predicate postSanitizedVariable(TaintKind taint, EssaVariable var) {
-        /* A use is a "sanitizer" of "uninitialized", as any use of an undefined
-         * variable will raise, making the subsequent code unreacahable.
-         */
+    override
+    predicate sanitizingNode(TaintKind taint, ControlFlowNode node) {
         taint instanceof Uninitialized and
-        exists(var.getASourceUse())
+        exists(EssaVariable v |
+            v.getASourceUse() = node and
+            not first_use(node, v)
+        )
     }
 
+}
+
+/** Since any use of a local will raise if it is uninitialized, then
+ * any use dominated by another use of the same variable must be defined, or is unreachable.
+ */
+private predicate first_use(NameNode u, EssaVariable v) {
+    v.getASourceUse() = u and
+    not exists(NameNode other |
+        v.getASourceUse() = other and
+        other.strictlyDominates(u)
+    )
 }
 
 /* Holds if `call` is a call of the form obj.method_name(...) and 

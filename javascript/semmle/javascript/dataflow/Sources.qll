@@ -50,13 +50,27 @@ abstract class SourceNode extends DataFlow::Node {
   }
 
   /**
+   * Gets a reference (read or write) of property `propName` on this node.
+   */
+  DataFlow::PropRef getAPropertyReference(string propName) {
+    exists (DataFlow::Node base |
+      result.accesses(base, propName) and
+      flowsTo(base)
+    )
+  }
+
+  /**
    * Gets a read of property `propName` on this node.
    */
-  SourceNode getAPropertyRead(string propName) {
-    exists (PropReadNode prn | result = DataFlow::valueNode(prn) |
-      flowsToExpr(prn.getBase()) and
-      prn.getPropertyName() = propName
-    )
+  DataFlow::PropRead getAPropertyRead(string propName) {
+    result = getAPropertyReference(propName)
+  }
+
+  /**
+   * Gets a write of property `propName` on this node.
+   */
+  DataFlow::PropWrite getAPropertyWrite(string propName) {
+    result = getAPropertyReference(propName)
   }
 
   /**
@@ -64,30 +78,24 @@ abstract class SourceNode extends DataFlow::Node {
    * a dot expression (as in `x.propName`) or through an index expression
    * (as in `x["propName"]`).
    */
-  SourceNode getAPropertyAccess(string propName) {
-    exists (PropAccess pacc | result = DataFlow::valueNode(pacc) |
-      flowsToExpr(pacc.getBase()) and
-      pacc.getPropertyName() = propName
-    )
+  DataFlow::PropRead getAPropertyAccess(string propName) {
+    result = getAPropertyReference(propName) and
+    result.asExpr() instanceof PropAccess
   }
 
   /**
    * Holds if there is an assignment to property `propName` on this node,
    * and the right hand side of the assignment is `rhs`.
    */
-  predicate hasPropertyWrite(string propName, Expr rhs) {
-    exists (PropWriteNode pwn |
-      flowsToExpr(pwn.getBase()) and
-      pwn.getPropertyName() = propName and
-      rhs = pwn.getRhs()
-    )
+  predicate hasPropertyWrite(string propName, DataFlow::Node rhs) {
+    rhs = getAPropertyWrite(propName).getRhs()
   }
 
   /**
    * Gets an invocation of the method or constructor named `memberName` on this node.
    */
   DataFlow::InvokeNode getAMemberInvocation(string memberName) {
-    result = getAPropertyAccess(memberName).getAnInvocation()
+    result = getAPropertyRead(memberName).getAnInvocation()
   }
 
   /**
@@ -173,7 +181,8 @@ class DefaultSourceNode extends SourceNode {
         astNode instanceof ArrayExpr or
         astNode instanceof JSXNode or
         astNode instanceof ThisExpr or
-        astNode instanceof GlobalVarAccess
+        astNode instanceof GlobalVarAccess or
+        astNode instanceof ExternalModuleReference
       )
       or
       exists (SsaExplicitDefinition ssa, VarDef def |

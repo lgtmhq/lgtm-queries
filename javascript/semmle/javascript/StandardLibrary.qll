@@ -18,28 +18,26 @@ import javascript
 /**
  * A call to `Object.defineProperty`.
  */
-class CallToObjectDefineProperty extends CallExpr {
+class CallToObjectDefineProperty extends DataFlow::MethodCallNode {
   CallToObjectDefineProperty() {
-    exists (GlobalVariable theObject, PropAccess objDefProp |
-      getCallee().stripParens() = objDefProp and
-      objDefProp.getBase().stripParens() = theObject.getAnAccess() and
-      theObject.getName() = "Object" and
-      objDefProp.getPropertyName() = "defineProperty"
+    exists (GlobalVariable obj |
+      obj.getName() = "Object" and
+      astNode.calls(obj.getAnAccess(), "defineProperty")
     )
   }
 
-  /** Gets the expression denoting the object on which the property is defined. */
-  Expr getBaseObject() {
+  /** Gets the data flow node denoting the object on which the property is defined. */
+  DataFlow::Node getBaseObject() {
     result = getArgument(0)
   }
 
   /** Gets the name of the property being defined, if it can be determined. */
   string getPropertyName() {
-    result = getArgument(1).(ConstantString).getStringValue()
+    result = getArgument(1).asExpr().(ConstantString).getStringValue()
   }
 
-  /** Gets the expression denoting the descriptor of the property being defined. */
-  Expr getPropertyDescriptor() {
+  /** Gets the data flow node denoting the descriptor of the property being defined. */
+  DataFlow::Node getPropertyDescriptor() {
     result = getArgument(2)
   }
 }

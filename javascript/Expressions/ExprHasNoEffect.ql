@@ -78,7 +78,7 @@ predicate isGetterProperty(string name) {
   // or `Object.defineProperty(..., name, <something that's not an object literal>)`
   exists (CallToObjectDefineProperty defProp |
     name = defProp.getPropertyName() and
-    exists (Expr descriptor | descriptor = defProp.getPropertyDescriptor() |
+    exists (Expr descriptor | descriptor = defProp.getPropertyDescriptor().asExpr() |
       exists(descriptor.(ObjectExpr).getPropertyByName("get")) or
       not descriptor instanceof ObjectExpr
     )

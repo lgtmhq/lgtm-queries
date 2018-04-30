@@ -32,7 +32,7 @@ private import semmle.javascript.dataflow.InferredTypes
  */
 predicate isProto(DataFlow::AnalyzedNode e) {
   // `o.__proto__ = e`, `{ __proto__: e }`, ...
-  e.asExpr() = any(PropWriteNode pwn | pwn.getPropertyName() = "__proto__").getRhs()
+  e = any(DataFlow::PropWrite pwn | pwn.getPropertyName() = "__proto__").getRhs()
   or
   // Object.create(e)
   e = DataFlow::globalVarRef("Object").getAMemberCall("create").getArgument(0)

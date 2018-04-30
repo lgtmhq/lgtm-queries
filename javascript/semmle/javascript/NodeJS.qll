@@ -46,23 +46,6 @@ class NodeModule extends Module {
   }
 
   /**
-   * DEPRECATED: Use `getAModuleExportsValue` instead.
-   *
-   * Gets an expression whose value flows into `module.exports`.
-   */
-  deprecated
-  DataFlowNode getAnExportedExpr() {
-    result = getAnExportsAccess() or
-    exists (Assignment assgn, PropAccess lhs |
-      // the left hand side of the assignment is a reference to module.exports
-      lhs = assgn.getTarget() and
-      lhs = getAnExportsAccess() and
-      // the result is an expression that may flow into the right hand side
-      result = assgn.getRhs().(DataFlowNode).getALocalSource()
-    )
-  }
-
-  /**
    * Gets an abstract value representing one or more values that may flow
    * into this module's `module.exports` property.
    */
@@ -82,7 +65,7 @@ class NodeModule extends Module {
 
   override predicate exports(string name, ASTNode export) {
     // a property write whose base is `exports` or `module.exports`
-    exists (PropWriteNode pwn | export = pwn |
+    exists (DataFlow::PropWrite pwn | export = pwn.getAstNode() |
       pwn.getBase().analyze().getAValue() = getAModuleExportsValue() and
       name = pwn.getPropertyName()
     ) or
@@ -113,15 +96,6 @@ class NodeModule extends Module {
       exported instanceof AbstractFunction and result instanceof FunctionExternal or
       exported instanceof AbstractOtherObject and result instanceof ArrayExternal
     )
-  }
-
-  /**
-   * DEPRECATED: Use type inference instead.
-   *
-   * Gets a reference to `module.exports` in this module.
-   */
-  deprecated ExportsAccess getAnExportsAccess() {
-    result.getTopLevel() = this
   }
 
   override predicate searchRoot(PathExpr path, Folder searchRoot, int priority) {
@@ -408,23 +382,5 @@ private class JoinedPath extends PathExprInModule, @callexpr {
 class ModuleAccess extends VarAccess {
   ModuleAccess() {
     exists (ModuleScope ms | this = ms.getVariable("module").getAnAccess())
-  }
-}
-
-/**
- * DEPRECATED: Use type inference instead.
- *
- * A reference to the `exports` property, either through `module` or through its
- * variable alias.
- */
-deprecated class ExportsAccess extends Expr {
-  ExportsAccess() {
-    exists (ModuleScope ms |
-      this = ms.getVariable("exports").getAnAccess()
-    ) or
-    exists (PropAccess pacc | pacc = this |
-      pacc.getBase().(DataFlowNode).getALocalSource() instanceof ModuleAccess and
-      pacc.getPropertyName() = "exports"
-    )
   }
 }

@@ -15,8 +15,7 @@
  * @name Confusing octal literal
  * @description Octal literal with a leading 0 is easily misread as a decimal value
  * @kind problem
- * @tags changeability
- *       readability
+ * @tags readability
  * @problem.severity recommendation
  * @sub-severity low
  * @precision high

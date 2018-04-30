@@ -194,7 +194,7 @@ abstract class PathExprInModule extends PathExpr {
 /**
  * An import of a module with the given `path`, either using `require` or using `import`.
  */
-private predicate isImport(DataFlowNode nd, string moduleName) {
+private deprecated predicate isImport(DataFlowNode nd, string moduleName) {
   exists (Import i | i.getImportedPath().getValue() = moduleName |
     // `require("http")`
     nd = (Require)i or

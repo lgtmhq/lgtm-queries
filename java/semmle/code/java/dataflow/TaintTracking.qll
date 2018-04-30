@@ -19,6 +19,8 @@
 import java
 import semmle.code.java.dataflow.DataFlow
 import semmle.code.java.dataflow.DataFlow2
+import semmle.code.java.Collections
+
 private import SSA
 private import DefUse
 private import semmle.code.java.security.SecurityTests
@@ -220,6 +222,7 @@ module TaintTracking {
     ) or
     constructorStep(src, sink) or
     qualifierToMethodStep(src, sink) or
+    qualifierToArgumentStep(src, sink) or
     argToMethodStep(src, sink) or
     argToArgStep(src, sink) or
     comparisonStep(src, sink) or
@@ -305,6 +308,20 @@ module TaintTracking {
     )
   }
 
+  /** Access to a method that passes taint from qualifier to argument. */
+  private predicate qualifierToArgumentStep(Expr tracked, RValue sink) {
+    exists(MethodAccess ma, int arg |
+      taintPreservingQualifierToArgument(ma.getMethod(), arg) and
+      tracked = ma.getQualifier() and sink = ma.getArgument(arg)
+    )
+  }
+
+  /** Methods that passes tainted data from qualifier to argument.*/
+  private predicate taintPreservingQualifierToArgument(Method m, int arg) {
+    m instanceof CollectionMethod and
+    m.hasName("toArray") and arg = 1
+  }
+
   /** Access to a method that passes taint from the qualifier. */
   private predicate qualifierToMethodStep(Expr tracked, MethodAccess sink) {
     (taintPreservingQualifierToMethod(sink.getMethod()) or unsafeEscape(sink))
@@ -362,6 +379,9 @@ module TaintTracking {
     m.hasName("getInputStream")
     or
     m instanceof IntentGetExtraMethod
+    or
+    m instanceof CollectionMethod and
+    m.hasName("toArray")
   }
 
   private class StringReplaceMethod extends Method {
@@ -477,6 +497,9 @@ module TaintTracking {
       method.hasName("writeLines") and input = 0 and output = 2 or
       method.hasName("writeLines") and input = 1 and output = 2
     )
+    or
+    method.getDeclaringType().hasQualifiedName("java.lang", "System") and
+    method.hasName("arraycopy") and input = 0 and output = 2
   }
 
   /** A comparison or equality test with a constant. */

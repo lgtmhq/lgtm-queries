@@ -38,11 +38,6 @@ class ES2015Module extends Module {
     result = getFile().getStem()
   }
 
-  /** Gets an import declaration in this module. */
-  ImportDeclaration getAnImport() {
-    result.getContainer() = this
-  }
-
   /** Gets an export declaration in this module. */
   ExportDeclaration getAnExport() {
     result.getContainer() = this
@@ -73,7 +68,7 @@ class ES2015Module extends Module {
 /** An import declaration. */
 class ImportDeclaration extends Stmt, Import, @importdeclaration {
   override ES2015Module getEnclosingModule() {
-    this = result.getAnImport()
+    result = getContainer()
   }
 
   override PathExprInModule getImportedPath() {

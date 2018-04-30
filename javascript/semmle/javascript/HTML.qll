@@ -230,16 +230,6 @@ class HtmlScriptElement extends HTMLElement {
 }
 
 /**
- * DEPRECATED: Use `HTML::HtmlScriptElement` instead.
- *
- * An HTML `<script>` tag.
- */
-deprecated
-class HTMLScriptTag extends HtmlScriptElement {
-
-}
-
-/**
  * Holds if there is an HTML `<script>` tag with the given `src`
  * such that the script is resolved relative to `root`.
  */

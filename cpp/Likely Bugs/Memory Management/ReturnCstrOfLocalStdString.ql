@@ -51,6 +51,9 @@ class StdString extends Class {
 predicate refToStdString(Expr e, ConstructorCall source) {
   exists (StdString stdstring
   | stdstring.getAMemberFunction() = source.getTarget() and
+    not exists(LocalVariable v
+        | source = v.getInitializer().getExpr() and
+          v.isStatic()) and
     e = source)
   or
   // Indirect use.
@@ -105,4 +108,4 @@ from ReturnStmt r, ConstructorCall source
 where refToCStr(r.getExpr(), source)
 select
   r, "Return value may contain a dangling pointer to $@.",
-  source, "this local std::string."
+  source, "this local std::string"

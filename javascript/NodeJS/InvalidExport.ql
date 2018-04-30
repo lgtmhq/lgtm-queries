@@ -42,10 +42,10 @@ predicate exportsAssign(Assignment assgn, Variable exportsVar, DataFlow::Node nd
 /**
  * Holds if `pw` assigns the value of `nd` to `module.exports`.
  */
-predicate moduleExportsAssign(PropWriteNode pw, DataFlow::Node nd) {
-  pw.getBase() instanceof ModuleAccess and
+predicate moduleExportsAssign(DataFlow::PropWrite pw, DataFlow::Node nd) {
+  pw.getBase().asExpr() instanceof ModuleAccess and
   pw.getPropertyName() = "exports" and
-  nd.asExpr() = pw.getRhs()
+  nd = pw.getRhs()
   or
   moduleExportsAssign(pw, nd.getASuccessor())
 }

@@ -25,9 +25,9 @@
  */
 
 import javascript
-import semmle.javascript.security.dataflow.XmlBomb
+import semmle.javascript.security.dataflow.XmlBomb::XmlBomb
 
-from XmlBombTrackingConfig c, DataFlow::Node source, DataFlow::Node sink
+from Configuration c, Source source, Sink sink
 where c.flowsFrom(sink, source)
 select sink, "A $@ is parsed as XML without guarding against uncontrolled entity expansion.",
        source, "user-provided value"

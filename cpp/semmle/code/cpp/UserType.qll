@@ -91,9 +91,7 @@ class UserType extends Type, Declaration, NameQualifyingElement, AccessHolder, @
 
   Declaration getADeclaration() { none() }
 
-  // Overriding, see Type
-  string explain() { result = this.getName() }
-
+  override string explain() { result = this.getName() }
 
   // further overridden in LocalClass
   override AccessHolder getEnclosingAccessHolder() {
