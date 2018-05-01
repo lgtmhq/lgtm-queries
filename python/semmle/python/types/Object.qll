@@ -52,7 +52,9 @@ class Object extends @py_object {
     ClassObject getAnInferredType() {
         exists(ControlFlowNode somewhere | somewhere.refersTo(this, result, _))
         or
-        py_cobjecttypes(this, result)
+        py_cobjecttypes(this, result) and not this = unknownValue()
+        or
+        this = unknownValue() and result = theUnknownType()
     }
 
     /** Whether this a builtin object. A builtin object is one defined by the implementation, 
@@ -86,13 +88,14 @@ class Object extends @py_object {
    }
 
     string toString() {
-        this.isC() and not this = undefinedVariable() and
-            exists(ClassObject type, string typename, string objname |
-                py_cobjecttypes(this, type) and py_cobjectnames(this, objname) and typename = type.getName() |
-                result = typename + " " + objname
-            )
+        this.isC() and 
+        not this = undefinedVariable() and not this = unknownValue() and
+        exists(ClassObject type, string typename, string objname |
+            py_cobjecttypes(this, type) and py_cobjectnames(this, objname) and typename = type.getName() |
+            result = typename + " " + objname
+        )
         or
-            result = this.getOrigin().toString()
+        result = this.getOrigin().toString()
     }
 
     /** Gets the class of this object for simple cases, namely constants, functions, 

@@ -370,6 +370,12 @@ class ConstructorCall extends FunctionCall {
  * A C++ `throw` expression.
  */
 class ThrowExpr extends Expr, @throw_expr {
+  /**
+   * Gets the expression that will be thrown, if any. There is no result if
+   * `this` is a `ReThrowExpr`.
+   */
+  Expr getExpr() { result = this.getChild(0) }
+
   override string toString() { result = "throw ..." }
 
   override int getPrecedence() { result = 1 }

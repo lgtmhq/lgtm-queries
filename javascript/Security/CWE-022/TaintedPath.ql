@@ -29,8 +29,8 @@
 
 import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
-import semmle.javascript.security.dataflow.TaintedPath
+import semmle.javascript.security.dataflow.TaintedPath::TaintedPath
 
-from TaintedPathTrackingConfig cfg, DataFlow::Node source, DataFlow::Node sink
+from Configuration cfg, Source source, Sink sink
 where cfg.flowsFrom(sink, source)
 select sink, "This path depends on $@.", source, "a user-provided value"

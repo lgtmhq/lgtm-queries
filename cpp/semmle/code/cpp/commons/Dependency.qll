@@ -245,10 +245,10 @@ private predicate dependsOnViaTemplate(Declaration src, Element dest) {
  * Consider using `Symbol.getADependentElement()` rather than directly
  * accessing this predicate.
  */
-predicate dependsOnTransitive(Element src, Element dest) {
+predicate dependsOnTransitive(DependsSource src, Element dest) {
   exists(Element mid1 |
     // begin with a simple step
-    dependsOnSimpleInline((DependsSource)src, mid1) and
+    dependsOnSimpleInline(src, mid1) and
 
     // any number of recursive steps
     (
@@ -316,14 +316,10 @@ private predicate dependsOnDeclarationEntry(Element src, DeclarationEntry dest) 
  * The full dependsOn relation, made up of dependsOnTransitive plus some logic
  * to fix up the results for Declarations to most reasonable DeclarationEntrys.
  */
-private predicate dependsOnFull(Element src, Element dest, int category) {
+private predicate dependsOnFull(DependsSource src, Symbol dest, int category) {
   (
     // direct result
     dependsOnTransitive(src, dest) and
-    (
-      not dest instanceof Declaration or
-      dest instanceof EnumConstant
-    ) and
     category = 1
   ) or (
     // result to a visible DeclarationEntry

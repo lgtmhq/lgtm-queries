@@ -21,9 +21,12 @@ import javascript
 
 /** A data flow node corresponding to a (non-destructuring) parameter. */
 class ParameterNode extends DataFlow::SsaDefinitionNode, DataFlow::DefaultSourceNode {
+  override SsaExplicitDefinition ssa;
   SimpleParameter p;
 
-  ParameterNode() { this = DataFlow::parameterNode(p) }
+  ParameterNode() { p = ssa.getDef() }
+
+  SimpleParameter getParameter() { result = p }
 }
 
 /** A data flow node corresponding to a function invocation (with or without `new`). */
@@ -67,7 +70,7 @@ class InvokeNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode {
   DataFlow::ValueNode getOptionArgument(int i, string name) {
     exists (ObjectExprNode obj |
       obj.flowsTo(getArgument(i)) and
-      obj.hasPropertyWrite(name, result.asExpr())
+      obj.hasPropertyWrite(name, result)
     )
   }
 }
@@ -80,6 +83,15 @@ class CallNode extends InvokeNode {
 /** A data flow node corresponding to a method call. */
 class MethodCallNode extends CallNode {
   override MethodCallExpr astNode;
+
+  /**
+   * Gets the data flow node corresponding to the receiver expression of this method call.
+   *
+   * For example, the receiver of `x.m()` is `x`.
+   */
+  DataFlow::Node getReceiver() {
+    result = DataFlow::valueNode(astNode.getReceiver())
+  }
 
   /** Gets the name of the invoked method, if it can be determined. */
   string getMethodName() { result = astNode.getMethodName() }
@@ -115,12 +127,13 @@ class GlobalVarRefNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode 
  * Gets a data flow node corresponding to an access to global variable `name`,
  * either directly or through `window` or `global`.
  */
+pragma[nomagic]
 DataFlow::SourceNode globalVarRef(string name) {
   result.(GlobalVarRefNode).getName() = name or
   // DOM environment
-  result = globalVarRef("window").getAPropertyAccess(name) or
+  result = globalVarRef("window").getAPropertyReference(name) or
   // Node.js environment
-  result = globalVarRef("global").getAPropertyAccess(name)
+  result = globalVarRef("global").getAPropertyReference(name)
 }
 
 /** A data flow node corresponding to a function definition. */
@@ -161,6 +174,11 @@ class ModuleImportNode extends DataFlow::DefaultSourceNode {
   ModuleImportNode() {
     // `require("http")`
     exists (Require req | req.getImportedPath().getValue() = path |
+      this = DataFlow::valueNode(req)
+    )
+    or
+    // `import http = require("http")`
+    exists (ExternalModuleReference req | req.getImportedPath().getValue() = path |
       this = DataFlow::valueNode(req)
     )
     or

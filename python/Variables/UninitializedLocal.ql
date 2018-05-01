@@ -26,16 +26,6 @@
 import python
 import Undefined
 
-/** Since any use of a local will raise if it is uninitialized, then
- * any use dominated by another use of the same variable must be defined, or is unreachable.
- */
-predicate first_use(NameNode u, EssaVariable v) {
-    v.getASourceUse() = u and
-    not exists(NameNode other |
-        v.getASourceUse() = other and
-        other.strictlyDominates(u)
-    )
-}
 
 predicate uninitialized_local(NameNode use) {
     exists(FastLocalVariable local |
@@ -44,7 +34,7 @@ predicate uninitialized_local(NameNode use) {
     )
     and
     (
-        first_use(use, _) and any(Uninitialized uninit).taints(use)
+        any(Uninitialized uninit).taints(use)
         or
         not exists(EssaVariable var | var.getASourceUse() = use)
     )

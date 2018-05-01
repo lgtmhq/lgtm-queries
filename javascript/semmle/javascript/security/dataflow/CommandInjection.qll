@@ -19,49 +19,67 @@
 import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
 
-/**
- * A data flow source for command-injection vulnerabilities.
- */
-abstract class CommandInjectionSource extends DataFlow::Node { }
+module CommandInjection {
+  /**
+   * A data flow source for command-injection vulnerabilities.
+   */
+  abstract class Source extends DataFlow::Node { }
 
-/**
- * A data flow sink for command-injection vulnerabilities.
- */
-abstract class CommandInjectionSink extends DataFlow::Node { }
+  /**
+   * A data flow sink for command-injection vulnerabilities.
+   */
+  abstract class Sink extends DataFlow::Node { }
 
-/**
- * A sanitizer for command-injection vulnerabilities.
- */
-abstract class CommandInjectionSanitizer extends DataFlow::Node { }
+  /**
+   * A sanitizer for command-injection vulnerabilities.
+   */
+  abstract class Sanitizer extends DataFlow::Node { }
 
-/**
- * A taint-tracking configuration for reasoning about command-injection vulnerabilities.
- */
-class CommandInjectionTrackingConfig extends TaintTracking::Configuration {
-  CommandInjectionTrackingConfig() {
-    this = "CommandInjection"
+  /**
+   * A taint-tracking configuration for reasoning about command-injection vulnerabilities.
+   */
+  class Configuration extends TaintTracking::Configuration {
+    Configuration() {
+      this = "CommandInjection" and
+      exists(Source s) and exists(Sink s)
+    }
+
+    override predicate isSource(DataFlow::Node source) {
+      source instanceof Source
+    }
+
+    override predicate isSink(DataFlow::Node sink) {
+      sink instanceof Sink
+    }
+
+    override predicate isSanitizer(DataFlow::Node node) {
+      node instanceof Sanitizer
+    }
   }
 
-  override predicate isSource(DataFlow::Node source) {
-    source instanceof CommandInjectionSource or
-    source instanceof RemoteFlowSource
+  /** A source of remote user input, considered as a flow source for command injection. */
+  class RemoteFlowSourceAsSource extends Source {
+    RemoteFlowSourceAsSource() { this instanceof RemoteFlowSource }
   }
 
-  override predicate isSink(DataFlow::Node sink) {
-    sink instanceof CommandInjectionSink
-  }
-
-  override predicate isSanitizer(DataFlow::Node node) {
-    node instanceof CommandInjectionSanitizer
+  /**
+   * A command argument to a function that initiates an operating system command.
+  */
+  class SystemCommandExecutionSink extends Sink, DataFlow::ValueNode {
+    SystemCommandExecutionSink() {
+      this = any(SystemCommandExecution sys).getACommandArgument()
+    }
   }
 }
 
+/** DEPRECATED: Use `CommandInjection::Source` instead. */
+deprecated class CommandInjectionSource = CommandInjection::Source;
 
-/**
- * A command argument to a function that initiates an operating system command.
-*/
-class SystemCommandExecutionSink extends CommandInjectionSink, DataFlow::ValueNode {
-  SystemCommandExecutionSink() {
-    this = any(SystemCommandExecution sys).getACommandArgument()
-  }
-}
+/** DEPRECATED: Use `CommandInjection::Sink` instead. */
+deprecated class CommandInjectionSink = CommandInjection::Sink;
+
+/** DEPRECATED: Use `CommandInjection::Sanitizer` instead. */
+deprecated class CommandInjectionSanitizer = CommandInjection::Sanitizer;
+
+/** DEPRECATED: Use `CommandInjection::Configuration` instead. */
+deprecated class CommandInjectionTrackingConfig = CommandInjection::Configuration;

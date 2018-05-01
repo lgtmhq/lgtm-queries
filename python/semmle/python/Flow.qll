@@ -238,6 +238,8 @@ class ControlFlowNode extends @py_flow_node {
     predicate refersTo(Object value, ClassObject cls, ControlFlowNode origin) {
         not py_special_objects(cls, "_semmle_unknown_type")
         and
+        not value = unknownValue()
+        and
         FinalPointsTo::points_to(this, _, value, cls, origin)
     }
 
@@ -255,11 +257,15 @@ class ControlFlowNode extends @py_flow_node {
      */
     predicate refersTo(Object value, ControlFlowNode origin) {
         FinalPointsTo::points_to(this, _, value, _, origin)
+        and
+        not value = unknownValue()
     }
 
     /** Equivalent to `this.refersTo(value, _)` */
     predicate refersTo(Object value) {
         FinalPointsTo::points_to(this, _, value, _, _)
+        and
+        not value = unknownValue()
     }
 
     /** Gets the basic block containing this flow node */
@@ -399,8 +405,8 @@ class ControlFlowNode extends @py_flow_node {
 }
 
 
-/*  This class exists to provide an implementation over ControlFlowNode.getNode() 
- * that subsumes all the others in an way that's obvious to the optimiser. 
+/* This class exists to provide an implementation over ControlFlowNode.getNode()
+ * that subsumes all the others in an way that's obvious to the optimiser.
  * This avoids wasting time on the trivial overrides on the ControlFlowNode subclasses.
  */
 private class AnyNode extends ControlFlowNode {

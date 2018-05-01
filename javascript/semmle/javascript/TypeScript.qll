@@ -239,7 +239,16 @@ class ImportEqualsDeclaration extends Stmt, @importequalsdeclaration {
   }
 }
 
-/** A TypeScript external module reference. */
+/**
+ * A `require()` call in a TypeScript import-equals declaration, such as `require("foo")` in:
+ * ```
+ * import foo = require("foo");
+ * ```
+ *
+ * These are special in that they may only occur in an import-equals declaration,
+ * and the compiled output depends on the `--module` flag passed to the
+ * TypeScript compiler.
+ */
 class ExternalModuleReference extends Expr, Import, @externalmodulereference {
   /** Gets the expression specifying the module. */
   Expr getExpression() {
@@ -1129,6 +1138,62 @@ class QualifiedVarTypeAccess extends @qualifiedvartypeaccess, VarTypeAccess {
 }
 
 /**
+ * A conditional type annotation, such as `T extends any[] ? A : B`.
+ */
+class ConditionalTypeExpr extends @conditionaltypeexpr, TypeExpr {
+  /**
+   * Gets the type to the left of the `extends` keyword, such as `T` in `T extends any[] ? A : B`.
+   */
+  TypeExpr getCheckType() { result = getChildTypeExpr(0) }
+
+  /**
+   * Gets the type to the right of the `extends` keyword, such as `any[]` in `T extends any[] ? A : B`.
+   */
+  TypeExpr getExtendsType() { result = getChildTypeExpr(1) }
+
+  /**
+   * Gets the type to be used if the `extend` condition holds, such as `A` in `T extends any[] ? A : B`.
+   */
+  TypeExpr getTrueType() { result = getChildTypeExpr(2) }
+
+  /**
+   * Gets the type to be used if the `extend` condition fails, such as `B` in `T extends any[] ? A : B`.
+   */
+  TypeExpr getFalseType() { result = getChildTypeExpr(3) }
+}
+
+/**
+ * A type annotation of form `infer R`.
+ */
+class InferTypeExpr extends @infertypeexpr, TypeParameterized, TypeExpr {
+  /**
+   * Gets the type parameter capturing the matched type, such as `R` in `infer R`.
+   */
+  TypeParameter getTypeParameter() {
+    result = getChildTypeExpr(0)
+  }
+
+  override TypeParameter getTypeParameter(int n) {
+    n = 0 and result = getTypeParameter()
+  }
+
+  override string describe() {
+    result = "'infer' type " + getTypeParameter().getName()
+  }
+}
+
+/**
+ * A scope induced by a conditional type expression whose `extends` type
+ * contains `infer` types.
+ */
+class ConditionalTypeScope extends @conditionaltypescope, Scope {
+  /** Gets the conditional type expression that induced this scope. */
+  ConditionalTypeExpr getConditionalTypeExpr() {
+    result = Scope.super.getScopeElement()
+  }
+}
+
+/**
  * An expression with type arguments, occurring as the super-class expression of a class, for example:
  * ```
  * class StringList extends List<string>
@@ -1166,7 +1231,7 @@ class ExpressionWithTypeArguments extends @expressionwithtypearguments, Expr {
 }
 
 /**
- * A program element that supports type parameters, that is, a function, class, interface, type alias, or mapped type.
+ * A program element that supports type parameters, that is, a function, class, interface, type alias, mapped type, or `infer` type.
  */
 class TypeParameterized extends @type_parameterized, ASTNode {
   /** Gets the `n`th type parameter declared on this function or type. */
@@ -1727,6 +1792,130 @@ class Type extends @type {
   Type getProperty(string name) {
     type_property(this, name, result)
   }
+
+  /**
+   * Gets the `n`th signature of the given kind present on this type.
+   *
+   * To get a signature of a specific kind, consider using `getFunctionSignature`, `getConstructorSignature`.
+   *
+   * Note that union and intersection types do not have signatures, even if their
+   * elements contain signatures.
+   */
+  CallSignatureType getSignature(SignatureKind kind, int n) {
+    type_contains_signature(this, kind.getId(), n, result)
+  }
+
+  /**
+   * Gets a signature of the given kind.
+   */
+  CallSignatureType getASignature(SignatureKind kind) {
+    type_contains_signature(this, kind.getId(), _, result)
+  }
+
+  /**
+   * Gets the number of signatures of the given kind.
+   */
+  int getNumSignature(SignatureKind kind) {
+    result = count(getASignature(kind))
+  }
+
+  /**
+   * Gets the last signature of the given kind.
+   *
+   * When a signature is overloaded, the last signature is the most general version,
+   * covering all cases but with less precision than the overloads.
+   */
+  CallSignatureType getLastSignature(SignatureKind kind) {
+    result = getSignature(kind, getNumSignature(kind) - 1)
+  }
+
+  /**
+   * Gets the `n`th function call signature.
+   */
+  FunctionCallSignatureType getFunctionSignature(int n) {
+    type_contains_signature(this, _, n, result)
+  }
+
+  /**
+   * Gets a function call signature.
+   */
+  FunctionCallSignatureType getAFunctionSignature() {
+    type_contains_signature(this, _, _, result)
+  }
+
+  /**
+   * Gets the number of function call signatures.
+   */
+  int getNumFunctionSignature() {
+    result = count(getAFunctionSignature())
+  }
+
+  /**
+   * Gets the last function call signature.
+   *
+   * When a signature is overloaded, the last signature is the most general version,
+   * covering all cases but with less precision than the overloads.
+   */
+  FunctionCallSignatureType getLastFunctionSignature() {
+      result = getFunctionSignature(getNumFunctionSignature() - 1)
+  }
+
+  /**
+   * Gets the `n`th constructor call signature.
+   */
+  ConstructorCallSignatureType getConstructorSignature(int n) {
+    type_contains_signature(this, _, n, result)
+  }
+
+  /**
+   * Gets a constructor call signature.
+   */
+  ConstructorCallSignatureType getAConstructorSignature() {
+    type_contains_signature(this, _, _, result)
+  }
+
+  /**
+   * Gets the last constructor call signature.
+   *
+   * When a signature is overloaded, the last signature is the most general version,
+   * covering all cases but with less precision than the overloads.
+   */
+  ConstructorCallSignatureType getLastConstructorSignature() {
+    result = getConstructorSignature(getNumConstructorSignature() - 1)
+  }
+
+  /**
+   * Gets the number of constructor call signatures.
+   */
+  int getNumConstructorSignature() {
+    result = count(getAConstructorSignature())
+  }
+}
+
+/**
+ * A union type or intersection type, such as `string | number` or `T & U`.
+ */
+class UnionOrIntersectionType extends Type, @unionorintersectiontype {
+  /**
+   * Gets the `i`th member of this union or intersection, starting at 0.
+   */
+  Type getElementType(int i) {
+    result = getChild(i)
+  }
+
+  /**
+   * Gets a member of this union or intersection.
+   */
+  Type getAnElementType() {
+    result = getElementType(_)
+  }
+
+  /**
+   * Gets the number of elements in this union or intersection.
+   */
+  int getNumElementType() {
+    result = count(getElementType(_))
+  }
 }
 
 /**
@@ -1735,23 +1924,35 @@ class Type extends @type {
  * Note that the `boolean` type is represented as the union `true | false`,
  * but is still displayed as `boolean` in string representations.
  */
-class UnionType extends Type, @uniontype {
+class UnionType extends UnionOrIntersectionType, @uniontype {
+}
+
+/**
+ * An intersection type, such as `T & {x: number}`.
+ */
+class IntersectionType extends UnionOrIntersectionType, @intersectiontype {
+}
+
+/**
+ * A tuple type, such as `[number, string]`.
+ */
+class TupleType extends Type, @tupletype {
   /**
-   * Gets the `i`th member of this union, starting at 0.
+   * Gets the `i`th member of this tuple type, starting at 0.
    */
   Type getElementType(int i) {
     result = getChild(i)
   }
 
   /**
-   * Gets a member of this union.
+   * Gets a member of this tuple type.
    */
   Type getAnElementType() {
     result = getElementType(_)
   }
 
   /**
-   * Gets the number of elements in this union.
+   * Gets the number of elements in this tuple type.
    */
   int getNumElementType() {
     result = count(getElementType(_))
@@ -1800,18 +2001,85 @@ class BooleanType extends UnionType {
 }
 
 /**
+ * The `void` type.
+ */
+class VoidType extends Type, @voidtype {}
+
+/**
+ * The `undefined` type.
+ */
+class UndefinedType extends Type, @undefinedtype {}
+
+/**
+ * The `null` type.
+ */
+class NullType extends Type, @nulltype {}
+
+/**
+ * The `never` type.
+ */
+class NeverType extends Type, @nevertype {}
+
+/**
+ * The `symbol` type or a specific `unique symbol` type.
+ */
+class SymbolType extends Type, @symboltype {}
+
+/**
+ * The `symbol` type.
+ */
+class PlainSymbolType extends SymbolType, @plainsymboltype {
+}
+
+/**
+ * A `unique symbol` type.
+ */
+class UniqueSymbolType extends SymbolType, @uniquesymboltype {
+  private NameResolution::Symbol getSymbol() {
+    type_symbol(this, result)
+  }
+
+  /**
+   * Gets the unqualified name of the variable exposing this symbol.
+   */
+  string getName() {
+    result = getSymbol().getName()
+  }
+
+  /**
+   * Holds if the variable exposing this symbol has the given global qualified name.
+   */
+  predicate hasQualifiedName(string globalName) {
+    getSymbol().hasQualifiedName(globalName)
+  }
+
+  /**
+   * Holds if the variable exposing this symbol is exported from an external module under the given name.
+   */
+  predicate hasQualifiedName(string moduleName, string exportedName) {
+    getSymbol().hasQualifiedName(moduleName, exportedName)
+  }
+}
+
+/**
+ * The `object` type.
+ */
+class ObjectKeywordType extends Type, @objectkeywordtype {
+}
+
+/**
  * A type that refers to a class, interface, enum, or enum member.
  */
 class TypeReference extends Type, @typereference {
   private NameResolution::Symbol getSymbol() {
-    type_reference_symbol(this, result)
+    type_symbol(this, result)
   }
 
   /**
    * Gets a syntactic declaration of this named type.
    */
   TypeDefinition getADefinition() {
-    type_definition_symbol(result, getSymbol())
+    ast_node_symbol(result, getSymbol())
   }
 
   /**
@@ -1939,3 +2207,210 @@ class AnonymousInterfaceType extends Type, @objecttype {}
  * A type that refers to a type variable.
  */
 class TypeVariableType extends Type, @typevariabletype {}
+
+/**
+ * The type of a named value, `typeof X`, typically denoting the type of
+ * a class constructor, namespace object, enum object, or module object.
+ */
+class TypeofType extends Type, @typeoftype {
+  private NameResolution::Symbol getSymbol() {
+    type_symbol(this, result)
+  }
+
+  /**
+   * Gets the unqualified name of `X` in `typeof X`.
+   */
+  string getName() {
+    result = getSymbol().getName()
+  }
+
+  /**
+   * Holds if this refers to a value accessible by the global access path `globalName`.
+   *
+   * For example, `cls.hasQualifiedName("React.Component")` holds if `cls`
+   * refers to the class constructor for `React.Component`.
+   */
+  predicate hasQualifiedName(string globalName) {
+    getSymbol().hasQualifiedName(globalName)
+  }
+
+  /**
+   * Holds if this refers to a value exported from `moduleName` under the access path `exportedName`.
+   *
+   * For example, `cls.hasQualifiedName("react", "Component")` holds if `cls`
+   * refers to the class constructor for `Component` from the `react` module.
+   *
+   * The `exportedName` may an empty string if this refers to the module object itself.
+   */
+  predicate hasQualifiedName(string moduleName, string exportedName) {
+    getSymbol().hasQualifiedName(moduleName, exportedName)
+    or
+    exportedName = "" and
+    getSymbol().getExternalModuleName() = moduleName
+  }
+
+  override string toString() {
+    // Avoid absolute path names in type strings.
+    if exists (getSymbol().getExternalModuleName()) then
+      result = "typeof module '" + getSymbol().getExternalModuleName() + "'"
+    else if exists (getSymbol().getModule().getFile().getRelativePath()) then
+      result = "typeof module '" + getSymbol().getModule().getFile().getRelativePath() + "'"
+    else
+      result = Type.super.toString()
+  }
+}
+
+/**
+ * One of two values indicating if a signature is a function or constructor signature.
+ */
+class SignatureKind extends string {
+  SignatureKind() {
+    this = "function" or this = "constructor"
+  }
+
+  /** Holds if this is the function call signature kind. */
+  predicate isFunction() {
+    this = "function"
+  }
+
+  /** Holds if this is the constructor call signature kind. */
+  predicate isConstructor() {
+    this = "constructor"
+  }
+
+  /**
+   * For internal use.
+   *
+   * Gets the integer corresponding to this kind in the database.
+   */
+  int getId() {
+    this = "function" and result = 0 or
+    this = "constructor" and result = 1
+  }
+}
+
+module SignatureKind {
+  SignatureKind function() { result = "function" }
+  SignatureKind constructor() { result = "constructor" }
+}
+
+/**
+ * A function or constructor signature in a TypeScript type.
+ */
+class CallSignatureType extends @signature_type {
+  /**
+   * Gets a value indicating if this is a function or constructor signature.
+   */
+  SignatureKind getKind() {
+    signature_types(this, result.getId(), _, _)
+  }
+
+  /**
+   * Gets a string representation of this signature.
+   */
+  string toString() {
+    signature_types(this, _, result, _)
+  }
+
+  /**
+   * Gets the `n`th type contained in this signature, that is, a parameter or return type.
+   *
+   * The mapping from `n` to a given child is internal and may change between
+   * versions of the extractor.
+   */
+  Type getChild(int n) {
+    signature_contains_type(result, this, n)
+  }
+
+  /**
+   * Gets a type contained in this signature, that is, the return type or a parameter type.
+   */
+  Type getAChildType() {
+    result = getChild(_)
+  }
+
+  /**
+   * Gets the return type of this signature.
+   */
+  Type getReturnType() {
+    result = getChild(-1)
+  }
+
+  /**
+   * Gets the type of the `n`th parameter of this signature.
+   */
+  Type getParameter(int n) {
+    n >= 0 and result = getChild(n)
+  }
+
+  /**
+   * Gets the type of a parameter of this signature.
+   */
+  Type getAParameter() {
+    result = getParameter(_)
+  }
+
+  /**
+   * Gets the number of parameters.
+   */
+  int getNumParameter() {
+    result = count(getAParameter())
+  }
+
+  /**
+   * Gets the number of required parameters, that is,
+   * parameters that are not marked as optional with the `?` suffix.
+   */
+  int getNumRequiredParameter() {
+    signature_types(this, _, _, result)
+  }
+
+  /**
+   * Gets the number of optional parameters, that is,
+   * parameters that are marked as optional with the `?` suffix.
+   */
+  int getNumOptionalParameter() {
+    result = getNumParameter() - getNumRequiredParameter()
+  }
+
+  /**
+   * Holds if the `n`th parameter is required, that is, it is not marked as
+   * optional with the `?` suffix.
+   */
+  predicate isRequiredParameter(int n) {
+    exists(getParameter(n)) and
+    n <= getNumRequiredParameter()
+  }
+
+  /**
+   * Holds if the `n`th parameter is declared optional with the `?` suffix.
+   */
+  predicate isOptionalParameter(int n) {
+    exists(getParameter(n)) and
+    n > getNumRequiredParameter()
+  }
+
+  /**
+   * Gets the name of the `n`th parameter.
+   */
+  string getParameterName(int n) {
+    signature_parameter_name(this, n, result)
+  }
+
+  /**
+   * Gets the name of a parameter of this signature.
+   */
+  string getAParameterName() {
+    result = getParameterName(_)
+  }
+}
+
+/**
+ * A function call signature in a type, that is, a signature without the `new` keyword.
+ */
+class FunctionCallSignatureType extends CallSignatureType, @function_signature_type {}
+
+/**
+ * A constructor call signature in a type, that is, a signature with the `new` keyword.
+ */
+class ConstructorCallSignatureType extends CallSignatureType, @constructor_signature_type {}

@@ -30,7 +30,7 @@ import python
 from CallNode call_to_super, string name
 where
 exists(GlobalVariable gv, ControlFlowNode cn |
-    call_to_super.getFunction().refersTo(theSuperType()) and
+    call_to_super = theSuperType().getACall() and
     gv.getId() = "super" and
     cn = call_to_super.getArg(0) and
     name = call_to_super.getScope().getScope().(Class).getName() and

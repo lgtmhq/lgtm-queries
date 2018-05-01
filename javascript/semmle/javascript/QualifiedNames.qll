@@ -709,17 +709,24 @@ module NameResolution {
     }
 
     /**
+     * Gets the module definition corresponding to this symbol, if any.
+     */
+    Module getModule() {
+      ast_node_symbol(result, this)
+    }
+
+    /**
      * Gets a type refers to this symbol.
      */
     TypeReference getATypeReference() {
-      type_reference_symbol(result, this)
+      type_symbol(result, this)
     }
 
     /**
      * Gets a type definition referred to by this symbol.
      */
     TypeDefinition getATypeDefinition() {
-      type_definition_symbol(result, this)
+      ast_node_symbol(result, this)
     }
 
     /**

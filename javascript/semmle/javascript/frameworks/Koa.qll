@@ -255,9 +255,8 @@ module Koa {
     RouteHandler rh;
 
     ResponseSendArgument() {
-      exists (PropWriteNode pwn |
-        pwn.(PropAccess).accesses(rh.getAResponseExpr(), "body") and
-        this = pwn.getRhs()
+      exists (DataFlow::PropWrite pwn |
+        pwn.writes(DataFlow::valueNode(rh.getAResponseExpr()), "body", DataFlow::valueNode(this))
       )
     }
 

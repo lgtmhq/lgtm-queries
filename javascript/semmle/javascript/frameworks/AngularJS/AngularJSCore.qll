@@ -429,11 +429,7 @@ class GeneralDirective extends CustomDirective, MkCustomDirective {
   }
 
   override DataFlow::ValueNode getMemberInit(string name) {
-    exists (PropWriteNode pw |
-      getAnInstantiation().flowsToExpr(pw.getBase()) and
-      pw.getPropertyName() = name and
-      result.getAstNode() = pw.getRhs()
-    )
+    getAnInstantiation().hasPropertyWrite(name, result)
   }
 
   /** Gets the compile function of this directive, if any. */
@@ -456,11 +452,9 @@ class GeneralDirective extends CustomDirective, MkCustomDirective {
     result = getMember("link")
     or
     // { link: { pre: function preLink() { ... }, post: function postLink() { ... } } }
-    exists (PropWriteNode pwn |
-      getMember("link").flowsToExpr(pwn.getBase()) and
-      (kind = "pre" or kind = "post") and
-      pwn.getPropertyName() = kind and
-      result.flowsToExpr(pwn.getRhs())
+    exists (DataFlow::PropWrite pwn | kind = "pre" or kind = "post" |
+      pwn = getMember("link").getAPropertyWrite(kind) and
+      result.flowsTo(pwn.getRhs())
     )
     or
     // { compile: function() { ... return link; } }
@@ -472,11 +466,9 @@ class GeneralDirective extends CustomDirective, MkCustomDirective {
       result = compileReturnSrc
       or
       // link = { pre: function preLink() { ... }, post: function postLink() { ... } }
-      exists (PropWriteNode pwn |
-        compileReturnSrc.flowsToExpr(pwn.getBase()) and
-        (kind = "pre" or kind = "post") and
-        pwn.getPropertyName() = kind and
-        result.flowsToExpr(pwn.getRhs())
+      exists (DataFlow::PropWrite pwn | kind = "pre" or kind = "post" |
+        pwn = compileReturnSrc.getAPropertyWrite(kind) and
+        result.flowsTo(pwn.getRhs())
       )
     )
   }
@@ -524,11 +516,7 @@ class ComponentDirective extends CustomDirective, MkCustomComponent {
   }
 
   override DataFlow::ValueNode getMemberInit(string name) {
-    exists (PropWriteNode pwn |
-      comp.getConfig().flowsToExpr(pwn.getBase()) and
-      pwn.getPropertyName() = name and
-      result.getAstNode() = pwn.getRhs()
-    )
+    comp.getConfig().hasPropertyWrite(name, result)
   }
 
   override Function getALinkFunction() {
@@ -702,7 +690,7 @@ private class RouteParamSource extends RemoteFlowSource {
   RouteParamSource() {
     exists (ServiceReference service |
       service.getName() = "$routeParams" and
-      this.asExpr() = service.getAPropertyAccess(_)
+      this = service.getAPropertyAccess(_)
     )
   }
 
@@ -817,8 +805,8 @@ private class ServiceMethodCall extends AngularJSCall {
       ) or (
         // generic call with enum argument
         methodName = "trustAs" and
-        exists(PropReadNode prn |
-          prn = mce.getArgument(0) and
+        exists(DataFlow::PropRead prn |
+          prn.asExpr() = mce.getArgument(0) and
           (prn = service.getAPropertyAccess("HTML") or prn = service.getAPropertyAccess("CSS")) and
           e = mce.getArgument(1)
         )

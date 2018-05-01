@@ -77,8 +77,8 @@ abstract class ServiceReference extends TServiceReference {
   /**
    * Gets an access to property `propertyName` on the referenced service.
    */
-  PropRefNode getAPropertyAccess(string propertyName) {
-    result.getBase() = getAnAccess() and
+  DataFlow::PropRef getAPropertyAccess(string propertyName) {
+    result.getBase().asExpr() = getAnAccess() and
     result.getPropertyName() = propertyName
   }
 
@@ -534,19 +534,6 @@ class AnimationDefinition extends CustomSpecialServiceDefinition {
 }
 
 /**
- * A service defined with `module.factory`.
- *
- * DEPREACTED: use AngularJS::FactoryRecipeDefinition instead.
- */
-deprecated class ServiceDefinition extends Expr {
-
-  ServiceDefinition() {
-    DataFlow::valueNode(this) instanceof FactoryRecipeDefinition
-  }
-
-}
-
-/**
  * Gets a builtin service with a specific kind.
  */
 BuiltinServiceReference getBuiltinServiceOfKind(string kind) {
@@ -744,13 +731,11 @@ class ProviderRecipeDefinition extends RecipeDefinition {
     method set to your factory function is automatically created
     under the hood.  */
 
-    exists(Function enclosing, PropWriteNode prop, InjectableFunction f |
+    exists(DataFlow::ThisNode thiz, DataFlow::Node rhs, InjectableFunction f |
       f = getAFactoryFunction() and
-      enclosing = f.asFunction() and
-      enclosing = prop.(Expr).getEnclosingFunction() and
-      prop.getBase() instanceof ThisExpr and
-      prop.getPropertyName() = "$get" and
-      result.flowsToExpr(prop.getRhs())
+      thiz.getBinder().getFunction() = f.asFunction() and
+      thiz.hasPropertyWrite("$get", rhs) and
+      result.flowsTo(rhs)
     )
   }
 

@@ -28,21 +28,29 @@ import javascript
 import semmle.javascript.frameworks.Templating
 
 /**
- * Holds if the attribute has a value that we can not determine statically.
+ * Holds if the href attribute contains a host that we can not determine statically.
  */
-predicate hasDynamicHrefAttributeValue(DOM::ElementDefinition elem) {
+predicate hasDynamicHrefHostAttributeValue(DOM::ElementDefinition elem) {
   exists (DOM::AttributeDefinition attr |
     attr = elem.getAnAttribute() and
     attr.getName().matches("%href%") |
+    // unknown string
     not exists(attr.getStringValue()) or
-    attr.getStringValue().regexpMatch(Templating::getDelimiterMatchingRegexp())
+    exists (string url | url = attr.getStringValue() |
+      // fixed string with templating
+      url.regexpMatch(Templating::getDelimiterMatchingRegexp()) 
+      and
+      // ... that does not start with a fixed host or a relative path (common formats)
+      not url.regexpMatch("(?i)((https?:)?//)?[-a-z0-9.]*/.*")
+    )
   )
 }
 
 from DOM::ElementDefinition e
 where // `e` is a link that opens in a new browsing context (that is, it has `target="_blank"`)
       e.getName() = "a" and
-      hasDynamicHrefAttributeValue(e) and
+      // and the host in the href is not hard-coded
+      hasDynamicHrefHostAttributeValue(e) and
       e.getAttributeByName("target").getStringValue() = "_blank" and
       // there is no `rel` attribute specifying link type `noopener`/`noreferrer`;
       // `rel` attributes with non-constant value are handled conservatively

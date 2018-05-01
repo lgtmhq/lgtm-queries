@@ -18,85 +18,103 @@
 
 import javascript
 
-/**
- * A data flow source for NoSQL-injection vulnerabilities.
- */
-abstract class NosqlInjectionSource extends DataFlow::Node { }
+module NosqlInjection {
+  /**
+   * A data flow source for NoSQL-injection vulnerabilities.
+   */
+  abstract class Source extends DataFlow::Node { }
 
-/**
- * A data flow sink for SQL-injection vulnerabilities.
- */
-abstract class NosqlInjectionSink extends DataFlow::Node { }
+  /**
+   * A data flow sink for SQL-injection vulnerabilities.
+   */
+  abstract class Sink extends DataFlow::Node { }
 
-/**
- * A sanitizer for SQL-injection vulnerabilities.
- */
-abstract class NosqlInjectionSanitizer extends DataFlow::Node { }
+  /**
+   * A sanitizer for SQL-injection vulnerabilities.
+   */
+  abstract class Sanitizer extends DataFlow::Node { }
 
-/**
- * A taint-tracking configuration for reasoning about SQL-injection vulnerabilities.
- */
-class NosqlInjectionTrackingConfig extends TaintTracking::Configuration {
-  NosqlInjectionTrackingConfig() {
-    this = "NosqlInjection"
+  /**
+   * A taint-tracking configuration for reasoning about SQL-injection vulnerabilities.
+   */
+  class Configuration extends TaintTracking::Configuration {
+    Configuration() {
+      this = "NosqlInjection" and
+      exists(Sink s)
+    }
+
+    override predicate isSource(DataFlow::Node source) {
+      source instanceof Source
+    }
+
+    override predicate isSink(DataFlow::Node sink) {
+      sink instanceof Sink
+    }
+
+    override predicate isSanitizer(DataFlow::Node node) {
+      super.isSanitizer(node) or
+      node instanceof Sanitizer
+    }
+
+    override predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
+      // additional flow step to track taint through NoSQL query objects
+      exists (NoSQL::Query query, DataFlow::SourceNode queryObj |
+        queryObj.flowsToExpr(query) and
+        queryObj.flowsTo(succ) and
+        queryObj.hasPropertyWrite(_, pred)
+      )
+    }
   }
 
-  override predicate isSource(DataFlow::Node source) {
-    source instanceof NosqlInjectionSource or
-    source instanceof RemoteFlowSource
+  /** A source of remote user input, considered as a flow source for NoSQL injection. */
+  class RemoteFlowSourceAsSource extends Source {
+    RemoteFlowSourceAsSource() { this instanceof RemoteFlowSource }
   }
 
-  override predicate isSink(DataFlow::Node sink) {
-    sink instanceof NosqlInjectionSink
+  /**
+   * A taint tracking configuration for tracking user input that flows
+   * into a call to `JSON.parse`.
+   */
+  private class RemoteJsonTrackingConfig extends TaintTracking::Configuration {
+    RemoteJsonTrackingConfig() {
+      this = "RemoteJsonTrackingConfig"
+    }
+
+    override predicate isSource(DataFlow::Node nd) {
+      nd instanceof RemoteFlowSource
+    }
+
+    override predicate isSink(DataFlow::Node nd) {
+      nd.asExpr() = any(JsonParseCall c).getArgument(0)
+    }
   }
 
-  override predicate isSanitizer(DataFlow::Node node) {
-    super.isSanitizer(node) or
-    node instanceof NosqlInjectionSanitizer
+  /**
+   * A call to `JSON.parse` where the argument is user-provided.
+   */
+  class RemoteJson extends Source, DataFlow::ValueNode {
+    RemoteJson() {
+      exists (DataFlow::Node parsedArg |
+        parsedArg.asExpr() = astNode.(JsonParseCall).getArgument(0) and
+        any(RemoteJsonTrackingConfig cfg).flowsFrom(parsedArg, _)
+      )
+    }
   }
 
-  override predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
-    // additional flow step to track taint through NoSQL query objects
-    exists (NoSQL::Query query, PropWriteNode pwn, DataFlow::SourceNode queryObj |
-      queryObj.flowsToExpr(query) and
-      queryObj.flowsTo(succ) and
-      queryObj.flowsToExpr(pwn.getBase()) and
-      pred = DataFlow::valueNode(pwn.getRhs())
-    )
+  /** An expression interpreted as a NoSQL query, viewed as a sink. */
+  class NosqlQuerySink extends Sink, DataFlow::ValueNode {
+    override NoSQL::Query astNode;
   }
 }
 
-/**
- * A taint tracking configuration for tracking user input that flows
- * into a call to `JSON.parse`.
- */
-private class RemoteJsonTrackingConfig extends TaintTracking::Configuration {
-  RemoteJsonTrackingConfig() {
-    this = "RemoteJsonTrackingConfig"
-  }
+/** DEPRECATED: Use `NosqlInjection::Source` instead. */
+deprecated class NosqlInjectionSource = NosqlInjection::Source;
 
-  override predicate isSource(DataFlow::Node nd) {
-    nd instanceof RemoteFlowSource
-  }
+/** DEPRECATED: Use `NosqlInjection::Sink` instead. */
+deprecated class NosqlInjectionSink = NosqlInjection::Sink;
 
-  override predicate isSink(DataFlow::Node nd) {
-    nd.asExpr() = any(JsonParseCall c).getArgument(0)
-  }
-}
+/** DEPRECATED: Use `NosqlInjection::Sanitizer` instead. */
+deprecated class NosqlInjectionSanitizer = NosqlInjection::Sanitizer;
 
-/**
- * A call to `JSON.parse` where the argument is user-provided.
- */
-class RemoteJson extends NosqlInjectionSource, DataFlow::ValueNode {
-  RemoteJson() {
-    exists (DataFlow::Node parsedArg |
-      parsedArg.asExpr() = astNode.(JsonParseCall).getArgument(0) and
-      any(RemoteJsonTrackingConfig cfg).flowsFrom(parsedArg, _)
-    )
-  }
-}
-
-/** An expression interpreted as a NoSQL query, viewed as a sink. */
-class NosqlQuerySink extends NosqlInjectionSink, DataFlow::ValueNode {
-  override NoSQL::Query astNode;
-}
+/** DEPRECATED: Use `NosqlInjection::Configuration` instead. */
+deprecated class NosqlInjectionTrackingConfig = NosqlInjection::Configuration;

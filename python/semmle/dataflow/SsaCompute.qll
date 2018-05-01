@@ -14,6 +14,92 @@
 /** Provides predicates for computing Enhanced SSA form 
  * Computation of ESSA form is identical to plain SSA form,
  * but what counts as a use of definition differs.
+ * 
+ * ## Language independent data-flow graph construction
+ * 
+ * Construction of the data-flow graph is based on the principles behind SSA variables.
+ * 
+ * The definition of an SSA variable is that (statically):
+ * 
+ * * Each variable has exactly one definition
+ * * A variable's definition dominates all its uses.
+ * 
+ * SSA form was originally designed for compiler use and thus a "definition" of an SSA variable is 
+ * the same as a definition of the underlying source-code variable. For register allocation this is 
+ * sufficient to treat the variable as equivalent to the value held in the variable.
+ * 
+ * However, this doesn't always work the way we want it for data-flow analysis.
+ * 
+ * When we start to consider attribute assignment, tests on the value referred to be a variable, 
+ * escaping variables, implicit definitions, etc., we need something finer grained.
+ * 
+ * A data-flow variable has the same properties as a normal SSA variable, but it also has the property that
+ * *anything* that may change the way we view an object referred to by a variable should be treated as a definition of that variable.
+ * 
+ * For example, tests are treated as definitions, so for the following Python code:
+ * ```python
+ * x = None
+ * if not x:
+ *      x = True
+ * ```
+ * The data-flow graph (for `x`) is:
+ * ```
+ * x0 = None
+ * x1 = pi(x0, not x)
+ * x2 = True
+ * x3 = phi(x1, x2)
+ * ```
+ * from which is it possible to infer that `x3` may not be None.
+ * [ Phi functions are standard SSA, a Pi function is a filter or guard on the possible values that a variable
+ * may hold]
+ * 
+ * Attribute assignments are also treated as definitions, so for the following Python code:
+ * ```python
+ * x = C()
+ * x.a = 1
+ * y = C()
+ * y.b = 2
+ * ```
+ * The data-flow graph is:
+ * ```
+ * x0 = C()
+ * x1 = attr-assign(x0, .a = 1)
+ * y0 = C()
+ * y1 = attr-assign(y0, .b = 1)
+ * ```
+ * From which we can infer that `x1.a` is `1` but we know nothing about `y0.a` despite it being the same type.
+ * 
+ * We can also insert "definitions" for transfers of values (say in global variables) where we do not yet know the call-graph. For example,
+ * ```python
+ * def foo():
+ *     global g
+ *     g = 1
+ * 
+ * def bar():
+ *     foo()
+ *     g
+ * ```
+ * It should be clear in the above code that the use of `g` will have a value of `1`.
+ * The data-flow graph looks like:
+ * ```python
+ * def foo():
+ *     g0 = scope-entry(g)
+ *     g1 = 1
+ * 
+ * def bar():
+ *     g2 = scope-entry(g)
+ *     foo()
+ *     g3 = call-site(g, foo())
+ * ```
+ * Once we have established that `foo()` calls `foo`, then it is possible to link `call-site(g, foo())` to the final value of `g` in `foo`, i.e. `g1`, so effectively `g3 = call-site(g, foo())` becomes `g3 = g1` and the global data-flow graph for `g` effectively becomes:
+ * ```
+ * g0 = scope-entry(g)
+ * g1 = 1
+ * g2 = scope-entry(g)
+ * g3 = g1
+ * ```
+ * and thus it falls out that `g3` must be `1`.
+ *
  */
 
 

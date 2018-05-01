@@ -20,53 +20,38 @@ class TypedefType extends UserType {
 
   TypedefType() { usertypes(this,_,5) }
 
-  /** the base type of this typedef type */
+  /** 
+   * Gets the base type of this typedef type.
+   */
   Type getBaseType() { typedefbase(this,result) }
 
-  /** the underlying type of this type */
-  Type getUnderlyingType() { result = this.getBaseType().getUnderlyingType() }
+  override Type getUnderlyingType() { result = this.getBaseType().getUnderlyingType() }
 
-  int getSize() { result = this.getBaseType().getSize() }
+  override int getSize() { result = this.getBaseType().getSize() }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = this.getBaseType().getPointerIndirectionLevel()
   }
 
-  // Overriding, see Type
-  string explain() { result =  "typedef {" + this.getBaseType().explain() + "} as \"" + this.getName() + "\"" }
+  override string explain() { result =  "typedef {" + this.getBaseType().explain() + "} as \"" + this.getName() + "\"" }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConst() { this.getBaseType().isDeeplyConst() } // Just an alias
+  override predicate isDeeplyConst() { this.getBaseType().isDeeplyConst() } // Just an alias
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConstBelow() } // Just an alias
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConstBelow() } // Just an alias
 
   override Specifier internal_getAnAdditionalSpecifier() {
     result = this.getBaseType().getASpecifier()
   }
 
-  /**
-   * Recursively checks whether the specified type involves a reference.
-   */
-  predicate involvesReference() {
+  override predicate involvesReference() {
     getBaseType().involvesReference()
   }
 
-  /**
-   * Recursively resolves any typedefs in a type. For example, given typedef C T, this would resolve
-   * const T&amp; to const C&amp;. Note that this will only work if the resolved type actually appears on its
-   * own elsewhere in the program.
-   */
-  Type resolveTypedefs() {
+  override Type resolveTypedefs() {
     result = getBaseType().resolveTypedefs()
   }
 
-  /**
-   * Strips a type, removing pointers, references and cv-qualifiers, and resolving typedefs.
-   * For example, given typedef const C&amp; T, stripType(T) = C.
-   */
-  Type stripType() {
+  override Type stripType() {
     result = getBaseType().stripType()
   }
 }
@@ -80,18 +65,29 @@ class LocalTypedefType extends TypedefType {
   }
 }
 
+/**
+ * A C++ typedef type that is directly enclosed by a class, struct or union.
+ */
 class NestedTypedefType extends TypedefType {
   NestedTypedefType() {
     this.isMember()
   }
 
-  /** Whether this member is private. */
-  predicate isPrivate() { this.hasSpecifier("private") }
+  /**
+   * DEPRECATED
+   * Holds if this member is private.
+   */
+  deprecated predicate isPrivate() { this.hasSpecifier("private") }
 
-  /** Whether this member is protected. */
-  predicate isProtected() { this.hasSpecifier("protected") }
+  /**
+   * DEPRECATED
+   * Holds if this member is protected.
+   */
+  deprecated predicate isProtected() { this.hasSpecifier("protected") }
 
-  /** Whether this member is public. */
-  predicate isPublic() { this.hasSpecifier("public") }
-
+  /**
+   * DEPRECATED
+   * Holds if this member is public.
+   */
+  deprecated predicate isPublic() { this.hasSpecifier("public") }
 }

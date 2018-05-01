@@ -26,8 +26,8 @@
  */
 
 import javascript
-import semmle.javascript.security.dataflow.CommandInjection
+import semmle.javascript.security.dataflow.CommandInjection::CommandInjection
 
-from CommandInjectionTrackingConfig cfg, DataFlow::Node source, DataFlow::Node sink
+from Configuration cfg, Source source, Sink sink
 where cfg.flowsFrom(sink, source)
 select sink, "This command depends on $@.", source, "a user-provided value"

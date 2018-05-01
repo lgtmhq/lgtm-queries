@@ -87,22 +87,6 @@ private module AlgorithmNames {
   predicate isWeakPasswordHashingAlgorithm(string name) {
     none()
   }
-
-  /**
-   * Normalizes `name`: upper-case, no spaces, dashes or underscores.
-   *
-   * All names of this module are in this normalized form.
-   */
-  bindingset[name] string normalizeName(string name) {
-    result = name.toUpperCase().regexpReplaceAll("[-_ ]", "")
-  }
-
-  predicate mayHaveNormalizedStringValue(Expr e, string name) {
-    exists (string s |
-      e.mayHaveStringValue(s) and
-      name = normalizeName(s)
-    )
-  }
 }
 private import AlgorithmNames
 
@@ -134,9 +118,18 @@ abstract class CryptographicAlgorithm extends TCryptographicAlgorithm {
   }
 
   /**
-   * Gets the name of the algorithm.
+   * Gets the name of this algorithm.
    */
   abstract string getName();
+
+  /**
+   * Holds if the name of this algorithm matches `name` modulo case,
+   * white space, dashes and underscores.
+   */
+  bindingset[name]
+  predicate matchesName(string name) {
+    name.toUpperCase().regexpReplaceAll("[-_ ]", "") = getName()
+  }
 
   /**
    * Holds if this algorithm is weak.
@@ -244,18 +237,18 @@ private module AsmCrypto {
     Apply() {
       /*
       ```
-      require("asmCrypto").SHA256.hex(input)
+      asmCrypto.SHA256.hex(input)
       ```
       matched as:
       ```
-      require("asmCrypto").<algorithmName>._(<input>)
+      asmCrypto.<algorithmName>._(<input>)
       ```
        */
       exists (DataFlow::CallNode mce | this = mce.asExpr() |
-        exists(DataFlow::ModuleImportNode mod, string algorithmName |
-          mod.getPath() = "asmCrypto" and
-          algorithm.getName() = normalizeName(algorithmName) and
-          mce = mod.getAPropertyRead(algorithmName).getAMemberCall(_) and
+        exists(DataFlow::SourceNode asmCrypto, string algorithmName |
+          asmCrypto = DataFlow::globalVarRef("asmCrypto") and
+          algorithm.matchesName(algorithmName) and
+          mce = asmCrypto.getAPropertyRead(algorithmName).getAMemberCall(_) and
           input = mce.getAnArgument().asExpr()
         )
       )
@@ -309,7 +302,7 @@ private module BrowserIdCrypto {
         mod.getPath() = "browserid-crypto" and
         keygen = mod.getAMemberCall("generateKeypair") and
         algorithmNameNode = keygen.getOptionArgument(0, "algorithm") and
-        mayHaveNormalizedStringValue(algorithmNameNode.asExpr(), algorithm.getName()) and
+        algorithm.matchesName(algorithmNameNode.asExpr().getStringValue()) and
         callback = keygen.getCallback(1) and
         this = mod.getAMemberCall("sign").asExpr() and
         mce.getArgument(0) = input and
@@ -366,7 +359,7 @@ private module NodeJSCrypto  {
           createSuffix = "Cipher" |
           mod.getPath() = "crypto" and
           createCall = mod.getAMemberCall("create" + createSuffix) and
-          mayHaveNormalizedStringValue(createCall.getArgument(0).asExpr(), algorithm.getName()) and
+          algorithm.matchesName(createCall.getArgument(0).asExpr().getStringValue()) and
           mce = createCall.getAMethodCall(any(string m | m = "update" or m = "write")) and
           mce.getArgument(0).asExpr() = input
         )
@@ -396,7 +389,7 @@ private module CryptoJS {
    */
   private DataFlow::SourceNode getAlgorithmExpr(CryptographicAlgorithm algorithm) {
     exists(string algorithmName |
-      algorithm.getName() = normalizeName(algorithmName) |
+      algorithm.matchesName(algorithmName) |
       exists(DataFlow::ModuleImportNode mod |
         mod.getPath() = "crypto-js" |
         result = mod.getAPropertyRead(algorithmName) or
@@ -493,8 +486,9 @@ private module TweetNaCl {
       */
       this = mce and
       exists(DataFlow::ModuleImportNode mod, string name |
-        (name = "hash" and algorithm.getName() = normalizeName("SHA512")) or
-        (name = "sign" and algorithm.getName() = normalizeName("ed25519")) |
+        name = "hash" and algorithm.matchesName("SHA512")
+        or
+        name = "sign" and algorithm.matchesName("ed25519") |
         (mod.getPath() = "nacl" or mod.getPath() = "nacl-fast") and
         mce = mod.getAMemberCall(name).asExpr() and
         mce.getArgument(0) = input
@@ -527,8 +521,7 @@ private module HashJs {
    * - `require("hash.js/lib/hash/sha/<sha-algorithm-suffix>")`()
    */
   private DataFlow::CallNode getAlgorithmExpr(CryptographicAlgorithm algorithm) {
-    exists(string algorithmName |
-      algorithm.getName() = normalizeName(algorithmName) |
+    exists(string algorithmName | algorithm.matchesName(algorithmName) |
       result = DataFlow::moduleImport("hash.js").getAMemberCall(algorithmName)
       or
       exists(DataFlow::ModuleImportNode mod |
@@ -598,7 +591,7 @@ private module Forge  {
       exists(DataFlow::ModuleImportNode mod, DataFlow::CallNode cipher, string algorithmName |
         mce = cipher.getAMemberCall("update").asExpr() and
         mce.getArgument(0) = input and
-        algorithm.getName() = normalizeName(algorithmName) and
+        algorithm.matchesName(algorithmName) and
         (mod.getPath() = "forge" or mod.getPath() = "node-forge") |
         exists(string cipherName, string cipherPrefix, string cipherSuffix |
           // `require('forge').cipher.createCipher("3DES-CBC").update("secret");`
@@ -654,7 +647,7 @@ private module Md5  {
       this = call and
       exists(DataFlow::ModuleImportNode mod |
         mod.getPath() = "md5" and
-        algorithm.getName() = normalizeName("MD5") and
+        algorithm.matchesName("MD5") and
         call = mod.getACall().asExpr() and
         call.getArgument(0) = input
       )
@@ -689,7 +682,7 @@ private module Bcrypt  {
       // `require("bcrypt").hash(password);` with minor naming variations
       this = mce and
       exists(DataFlow::ModuleImportNode mod, string moduleName, string methodName |
-        algorithm.getName() = normalizeName("BCRYPT") and
+        algorithm.matchesName("BCRYPT") and
         (
           moduleName = "bcrypt" or
           moduleName = "bcryptjs" or
@@ -736,7 +729,7 @@ private module Hasha  {
         mod.getPath() = "hasha" and
         call = mod.getACall().asExpr() and
         call.getArgument(0) = input and
-        algorithm.getName() = normalizeName(algorithmName) and
+        algorithm.matchesName(algorithmName) and
         call.hasOptionArgument(1, "algorithm", algorithmNameNode) and
         algorithmNameNode.mayHaveStringValue(algorithmName)
       )

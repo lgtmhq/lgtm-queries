@@ -26,8 +26,8 @@
  */
 
 import javascript
-import semmle.javascript.security.dataflow.CleartextStorage
+import semmle.javascript.security.dataflow.CleartextStorage::CleartextStorage
 
-from CleartextStorageDataFlowConfiguration cleartextStorage, DataFlow::Node source, DataFlow::Node sink
+from Configuration cleartextStorage, Source source, Sink sink
 where cleartextStorage.flowsTo(source, sink)
-select sink, "Sensitive data returned by $@ is stored here.", source, source.toString()
+select sink, "Sensitive data returned by $@ is stored here.", source, source.describe()

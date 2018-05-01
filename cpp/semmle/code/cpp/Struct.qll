@@ -21,11 +21,9 @@ class Struct extends Class {
 
   Struct() { usertypes(this,_,1) or usertypes(this,_,3) }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result =  "struct " + this.getName() }
+  override string explain() { result =  "struct " + this.getName() }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { any() } // No subparts
+  override predicate isDeeplyConstBelow() { any() } // No subparts
 }
 
 /**

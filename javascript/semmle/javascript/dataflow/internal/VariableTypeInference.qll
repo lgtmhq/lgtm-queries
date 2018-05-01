@@ -385,10 +385,15 @@ private predicate nodeBuiltins(Variable var, AbstractValue av) {
  */
 private class AnalyzedGlobalVarUse extends DataFlow::AnalyzedValueNode {
   GlobalVariable gv;
-  TopLevel tl;
+  AnalyzedGlobal agv;
 
   AnalyzedGlobalVarUse() {
-    useIn(gv, astNode, tl)
+    exists (TopLevel tl | useIn(gv, astNode, tl) |
+      if exists(TAnalyzedGlocal(gv, tl)) then
+        agv = TAnalyzedGlocal(gv, tl)
+      else
+        agv = TAnalyzedGenuineGlobal(gv)
+    )
   }
 
   /** Gets the name of this global variable. */
@@ -398,7 +403,7 @@ private class AnalyzedGlobalVarUse extends DataFlow::AnalyzedValueNode {
    * Gets a property write that may assign to this global variable as a property
    * of the global object.
    */
-  private PropWriteNode getAnAssigningPropWrite() {
+  private DataFlow::PropWrite getAnAssigningPropWrite() {
     result.getPropertyName() = getVariableName() and
     result.getBase().analyze().getALocalValue() instanceof AbstractGlobalObject
   }
@@ -414,12 +419,7 @@ private class AnalyzedGlobalVarUse extends DataFlow::AnalyzedValueNode {
     or
     result = getAnAssigningPropWrite().getRhs().analyze().getALocalValue()
     or
-    // prefer definitions within the same toplevel
-    result = defIn(gv, tl).getAnAssignedValue()
-    or
-    // if there aren't any, consider all definitions as sources
-    not exists(defIn(gv, tl)) and
-    result = defIn(gv, _).getAnAssignedValue()
+    result = agv.getAnAssignedValue()
   }
 }
 
@@ -436,7 +436,7 @@ private predicate useIn(GlobalVariable gv, GlobalVarAccess gva, TopLevel tl) {
  * Holds if `def` is a definition of `gv` in `tl`.
  */
 private AnalyzedVarDef defIn(GlobalVariable gv, TopLevel tl) {
-  result.getTarget().(VarRef).getVariable() = gv and
+  result.getAVariable() = gv and
   result.getTopLevel() = tl
 }
 
@@ -460,17 +460,110 @@ private predicate indefiniteObjectValue(AbstractValue val, DataFlow::Incompleten
 
 pragma[noinline]
 private predicate potentialPropWriteOfGlobal(AnalyzedNode base, GlobalVariable gv) {
-  exists (PropWriteNode pwn |
+  exists (DataFlow::PropWrite pwn |
     pwn.getPropertyName() = gv.getName() and
     base = pwn.getBase().analyze()
   )
 }
 
 /**
+ * A representation of a global variable for purposes of the analysis.
+ *
+ * Our basic strategy is to only track global data flow within the same toplevel, wherever
+ * practical: a use of a global variable is interpreted to only refer to definitions within
+ * the same toplevel. Only if there aren't any definitions within the toplevel do we also
+ * take definitions in other toplevels into account.
+ *
+ * This is not unsound, since we _always_ infer an indefinite value for global variables anyway
+ * (with the exception of `undefined`, which we assume to be immutable).
+ *
+ * To support this scheme, we represent global variables in the analysis as either "glocals",
+ * that is, global variables considered local to some toplevel, or as genuine globals. The
+ * abstract values of a glocal are derived purely from definitions within the same toplevel,
+ * while genuine globals may get their values from anywhere in the program.
+ */
+private
+newtype TAnalyzedGlobal =
+  /**
+   * A global variable in the context of a particular toplevel in which it is both used
+   * and defined.
+   */
+  TAnalyzedGlocal(GlobalVariable gv, TopLevel tl) {
+    useIn(gv, _, tl) and exists(defIn(gv, tl))
+  }
+  or
+  /**
+   * A global variable that is used in at least one toplevel where it is not defined, and
+   * hence has to be modelled as a truly global variable.
+   */
+  TAnalyzedGenuineGlobal(GlobalVariable gv) {
+    exists (TopLevel tl |
+      useIn(gv, _, tl) and
+      not exists(defIn(gv, tl))
+    )
+  }
+
+/**
+ * A representation of a global variable for purposes of the analysis.
+ *
+ * Our basic strategy is to only track global data flow within the same toplevel, wherever
+ * practical: a use of a global variable is interpreted to only refer to definitions within
+ * the same toplevel. Only if there aren't any definitions within the toplevel do we also
+ * take definitions in other toplevels into account.
+ *
+ * This is not unsound, since we _always_ infer an indefinite value for global variables anyway
+ * (with the exception of `undefined`, which we assume to be immutable).
+ *
+ * To support this scheme, we represent global variables in the analysis as either "glocals",
+ * that is, global variables considered local to some toplevel, or as genuine globals. The
+ * abstract values of a glocal are derived purely from definitions within the same toplevel,
+ * while genuine globals may get their values from anywhere in the program.
+ */
+private class AnalyzedGlobal extends TAnalyzedGlobal {
+  /** Gets an abstract value derived from an assignment to this global. */
+  abstract AbstractValue getAnAssignedValue();
+
+  /** Gets a textual representation of this element. */
+  abstract string toString();
+}
+
+/**
+ * A global variable in the context of a particular toplevel in which it is both used
+ * and defined.
+ */
+private class AnalyzedGlocal extends AnalyzedGlobal, TAnalyzedGlocal {
+  GlobalVariable gv;
+  TopLevel tl;
+
+  AnalyzedGlocal() { this = TAnalyzedGlocal(gv, tl) }
+
+  override AbstractValue getAnAssignedValue() {
+    result = defIn(gv, tl).getAnAssignedValue()
+  }
+
+  override string toString() { result = gv + " in " + tl }
+}
+
+/**
+ * A global variable that is used in at least one toplevel where it is not defined, and
+ * hence has to be modelled as a truly global variable.
+ */
+private class AnalyzedGenuineGlobal extends AnalyzedGlobal, TAnalyzedGenuineGlobal {
+  GlobalVariable gv;
+  AnalyzedGenuineGlobal() { this = TAnalyzedGenuineGlobal(gv) }
+
+  override AbstractValue getAnAssignedValue() {
+    result = defIn(gv, _).getAnAssignedValue()
+  }
+
+  override string toString() { result = gv.toString() }
+}
+
+/**
  * Flow analysis for `undefined`.
  */
 private class AnalyzedUndefinedUse extends AnalyzedGlobalVarUse {
-  AnalyzedUndefinedUse() { getVariableName() = "undefined" }
+  AnalyzedUndefinedUse() { gv.getName() = "undefined" }
 
   override AbstractValue getALocalValue() { result = TAbstractUndefined() }
 }

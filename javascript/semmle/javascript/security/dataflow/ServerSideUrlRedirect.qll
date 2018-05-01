@@ -20,110 +20,148 @@ import javascript
 import RemoteFlowSources
 import UrlConcatenation
 
-/**
- * A data flow source for unvalidated URL redirect vulnerabilities.
- */
-abstract class ServerSideUrlRedirectSource extends DataFlow::Node { }
-
-/**
- * A data flow sink for unvalidated URL redirect vulnerabilities.
- */
-abstract class ServerSideUrlRedirectSink extends DataFlow::Node {
+module ServerSideUrlRedirect {
   /**
-   * Holds if this sink may redirect to a non-local URL.
+   * A data flow source for unvalidated URL redirect vulnerabilities.
    */
-  predicate maybeNonLocal() {
-    exists (Expr prefix | prefix = getAPrefix(this) |
-      not exists(prefix.getStringValue())
-      or
-      exists (string prefixVal | prefixVal = prefix.getStringValue() |
-        // local URLs (i.e., URLs that start with `/` not followed by `\` or `/`,
-        // or that start with `~/`) are unproblematic
-        not prefixVal.regexpMatch("/[^\\\\/].*|~/.*") and
-        // so are localhost URLs
-        not prefixVal.regexpMatch("(\\w+:)?//localhost[:/].*")
+  abstract class Source extends DataFlow::Node { }
+
+  /**
+   * A data flow sink for unvalidated URL redirect vulnerabilities.
+   */
+  abstract class Sink extends DataFlow::Node {
+    /**
+     * Holds if this sink may redirect to a non-local URL.
+     */
+    predicate maybeNonLocal() {
+      exists (Expr prefix | prefix = getAPrefix(this) |
+        not exists(prefix.getStringValue())
+        or
+        exists (string prefixVal | prefixVal = prefix.getStringValue() |
+          // local URLs (i.e., URLs that start with `/` not followed by `\` or `/`,
+          // or that start with `~/`) are unproblematic
+          not prefixVal.regexpMatch("/[^\\\\/].*|~/.*") and
+          // so are localhost URLs
+          not prefixVal.regexpMatch("(\\w+:)?//localhost[:/].*")
+        )
       )
+    }
+  }
+
+  /**
+   * Gets a "prefix predecessor" of `nd`, that is, either a normal data flow predecessor
+   * or the left operand of `nd` if it is a concatenation.
+   */
+  private DataFlow::Node prefixPred(DataFlow::Node nd) {
+    result = nd.getAPredecessor()
+    or
+    exists (Expr e | e instanceof AddExpr or e instanceof AssignAddExpr |
+      nd = DataFlow::valueNode(e) and
+      result = DataFlow::valueNode(e.getChildExpr(0))
     )
   }
+  
+  /**
+   * Gets a node that is transitively reachable from `nd` along prefix predecessor edges.
+   */
+  private DataFlow::Node prefixCandidate(Sink sink) {
+    result = sink or
+    result = prefixPred(prefixCandidate(sink))
+  }
+  
+  /**
+   * Gets an expression that may end up being a prefix of the string concatenation `nd`.
+   */
+  private Expr getAPrefix(Sink sink) {
+    exists (DataFlow::Node prefix |
+      prefix = prefixCandidate(sink) and
+      not exists(prefixPred(prefix)) and
+      result = prefix.asExpr()
+    )
+  }
+
+  /**
+   * A sanitizer for unvalidated URL redirect vulnerabilities.
+   */
+  abstract class Sanitizer extends DataFlow::Node { }
+
+  /**
+   * A taint-tracking configuration for reasoning about unvalidated URL redirections.
+   */
+  class Configuration extends TaintTracking::Configuration {
+    Configuration() {
+      this = "ServerSideUrlRedirect" and
+      exists(Source s) and exists(Sink s)
+    }
+
+    override predicate isSource(DataFlow::Node source) {
+      source instanceof Source
+    }
+
+    override predicate isSink(DataFlow::Node sink) {
+      sink.(Sink).maybeNonLocal()
+    }
+
+    override predicate isSanitizer(DataFlow::Node node) {
+      super.isSanitizer(node) or
+      node instanceof Sanitizer
+    }
+
+    override predicate isSanitizer(DataFlow::Node source, DataFlow::Node sink) {
+      sanitizingPrefixEdge(source, sink)
+    }
+  }
+
+  /** A source of remote user input, considered as a flow source for URL redirects. */
+  class RemoteFlowSourceAsSource extends Source {
+    RemoteFlowSourceAsSource() { this instanceof RemoteFlowSource }
+  }
+
+  /**
+   * An HTTP redirect, considered as a sink for `Configuration`.
+   */
+  class RedirectSink extends Sink, DataFlow::ValueNode {
+    RedirectSink() {
+      astNode = any(HTTP::RedirectInvocation redir).getUrlArgument()
+    }
+  }
+
+  /**
+   * A definition of the HTTP "Location" header, considered as a sink for
+   * `Configuration`.
+   */
+  class LocationHeaderSink extends Sink, DataFlow::ValueNode {
+    LocationHeaderSink() {
+      any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("Location", astNode)
+    }
+  }
+
+  /**
+   * A call to a function called `isLocalUrl` or similar, which is
+   * considered to sanitize a variable for purposes of URL redirection.
+   */
+  class LocalUrlSanitizingGuard extends TaintTracking::SanitizingGuard, CallExpr {
+    LocalUrlSanitizingGuard() {
+      this.getCalleeName().regexpMatch("(?i)(is_?)?local_?url")
+    }
+
+    override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
+      cfg instanceof Configuration and
+      // `isLocalUrl(e)` sanitizes `e` if it evaluates to `true`
+      this.getAnArgument() = e and
+      outcome = true
+    }
+  }
 }
 
-/**
- * Gets an expression that may end up being a prefix of the string
- * concatenation `nd`.
- */
-private Expr getAPrefix(DataFlow::Node nd) {
-  if exists(nd.getAPredecessor()) then
-    result = getAPrefix(nd.getAPredecessor())
-  else exists (Expr e | e = nd.asExpr() |
-    if (e instanceof AddExpr or e instanceof AssignAddExpr) then
-      result = getAPrefix(DataFlow::valueNode(e.getChildExpr(0)))
-    else
-      result = e
-  )
-}
+/** DEPRECATED: Use `ServerSideUrlRedirect::Source` instead. */
+deprecated class ServerSideUrlRedirectSource = ServerSideUrlRedirect::Source;
 
-/**
- * A sanitizer for unvalidated URL redirect vulnerabilities.
- */
-abstract class ServerSideUrlRedirectSanitizer extends DataFlow::Node { }
+/** DEPRECATED: Use `ServerSideUrlRedirect::Sink` instead. */
+deprecated class ServerSideUrlRedirectSink = ServerSideUrlRedirect::Sink;
 
-/**
- * A taint-tracking configuration for reasoning about unvalidated URL redirections.
- */
-class ServerSideUrlRedirectDataFlowConfiguration extends TaintTracking::Configuration {
-  ServerSideUrlRedirectDataFlowConfiguration() { this = "ServerSideUrlRedirectDataFlowConfiguration" }
+/** DEPRECATED: Use `ServerSideUrlRedirect::Sanitizer` instead. */
+deprecated class ServerSideUrlRedirectSanitizer = ServerSideUrlRedirect::Sanitizer;
 
-  override predicate isSource(DataFlow::Node source) {
-    source instanceof ServerSideUrlRedirectSource or
-    source instanceof RemoteFlowSource
-  }
-
-  override predicate isSink(DataFlow::Node sink) {
-    sink.(ServerSideUrlRedirectSink).maybeNonLocal()
-  }
-
-  override predicate isSanitizer(DataFlow::Node node) {
-    super.isSanitizer(node) or
-    node instanceof ServerSideUrlRedirectSanitizer
-  }
-
-  override predicate isSanitizer(DataFlow::Node source, DataFlow::Node sink) {
-    sanitizingPrefixEdge(source, sink)
-  }
-}
-
-/**
- * An HTTP redirect, considered as a sink for `ServerSideUrlRedirectDataFlowConfiguration`.
- */
-class RedirectSink extends ServerSideUrlRedirectSink, DataFlow::ValueNode {
-  RedirectSink() {
-    astNode = any(HTTP::RedirectInvocation redir).getUrlArgument()
-  }
-}
-
-/**
- * A definition of the HTTP "Location" header, considered as a sink for
- * `ServerSideUrlRedirectDataFlowConfiguration`.
- */
-class LocationHeaderSink extends ServerSideUrlRedirectSink, DataFlow::ValueNode {
-  LocationHeaderSink() {
-    any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("Location", astNode)
-  }
-}
-
-/**
- * A call to a function called `isLocalUrl` or similar, which is
- * considered to sanitize a variable for purposes of URL redirection.
- */
-class LocalUrlSanitizingGuard extends TaintTracking::SanitizingGuard, CallExpr {
-  LocalUrlSanitizingGuard() {
-    this.getCalleeName().regexpMatch("(?i)(is_?)?local_?url")
-  }
-
-  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
-    cfg instanceof ServerSideUrlRedirectDataFlowConfiguration and
-    // `isLocalUrl(e)` sanitizes `e` if it evaluates to `true`
-    this.getAnArgument() = e and
-    outcome = true
-  }
-}
+/** DEPRECATED: Use `ServerSideUrlRedirect::Configuration` instead. */
+deprecated class ServerSideUrlRedirectDataFlowConfiguration = ServerSideUrlRedirect::Configuration;

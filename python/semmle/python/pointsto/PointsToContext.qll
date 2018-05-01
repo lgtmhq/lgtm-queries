@@ -160,6 +160,11 @@ class FinalContext extends TFinalContext {
             this = TCallContext(call, outerContext, _) and
             s = func.getFunction()
         )
+        or
+        exists(FunctionObject func |
+            FinalPointsTo::Flow::callsite_calls_function(_, _, func, this, _) and
+            s = func.getFunction()
+        )
     }
 
     /** Holds if this context can apply to the CFG node `n`. */

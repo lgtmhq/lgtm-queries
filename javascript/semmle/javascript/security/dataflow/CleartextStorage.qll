@@ -17,88 +17,117 @@
 import javascript
 private import semmle.javascript.security.SensitiveActions
 
-/**
- * A data flow source for cleartext storage of sensitive information.
- */
-abstract class CleartextStorageSource extends DataFlow::Node { }
-
-/**
- * A data flow sink for cleartext storage of sensitive information.
- */
-abstract class CleartextStorageSink extends DataFlow::Node { }
-
-/**
- * A sanitizer for cleartext storage of sensitive information.
- */
-abstract class CleartextStorageSanitizer extends DataFlow::Node { }
-
-/**
- * A taint tracking configuration for cleartext storage of sensitive information.
- *
- * This configuration identifies flows from `CleartextStorageSource`s, which are sources of
- * sensitive data, to `CleartextStorageSink`s, which is an abstract class representing all
- * the places sensitive data may be stored in cleartext. Additional sources or sinks can be
- * added either by extending the relevant class, or by subclassing this configuration itself,
- * and amending the sources and sinks.
- */
-class CleartextStorageDataFlowConfiguration extends TaintTracking::Configuration {
-  CleartextStorageDataFlowConfiguration() {
-    this = "ClearTextStorage"
+module CleartextStorage {
+  /**
+   * A data flow source for cleartext storage of sensitive information.
+   */
+  abstract class Source extends DataFlow::Node {
+    /** Gets a string that describes the type of this data flow source. */
+    abstract string describe();
   }
 
-  override
-  predicate isSource(DataFlow::Node source) {
-    source instanceof CleartextStorageSource or
-    source.asExpr() instanceof SensitiveExpr
+  /**
+   * A data flow sink for cleartext storage of sensitive information.
+   */
+  abstract class Sink extends DataFlow::Node { }
+
+  /**
+   * A sanitizer for cleartext storage of sensitive information.
+   */
+  abstract class Sanitizer extends DataFlow::Node { }
+
+  /**
+   * A taint tracking configuration for cleartext storage of sensitive information.
+   *
+   * This configuration identifies flows from `Source`s, which are sources of
+   * sensitive data, to `Sink`s, which is an abstract class representing all
+   * the places sensitive data may be stored in cleartext. Additional sources or sinks can be
+   * added either by extending the relevant class, or by subclassing this configuration itself,
+   * and amending the sources and sinks.
+   */
+  class Configuration extends TaintTracking::Configuration {
+    Configuration() {
+      this = "ClearTextStorage" and
+      exists(Source s) and exists(Sink s)
+    }
+
+    override
+    predicate isSource(DataFlow::Node source) {
+      source instanceof Source
+    }
+
+    override
+    predicate isSink(DataFlow::Node sink) {
+      sink instanceof Sink
+    }
+
+    override
+    predicate isSanitizer(DataFlow::Node node) {
+      node instanceof Sanitizer
+    }
   }
 
-  override
-  predicate isSink(DataFlow::Node sink) {
-    sink instanceof CleartextStorageSink
+  /**
+   * A sensitive expression, viewed as a data flow source for cleartext storage
+   * of sensitive information.
+   */
+  class SensitiveExprSource extends Source, DataFlow::ValueNode {
+    override SensitiveExpr astNode;
+
+    override string describe() {
+      result = astNode.describe()
+    }
   }
 
-  override
-  predicate isSanitizer(DataFlow::Node node) {
-    node instanceof CleartextStorageSanitizer
+  /** A call to any method whose name suggests that it encodes or encrypts the parameter. */
+  class ProtectSanitizer extends Sanitizer, DataFlow::ValueNode {
+    ProtectSanitizer() {
+      exists(string s |
+        astNode.(CallExpr).getCalleeName().regexpMatch("(?i).*" + s + ".*") |
+        s = "protect" or s = "encode" or s = "encrypt"
+      )
+    }
+  }
+
+  /**
+   * An expression set as a value on a cookie instance.
+   */
+  class CookieStorageSink extends Sink {
+    CookieStorageSink() {
+      exists (HTTP::CookieDefinition cookieDef |
+        this.asExpr() = cookieDef.getValueArgument() or
+        this.asExpr() = cookieDef.getHeaderArgument()
+      )
+    }
+  }
+
+  /**
+   * An expression set as a value of localStorage or sessionStorage.
+   */
+  class WebStorageSink extends Sink {
+    WebStorageSink() {
+      this.asExpr() instanceof WebStorageWrite
+    }
+  }
+
+  /**
+   * An expression stored by AngularJS.
+   */
+  class AngularJSStorageSink extends Sink {
+    AngularJSStorageSink() {
+      any(AngularJS::AngularJSCall call).storesArgumentGlobally(this.asExpr())
+    }
   }
 }
 
-/** A call to any method whose name suggests that it encodes or encrypts the parameter. */
-class ProtectSanitizer extends CleartextStorageSanitizer, DataFlow::ValueNode {
-  ProtectSanitizer() {
-    exists(string s |
-      astNode.(CallExpr).getCalleeName().regexpMatch("(?i).*" + s + ".*") |
-      s = "protect" or s = "encode" or s = "encrypt"
-    )
-  }
-}
+/** DEPRECATED: Use `CleartextStorage::Source` instead. */
+deprecated class CleartextStorageSource = CleartextStorage::Source;
 
-/**
- * An expression set as a value on a cookie instance.
- */
-class CookieStorageSink extends CleartextStorageSink {
-  CookieStorageSink() {
-    exists (HTTP::CookieDefinition cookieDef |
-      this.asExpr() = cookieDef.getValueArgument() or
-      this.asExpr() = cookieDef.getHeaderArgument()
-    )
-  }
-}
+/** DEPRECATED: Use `CleartextStorage::Sink` instead. */
+deprecated class CleartextStorageSink = CleartextStorage::Sink;
 
-/**
- * An expression set as a value of localStorage or sessionStorage.
- */
-class WebStorageSink extends CleartextStorageSink {
-  WebStorageSink() {
-    this.asExpr() instanceof WebStorageWrite
-  }
-}
+/** DEPRECATED: Use `CleartextStorage::Sanitizer` instead. */
+deprecated class CleartextStorageSanitizer = CleartextStorage::Sanitizer;
 
-/**
- * An expression stored by AngularJS.
- */
-class AngularJSStorageSink extends CleartextStorageSink {
-  AngularJSStorageSink() {
-    any(AngularJS::AngularJSCall call).storesArgumentGlobally(this.asExpr())
-  }
-}
+/** DEPRECATED: Use `CleartextStorage::Configuration` instead. */
+deprecated class CleartextStorageDataFlowConfiguration = CleartextStorage::Configuration;

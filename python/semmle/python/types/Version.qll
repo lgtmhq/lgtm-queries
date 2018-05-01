@@ -52,7 +52,9 @@ string reversed(Cmpop op) {
 }
 
 
-/** A test on the major version of the Python interpreter */
+/** DEPRECATED: 
+ *  A test on the major version of the Python interpreter 
+ * */
 class VersionTest extends @py_flow_node {
 
     string toString() {

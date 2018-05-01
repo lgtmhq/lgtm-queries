@@ -146,11 +146,10 @@ private class FunctionWithImplicitDependencyAnnotation extends InjectableFunctio
   }
 }
 
-private PropWriteNode getAPropertyDependencyInjection(Function function){
+private DataFlow::PropWrite getAPropertyDependencyInjection(Function function) {
   exists (DataFlow::FunctionNode ltf |
     ltf.getAstNode() = function and
-    ltf.flowsToExpr(result.getBase()) and
-    result.getPropertyName() = "$inject"
+    result = ltf.getAPropertyWrite("$inject")
   )
 }
 
@@ -168,9 +167,9 @@ private class FunctionWithInjectProperty extends InjectableFunction {
      exists(FunctionWithExplicitDependencyAnnotation f | f.asFunction() = astNode)
     )
     and
-    exists (PropWriteNode pwn |
+    exists (DataFlow::PropWrite pwn |
       pwn = getAPropertyDependencyInjection(astNode) and
-      pwn.getRhs().(Expr).flow().getALocalSource().asExpr() = dependencies
+      pwn.getRhs().getALocalSource().asExpr() = dependencies
     )
   }
 
@@ -188,7 +187,7 @@ private class FunctionWithInjectProperty extends InjectableFunction {
   override Function asFunction() { result = astNode }
 
   override ASTNode getAnExplicitDependencyInjection() {
-    result = getAPropertyDependencyInjection(astNode)
+    result = getAPropertyDependencyInjection(astNode).getAstNode()
   }
 }
 
@@ -220,29 +219,5 @@ private class FunctionWithExplicitDependencyAnnotation extends InjectableFunctio
   override ASTNode getAnExplicitDependencyInjection() {
     result = astNode or
     result = function.(InjectableFunction).getAnExplicitDependencyInjection()
-  }
-}
-
-/**
- * DEPRECATED: Use `AngularJS::ServiceReference` instead.
- *
- * A local variable that refers to an AngularJS service such as `$compile`
- * or `$scope`.
- */
-deprecated
-class InjectedService extends LocalVariable {
-  /** The injectable function into which this service is injected. */
-  InjectableFunction f;
-
-  /** The name of the service this variable refers to. */
-  string serviceName;
-
-  InjectedService() {
-    this = f.getDependencyParameter(serviceName).getVariable()
-  }
-
-  /** Gets the name of the service that this variable refers to. */
-  string getServiceName() {
-    result = serviceName
   }
 }

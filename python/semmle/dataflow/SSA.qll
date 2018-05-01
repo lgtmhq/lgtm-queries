@@ -436,6 +436,53 @@ class PhiFunction extends EssaDefinition, TPhiFunction {
         result = this.getBasicBlock().getScope()
     }
 
+    private EssaEdgeRefinement piInputDefinition(EssaVariable input) {
+        input = this.getAnInput() and 
+        result = input.getDefinition()
+        or
+        input = this.getAnInput() and result = input.getDefinition().(PhiFunction).piInputDefinition(_)
+    }
+
+    /** Gets the variable which is the common and complete input to all pi-nodes that are themselves
+     * inputs to this phi-node.
+     * For example:
+     * ```
+     * x = y()
+     * if complicated_test(x):
+     *     do_a()
+     * else:
+     *     do_b()
+     * phi
+     * ```
+     * Which gives us the ESSA form:
+     * x0 = y()
+     * x1 = pi(x0, complicated_test(x0))
+     * x2 = pi(x0, not complicated_test(x0))
+     * x3 = phi(x1, x2)
+     * However we may not be able to track the value of `x` through `compilated_test`
+     * meaning that we cannot track `x` from `x0` to `x3`.
+     * By using `getShortCircuitInput()` we can do so, since the short-circuit input of `x3` is `x0`.
+     */
+    pragma [noinline]
+    EssaVariable getShortCircuitInput() {
+        exists(BasicBlock common |
+            forall(EssaVariable input |
+                input = this.getAnInput() |
+                common = this.piInputDefinition(input).getPredecessor()
+            )
+            and
+            forall(BasicBlock succ |
+                succ = common.getASuccessor() |
+                succ = this.piInputDefinition(_).getSuccessor()
+            )
+            and
+            exists(EssaEdgeRefinement ref |
+                ref = this.piInputDefinition(_) and
+                ref.getPredecessor() = common and
+                ref.getInput() = result
+            )
+        )
+    }
 }
 
 private class EssaNode extends EssaDefinition, TEssaNodeDefinition {

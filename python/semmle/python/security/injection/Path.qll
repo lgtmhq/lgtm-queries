@@ -56,12 +56,16 @@ private predicate abspath_call(CallNode call, ControlFlowNode arg) {
     arg = call.getArg(0)
 }
 
-class AbsPath extends TaintFlow {
 
-    AbsPath() { this = "abspath" }
+class AbsPath extends DataFlowExtension::DataFlowNode {
 
-    predicate additionalFlowStep(ControlFlowNode fromnode, TaintKind fromkind, ControlFlowNode tonode, TaintKind tokind) {
-        abspath_call(tonode, fromnode) and tokind instanceof NormalizedPath and fromkind instanceof ExternalStringKind
+    AbsPath() {
+        abspath_call(_, this)
+    }
+
+    override
+    ControlFlowNode getASuccessorNode(TaintKind fromkind, TaintKind tokind) {
+        abspath_call(result, this) and tokind instanceof NormalizedPath and fromkind instanceof ExternalStringKind
     }
 
 }

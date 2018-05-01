@@ -152,6 +152,8 @@ private
 class RemoteTaintedMethod extends Method {
   RemoteTaintedMethod() {
     this instanceof ServletRequestGetParameterMethod or
+    this instanceof ServletRequestGetParameterMapMethod or
+    this instanceof ServletRequestGetParameterNamesMethod or
     this instanceof HttpServletRequestGetQueryStringMethod or
     this instanceof HttpServletRequestGetHeaderMethod or
     this instanceof HttpServletRequestGetPathMethod or

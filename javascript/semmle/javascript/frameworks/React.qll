@@ -65,8 +65,8 @@ abstract class ReactComponent extends ASTNode {
    * Gets a reference to the `props` object of this component.
    */
   DataFlow::SourceNode getAPropsSource() {
-    exists (PropRefNode prn | result = DataFlow::valueNode(prn) |
-      isRef(prn.getBase()) and
+    exists (DataFlow::PropRef prn | result = prn |
+      isRef(prn.getBase().asExpr()) and
       prn.getPropertyName() = "props"
     )
   }
@@ -75,23 +75,23 @@ abstract class ReactComponent extends ASTNode {
    * Gets a reference to the `state` object of this component.
    */
   DataFlow::SourceNode getAStateSource() {
-    exists (PropRefNode prn | result = DataFlow::valueNode(prn) |
-      isRef(prn.getBase()) and
+    exists (DataFlow::PropRef prn | result = prn |
+      isRef(prn.getBase().asExpr()) and
       prn.getPropertyName() = "state"
     )
   }
 
   /**
-   * Gets an expression that reads a prop of this component.
+   * Gets a data flow node that reads a prop of this component.
    */
-  PropReadNode getAPropRead() {
-    getAPropsSource().flowsToExpr(result.getBase())
+  DataFlow::PropRead getAPropRead() {
+    getAPropsSource().flowsTo(result.getBase())
   }
 
   /**
-   * Gets an expression that reads prop `name` of this component.
+   * Gets a data flow node that reads prop `name` of this component.
    */
-  PropReadNode getAPropRead(string name) {
+  DataFlow::PropRead getAPropRead(string name) {
     result = getAPropRead() and
     result.getPropertyName() = name
   }
@@ -103,8 +103,8 @@ abstract class ReactComponent extends ASTNode {
   DataFlow::SourceNode getAStateAccess() {
     result = getAStateSource()
     or
-    exists (PropRefNode prn | result = DataFlow::valueNode(prn) |
-      getAStateAccess().flowsToExpr(prn.getBase())
+    exists (DataFlow::PropRef prn | result = prn |
+      getAStateAccess().flowsTo(prn.getBase())
     )
   }
 
@@ -112,7 +112,7 @@ abstract class ReactComponent extends ASTNode {
    * Holds if this component specifies default values for (some of) its props.
    */
   predicate hasDefaultProps() {
-    exists (PropWriteNode pwn | isRef(pwn.getBase()) |
+    exists (DataFlow::PropWrite pwn | isRef(pwn.getBase().asExpr()) |
       pwn.getPropertyName() = "defaultProps"
     )
   }

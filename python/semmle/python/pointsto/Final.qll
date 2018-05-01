@@ -18,21 +18,23 @@
  * of those objects. The 'origin' is the point in source code that the object can be traced
  * back to.
  *
- * See README.md for an overview.
+ * The predicates provided are not intended to be used directly (although they are available to the advanced user), but are exposed in the user API as methods on key classes.
+ * 
+ * For example, the most important predicate in the points-to relation is:
+ * ```ql
+ * predicate FinalPointsTo::points_to(ControlFlowNode f, FinalContext ctx, Object value, ClassObject cls, ControlFlowNode origin)
+ * ```
+ * Where `f` is the control flow node representing something that might hold a value. `ctx` is the context in which `f` "points-to" `value` and may be "general" or from a specific call-site.
+ * `value` is a static approximation to a value, such as a number, a class, or an object instantiation.
+ * `cls` is the class of this value if known, or `theUnknownType()` which is an internal `ClassObject` and should not be exposed to the general QL user.
+ * `origin` is the point in the source from where `value` originates and is useful when presenting query results.
+ * 
+ * The `FinalPointsTo::points_to` relation is exposed at the user API level as
+ * ```ql
+ * ControlFlowNode.refersTo(Context context, Object value, ClassObject cls, ControlFlowNode origin)
+ * ```
+ * 
  */
-
- /* Notes on the implementation
-  * The ultimate goal of this library is to provide various predicates
-  * which are used as implementation of various "public" API predicates like
-  * `ControlFlowNode.refersTo()` and `FunctionObject.getACall()`.
-  *
-  * Predicates can be
-  * 1. Provide implementation for the API. QLdoc will contain "INTERNAL -- Use ... instead"
-  * 2. Required to be public as they may be needed for custom points-to extensions.
-  * 2. Provide predicate for the next layer up. Will be marked "INTERNAL -- Do not not use"
-  * 4. Internal to a layer -- these are marked private
-  *
-  */
 
 import python
 private import PointsToContext
@@ -89,7 +91,7 @@ module FinalPointsTo {
          cached 
         predicate points_to(ControlFlowNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
             points_to_candidate(f, context, value, cls, origin) and
-            not PenultimatePointsTo::Layer::pruned(f, _)
+            Layer::reachable(f, context)
         }
 
         /** Gets the value that `expr` evaluates to (when converted to a boolean) when `use` refers to `(val, cls, origin)`
@@ -170,15 +172,21 @@ module FinalPointsTo {
          * For example, if `cmp` is `sys.version[0] < "3"` then for, Python 2, `value` would be `true`. */
          cached 
         predicate version_const(CompareNode cmp, FinalContext context, boolean value) {
-            exists(string opname, int n, int v  |
-                exists(ControlFlowNode fv, ControlFlowNode fc, string kind |
-                    comparison(cmp, fv, fc, opname) and
-                    version_info_object(fv, context, v, kind) and
-                    const_object(fc, n, kind)
-                )
-                and
-                value = compare_ints(v, n, opname)
+            exists(ControlFlowNode fv, ControlFlowNode fc, Object val |
+                comparison(cmp, fv, fc, _) and
+                points_to(cmp, context, val, _, _) and
+                value = val.booleanValue() 
+                |
+                sys_version_info_slice(fv, context, _)
+                or
+                sys_version_info_index(fv, context, _, _)
+                or
+                sys_version_string_char0(fv, context, _, _)
+                or
+                points_to(fv, context, theSysHexVersionNumber(), _, _)
             )
+            or
+            value = version_tuple_compare(cmp, context).booleanValue()
         }
 
         /** Holds if `name` is defined in the module `m` by an `import *` statement within that module. */
@@ -365,22 +373,29 @@ module FinalPointsTo {
      private 
     module Layer {
 
-        /* Holds if ControlFlowNode `f` is pruned due to version or OS constraints, given the context `context`. */
-        predicate pruned(ControlFlowNode f, FinalContext context) {
-            exists(ConditionBlock guard |
-                guard.controls(f.getBasicBlock(), true) and Booleans::const(guard.getLastNode(), context, false)
+        /* Holds if ControlFlowNode `f` is reachable, given the context `context`. */
+        predicate reachable(ControlFlowNode f, FinalContext context) {
+            exists(ConditionBlock guard, Object value |
+                points_to(guard.getLastNode(), context, value, _, _)
+                |
+                guard.controls(f.getBasicBlock(), true) and not value.booleanValue() = false
                 or
-                guard.controls(f.getBasicBlock(), false) and Booleans::const(guard.getLastNode(), context, true)
+                guard.controls(f.getBasicBlock(), false) and not value.booleanValue() = true
             )
+            or
+            context.appliesTo(f) and
+            not exists(ConditionBlock guard | guard.controls(f.getBasicBlock(), _))
         }
 
-        /* Holds if the edge `pred` -> `succ` is pruned due to version or OS constraints, given the context `context`.
+        /* Holds if the edge `pred` -> `succ` is reachable, given the context `context`.
          */
-        predicate prunedEdge(BasicBlock pred, BasicBlock succ, FinalContext context) {
-            exists(ConditionBlock guard |
-                guard.controlsEdge(pred, succ, true) and Booleans::const(guard.getLastNode(), context, false)
+        predicate controlledReachableEdge(BasicBlock pred, BasicBlock succ, FinalContext context) {
+            exists(ConditionBlock guard, Object value |
+                points_to(guard.getLastNode(), context, value, _, _)
+                |
+                guard.controlsEdge(pred, succ, true) and not value.booleanValue() = false
                 or
-                guard.controlsEdge(pred, succ, false) and Booleans::const(guard.getLastNode(), context, true)
+                guard.controlsEdge(pred, succ, false) and not value.booleanValue() = true
             )
         }
 
@@ -463,8 +478,6 @@ module FinalPointsTo {
         )
         or
         exists(boolean b |
-            version_const(f, context, b)
-            or
             os_const(f, context, b)
             |
             value = theTrueObject() and b = true
@@ -490,15 +503,19 @@ module FinalPointsTo {
         or
         super_bound_method(f, context, _, _) and value = f and origin = f and cls = theBoundMethodType()
         or
-        sys_version_info_slice(f, context, cls) and value = f and origin = f
+        sys_version_info_slice(f, context, cls) and value = theSysVersionInfoTuple() and origin = f
         or
-        sys_version_info_index(f, context, cls) and value = f and origin = f
+        sys_version_info_index(f, context, value, cls) and origin = f
         or
-        sys_version_string_char0(f, context, cls) and value = f and origin = f
+        sys_version_string_char0(f, context, value, cls) and origin = f
         or
         six_metaclass_points_to(f, context, value, cls, origin)
         or
         binary_expr_points_to(f, context, value, cls, origin)
+        or
+        compare_expr_points_to(f, context, value, cls, origin)
+        or
+        not_points_to(f, context, value, cls, origin)
         or
     f.(FinalCustomPointsToFact).pointsTo(context, value, cls, origin)
     }
@@ -609,14 +626,14 @@ module FinalPointsTo {
     }
 
     /** Holds if `f` points to `(value, cls, origin)` where `f` is a module or class attribute, `clazz.attr` or `mod.attr`. */
-    pragma [noinline]
-    private predicate class_or_module_attribute_node(AttrNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
-        f.isLoad() and
-        exists(string name, ControlFlowNode fval, Object obj, ObjectOrCfg orig |
-            class_or_module_attribute(obj, name, value, cls, orig) and
-            points_to(fval, context, obj, _, _) and
-            fval = f.getObject(name) and
-            origin = origin_from_object_or_here(orig, f)
+    pragma [noopt]
+    private predicate class_or_module_attribute_node(AttrNode f, FinalContext context, Object value, ClassObject cls, ObjectOrCfg orig) {
+        exists(string name, ControlFlowNode fval|
+            f.isLoad() and fval = f.getObject(name) |
+            exists(Object obj |
+                points_to(fval, context, obj, _, _) and
+                class_or_module_attribute(obj, name, value, cls, orig)
+            )
         )
     }
 
@@ -624,7 +641,12 @@ module FinalPointsTo {
     private predicate attribute_load_points_to(AttrNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
         instance_attribute_load_points_to(f, context, value, cls, origin)
         or
-        class_or_module_attribute_node(f, context, value, cls, origin)
+        exists(ObjectOrCfg orig |
+            class_or_module_attribute_node(f, context, value, cls, orig) and
+            origin = origin_from_object_or_here(orig, f)
+        )
+        or
+        points_to(f.getObject(), context, unknownValue(), _, _) and value = unknownValue() and cls = theUnknownType() and origin = f
     }
 
     /** Holds if `f` is an expression node `tval if cond else fval` and points to `(value, cls, origin)`. */
@@ -698,18 +720,195 @@ module FinalPointsTo {
         value = origin and origin = b
     }
 
+    pragma [noinline]
+    private predicate incomparable_values(CompareNode cmp, FinalContext context) {
+        exists(ControlFlowNode left, ControlFlowNode right |
+            cmp.operands(left, _, right) and
+            exists(Object lobj, Object robj |
+                points_to(left, context, lobj, _, _) and
+                points_to(right, context, robj, _, _) |
+                not Filters::comparable_value(lobj) 
+                or
+                not Filters::comparable_value(robj)
+            )
+        )
+    }
+
+    pragma [noinline]
+    private Object in_tuple(CompareNode cmp, FinalContext context) {
+        exists(ControlFlowNode left, ControlFlowNode right |
+            cmp.operands(left, any(In i), right) and
+            exists(Object lobj, TupleObject tuple |
+                points_to(left, context, lobj, _, _) and
+                points_to(right, context, tuple, _, _)
+                |
+                lobj = tuple.getBuiltinElement(_) and result = theTrueObject()
+                or
+                not lobj = tuple.getBuiltinElement(_) and result = theFalseObject()
+            )
+        )
+    }
+
+    pragma [noinline]
+    private predicate const_compare(CompareNode cmp, FinalContext context, int comp, boolean strict) {
+        exists(ControlFlowNode left, ControlFlowNode right |
+            inequality(cmp, left, right, strict) and
+            (
+                exists(NumericObject n1, NumericObject n2 |
+                    points_to(left, context, n1, _, _) and
+                    points_to(right, context, n2, _, _) and
+                    comp = int_compare(n1, n2)
+                )
+                or
+                exists(StringObject s1, StringObject s2|
+                    points_to(left, context, s1, _, _) and
+                    points_to(right, context, s2, _, _) and
+                    comp = string_compare(s1, s2)
+                )
+            )
+        )
+    }
+
+    pragma [noinline]
+    private Object version_tuple_compare(CompareNode cmp, FinalContext context) {
+        exists(ControlFlowNode lesser, ControlFlowNode greater, boolean strict |
+            inequality(cmp, lesser, greater, strict) and
+            exists(TupleObject tuple, int comp |
+                points_to(lesser, context, tuple, _, _) and
+                points_to(greater, context, theSysVersionInfoTuple(), _, _) and
+                comp = version_tuple_compare(tuple)
+                or
+                points_to(lesser, context, theSysVersionInfoTuple(), _, _) and
+                points_to(greater, context, tuple, _, _) and
+                comp = version_tuple_compare(tuple)*-1
+                |
+                comp = -1 and result = theTrueObject()
+                or
+                comp = 0 and strict = false and result = theTrueObject()
+                or
+                comp = 0 and strict = true and result = theFalseObject()
+                or
+                comp = 1 and result = theFalseObject()
+            )
+        )
+    }
+/*
+    pragma [noinline]
+    private Object version_hex_compare(CompareNode cmp, FinalContext context) {
+        exists(ControlFlowNode lesser, ControlFlowNode greater, boolean strict |
+            inequality(cmp, lesser, greater, strict) and
+            exists(TupleObject tuple, int comp |
+                points_to(lesser, context, tuple, _, _) and
+                points_to(greater, context, theSysHexVersionNumber(), _, _) and
+                comp = version_tuple_compare(tuple)
+                or
+                points_to(lesser, context, theSysHexVersionNumber(), _, _) and
+                points_to(greater, context, tuple, _, _) and
+                comp = version_hex_compare(tuple)*-1
+                |
+                comp = -1 and result = theTrueObject()
+                or
+                comp = 0 and strict = false and result = theTrueObject()
+                or
+                comp = 0 and strict = true and result = theFalseObject()
+                or
+                comp = 1 and result = theFalseObject()
+            )
+        )
+    }
+*/
+    private predicate compare_expr_points_to(CompareNode cmp, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+        equality_expr_points_to(cmp, context, value, cls, origin)
+        or
+        cls = theBoolType() and origin = cmp and
+        (
+            incomparable_values(cmp, context) and
+            (value = theFalseObject() or value = theTrueObject())
+            or
+            value = in_tuple(cmp, context)
+            or
+            exists(int comp, boolean strict |
+                const_compare(cmp, context, comp, strict)
+                |
+                comp = -1 and value = theTrueObject()
+                or
+                comp = 0 and strict = false and value = theTrueObject()
+                or
+                comp = 0 and strict = true and value = theFalseObject()
+                or
+                comp = 1 and value = theFalseObject()
+            )
+            or
+            value = version_tuple_compare(cmp, context)
+        )
+    }
+
+    pragma[inline]
+    private int int_compare(NumericObject n1, NumericObject n2) {
+        exists(int i1, int i2 |
+            i1 = n1.intValue() and i2 = n2.intValue() |
+            i1 = i2 and result = 0
+            or
+            i1 < i2 and result = -1
+            or
+            i1 > i2 and result = 1
+        )
+    }
+
+    pragma[inline]
+    private int string_compare(StringObject s1, StringObject s2) {
+        exists(string a, string b |
+            a = s1.getText() and b = s2.getText() |
+            a = b and result = 0
+            or
+            a < b and result = -1
+            or
+            a > b and result = 1
+        )
+    }
+
+    private predicate not_points_to(UnaryExprNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+        f.getNode().getOp() instanceof Not and
+        cls = theBoolType() and origin = f and
+        exists(Object operand |
+            points_to(f.getOperand(), context, operand, _, _)
+            |
+            not operand.booleanValue() = true and value = theTrueObject()
+            or
+            not operand.booleanValue() = false and value = theFalseObject()
+        )
+    }
+
+    private predicate equality_expr_points_to(CompareNode cmp, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+        cls = theBoolType() and origin = cmp and
+        exists(ControlFlowNode x, ControlFlowNode y, Object xobj, Object yobj, boolean is |
+            BaseFilters::equality_test(cmp, x, is, y) and
+            points_to(x, context, xobj, _, _) and 
+            points_to(y, context, yobj, _, _) and
+            Filters::equatable_value(xobj) and Filters::equatable_value(yobj)
+            |
+            xobj = yobj and is = true and value = theTrueObject()
+            or
+            xobj != yobj and is = true and value = theFalseObject()
+            or
+            xobj = yobj and is = false and value = theFalseObject()
+            or
+            xobj != yobj and is = false and value = theTrueObject()
+        )
+    }
 
     /* **************
      * VERSION INFO *
      ****************/
 
     /** Holds if `s` points to `sys.version_info[0]`. */
-    private predicate sys_version_info_index(SubscriptNode s, FinalContext context, ClassObject cls) {
+    private predicate sys_version_info_index(SubscriptNode s, FinalContext context, NumericObject value, ClassObject cls) {
         points_to(s.getValue(), context, theSysVersionInfoTuple(), _, _) and
         exists(NumericObject zero |
             zero.intValue() = 0 |
             points_to(s.getIndex(), context, zero, _, _)
         ) and
+        value.intValue() = major_version() and
         cls = theIntType()
     }
 
@@ -722,80 +921,19 @@ module FinalPointsTo {
     }
 
     /** Holds if `s` points to `sys.version[0]`. */
-    private predicate sys_version_string_char0(SubscriptNode s, FinalContext context, ClassObject cls) {
+    private predicate sys_version_string_char0(SubscriptNode s, FinalContext context, Object value, ClassObject cls) {
         points_to(s.getValue(), context, theSysVersionString(), cls, _) and
         exists(NumericObject zero |
             zero.intValue() = 0 |
             points_to(s.getIndex(), context, zero, _, _)
         )
+        and
+        value = object_for_string(major_version().toString())
     }
 
     /* Version tests. Ignore micro and release parts. Treat major, minor as a single version major*10+minor
      * Currently cover versions 0.9 to 4.0
      */
-
-    private
-    boolean compare_ints(int v1, int v2, string op) {
-        v1 in [9..40] and v2 in [9..40] and
-        (
-            op = ">" and (if v1 > v2 then result = true else result = false)
-            or
-            op = ">=" and (if v1 >= v2 then result = true else result = false)
-            or
-            op = "==" and (if v1 = v2 then result = true else result = false)
-            or
-            op = "!=" and (if v1 != v2 then result = true else result = false)
-            or
-            op = "<" and (if v1 < v2 then result = true else result = false)
-            or
-            op = "<=" and (if v1 <= v2 then result = true else result = false)
-        )
-    }
-
-    /** Choose a version numbers that represent the extreme of supported versions. */
-    private int major_minor() {
-        if major_version() = 3 then
-            (result = 33 or result = 37)  // 3.3 to 3.7
-        else
-            (result = 25 or result = 27) // 2.5 to 2.7
-    }
-
-    /** Convert the sys.hexversion version to our `major*10+minor` version. */
-    bindingset[hex]
-    private int hex_version(int hex) {
-        result = hex.bitShiftRight(24)*10 + hex.bitShiftRight(16).bitAnd(255)
-    }
-
-    /** Holds if `f` in context `context` points to an object representing the version. `v` is the version `(major*10+minor)`. */
-    pragma [noinline]
-    private predicate version_info_object(ControlFlowNode f, FinalContext context, int v, string kind) {
-        exists(Object vobj |
-            points_to(f, context, vobj, _, _) |
-            sys_version_info_index(vobj, context, _) and v = major_version()*10 and kind = "number"
-            or
-            (sys_version_info_slice(vobj, context, _) or vobj = theSysVersionInfoTuple()) and v = major_minor() and kind = "tuple"
-            or
-            vobj = theSysHexVersionNumber() and v = major_minor() and kind = "hex"
-            or
-            sys_version_string_char0(vobj, context, _) and v = major_version()*10 and kind = "string"
-        )
-    }
-
-    /** Helper for `version_const`. */
-    pragma [noinline]
-    private predicate const_object(ControlFlowNode f, int n, string kind) {
-        exists(Object const |
-            PenultimatePointsTo::points_to(f, _, const, _, _) |
-            kind = "number" and n = const.(NumericObject).intValue()*10
-            or
-            kind = "tuple" and n = version_tuple_value(const)
-            or
-            kind = "hex" and n = hex_version(const.(NumericObject).intValue())
-            or
-            kind = "string" and n = const.(StringObject).getText().toInt()*10
-        )
-    }
-
 
     /** Helper for `version_const`. */
     private predicate comparison(CompareNode cmp, ControlFlowNode fv, ControlFlowNode fc, string opname) {
@@ -806,75 +944,25 @@ module FinalPointsTo {
         )
     }
 
+    /** Helper for `version_const`. */
+    private predicate inequality(CompareNode cmp, ControlFlowNode lesser, ControlFlowNode greater, boolean strict) {
+        exists(Cmpop op |
+            cmp.operands(lesser, op, greater) and op.getSymbol() = "<" and strict = true
+            or
+            cmp.operands(lesser, op, greater) and op.getSymbol() = "<=" and strict = false
+            or
+            cmp.operands(greater, op, lesser) and op.getSymbol() = ">" and strict = true
+            or
+            cmp.operands(greater, op, lesser) and op.getSymbol() = ">=" and strict = false
+        )
+    }
+
     /** Holds if `f` is a test for the O/S. */
     private predicate os_test(ControlFlowNode f, string os, FinalContext context) {
         exists(ControlFlowNode c |
              os_compare(c, os) and
              points_to(f, context, _, _, c)
         )
-    }
-
-    private module Booleans {
-
-
-        /** INTERNAL -- Do not use.
-         *
-         * Holds if `f` (in context `context`) always evaluates to `value`.  */
-        predicate const(ControlFlowNode f, FinalContext context, boolean value) {
-            version_const(f, _, value) and context.appliesTo(f)
-            or
-            exists(string os |
-                os_test(f, os, context) |
-                value = true and py_flags_versioned("sys.platform", os, major_version().toString())
-                or
-                value = false and not py_flags_versioned("sys.platform", os, major_version().toString())
-            )
-            or
-            f.getNode().(ImmutableLiteral).getLiteralObject().booleanValue() = value and context.appliesTo(f)
-            or
-            exists(EssaVariable var |
-                var.getASourceUse() = f and
-                ssa_const(var, context, value)
-            )
-            or
-            exists(ModuleObject mod, string name |
-                points_to(f.(AttrNode).getObject(name), context, mod, _, _) or
-                points_to(f.(ImportMemberNode).getModule(name), context, mod, _, _)
-                |
-                attribute_const(mod, name, value, context)
-            )
-        }
-
-        /** Helper for `const`.
-         *
-         * Holds if the value held by `var` is always `value` when evaluated as a boolean.  */
-        predicate ssa_const(EssaVariable var, FinalContext context, boolean value) {
-            const(var.getDefinition().(AssignmentDefinition).getValue(), context, value)
-            or
-            exists(PhiFunction phi |
-                phi = var.getDefinition() |
-                forex(EssaVariable input |
-                    input = phi.getAnInput() |
-                    ssa_const(input, context, value)
-                )
-            )
-            or
-            /* Filters on constants may make code unreachable, but they cannot alter the value of the constant */
-            ssa_const(var.getDefinition().(PyEdgeRefinement).getInput(), context, value)
-            or
-            ssa_const(var.getDefinition().(SingleSuccessorGuard).getInput(), context, value)
-        }
-
-        /** Holds if `mod.name` (attribute "name" of module `mod`) points to the boolean constant `value` in context. */
-        predicate attribute_const(ModuleObject mod, string name, boolean value, FinalContext context) {
-            exists(EssaVariable var, Module m |
-                m = mod.getModule() or m = mod.(PackageObject).getInitModule().getModule() |
-                var.getAUse() = m.getANormalExit() and
-                var.getSourceVariable().getName() = name and
-                ssa_const(var, context, value)
-            )
-        }
-
     }
 
     predicate named_attribute_points_to(ControlFlowNode f, FinalContext context, string name, Object value, ClassObject cls, ControlFlowNode origin) {
@@ -930,7 +1018,7 @@ module FinalPointsTo {
          pragma [noinline]
          predicate call_to_type_known_builtin_class_points_to(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
              exists(ControlFlowNode arg |
-                 call_to_type(f, arg, context) and
+                 call_to_type(f, arg, context) |
                  points_to(arg, context, _, value, _)
              ) and
              not exists(value.getOrigin()) and
@@ -940,6 +1028,8 @@ module FinalPointsTo {
          pragma [noinline]
          predicate call_points_to_builtin_function(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
              exists(BuiltinCallable b |
+                 not b = builtin_object("isinstance") and
+                 not b = builtin_object("issubclass") and
                  f = get_a_call(b, context) and
                  cls = b.getAReturnType()
              ) and
@@ -950,12 +1040,72 @@ module FinalPointsTo {
                  value = f
          }
 
+         /** holds if `f` is a call to `isinstance` or `issubclass`. */
+         predicate type_test_call(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+            cls = theBoolType() and origin = f and
+            (
+                call_to_isinstance(f, context, value)
+                or
+                call_to_issubclass(f, context, value)
+            )
+         }
+
+         private predicate call_to_isinstance(CallNode f, FinalContext context, Object value) {
+              exists(ControlFlowNode clsNode, ControlFlowNode objNode, ClassObject objcls |
+                points_to(objNode, context, _, objcls, _) and
+                BaseFilters::isinstance(f, clsNode, objNode) |
+                exists(ClassObject scls |
+                    points_to(clsNode, _, scls, _, _) |
+                    scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
+                    or
+                    not scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
+                )
+                or exists(TupleObject t, ClassObject scls |
+                    PenultimatePointsTo::points_to(clsNode, _, t, _, _) and
+                    scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
+                    |
+                    scls = t.getBuiltinElement(_)
+                    or
+                    PenultimatePointsTo::points_to(t.getSourceElement(_), _, scls, _, _)
+                )
+                or
+                objcls = theUnknownType() and (value = theTrueObject() or value = theFalseObject())
+            )
+         }
+
+         private predicate call_to_issubclass(CallNode f, FinalContext context, Object value) {
+             exists(ControlFlowNode clsNode, ControlFlowNode objNode, Object objcls |
+                points_to(objNode, context, objcls, _, _) and
+                BaseFilters::issubclass(f, clsNode, objNode) |
+                exists(ClassObject scls |
+                    points_to(clsNode, _, scls, _, _) |
+                    scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
+                    or
+                    not scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
+                )
+                or
+                (objcls = unknownValue() or objcls = theUnknownType()) and
+                (value = theTrueObject() or value = theFalseObject())
+            )
+         }
+
          pragma [noinline]
          predicate call_to_procedure_points_to(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
              exists(PyFunctionObject func |
                  f = get_a_call(func, context) and
                  implicitly_returns(func, value, cls) and origin.getNode() = func.getOrigin()
              )
+         }
+
+         predicate call_to_unknown(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+              value = unknownValue() and cls = theUnknownType() and origin = f
+              and
+              exists(ControlFlowNode callable |
+                  callable = f.getFunction() or
+                  callable = f.getFunction().(AttrNode).getObject()
+                  |
+                  points_to(callable, context, unknownValue(), _, _)
+              )
          }
 
          predicate call_to_generator_points_to(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
@@ -1014,6 +1164,10 @@ module FinalPointsTo {
              or
              /* Case 5c */
              call_to_procedure_points_to(f, context, value, cls, origin)
+             or
+             call_to_unknown(f, context, value, cls, origin)
+             or
+             type_test_call(f, context, value, cls, origin)
          }
 
          /** INTERNAL -- Public for testing only.
@@ -1181,30 +1335,33 @@ module FinalPointsTo {
 
         /** Holds if the `(argument, caller)` pair matches up with `(param, callee)` pair across call. */
          cached 
-        predicate callsite_transfer(ControlFlowNode argument, FinalContext caller, ParameterDefinition param, FinalContext callee) {
-            exists(CallNode call, PyFunctionObject func, int n |
-                callee.fromCall(call, func, caller) |
-                /* Functions */
-                function_call(func, caller, call) and
+        predicate callsite_argument_transfer(ControlFlowNode argument, FinalContext caller, ParameterDefinition param, FinalContext callee) {
+            exists(CallNode call, PyFunctionObject func, int n, int offset |
+                callsite_calls_function(call, caller, func, callee, offset) and
                 argument = call.getArg(n) and
-                param = func.getParameter(n)
-                or
-                /* Methods */
-                method_call(func, caller, call) and
-                argument = call.getArg(n) and
-                param = func.getParameter(n+1)
+                param = func.getParameter(n+offset)
             )
+        }
+
+         cached 
+        predicate callsite_calls_function(CallNode call, FinalContext caller, PyFunctionObject func, FinalContext callee, int parameter_offset) {
+            /* Functions */
+            callee.fromCall(call, func, caller) and
+            function_call(func, caller, call) and
+            parameter_offset = 0
+            or
+            /* Methods */
+            callee.fromCall(call, func, caller) and
+            method_call(func, caller, call) and
+            parameter_offset = 1
             or
             /* Classes */
-            exists(CallNode call, ClassObject cls, int n |
+            exists(ClassObject cls |
                 not class_overrides_new(cls) and
-                argument = call.getArg(n) and
-                points_to(call.getFunction(), caller, cls, _, _) |
-                exists(PyFunctionObject init |
-                    Types::class_attribute_lookup(cls, "__init__", init, _, _) and
-                    param = init.getParameter(n+1) and
-                    callee.fromCall(call, caller)
-                )
+                points_to(call.getFunction(), caller, cls, _, _) and
+                Types::class_attribute_lookup(cls, "__init__", func, _, _) and
+                parameter_offset = 1 and
+                callee.fromCall(call, caller)
             )
         }
 
@@ -1238,11 +1395,18 @@ module FinalPointsTo {
 
 
         /** Holds if the phi-function `phi` refers to `(value, cls, origin)` given the context `context`. */
+        pragma [noinline]
         private predicate ssa_phi_points_to(PhiFunction phi, FinalContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
             exists(EssaVariable input, BasicBlock pred |
-                input = phi.getInput(pred) and not PenultimatePointsTo::Layer::prunedEdge(pred, phi.getBasicBlock(), _) and
+                input = phi.getInput(pred) and
                 ssa_variable_points_to(input, context, value, cls, origin)
-                )
+                |
+                Layer::controlledReachableEdge(pred, phi.getBasicBlock(), context)
+                or
+                not exists(ConditionBlock guard | guard.controlsEdge(pred, phi.getBasicBlock(), _))
+            )
+            or
+            ssa_variable_points_to(phi.getShortCircuitInput(), context, value, cls, origin)
         }
 
         /** Holds if the ESSA definition `def`  refers to `(value, cls, origin)` given the context `context`. */
@@ -1256,27 +1420,35 @@ module FinalPointsTo {
             ssa_node_refinement_points_to(def, context, value, cls, origin)
         }
 
-        pragma [noinline]
-        private predicate ssa_node_definition_points_to(EssaNodeDefinition def, FinalContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
-            not PenultimatePointsTo::Layer::pruned(def.getDefiningNode(), _) and
-            (
-                assignment_points_to(def, context, value, cls, origin)
-                or
-                parameter_points_to(def, context, value, cls, origin)
-                or
-                self_parameter_points_to(def, context, value, cls, origin)
-                or
-                delete_points_to(def, context, value, cls, origin)
-                or
-                scope_entry_points_to(def, context, value, cls, origin)
-                or
-                implicit_submodule_points_to(def, context, value, cls, origin)
-                or
-                module_name_points_to(def, context, value, cls, origin)
-            )
+        pragma [nomagic]
+        private predicate ssa_node_definition_points_to_unpruned(EssaNodeDefinition def, FinalContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
+            assignment_points_to(def, context, value, cls, origin)
+            or
+            parameter_points_to(def, context, value, cls, origin)
+            or
+            self_parameter_points_to(def, context, value, cls, origin)
+            or
+            delete_points_to(def, context, value, cls, origin)
+            or
+            scope_entry_points_to(def, context, value, cls, origin)
+            or
+            implicit_submodule_points_to(def, context, value, cls, origin)
+            or
+            module_name_points_to(def, context, value, cls, origin)
             /*
              * No points-to for non-local function entry definitions yet.
              */
+        }
+
+        pragma [noinline]
+        private predicate reachable_definitions(EssaNodeDefinition def) {
+            Layer::reachable(def.getDefiningNode(), _)
+        }
+
+        pragma [noinline]
+        private predicate ssa_node_definition_points_to(EssaNodeDefinition def, FinalContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
+            reachable_definitions(def) and
+            ssa_node_definition_points_to_unpruned(def, context, value, cls, origin)
         }
 
         pragma [noinline]
@@ -1307,8 +1479,11 @@ module FinalPointsTo {
         private predicate positional_parameter_points_to(ParameterDefinition def, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
             exists(FinalContext caller, ControlFlowNode arg |
                 points_to(arg, caller, value, cls, origin) and
-                Flow::callsite_transfer(arg, caller, def, context)
+                Flow::callsite_argument_transfer(arg, caller, def, context)
             )
+            or
+            not def.isSelf() and not def.getParameter().isVarargs() and not def.getParameter().isKwargs() and
+            context.isRuntime() and value = unknownValue() and cls = theUnknownType() and origin = def.getDefiningNode()
         }
 
         /** Points-to for parameter. `def foo(param): ...`. */
@@ -1335,7 +1510,7 @@ module FinalPointsTo {
 
         /** Holds if the `(obj, caller)` pair matches up with `(self, callee)` pair across call. */
         pragma [noinline]
-        private predicate self_callsite_transfer(EssaVariable obj, FinalContext caller, ParameterDefinition self, FinalContext callee) {
+        private predicate callsite_self_argument_transfer(EssaVariable obj, FinalContext caller, ParameterDefinition self, FinalContext callee) {
             self.isSelf() and
             exists(CallNode call, PyFunctionObject meth |
                 meth.getParameter(0) = self and
@@ -1368,11 +1543,12 @@ module FinalPointsTo {
             or
             exists(EssaVariable obj, FinalContext caller |
                 ssa_variable_points_to(obj, caller, value, cls, origin) and
-                self_callsite_transfer(obj, caller, def, context)
+                callsite_self_argument_transfer(obj, caller, def, context)
             )
         }
 
         /** Points-to for deletion: `del name`. */
+        pragma [noinline]
         private predicate delete_points_to(DeletionDefinition def, FinalContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
             value = undefinedVariable() and cls = theUnknownType() and origin = value and context.appliesToScope(def.getScope())
         }
@@ -1644,28 +1820,41 @@ module FinalPointsTo {
             none()
         }
 
+        /* Helper for import_star_named_attribute_points_to */
+        pragma [noinline]
+        private predicate star_variable_import_star_module(ImportStarRefinement def, ImportStarNode imp, FinalContext context, ModuleObject mod) {
+            def.getSourceVariable().getName() = "*" and
+            exists(ControlFlowNode fmod |
+                fmod = imp.getModule() and
+                imp = def.getDefiningNode() and 
+                points_to(fmod, context, mod, _, _)
+            )
+        }
+
+        /* Helper for import_star_named_attribute_points_to */
+        pragma [noinline]
+        private predicate ssa_star_variable_input_points_to(ImportStarRefinement def, FinalContext context, string name, Object value, ClassObject cls, ControlFlowNode origin) {
+            def.getSourceVariable().getName() = "*" and
+            exists(EssaVariable var |
+                var = def.getInput() and
+                ssa_variable_named_attribute_points_to(var, context, name, value, cls, origin)
+            )
+        }
+
         pragma [noinline]
         private predicate import_star_named_attribute_points_to(ImportStarRefinement def, FinalContext context, string name, Object value, ClassObject cls, ControlFlowNode origin) {
-            def.getSourceVariable().getName() = "*" and
-            exists(ImportStarNode imp, ControlFlowNode fmod |
-                fmod = imp.getModule() and
-                imp = def.getDefiningNode() |
-                exists(ModuleObject mod |
-                    points_to(fmod, context, mod, _, _) |
-                    if module_exports(mod, name) then (
-                        /* Attribute from imported module */
-                        exists(ObjectOrCfg obj |
-                            Layer::module_attribute_points_to(mod, name, value, cls, obj) and
-                            not exists(Variable v | v.getId() = name and v.getScope() = imp.getScope()) and
-                            origin = origin_from_object_or_here(obj, imp)
-                        )
-                    ) else (
-                        /* Retain value held before import */
-                        exists(EssaVariable var |
-                            var = def.getInput() and
-                            ssa_variable_named_attribute_points_to(var, context, name, value, cls, origin)
-                        )
+            exists(ImportStarNode imp, ModuleObject mod |
+                star_variable_import_star_module(def, imp, context, mod) |
+                if module_exports(mod, name) then (
+                    /* Attribute from imported module */
+                    exists(ObjectOrCfg obj |
+                        Layer::module_attribute_points_to(mod, name, value, cls, obj) and
+                        not exists(Variable v | v.getId() = name and v.getScope() = imp.getScope()) and
+                        origin = origin_from_object_or_here(obj, imp)
                     )
+                ) else (
+                    /* Retain value held before import */
+                    ssa_star_variable_input_points_to(def, context, name, value, cls, origin)
                 )
             )
         }
@@ -1691,17 +1880,26 @@ module FinalPointsTo {
             result = evaluates_boolean(not_operand(expr), use, context, val, cls).booleanNot()
         }
 
-        /** Holds if meaningful comparisons can be made with `o`.
+        /** Holds if meaningful equality tests can be made with `o`.
          * Final is true for basic objects like 3 or None, but it is also true for sentinel objects.
          */
-        private predicate comparable_value(Object o) {
-            o.isBuiltin()
+        predicate equatable_value(Object o) {
+            comparable_value(o)
             or
             o.(ControlFlowNode).getScope() instanceof Module and
             exists(ClassObject c |
                 c.isBuiltin() and
                 PenultimatePointsTo::points_to(o.(CallNode).getFunction(), _, c, _, _)
             )
+        }
+
+        /** Holds if meaningful comparisons can be made with `o`.
+         * Final is true for basic objects like 3 or None.
+         */
+        predicate comparable_value(Object o) {
+            o.isBuiltin() and not o = unknownValue() and not o = undefinedVariable()
+            or
+            exists(o.booleanValue())
         }
 
         /**  Gets the value that `expr` evaluates to (when converted to a boolean) when `use` refers to `(val, cls)`.
@@ -1739,7 +1937,7 @@ module FinalPointsTo {
                 BaseFilters::equality_test(expr, use, sense, r) |
                 exists(Object other |
                     /* Must be discrete values, not just types of things */
-                    comparable_value(val) and comparable_value(other) and
+                    equatable_value(val) and equatable_value(other) and
                     PenultimatePointsTo::points_to(r, _, other, _, _) |
                     other != val and result = sense.booleanNot()
                     or
@@ -1834,11 +2032,12 @@ module FinalPointsTo {
                 refinement_test(test, use, test_evaluates_boolean(test, use, context, value, cls, origin), def)
             )
             or
-            /* If we can't understand the test, assume that value passes through. */
+            /* If we can't understand the test, assume that value passes through.
+             * Or, if the value is `unknownValue()` then let it pass through as well. */
             exists(ControlFlowNode test, ControlFlowNode use |
                 refinement_test(test, use, _, def) and
-                not comprehensible_test(test, use) and
-                ssa_variable_points_to(def.getInput(), context, value, cls, origin)
+                ssa_variable_points_to(def.getInput(), context, value, cls, origin) |
+                not comprehensible_test(test, use) or value = unknownValue()
             )
         }
 
@@ -2054,13 +2253,19 @@ module FinalPointsTo {
              or
              exists(cls.getPyClass().getADecorator()) and not six_add_metaclass(_, cls, _) and reason = "Decorator not understood"
              or
-             exists(int i | exists(((ClassExpr)cls.getOrigin()).getBase(i)) and not exists(class_base_type(cls, i)) and reason = "Missing base " + i)
+             exists(int i | 
+                 exists(((ClassExpr)cls.getOrigin()).getBase(i)) and reason = "Missing base " + i
+                 |
+                 not exists(class_base_type(cls, i)) or class_base_type(cls, i) = unknownValue()
+             )
              or
-             exists(cls.getPyClass().getMetaClass()) and not Layer::has_explicit_metaclass(cls) and reason = "Failed to infer metaclass"
+             exists(cls.getPyClass().getMetaClass()) and not exists(Layer::class_explicit_metaclass(cls)) and reason = "Failed to infer metaclass"
              or
              exists(int i | failed_inference(class_base_type(cls, i), _) and reason = "Failed inference for base class at position " + i)
              or
              exists(int i | strictcount(class_base_type(cls, i)) > 1 and reason = "Multiple bases at position " + i)
+             or
+             cls = theUnknownType() and reason = "Unknown Type"
          }
 
          /** INTERNAL -- Use `ClassObject.getMetaClass()` instead.
@@ -2078,7 +2283,7 @@ module FinalPointsTo {
          private Object six_add_metaclass_function() {
              exists(ModuleObject six |
                  six.getName() = "six" and
-                 PenultimatePointsTo::Layer::module_attribute_points_to(six, "add_metaclass", result, _, _)
+                 Layer::module_attribute_points_to(six, "add_metaclass", result, _, _)
              )
          }
 
@@ -2087,9 +2292,14 @@ module FinalPointsTo {
          predicate six_add_metaclass(CallNode decorator_call, ClassObject decorated, ControlFlowNode metaclass) {
              exists(CallNode decorator |
                  decorator_call.getArg(0) = decorated and
-                 decorator = decorator_call.getFunction() |
-                 points_to(decorator.getFunction(), _, six_add_metaclass_function(), _, _) and
-                 decorator.getArg(0) = metaclass
+                 decorator = decorator_call.getFunction() and
+                 decorator.getArg(0) = metaclass |
+                 points_to(decorator.getFunction(), _, six_add_metaclass_function(), _, _) 
+                 or
+                 exists(ModuleObject six |
+                    six.getName() = "six" and
+                    points_to(decorator.getFunction().(AttrNode).getObject("add_metaclass"), _, six, _, _)
+                )
              )
          }
 
@@ -2123,7 +2333,6 @@ module FinalPointsTo {
     /** INTERNAL -- Public for testing only */
     module Test {
 
-        import Booleans
         import Calls
         import SSA
         import Layer

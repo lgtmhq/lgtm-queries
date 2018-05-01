@@ -171,36 +171,6 @@ class AggregateLiteral extends Expr, @aggregateliteral {
 }
 
 /**
- * Holds if the specified field can be initialized as part of an initializer
- * list. For example, in:
- *
- * struct S {
- *   unsigned int a : 5;
- *   unsigned int : 5;
- *   unsigned int b : 5; 
- * };
- *
- * Fields `a` and `b` are initializable, but the unnamed bitfield is not.
- */
-pragma[inline]
-private predicate isFieldInitializable(Field field) {
-  not field.(BitField).isAnonymous()
-}
-
-/**
- * Gets the zero-based index of the specified field within its enclosing class,
- * counting only fields that can be initialized as part of an initializer list.
- */
-private int fieldInitializerIndex(Class cls, Field field) {
-  exists(int memberIndex | 
-    field = cls.getCanonicalMember(memberIndex) and
-    memberIndex = rank[result + 1](int index |
-      isFieldInitializable(cls.getCanonicalMember(index))
-    )
-  )
-}
-
-/**
  * A C/C++ aggregate literal that initializes a class, struct, or union
  */
 class ClassAggregateLiteral extends AggregateLiteral {
@@ -215,7 +185,8 @@ class ClassAggregateLiteral extends AggregateLiteral {
    * field `field`, if present.
    */
   Expr getFieldExpr(Field field) {
-    result = getChild(fieldInitializerIndex(classType, field))
+    field = classType.getAField() and
+    result = getChild(field.getInitializationOrder())
   }
 
   /**
@@ -225,7 +196,7 @@ class ClassAggregateLiteral extends AggregateLiteral {
   pragma[inline]
   predicate isInitialized(Field field) {
     field = classType.getAField() and
-    isFieldInitializable(field) and
+    field.isInitializable() and
     (
       // If the field has an explicit initializer expression, then the field is
       // initialized.
@@ -237,7 +208,7 @@ class ClassAggregateLiteral extends AggregateLiteral {
       // the first declared field is value initialized.
       (
         not exists(getAChild()) and
-        fieldInitializerIndex(classType, field) = 0
+        field.getInitializationOrder() = 0
       )
     )
   }

@@ -94,6 +94,10 @@ abstract class ModuleObject extends Object {
         result = getKindForModule(this)
     }
 
+    boolean booleanValue() {
+        result = true
+    }
+
 }
 
 class BuiltinModuleObject extends ModuleObject {

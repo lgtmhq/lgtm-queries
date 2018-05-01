@@ -18,62 +18,90 @@ import javascript
 private import semmle.javascript.security.SensitiveActions
 private import semmle.javascript.frameworks.CryptoLibraries
 
-/**
- * A data flow source for sensitive information in broken or weak cryptographic algorithms.
- */
-abstract class BrokenCryptoAlgorithmSource extends DataFlow::Node { }
-
-/**
- * A data flow sink for sensitive information in broken or weak cryptographic algorithms.
- */
-abstract class BrokenCryptoAlgorithmSink extends DataFlow::Node { }
-
-/**
- * A sanitizer for sensitive information in broken or weak cryptographic algorithms.
- */
-abstract class BrokenCryptoAlgorithmSanitizer extends DataFlow::Node { }
-
-/**
- * A taint tracking configuration for sensitive information in broken or weak cryptographic algorithms.
- *
- * This configuration identifies flows from `BrokenCryptoAlgorithmSource`s, which are sources of
- * sensitive data, to `BrokenCryptoAlgorithmSink`s, which is an abstract class representing all
- * the places sensitive data may used in broken or weak cryptographic algorithms. Additional sources or sinks can be
- * added either by extending the relevant class, or by subclassing this configuration itself,
- * and amending the sources and sinks.
- */
-class BrokenCryptoAlgorithmDataFlowConfiguration extends TaintTracking::Configuration {
-  BrokenCryptoAlgorithmDataFlowConfiguration() {
-    this = "BrokenCryptoAlgorithm"
+module BrokenCryptoAlgorithm {
+  /**
+   * A data flow source for sensitive information in broken or weak cryptographic algorithms.
+   */
+  abstract class Source extends DataFlow::Node {
+    /** Gets a string that describes the type of this data flow source. */
+    abstract string describe();
   }
 
-  override
-  predicate isSource(DataFlow::Node source) {
-    source instanceof BrokenCryptoAlgorithmSource or
-    source.asExpr() instanceof SensitiveExpr
+  /**
+   * A data flow sink for sensitive information in broken or weak cryptographic algorithms.
+   */
+  abstract class Sink extends DataFlow::Node { }
+
+  /**
+   * A sanitizer for sensitive information in broken or weak cryptographic algorithms.
+   */
+  abstract class Sanitizer extends DataFlow::Node { }
+
+  /**
+   * A taint tracking configuration for sensitive information in broken or weak cryptographic algorithms.
+   *
+   * This configuration identifies flows from `Source`s, which are sources of
+   * sensitive data, to `Sink`s, which is an abstract class representing all
+   * the places sensitive data may used in broken or weak cryptographic algorithms. Additional sources or sinks can be
+   * added either by extending the relevant class, or by subclassing this configuration itself,
+   * and amending the sources and sinks.
+   */
+  class Configuration extends TaintTracking::Configuration {
+    Configuration() {
+      this = "BrokenCryptoAlgorithm" and
+      exists(Source s) and exists(Sink s)
+    }
+
+    override
+    predicate isSource(DataFlow::Node source) {
+      source instanceof Source
+    }
+
+    override
+    predicate isSink(DataFlow::Node sink) {
+      sink instanceof Sink
+    }
+
+    override
+    predicate isSanitizer(DataFlow::Node node) {
+      super.isSanitizer(node) or
+      node instanceof Sanitizer
+    }
   }
 
-  override
-  predicate isSink(DataFlow::Node sink) {
-    sink instanceof BrokenCryptoAlgorithmSink
+  /**
+   * A sensitive expression, viewed as a data flow source for sensitive information
+   * in broken or weak cryptographic algorithms.
+   */
+  class SensitiveExprSource extends Source, DataFlow::ValueNode {
+    override SensitiveExpr astNode;
+
+    override string describe() {
+      result = astNode.describe()
+    }
   }
 
-  override
-  predicate isSanitizer(DataFlow::Node node) {
-    super.isSanitizer(node) or
-    node instanceof BrokenCryptoAlgorithmSanitizer
+  /**
+   * An expression used by a broken or weak cryptographic algorithm.
+   */
+  class WeakCryptographicOperationSink extends Sink {
+    WeakCryptographicOperationSink() {
+      exists(CryptographicOperation application |
+        application.getAlgorithm().isWeak() and
+        this.asExpr() = application.getInput()
+      )
+    }
   }
 }
 
-/**
- * An expression used by a broken or weak cryptographic algorithm.
- */
-class WeakCryptographicOperationSink extends BrokenCryptoAlgorithmSink {
-  WeakCryptographicOperationSink() {
-    exists(CryptographicOperation application |
-      application.getAlgorithm().isWeak() and
-      this.asExpr() = application.getInput()
-    )
-  }
-}
+/** DEPRECATED: Use `BrokenCryptoAlgorithm::Source` instead. */
+deprecated class BrokenCryptoAlgorithmSource = BrokenCryptoAlgorithm::Source;
 
+/** DEPRECATED: Use `BrokenCryptoAlgorithm::Sink` instead. */
+deprecated class BrokenCryptoAlgorithmSink = BrokenCryptoAlgorithm::Sink;
+
+/** DEPRECATED: Use `BrokenCryptoAlgorithm::Sanitizer` instead. */
+deprecated class BrokenCryptoAlgorithmSanitizer = BrokenCryptoAlgorithm::Sanitizer;
+
+/** DEPRECATED: Use `BrokenCryptoAlgorithm::Configuration` instead. */
+deprecated class BrokenCryptoAlgorithmDataFlowConfiguration = BrokenCryptoAlgorithm::Configuration;

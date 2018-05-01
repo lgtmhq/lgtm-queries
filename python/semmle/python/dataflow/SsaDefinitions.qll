@@ -211,7 +211,8 @@ cached module SsaSource {
     cached predicate variable_refined_at_callsite(Variable v, CallNode call) {
         not v.isSelf() and
         variable_or_attribute_defined_out_of_scope(v) and
-        call.getScope().getScope*() = v.getScope()
+        call.getScope().getScope*() = v.getScope() and
+        not method_call_refinement(v, _, call)
     }
 
     /** Holds if `v` is a non-local to the scope which has `entry` as its entry node */
@@ -251,7 +252,8 @@ cached module SsaSource {
             or
             /* For implicit use of __metaclass__ when constructing class */
             class_with_global_metaclass(s, v)
-        )
+        ) and
+        not nonlocal_variable_entry_definition(v, entry)
     }
 
     /** Holds if `v` is defined by a `for` statement, the definition being `defn` */
@@ -341,8 +343,11 @@ cached module SsaSource {
         use.(NameNode).uses(v) and
         test.getAChild*() = use and
         test.isBranch() and
-        not exists(ControlFlowNode parent | parent.getAChild() = test and parent.isBranch()) and
-        not exists(BasicBlock b | b.getLastNode() = test)
+        exists(BasicBlock block |
+            block = use.getBasicBlock() and
+            block = test.getBasicBlock() and
+            not block.getLastNode() = test
+        )
     }
 
 }

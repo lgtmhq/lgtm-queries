@@ -19,17 +19,20 @@ import semmle.code.cpp.Function
  * A C/C++ type.
  */
 class Type extends Locatable, @type {
-
-  /** the name of this element */
+  /**
+   * Gets the name of this type.
+   */
   string getName() {
     none()
   }
 
-    /** whether this element has named name */
+  /**
+   * Holds if this type is called `name`.
+   */
   predicate hasName(string name) { name = this.getName() }
 
   /**
-   * Whether this declaration has the specifier `name`, recursively looking
+   * Holds if this declaration has a specifier called `name`, recursively looking
    * through `typedef` and `decltype`. For example, in the context of
    * `typedef const int *restrict t`, the type `volatile t` has specifiers
    * `volatile` and `restrict` but not `const` since the `const` is attached to
@@ -60,7 +63,9 @@ class Type extends Locatable, @type {
     result = this.internal_getAnAdditionalSpecifier()
   }
 
-  /** an attribute of this type */
+  /**
+   * Gets an attribute of this type.
+   */
   Attribute getAnAttribute() { typeattributes(this,result) }
 
   /**
@@ -71,21 +76,29 @@ class Type extends Locatable, @type {
    */
   Specifier internal_getAnAdditionalSpecifier() { none() }
 
-  /** whether this type is const */
+  /**
+   * Holds if this type is const.
+   */
   predicate isConst() { this.hasSpecifier("const") }
 
-  /** whether this type is volatile */
+  /**
+   * Holds if this type is volatile.
+   */
   predicate isVolatile() { this.hasSpecifier("volatile") }
 
-  /** whether this type refers to type t -- by default,
-    * a type always refers to itself. */
+  /**
+   * Holds if this type refers to type `t` (by default,
+   * a type always refers to itself).
+   */
   predicate refersTo(Type t) { refersToDirectly*(t) }
 
-  /** whether this type refers to type t directly */
+  /**
+   * Holds if this type refers to type `t` directly.
+   */
   predicate refersToDirectly(Type t) { none() }
 
   /**
-   * This type after typedefs have been resolved.
+   * Gets this type after typedefs have been resolved.
    *
    * The result of this predicate will be the type itself, except in the case of a TypedefType or a Decltype,
    * in which case the result will be type which results from (possibly recursively) resolving typedefs.
@@ -93,20 +106,24 @@ class Type extends Locatable, @type {
   Type getUnderlyingType() { result = this }
 
   /**
-   * This type after specifiers have been deeply stripped and typedefs have been resolved.
+   * Gets this type after specifiers have been deeply stripped and typedefs have been resolved.
    *
    * For example, starting with `const i64* const` in the context of `typedef long long i64;`, this predicate will return `long long*`.
    */
   Type getUnspecifiedType() { unspecifiedtype(this, result) }
 
-  /** the size of this type in bytes (on the machine where facts were extracted) */
+  /**
+   * Gets the size of this type in bytes (on the machine where facts were extracted).
+   */
   int getSize() {
        builtintypes(this,_,_,result,_)
     or pointerishsize(this, result)
     or usertypesize(this,result,_)
   }
 
-  /** the pointer indirection level of this type */
+  /**
+   * Gets the pointer indirection level of this type.
+   */
   int getPointerIndirectionLevel() {
     result = 0
   }
@@ -122,20 +139,21 @@ class Type extends Locatable, @type {
   string explain() { result = "type" } // Concrete base impl to allow filters on Type
 
   /**
-   * Test whether this type is constant and only contains constant types.
-   * For instance, a "char *const" is a constant type, but not deeply constant,
+   * Holds if this type is constant and only contains constant types.
+   * For instance, a `char *const` is a constant type, but not deeply constant,
    * because while the pointer can't be modified the character can. The type
-   * "const char *const* is a deeply constant type though - both the pointer
+   * `const char *const*` is a deeply constant type though - both the pointer
    * and what it points to are immutable.
    */
   predicate isDeeplyConst() { this.isConst() and this.isDeeplyConstBelow() }
 
   /**
-   * Like Type.isDeeplyConst(), but excludes the type itself. It is implied by
-   * Type.isDeeplyConst() and is just used to implement that predicate.
-   * For example, "const char *const" is deeply constant and deeply constant below,
-   * but "const char *" is only deeply constant below (the pointer can be changed,
-   * but not the underlying char). "char *const" is neither (it is just const).
+   * Holds if this type is constant and only contains constant types, excluding
+   * the type itself. It is implied by Type.isDeeplyConst() and is just used to
+   * implement that predicate.
+   * For example, `const char *const` is deeply constant and deeply constant below,
+   * but `const char *` is only deeply constant below (the pointer can be changed,
+   * but not the underlying char). `char *const` is neither (it is just `const`).
    */
   predicate isDeeplyConstBelow() { none() } // Concrete base impl to allow filters on Type
 
@@ -241,37 +259,38 @@ class Type extends Locatable, @type {
   }
 
   /**
-   * Recursively checks whether the specified type involves a reference.
+   * Holds if this type involves a reference.
    */
   predicate involvesReference() {
     none()
   }
 
   /**
-   * Recursively checks whether the specified type involves a template parameter.
+   * Holds if this type involves a template parameter.
    */
   predicate involvesTemplateParameter() {
     none()
   }
 
   /**
-   * Recursively resolves any typedefs in a type. For example, given typedef C T, this would resolve
-   * const T&amp; to const C&amp;. Note that this will only work if the resolved type actually appears on its
-   * own elsewhere in the program.
+   * Gets this type with any typedefs resolved. For example, given
+   * `typedef C T`, this would resolve `const T&amp;` to `const C&amp;`.
+   * Note that this will only work if the resolved type actually appears
+   * on its own elsewhere in the program.
    */
   Type resolveTypedefs() {
     result = this
   }
 
   /**
-   * Strips a type, removing pointers, references and cv-qualifiers, and resolving typedefs.
-   * For example, given typedef const C&amp; T, stripType(T) = C.
+   * Gets the type stripped of pointers, references and cv-qualifiers, and resolving typedefs.
+   * For example, given `typedef const C&amp; T`, `stripType` returns `C`.
    */
   Type stripType() {
     result = this
   }
 
-  Location getLocation() {
+  override Location getLocation() {
     suppressUnusedThis(this) and
     result instanceof UnknownDefaultLocation
   }
@@ -281,18 +300,13 @@ class Type extends Locatable, @type {
  * A C/C++ built-in primitive type (int, float, void, and so on). See 4.1.1.
  */
 class BuiltInType extends Type, @builtintype {
-  /** a printable representation of this named element */
-  string toString() { result = this.getName() }
+  override string toString() { result = this.getName() }
 
-  /** the name of this built-in type */
-  string getName() { builtintypes(this,result,_,_,_) }
+  override string getName() { builtintypes(this,result,_,_,_) }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result = this.getName() }
+  override string explain() { result = this.getName() }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { any() } // No subparts
-
+  override predicate isDeeplyConstBelow() { any() } // No subparts
 }
 
 /**
@@ -589,9 +603,11 @@ class Char32Type extends IntegralType {
 /**
  * The type of the C++11 nullptr constant.
  *
- * Note that this is not nullptr_t, as nullptr_t is defined as:
+ * Note that this is not `nullptr_t`, as `nullptr_t` is defined as:
+ * ```
  *  typedef decltype(nullptr) nullptr_t;
- * Instead, this is the unspeakable type given by decltype(nullptr).
+ * ```
+ * Instead, this is the unspeakable type given by `decltype(nullptr)`.
  */
 class NullPointerType extends BuiltInType {
   NullPointerType() { builtintypes(this,_,34,_,_) }
@@ -604,42 +620,29 @@ class NullPointerType extends BuiltInType {
  * In all cases, the type is formed from a single base type.
  */
 class DerivedType extends Type, @derivedtype {
-  /** a printable representation of this named element */
-  string toString() { result = this.getName() }
+  override string toString() { result = this.getName() }
 
-  /** the name of this type */
-  string getName() { derivedtypes(this,result,_,_) }
+  override string getName() { derivedtypes(this,result,_,_) }
 
   /**
-   * The base type of this derived type.
+   * Gets the base type of this derived type.
    *
    * This predicate strips off one level of decoration from a type. For example, it returns `char*` for the PointerType `char**`,
    * `const int` for the ReferenceType `const int&amp;`, and `long` for the SpecifiedType `volatile long`.
    */
   Type getBaseType() { derivedtypes(this,_,_,result) }
 
-  /** whether this type refers to type t directly */
-  predicate refersToDirectly(Type t) { t = this.getBaseType() }
+  override predicate refersToDirectly(Type t) { t = this.getBaseType() }
 
-  /**
-   * Recursively checks whether the specified type involves a reference.
-   */
-  predicate involvesReference() {
+  override predicate involvesReference() {
     getBaseType().involvesReference()
   }
 
-  /**
-   * Recursively checks whether the specified type involves a template parameter.
-   */
-  predicate involvesTemplateParameter() {
+  override predicate involvesTemplateParameter() {
     getBaseType().involvesTemplateParameter()
   }
 
-  /**
-   * Strips a type, removing pointers, references and cv-qualifiers, and resolving typedefs.
-   * For example, given typedef const C&amp; T, stripType(T) = C.
-   */
-  Type stripType() {
+  override Type stripType() {
     result = getBaseType().stripType()
   }
 
@@ -697,18 +700,15 @@ class Decltype extends Type, @decltype {
     decltypes(this, _, _, true)
   }
 
-  /**
-   * The type obtained after stepping through this decltype and any resulting decltypes or typedefs.
-   */
-  Type getUnderlyingType() {
+  override Type getUnderlyingType() {
     result = getBaseType().getUnderlyingType()
   }
 
-  Type stripType() {
+  override Type stripType() {
     result = getBaseType().stripType()
   }
 
-  Type resolveTypedefs() {
+  override Type resolveTypedefs() {
     result = getBaseType().resolveTypedefs()
   }
 
@@ -724,31 +724,31 @@ class Decltype extends Type, @decltype {
     none()
   }
 
-  int getSize() {
+  override int getSize() {
     result = getBaseType().getSize()
   }
 
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = getBaseType().getPointerIndirectionLevel()
   }
 
-  string explain() {
+  override string explain() {
     result = "decltype resulting in {" + this.getBaseType().explain() + "}"
   }
 
-  predicate involvesReference() {
+  override predicate involvesReference() {
     getBaseType().involvesReference()
   }
 
-  predicate involvesTemplateParameter() {
+  override predicate involvesTemplateParameter() {
     getBaseType().involvesTemplateParameter()
   }
 
-  predicate isDeeplyConst() {
+  override predicate isDeeplyConst() {
     this.getBaseType().isDeeplyConst()
   }
 
-  predicate isDeeplyConstBelow() {
+  override predicate isDeeplyConstBelow() {
     this.getBaseType().isDeeplyConstBelow()
   }
 
@@ -764,23 +764,15 @@ class PointerType extends DerivedType {
 
   PointerType() { derivedtypes(this,_,1,_) }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = 1 + this.getBaseType().getPointerIndirectionLevel()
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result = "pointer to {" + this.getBaseType().explain() + "}" }
+  override string explain() { result = "pointer to {" + this.getBaseType().explain() + "}" }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
 
-  /**
-   * Recursively resolves any typedefs in a type. For example, given typedef C T, this would resolve
-   * const T&amp; to const C&amp;. Note that this will only work if the resolved type actually appears on its
-   * own elsewhere in the program.
-   */
-  Type resolveTypedefs() {
+  override Type resolveTypedefs() {
     result.(PointerType).getBaseType() = getBaseType().resolveTypedefs()
   }
 }
@@ -795,33 +787,21 @@ class ReferenceType extends DerivedType {
 
   ReferenceType() { derivedtypes(this,_,2,_) or derivedtypes(this,_,8,_) }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = getBaseType().getPointerIndirectionLevel()
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result = "reference to {" + this.getBaseType().explain() + "}" }
+  override string explain() { result = "reference to {" + this.getBaseType().explain() + "}" }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConst() { this.getBaseType().isDeeplyConst() } // No such thing as a const reference type
+  override predicate isDeeplyConst() { this.getBaseType().isDeeplyConst() } // No such thing as a const reference type
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
 
-  /**
-   * Recursively checks whether the specified type involves a reference.
-   */
-  predicate involvesReference() {
+  override predicate involvesReference() {
     any()
   }
 
-  /**
-   * Recursively resolves any typedefs in a type. For example, given typedef C T, this would resolve
-   * const T&amp; to const C&amp;. Note that this will only work if the resolved type actually appears on its
-   * own elsewhere in the program.
-   */
-  Type resolveTypedefs() {
+  override Type resolveTypedefs() {
     result.(ReferenceType).getBaseType() = getBaseType().resolveTypedefs()
   }
 }
@@ -839,8 +819,7 @@ class LValueReferenceType extends ReferenceType {
 class RValueReferenceType extends ReferenceType {
   RValueReferenceType() { derivedtypes(this,_,8,_) }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result = "rvalue " + super.explain() }
+  override string explain() { result = "rvalue " + super.explain() }
 }
 
 /**
@@ -850,10 +829,9 @@ class SpecifiedType extends DerivedType {
 
   SpecifiedType() { derivedtypes(this,_,3,_) }
 
-  int getSize() { result = this.getBaseType().getSize() }
+  override int getSize() { result = this.getBaseType().getSize() }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = this.getBaseType().getPointerIndirectionLevel()
   }
 
@@ -864,25 +842,17 @@ class SpecifiedType extends DerivedType {
     internalSpecString(this, result, 1)
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result = this.getSpecifierString() + "{" + this.getBaseType().explain() + "}" }
+  override string explain() { result = this.getSpecifierString() + "{" + this.getBaseType().explain() + "}" }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConst() { this.getASpecifier().getName() = "const" and this.getBaseType().isDeeplyConstBelow() }
+  override predicate isDeeplyConst() { this.getASpecifier().getName() = "const" and this.getBaseType().isDeeplyConstBelow() }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConstBelow() }
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConstBelow() }
 
   override Specifier internal_getAnAdditionalSpecifier() {
     result = this.getBaseType().getASpecifier()
   }
 
-  /**
-   * Recursively resolves any typedefs in a type. For example, given typedef C T, this would resolve
-   * const T&amp; to const C&amp;. Note that this will only work if the resolved type actually appears on its
-   * own elsewhere in the program.
-   */
-  Type resolveTypedefs() {
+  override Type resolveTypedefs() {
     result.(SpecifiedType).getBaseType() = getBaseType().resolveTypedefs()
     and result.getASpecifier() = getASpecifier()
   }
@@ -902,25 +872,24 @@ class ArrayType extends DerivedType {
 
   int getAlignment() { arraysizes(this,_,_,result) }
 
-  /** the size of this array (only valid for arrays declared to be of a constant
-      size, will fail for all others) */
-  int getSize() {
+  /**
+   * Gets the size of this array (only valid for arrays declared to be of a constant
+   * size, will fail for all others).
+   */
+  override int getSize() {
     result = this.getByteSize()
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() {
+  override string explain() {
     if exists(this.getArraySize()) then
       result = "array of " + this.getArraySize().toString() + " {" + this.getBaseType().explain() + "}"
     else
       result = "array of {" + this.getBaseType().explain() + "}"
   }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConst() { this.getBaseType().isDeeplyConst() } // No such thing as a const array type
+  override predicate isDeeplyConst() { this.getBaseType().isDeeplyConst() } // No such thing as a const array type
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
 }
 
 /**
@@ -948,7 +917,7 @@ class GNUVectorType extends DerivedType {
   int getNumElements() { arraysizes(this,result,_,_) }
 
   /**
-   * Get the size, in bytes, of this vector type.
+   * Gets the size, in bytes, of this vector type.
    *
    * For vector types declared using the vector_size attribute, this is the
    * value which appears within the attribute. For vector types declared using
@@ -956,13 +925,11 @@ class GNUVectorType extends DerivedType {
    * attribute, the byte size is the value in the attribute multiplied by the
    * byte size of a single element.
    */
-  int getSize() { arraysizes(this,_,result,_) }
+  override int getSize() { arraysizes(this,_,result,_) }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result = "GNU " + getNumElements() + " element vector of {" + this.getBaseType().explain() + "}" }
+  override string explain() { result = "GNU " + getNumElements() + " element vector of {" + this.getBaseType().explain() + "}" }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
 
 }
 
@@ -974,14 +941,11 @@ class FunctionPointerType extends FunctionPointerIshType {
     derivedtypes(this,_,6,_)
   }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = 1
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden
-      method. See Type.explain() */
-  string explain() { result = "pointer to {" + this.getBaseType().(RoutineType).explain() + "}" }
+  override string explain() { result = "pointer to {" + this.getBaseType().(RoutineType).explain() + "}" }
 }
 
 /**
@@ -992,14 +956,11 @@ class FunctionReferenceType extends FunctionPointerIshType {
     derivedtypes(this,_,7,_)
   }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = getBaseType().getPointerIndirectionLevel()
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden
-      method. See Type.explain() */
-  string explain() { result = "reference to {" + this.getBaseType().(RoutineType).explain() + "}" }
+  override string explain() { result = "reference to {" + this.getBaseType().(RoutineType).explain() + "}" }
 }
 
 /**
@@ -1013,14 +974,11 @@ class BlockType extends FunctionPointerIshType {
     derivedtypes(this,_,10,_)
   }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = 0
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden
-      method. See Type.explain() */
-  string explain() { result = "block of {" + this.getBaseType().(RoutineType).explain() + "}" }
+  override string explain() { result = "block of {" + this.getBaseType().(RoutineType).explain() + "}" }
 }
 
 /**
@@ -1053,16 +1011,12 @@ class FunctionPointerIshType extends DerivedType {
     result = count(int i | exists(this.getParameterType(i)))
   }
 
-  /**
-   * Recursively checks whether the specified type involves a template parameter.
-   */
-  predicate involvesTemplateParameter() {
+  override predicate involvesTemplateParameter() {
     getReturnType().involvesTemplateParameter()
     or getAParameterType().involvesTemplateParameter()
   }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
 }
 
 /**
@@ -1081,29 +1035,22 @@ class PointerToMemberType extends Type, @ptrtomember {
   /** the class referred by this pointer to member type */
   Type getClass() { ptrtomembers(this,_,result) }
 
-  /** whether this type refers to type t directly */
-  predicate refersToDirectly(Type t) {
+  override predicate refersToDirectly(Type t) {
     t = this.getBaseType() or
     t = this.getClass()
   }
 
-  /** the pointer indirection level of this type */
-  int getPointerIndirectionLevel() {
+  override int getPointerIndirectionLevel() {
     result = 1 + this.getBaseType().getPointerIndirectionLevel()
   }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() { result = "pointer to member of " + this.getClass().toString() + " with type {" + this.getBaseType().explain() + "}" }
+  override string explain() { result = "pointer to member of " + this.getClass().toString() + " with type {" + this.getBaseType().explain() + "}" }
 
-  /**
-   * Recursively checks whether the specified type involves a template parameter.
-   */
-  predicate involvesTemplateParameter() {
+  override predicate involvesTemplateParameter() {
     getBaseType().involvesTemplateParameter()
   }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
+  override predicate isDeeplyConstBelow() { this.getBaseType().isDeeplyConst() }
 }
 
 /**
@@ -1121,8 +1068,7 @@ class RoutineType extends Type, @routinetype {
 
   Type getReturnType() { routinetypes(this, result) }
 
-  /** Descriptive string for a type (debug - expensive). Overridden method. See Type.explain() */
-  string explain() {
+  override string explain() {
       result = "function returning {" + this.getReturnType().explain() +
           "} with arguments (" + this.explainParameters(0) + ")"
   }
@@ -1147,22 +1093,16 @@ class RoutineType extends Type, @routinetype {
     )
   }
 
-  /** whether this type refers to type t directly */
-  predicate refersToDirectly(Type t) {
+  override predicate refersToDirectly(Type t) {
     t = this.getReturnType() or
     t = this.getAParameterType()
   }
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConst() { none() } // Current limitation: no such thing as a const routine type
+  override predicate isDeeplyConst() { none() } // Current limitation: no such thing as a const routine type
 
-  /** See Type.isDeeplyConst() and Type.isDeeplyConstBelow(). Internal */
-  predicate isDeeplyConstBelow() { none() } // Current limitation: no such thing as a const routine type
+  override predicate isDeeplyConstBelow() { none() } // Current limitation: no such thing as a const routine type
 
-  /**
-   * Recursively checks whether the specified type involves a template parameter.
-   */
-  predicate involvesTemplateParameter() {
+  override predicate involvesTemplateParameter() {
     getReturnType().involvesTemplateParameter()
     or getAParameterType().involvesTemplateParameter()
   }
@@ -1177,10 +1117,7 @@ class TemplateParameter extends UserType
 
   string getName() { usertypes(this, result, _) }
 
-  /**
-   * Recursively checks whether the specified type involves a template parameter.
-   */
-  predicate involvesTemplateParameter() {
+  override predicate involvesTemplateParameter() {
     any()
   }
 }

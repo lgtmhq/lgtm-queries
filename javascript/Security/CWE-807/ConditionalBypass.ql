@@ -23,7 +23,7 @@
  *       external/cwe/cwe-290
  */
 import javascript
-import semmle.javascript.security.dataflow.ConditionalBypass
+import semmle.javascript.security.dataflow.ConditionalBypass::ConditionalBypass
 
 /**
  * Holds if the value of `nd` flows into `guard`.
@@ -58,7 +58,7 @@ class SensitiveActionGuardComparison extends Comparison {
  * An intermediary sink to enable reuse of the taint configuration.
  * This sink should not be presented to the client of this query.
  */
-class SensitiveActionGuardComparisonOperand extends ConditionalBypassSink {
+class SensitiveActionGuardComparisonOperand extends Sink {
 
   SensitiveActionGuardComparison comparison;
 
@@ -78,11 +78,11 @@ class SensitiveActionGuardComparisonOperand extends ConditionalBypassSink {
  * If flow from `source` taints `sink`, then an attacker can
  * control if `action` should be executed or not.
  */
-predicate isTaintedGuardForSensitiveAction(ConditionalBypassSink sink, DataFlow::Node source, SensitiveAction action) {
+predicate isTaintedGuardForSensitiveAction(Sink sink, Source source, SensitiveAction action) {
   action = sink.getAction() and
   // exclude the intermediary sink
   not sink instanceof SensitiveActionGuardComparisonOperand and
-  exists (ConditionalBypassDataFlowConfiguration cfg  |
+  exists (Configuration cfg  |
     // ordinary taint tracking to a guard
     cfg.flowsFrom(sink, source) or
     // taint tracking to both operands of a guard comparison
@@ -96,7 +96,7 @@ predicate isTaintedGuardForSensitiveAction(ConditionalBypassSink sink, DataFlow:
   )
 }
 
-from DataFlow::Node source, DataFlow::Node sink, SensitiveAction action
+from Source source, Sink sink, SensitiveAction action
 where isTaintedGuardForSensitiveAction(sink, source, action)
 select sink, "This condition guards a sensitive $@, but $@ controls it.",
     action, "action",

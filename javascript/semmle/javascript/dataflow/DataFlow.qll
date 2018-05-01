@@ -35,8 +35,10 @@ import javascript
 
 module DataFlow {
   private newtype TNode =
-     TValueNode(@dataflownode nd)
+     TValueNode(AST::ValueNode nd)
   or TSsaDefNode(SsaDefinition d)
+  or TPropNode(@property p)
+  or TRestPatternNode(ObjectPattern op, Expr rest) { rest = op.getRest() }
 
   /**
    * A node in the data flow graph.
@@ -86,7 +88,10 @@ module DataFlow {
     }
 
     /** Gets the expression corresponding to this data flow node, if any. */
-    Expr asExpr() { none() }
+    Expr asExpr() { this = TValueNode(result) }
+
+    /** Gets the AST node corresponding to this data flow node, if any. */
+    ASTNode getAstNode() { none() }
 
     /** Gets the basic block to which this node belongs. */
     BasicBlock getBasicBlock() { none() }
@@ -163,27 +168,24 @@ module DataFlow {
   }
 
   /**
-   * An expression, property, or a function/class/namespace/enum declaration, viewed as a node in a data flow graph.
+   * An expression, property, or a function/class/namespace/enum declaration,
+   * viewed as a node in a data flow graph.
    */
   class ValueNode extends Node, TValueNode {
-    ASTNode astNode;
+    AST::ValueNode astNode;
 
     ValueNode() {
       this = TValueNode(astNode)
     }
 
     /** Gets the expression or declaration this node corresponds to. */
-    ASTNode getAstNode() {
+    override AST::ValueNode getAstNode() {
       result = astNode
     }
 
     override predicate mayHaveStringValue(string s) {
       Node.super.mayHaveStringValue(s) or
       astNode.(ConstantString).getStringValue() = s
-    }
-
-    override Expr asExpr() {
-      result = astNode
     }
 
     override BasicBlock getBasicBlock() {
@@ -225,6 +227,322 @@ module DataFlow {
     override string toString() {
       result = ssa.toString()
     }
+
+    override ASTNode getAstNode() {
+      none()
+    }
+  }
+
+  /**
+   * A node in the data flow graph which corresponds to a `@property`.
+   */
+  private class PropNode extends Node, TPropNode {
+    @property prop;
+
+    PropNode() { this = TPropNode(prop) }
+
+    override BasicBlock getBasicBlock() {
+      result = prop.(ControlFlowNode).getBasicBlock()
+    }
+
+    override predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                       int endline, int endcolumn) {
+      prop.(Locatable).getLocation().hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
+    }
+
+    override string toString() {
+      result = prop.(ASTNode).toString()
+    }
+
+    override ASTNode getAstNode() {
+      result = prop
+    }
+  }
+
+  /**
+   * A node in the data flow graph which corresponds to the rest pattern of an object pattern.
+   */
+  private class RestPatternNode extends Node, TRestPatternNode {
+    ObjectPattern pattern;
+    Expr rest;
+
+    RestPatternNode() { this = TRestPatternNode(pattern, rest) }
+
+    override BasicBlock getBasicBlock() {
+      result = rest.getBasicBlock()
+    }
+
+    override predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                       int endline, int endcolumn) {
+      rest.getLocation().hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
+    }
+
+    override string toString() {
+      result = rest.toString()
+    }
+
+    override ASTNode getAstNode() {
+      result = rest
+    }
+  }
+
+  /**
+   * A data flow node that reads or writes an object property or class member.
+   *
+   * The default subclasses do not model global variable references or variable
+   * references inside `with` statements as property references.
+   */
+  abstract class PropRef extends Node {
+    /**
+     * Gets the data flow node corresponding to the base object
+     * whose property is read from or written to.
+     */
+    abstract Node getBase();
+
+    /**
+     * Gets the expression specifying the name of the property being
+     * read or written, if any.
+     *
+     * This is usually either an identifier or a literal.
+     */
+    abstract Expr getPropertyNameExpr();
+
+    /**
+     * Gets the name of the property being read or written,
+     * if it can be statically determined.
+     *
+     * By default, this predicate is undefined for dynamic property references
+     * such as `e[computePropertyName()]` and for spread/rest properties.
+     */
+    abstract string getPropertyName();
+
+    /**
+     * Holds if this data flow node accesses property `p` on base node `base`.
+     */
+    pragma[noinline]
+    predicate accesses(Node base, string p) {
+      getBase() = base and getPropertyName() = p
+    }
+  }
+
+  /**
+   * A data flow node that writes to an object property.
+   */
+  abstract class PropWrite extends PropRef {
+    /**
+     * Gets the data flow node corresponding to the value being written,
+     * if it can be statically determined.
+     *
+     * This predicate is undefined for spread properties, accessor
+     * properties, and most uses of `Object.defineProperty`.
+     */
+    abstract Node getRhs();
+
+    /**
+     * Holds if this data flow node writes the value of `rhs` to property
+     * `prop` of the object that `base` evaluates to.
+     */
+    pragma[noinline]
+    predicate writes(DataFlow::Node base, string prop, DataFlow::Node rhs) {
+      base = getBase() and
+      prop = getPropertyName() and
+      rhs = getRhs()
+    }
+  }
+
+  /**
+   * A property access in lvalue position, viewed as a property definition node.
+   */
+  private class PropLValueAsPropWrite extends PropWrite, ValueNode {
+    override PropAccess astNode;
+
+    PropLValueAsPropWrite() { astNode instanceof LValue }
+
+    override Node getBase() {
+      result = valueNode(astNode.getBase())
+    }
+
+    override Expr getPropertyNameExpr() {
+      result = astNode.getPropertyNameExpr()
+    }
+
+    override string getPropertyName() {
+      result = astNode.getPropertyName()
+    }
+
+    override Node getRhs() {
+      result = valueNode(astNode.(LValue).getRhs())
+    }
+  }
+
+  /**
+   * A property of an object literal, viewed as a data flow node that writes
+   * to the corresponding property.
+   */
+  private class PropInitAsPropWrite extends PropWrite, PropNode {
+    override Property prop;
+
+    override Node getBase() {
+      result = valueNode(prop.getObjectExpr())
+    }
+
+    override Expr getPropertyNameExpr() {
+      result = prop.getNameExpr()
+    }
+
+    override string getPropertyName() {
+      result = prop.getName()
+    }
+
+    override Node getRhs() {
+      result = valueNode(prop.(ValueProperty).getInit())
+    }
+  }
+
+  /**
+   * A call to `Object.defineProperty`, viewed as a data flow node that
+   * writes to the corresponding property.
+   */
+  private class ObjectDefinePropertyAsPropWrite extends PropWrite, ValueNode {
+    CallToObjectDefineProperty odp;
+
+    ObjectDefinePropertyAsPropWrite() { odp = this }
+
+    override Node getBase() {
+      result = odp.getBaseObject()
+    }
+
+    override Expr getPropertyNameExpr() {
+      result = odp.getArgument(1).asExpr()
+    }
+
+    override string getPropertyName() {
+      result = odp.getPropertyName()
+    }
+
+    override Node getRhs() {
+      exists (ObjectExprNode propdesc |
+        propdesc.flowsTo(odp.getPropertyDescriptor()) and
+        propdesc.hasPropertyWrite("value", result)
+      )
+    }
+  }
+
+  /**
+   * A static member definition, viewed as a data flow node that adds
+   * a property to the class.
+   */
+  private class ClassMemberAsPropWrite extends PropWrite, PropNode {
+    override MemberDefinition prop;
+
+    override Node getBase() {
+      prop.isStatic() and
+      result = valueNode(prop.getDeclaringClass())
+    }
+
+    override Expr getPropertyNameExpr() {
+      result = prop.getNameExpr()
+    }
+
+    override string getPropertyName() {
+      result = prop.getName()
+    }
+
+    override Node getRhs() {
+      not prop instanceof AccessorMethodDefinition and
+      result = valueNode(prop.getInit())
+    }
+  }
+
+  /**
+   * A JSX attribute definition, viewed as a data flow node that writes properties to
+   * the JSX element it is in.
+   */
+  private class JsxAttributeAsPropWrite extends PropWrite, PropNode {
+    override JSXAttribute prop;
+
+    override Node getBase() {
+      result = valueNode(prop.getElement())
+    }
+
+    override Expr getPropertyNameExpr() {
+      result = prop.getNameExpr()
+    }
+
+    override string getPropertyName() {
+      result = prop.getName()
+    }
+
+    override Node getRhs() {
+      result = valueNode(prop.getValue())
+    }
+  }
+
+  /**
+   * A data flow node that reads an object property.
+   */
+  abstract class PropRead extends PropRef, SourceNode {
+  }
+
+  /**
+   * A property access in rvalue position.
+   */
+  private class PropRValueAsPropRead extends PropRead, ValueNode {
+    override PropAccess astNode;
+
+    PropRValueAsPropRead() { astNode instanceof RValue }
+
+    override Node getBase() {
+      result = valueNode(astNode.getBase())
+    }
+
+    override Expr getPropertyNameExpr() {
+      result = astNode.getPropertyNameExpr()
+    }
+
+    override string getPropertyName() {
+      result = astNode.getPropertyName()
+    }
+  }
+
+  /**
+   * A property pattern viewed as a property read; for instance, in
+   * `var { p: q } = o`, `p` is a read of property `p` of `o`.
+   */
+  private class PropPatternAsPropRead extends PropRead, PropNode {
+    override PropertyPattern prop;
+
+    override Node getBase() {
+      exists (VarDef d |
+        d.getTarget() = prop.getObjectPattern() and
+        result = valueNode(d.getSource())
+      )
+    }
+
+    override Expr getPropertyNameExpr() {
+      result = prop.getNameExpr()
+    }
+
+    override string getPropertyName() {
+      result = prop.getName()
+    }
+  }
+
+  /**
+   * A rest pattern viewed as a property read; for instance, in
+   * `var { ...ps } = o`, `ps` is a read of all properties of `o`.
+   */
+  private class RestPatternAsPropRead extends PropRead, RestPatternNode {
+    override Node getBase() {
+      exists (VarDef d |
+        d.getTarget() = pattern and
+        result = valueNode(d.getSource())
+      )
+    }
+
+    override Expr getPropertyNameExpr() { none() }
+
+    override string getPropertyName() { none() }
   }
 
   /**
@@ -241,10 +559,8 @@ module DataFlow {
   }
 
   /** Gets the node corresponding to the initialization of parameter `p`. */
-  SsaDefinitionNode parameterNode(SimpleParameter p) {
-    exists (SsaExplicitDefinition ssa | ssa.getDef() = p |
-      result = ssaDefinitionNode(ssa)
-    )
+  ParameterNode parameterNode(SimpleParameter p) {
+    result.getParameter() = p
   }
 
   /**
@@ -440,13 +756,3 @@ module DataFlow {
   import Configuration
   import TrackedNodes
 }
-
-/**
- * DEPRECATED: Use `DataFlow::Configuration` instead.
- */
-deprecated class FlowTrackingConfiguration = DataFlow::Configuration;
-
-/**
- * DEPRECATED: Use `DataFlow::AnalyzedNode` instead.
- */
-deprecated class AnalyzedFlowNode = DataFlow::AnalyzedNode;

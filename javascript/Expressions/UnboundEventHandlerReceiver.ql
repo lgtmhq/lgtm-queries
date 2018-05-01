@@ -26,16 +26,15 @@ import javascript
  * Holds if the receiver of `method` is bound in a method of its class.
  */
 private predicate isBoundInMethod(MethodDeclaration method) {
-  exists (PropWriteNode reassign, MethodDeclaration bindingMethod |
-    bindingMethod = method.getDeclaringType().(ClassDefinition).getAMethod() and
+  exists (DataFlow::ThisNode thiz, MethodDeclaration bindingMethod |
+    bindingMethod.getDeclaringClass() = method.getDeclaringClass() and
     not bindingMethod.isStatic() and
-    reassign.(Expr).getEnclosingFunction() = bindingMethod.getBody() and
-    // this.<methodName> = <expr>.bind(...)
-    exists (DataFlow::ThisNode thiz, DataFlow::MethodCallNode bind |
-      thiz.flowsToExpr(reassign.getBase()) and
-      reassign.getPropertyName() = method.getName() and
-      bind.getMethodName() = "bind" and
-      bind.flowsToExpr(reassign.getRhs())
+    thiz.getBinder().getAstNode() = bindingMethod.getBody() and
+    exists (DataFlow::Node rhs, DataFlow::MethodCallNode bind |
+      // this.<methodName> = <expr>.bind(...)
+      thiz.hasPropertyWrite(method.getName(), rhs) and
+      bind.flowsTo(rhs) and
+      bind.getMethodName() = "bind"
     )
   )
 }

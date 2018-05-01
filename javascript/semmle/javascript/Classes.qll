@@ -210,32 +210,7 @@ class ClassDefinition extends @classdefinition, ClassOrInterface, AST::ValueNode
       result = "class " + vd.getTarget().(VarRef).getName()
     )
   }
-
-  /**
-   * Deprecated, since a class and its definition are now the same value.
-   *
-   * Calls of form `cl.getDefinedClass()` should be replaced with just `cl`.
-   */
-  deprecated
-  Class getDefinedClass() { result = this }
-
-  /**
-   * Deprecated, since a class and its definition are now the same value.
-   *
-   * Calls of form `cl.getDefinition()` should be replaced with just `cl`.
-   */
-  deprecated
-  ClassDefinition getDefinition() { result = this }
 }
-
-/**
- * Deprecated alias for `ClassDefinition`.
- *
- * Classes and their definitions are now the same value, and `ClassDefinition` should be used
- * over the old `Class` type.
- */
-deprecated
-class Class extends ClassDefinition {}
 
 /**
  * A class declaration statement.

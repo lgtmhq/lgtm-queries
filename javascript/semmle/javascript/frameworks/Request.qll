@@ -40,12 +40,10 @@ module Request {
           (argIndex = 1 and kind = "password") or
           (argIndex = 3 and kind = "token")
         ) or
-        exists (DataFlow::ObjectExprNode auth, PropWriteNode pwn, string propertyName |
+        exists (DataFlow::ObjectExprNode auth, string propertyName |
           // request.get(url, { auth: {user: 'username', pass: 'password', bearer: 'token'}})
           auth.flowsTo(action.getOptionArgument(1, "auth")) and
-          auth.flowsToExpr(pwn.getBase()) and
-          pwn.getPropertyName() = propertyName and
-          this = pwn.getRhs() |
+          auth.hasPropertyWrite(propertyName, DataFlow::valueNode(this)) |
           ((propertyName = "user" or propertyName = "username") and kind = "user name") or
           ((propertyName = "pass" or propertyName = "password") and kind = "password") or
           (propertyName = "bearer" and kind = "token")

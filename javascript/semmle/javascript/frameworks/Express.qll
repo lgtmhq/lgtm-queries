@@ -318,34 +318,18 @@ module Express {
 
   /**
    * A function used as an Express route handler.
+   *
+   * By default, only handlers installed by an Express route setup are recognized,
+   * but support for other kinds of route handlers can be added by implementing
+   * additional subclasses of this class.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
-
-    Function function;
-
-    RouteHandler() {
-      function = astNode and
-      any(RouteSetup s).getARouteHandler() = this
-    }
-
+  abstract class RouteHandler extends HTTP::RouteHandler {
     /**
      * Gets the parameter of kind `kind` of this route handler.
      *
      * `kind` is one of: "error", "request", "response", "next".
      */
-    private SimpleParameter getRouteHandlerParameter(string kind) {
-      exists (int index, int offset |
-        result = function.getParameter(index + offset) and
-        (if function.getNumParameter() >= 4 then offset = 0 else offset = -1) |
-        kind = "error" and index = 0
-        or
-        kind = "request" and index = 1
-        or
-        kind = "response" and index = 2
-        or
-        kind = "next" and index = 3
-      )
-    }
+    abstract SimpleParameter getRouteHandlerParameter(string kind);
 
     /**
      * Gets the parameter of the route handler that contains the request object.
@@ -366,6 +350,41 @@ module Express {
      */
     Expr getARequestBodyAccess() {
       result.(PropAccess).accesses(getARequestExpr(), "body")
+    }
+  }
+
+  /**
+   * Gets the parameter of kind `kind` of an express route handler function.
+   *
+   * `kind` is one of: "error", "request", "response", "next".
+   */
+  SimpleParameter getRouteHandlerParameter(Function routeHandler, string kind) {
+    exists (int index, int offset |
+      result = routeHandler.getParameter(index + offset) and
+      (if routeHandler.getNumParameter() = 4 then offset = 0 else offset = -1) |
+      kind = "error" and index = 0
+      or
+      kind = "request" and index = 1
+      or
+      kind = "response" and index = 2
+      or
+      kind = "next" and index = 3
+    )
+  }
+
+  /**
+   * An Express route handler installed by a route setup.
+   */
+  class StandardRouteHandler extends RouteHandler, HTTP::Servers::StandardRouteHandler,
+                                     DataFlow::ValueNode {
+    override Function astNode;
+
+    StandardRouteHandler() {
+      any(RouteSetup s).getARouteHandler() = this
+    }
+
+    override SimpleParameter getRouteHandlerParameter(string kind) {
+      result = getRouteHandlerParameter(astNode, kind)
     }
   }
 
@@ -600,11 +619,9 @@ module Express {
     }
 
     override predicate definesExplicitly(string headerName, Expr headerValue) {
-      exists (DataFlow::SourceNode headers, PropWriteNode pwn |
+      exists (DataFlow::SourceNode headers |
         headers.flowsToExpr(astNode.getArgument(0)) and
-        headers.flowsToExpr(pwn.getBase()) and
-        pwn.getPropertyName() = headerName and
-        pwn.getRhs() = headerValue
+        headers.hasPropertyWrite(headerName, DataFlow::valueNode(headerValue))
       )
     }
 
@@ -661,11 +678,11 @@ module Express {
     RouteHandler rh;
 
     TemplateInput() {
-      exists (MethodCallExpr mce, DataFlow::SourceNode locals, PropWriteNode pw |
+      exists (MethodCallExpr mce, DataFlow::SourceNode locals, DataFlow::PropWrite pw |
         mce.calls(rh.getAResponseExpr(), "render") and
         locals.flowsToExpr(mce.getArgument(1)) and
-        locals.flowsToExpr(pw.getBase()) and
-        pw.getRhs() = this
+        locals.flowsTo(pw.getBase()) and
+        pw.getRhs().asExpr() = this
       )
     }
 
@@ -763,12 +780,12 @@ module Express {
       exists (DataFlow::CallNode call, DataFlow::ModuleImportNode mod |
         mod.getPath() = "express-basic-auth" and
         call = mod.getAnInvocation() and
-        exists (DataFlow::ObjectExprNode usersSrc, PropWriteNode pwn |
+        exists (DataFlow::ObjectExprNode usersSrc, DataFlow::PropWrite pwn |
           usersSrc.flowsTo(call.getOptionArgument(0, "users")) and
-          usersSrc.flowsToExpr(pwn.getBase()) |
+          usersSrc.flowsTo(pwn.getBase()) |
           this = pwn.getPropertyNameExpr() and kind = "user name"
           or
-          this = pwn.getRhs() and kind = "password"
+          this = pwn.getRhs().asExpr() and kind = "password"
         )
       )
     }
@@ -791,4 +808,69 @@ module Express {
       result = DataFlow::valueNode(astNode.getArgument(0))
     }
   }
+
+  /**
+   * A function that looks like an Express route handler.
+   */
+  class RouteHandlerCandidate extends DataFlow::FunctionNode {
+
+    override Function astNode;
+
+    RouteHandlerCandidate() {
+      exists (string request, string response, string next, string error |
+        (request = "request" or request = "req") and
+        (response = "response" or response = "res") and
+        (next = "next") and
+        (error = "error" or error = "err") |
+        // heuristic: parameter names match the Express documentation
+        astNode.getNumParameter() >= 2 and
+        getRouteHandlerParameter(astNode, "request").getName() = request and
+        getRouteHandlerParameter(astNode, "response").getName() = response and
+        (astNode.getNumParameter() >= 3 implies getRouteHandlerParameter(astNode, "next").getName() = next) and
+        (astNode.getNumParameter() = 4 implies getRouteHandlerParameter(astNode, "error").getName() = error) and
+        not (
+          // heuristic: max four parameters (Express will only supply four arguments)
+          astNode.getNumParameter() > 4 or
+          // heuristic: not a class method (Express invokes this with a function call)
+          astNode = any(MethodDefinition def).getBody() or
+          // heuristic: does not return anything (Express will not use the return value)
+          exists(getFunction().getAReturnedExpr()) or
+          // heuristic: is not invoked (Express invokes this at a call site we can not reason precisely about)
+          exists(CallSite cs | cs.getACallee() = astNode)
+        )
+      )
+    }
+  }
+
+  /**
+   * Tracking for `RouteHandlerCandidate`.
+   */
+  private class TrackedRouteHandlerCandidate extends DataFlow::TrackedNode {
+
+    TrackedRouteHandlerCandidate() {
+      this instanceof RouteHandlerCandidate
+    }
+
+  }
+
+  /**
+   * A function that looks like an Express route handler and flows to a route setup.
+   */
+  class TrackedRouteHandlerCandidateWithSetup extends RouteHandler, HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
+
+    override Function astNode;
+
+    TrackedRouteHandlerCandidateWithSetup() {
+      exists(TrackedRouteHandlerCandidate tracked |
+        tracked.flowsTo(any(RouteSetup s).getARouteHandlerExpr().flow()) and
+        this = tracked
+      )
+    }
+
+    override SimpleParameter getRouteHandlerParameter(string kind) {
+      result = getRouteHandlerParameter(astNode, kind)
+    }
+
+  }
+
 }

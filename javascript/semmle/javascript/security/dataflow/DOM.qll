@@ -31,9 +31,36 @@ class DOMGlobalVariable extends GlobalVariable {
   }
 }
 
+private DataFlow::SourceNode domElementCollection() {
+  exists (string collectionName |
+    collectionName = "getElementsByClassName" or
+    collectionName = "getElementsByName" or
+    collectionName = "getElementsByTagName" or
+    collectionName = "getElementsByTagNameNS" or
+    collectionName = "querySelectorAll" |
+    (
+      result = document().getAMethodCall(collectionName) or
+      result = DataFlow::globalVarRef(collectionName).getACall()
+    )
+  )
+}
+
+private DataFlow::SourceNode domElementCreationOrQuery() {
+  exists (string methodName |
+    methodName = "createElement" or
+    methodName = "createElementNS" or
+    methodName = "getElementById" or
+    methodName = "querySelector" |
+    result = document().getAMethodCall(methodName) or
+    result = DataFlow::globalVarRef(methodName).getACall()
+  )
+}
+
 private DataFlow::SourceNode domValueSource() {
   result.asExpr().(VarAccess).getVariable() instanceof DOMGlobalVariable or
-  result = domValueSource().getAPropertyAccess(_)
+  result = domValueSource().getAPropertyAccess(_) or
+  result = domElementCreationOrQuery() or
+  result = domElementCollection()
 }
 
 /** Holds if `e` could hold a value that comes from the DOM. */
@@ -43,13 +70,20 @@ predicate isDomValue(Expr e) {
 
 /** Holds if `e` could refer to the `location` property of a DOM node. */
 predicate isLocation(Expr e) {
-  e = domValueSource().getAPropertyAccess("location").asExpr() or
+  e = domValueSource().getAPropertyReference("location").asExpr() or
   e.accessesGlobal("location")
+}
+
+/**
+ * Gets a reference to the 'document' object.
+ */
+DataFlow::SourceNode document() {
+  result = DataFlow::globalVarRef("document")
 }
 
 /** Holds if `e` could refer to the `document` object. */
 predicate isDocument(Expr e) {
-  DataFlow::globalVarRef("document").flowsToExpr(e)
+  document().flowsToExpr(e)
 }
 
 /** Holds if `e` could refer to the document URL. */
@@ -130,26 +164,18 @@ class DomPropWriteNode extends Assignment {
 }
 
 /**
- * Holds if `e` is an access to `window.localStorage` or `window.sessionStorage`.
- */
-private predicate isWebStorage(Expr e) {
-  e.accessesGlobal(any(string name | name = "localStorage" or name = "sessionStorage"))
-}
-
-/**
- * A value written to web storage, like localStorage or sessionStorage.
+ * A value written to web storage, like `localStorage` or `sessionStorage`.
  */
 class WebStorageWrite extends Expr {
   WebStorageWrite(){
-    // an assignment to `window.localStorage[someProp]`
-    exists(PropWriteNode pwn |
-      isWebStorage(pwn.getBase()) and
-      this = pwn.getRhs()) or
-    // an invocation of `window.localStorage.setItem`
-    exists (MethodCallExpr mce |
-      isWebStorage(mce.getReceiver()) and
-      mce.getMethodName() = "setItem" and
-      this = mce.getArgument(1)
+    exists (DataFlow::SourceNode webStorage |
+      webStorage = DataFlow::globalVarRef("localStorage") or
+      webStorage = DataFlow::globalVarRef("sessionStorage") |
+      // an assignment to `window.localStorage[someProp]`
+      webStorage.hasPropertyWrite(_, DataFlow::valueNode(this))
+      or
+      // an invocation of `window.localStorage.setItem`
+      this = webStorage.getAMethodCall("setItem").getArgument(1).asExpr()
     )
   }
 }

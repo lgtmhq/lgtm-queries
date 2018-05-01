@@ -20,117 +20,136 @@ import javascript
 import semmle.javascript.security.dataflow.RemoteFlowSources
 import semmle.javascript.frameworks.jQuery
 
-/**
- * A data flow source for XSS vulnerabilities.
- */
-abstract class XssSource extends DataFlow::Node { }
+module DomBasedXss {
+  /**
+   * A data flow source for XSS vulnerabilities.
+   */
+  abstract class Source extends DataFlow::Node { }
 
-/**
- * A data flow sink for XSS vulnerabilities.
- */
-abstract class XssSink extends DataFlow::Node { }
+  /**
+   * A data flow sink for XSS vulnerabilities.
+   */
+  abstract class Sink extends DataFlow::Node { }
 
-class DefaultSink extends XssSink {
-  DefaultSink() {
-    this instanceof DomSink or
-    this instanceof LibrarySink
+  class DefaultSink extends Sink {
+    DefaultSink() {
+      this instanceof DomSink or
+      this instanceof LibrarySink
+    }
+  }
+
+  /**
+   * A sanitizer for XSS vulnerabilities.
+   */
+  abstract class Sanitizer extends DataFlow::Node { }
+
+  /**
+   * A taint-tracking configuration for reasoning about XSS.
+   */
+  class Configuration extends TaintTracking::Configuration {
+    Configuration() { 
+      this = "DomBasedXss" and
+      exists(Source s) and exists(Sink s)
+    }
+
+    override predicate isSource(DataFlow::Node source) {
+      source instanceof Source
+    }
+
+    override predicate isSink(DataFlow::Node sink) {
+      sink instanceof Sink
+    }
+
+    override predicate isSanitizer(DataFlow::Node node) {
+      super.isSanitizer(node) or
+      isSafeLocationProperty(node.asExpr()) or
+      node instanceof Sanitizer
+    }
+  }
+
+  /** A source of remote user input, considered as a flow source for DOM-based XSS. */
+  class RemoteFlowSourceAsSource extends Source {
+    RemoteFlowSourceAsSource() { this instanceof RemoteFlowSource }
+  }
+
+  /**
+   * An access of the URL of this page, or of the referrer to this page.
+   */
+  class LocationSource extends Source, DataFlow::ValueNode {
+    LocationSource() {
+      isDocumentURL(astNode)
+    }
+  }
+
+  /**
+   * An expression whose value is interpreted as HTML or CSS
+   * and may be inserted into the DOM through a library.
+   */
+  class LibrarySink extends Sink {
+    LibrarySink() {
+      // Call to a jQuery method that inserts its argument into the DOM
+      exists(JQueryMethodCall call |
+        call.interpretsArgumentsAsHtml() and
+        this.asExpr() = call.getAnArgument()
+      ) or
+      any(AngularJS::AngularJSCall call).interpretsArgumentAsHtml(this.asExpr())
+    }
+  }
+
+  /**
+   * An expression whose value is interpreted as HTML or CSS
+   * and may be inserted into the DOM.
+   */
+  class DomSink extends Sink {
+    DomSink() {
+      // Call to a DOM function that inserts its argument into the DOM
+      any(DomMethodCallExpr call).interpretsArgumentsAsHTML(this.asExpr())
+      or
+      // Assignment to a dangerous DOM property
+      exists (DomPropWriteNode pw |
+        pw.interpretsValueAsHTML() and
+        this = DataFlow::valueNode(pw.getRhs())
+      )
+    }
+  }
+
+  /**
+   * An expression whose value is interpreted as HTML by a DOMParser.
+   */
+  class DomParserSink extends Sink {
+    DomParserSink() {
+      exists (DataFlow::GlobalVarRefNode domParser |
+        domParser.getName() = "DOMParser" and
+        this = domParser.getAnInstantiation().getAMethodCall("parseFromString").getArgument(0)
+      )
+    }
+  }
+
+  /**
+   * A React `dangerouslySetInnerHTML` attribute, viewed as an XSS sink.
+   *
+   * Any write to the `__html` property of an object assigned to this attribute
+   * is considered an XSS sink.
+   */
+  class DangerouslySetInnerHtmlSink extends Sink, DataFlow::ValueNode {
+    DangerouslySetInnerHtmlSink() {
+      exists (JSXAttribute attr, DataFlow::SourceNode valueSrc |
+        attr.getName() = "dangerouslySetInnerHTML" and
+        valueSrc.flowsToExpr(attr.getValue()) and
+        valueSrc.hasPropertyWrite("__html", this)
+      )
+    }
   }
 }
 
-/**
- * A sanitizer for XSS vulnerabilities.
- */
-abstract class XssSanitizer extends DataFlow::Node { }
+/** DEPRECATED: Use `DomBasedXss::Source` instead. */
+deprecated class XssSource = DomBasedXss::Source;
 
-/**
- * A taint-tracking configuration for reasoning about XSS.
- */
-class XssDataFlowConfiguration extends TaintTracking::Configuration {
-  XssDataFlowConfiguration() { this = "XssDataFlowConfiguration" }
+/** DEPRECATED: Use `DomBasedXss::Sink` instead. */
+deprecated class XssSink = DomBasedXss::Sink;
 
-  override predicate isSource(DataFlow::Node source) {
-    source instanceof XssSource or
-    source instanceof RemoteFlowSource
-  }
+/** DEPRECATED: Use `DomBasedXss::Sanitizer` instead. */
+deprecated class XssSanitizer = DomBasedXss::Sanitizer;
 
-  override predicate isSink(DataFlow::Node sink) {
-    sink instanceof XssSink
-  }
-
-  override predicate isSanitizer(DataFlow::Node node) {
-    super.isSanitizer(node) or
-    isSafeLocationProperty(node.asExpr()) or
-    node instanceof XssSanitizer
-  }
-}
-
-/**
- * An access of the URL of this page, or of the referrer to this page.
- */
-class LocationSource extends XssSource, DataFlow::ValueNode {
-  LocationSource() {
-    isDocumentURL(astNode)
-  }
-}
-
-/**
- * An expression whose value is interpreted as HTML or CSS
- * and may be inserted into the DOM through a library.
- */
-class LibrarySink extends XssSink {
-  LibrarySink() {
-    // Call to a jQuery method that inserts its argument into the DOM
-    exists(JQueryMethodCall call |
-      call.interpretsArgumentsAsHtml() and
-      this.asExpr() = call.getAnArgument()
-    ) or
-    any(AngularJS::AngularJSCall call).interpretsArgumentAsHtml(this.asExpr())
-  }
-}
-
-/**
- * An expression whose value is interpreted as HTML or CSS
- * and may be inserted into the DOM.
- */
-class DomSink extends XssSink {
-  DomSink() {
-    // Call to a DOM function that inserts its argument into the DOM
-    any(DomMethodCallExpr call).interpretsArgumentsAsHTML(this.asExpr())
-    or
-    // Assignment to a dangerous DOM property
-    exists (DomPropWriteNode pw |
-      pw.interpretsValueAsHTML() and
-      this = DataFlow::valueNode(pw.getRhs())
-    )
-  }
-}
-
-/**
- * An expression whose value is interpreted as HTML by a DOMParser.
- */
-class DomParserSink extends XssSink {
-  DomParserSink() {
-    exists (DataFlow::GlobalVarRefNode domParser |
-      domParser.getName() = "DOMParser" and
-      this = domParser.getAnInstantiation().getAMethodCall("parseFromString").getArgument(0)
-    )
-  }
-}
-
-/**
- * A React `dangerouslySetInnerHTML` attribute, viewed as an XSS sink.
- *
- * Any write to the `__html` property of an object assigned to this attribute
- * is considered an XSS sink.
- */
-class DangerouslySetInnerHtmlSink extends XssSink, DataFlow::ValueNode {
-  DangerouslySetInnerHtmlSink() {
-    exists (JSXAttribute attr, DataFlow::SourceNode valueSrc, PropWriteNode pwn |
-      attr.getName() = "dangerouslySetInnerHTML" and
-      valueSrc.flowsToExpr(attr.getValue()) and
-      valueSrc.flowsToExpr(pwn.getBase()) and
-      pwn.getPropertyName() = "__html" and
-      astNode = pwn.getRhs()
-    )
-  }
-}
+/** DEPRECATED: Use `DomBasedXss::Configuration` instead. */
+deprecated class XssDataFlowConfiguration = DomBasedXss::Configuration;

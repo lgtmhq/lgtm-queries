@@ -87,10 +87,10 @@ private AbstractValue getDefaultReturnValue(ImmediatelyInvokedFunctionExpr f) {
  * Flow analysis for `this` expressions inside functions.
  */
 private abstract class AnalyzedThisExpr extends DataFlow::AnalyzedValueNode {
-  Function binder;
+  DataFlow::FunctionNode binder;
 
   AnalyzedThisExpr() {
-    binder = astNode.(ThisExpr).getBinder()
+    binder.getFunction() = astNode.(ThisExpr).getBinder()
   }
 }
 
@@ -108,17 +108,13 @@ private class AnalyzedThisInBoundFunction extends AnalyzedThisExpr {
   AnalyzedValueNode thisSource;
 
   AnalyzedThisInBoundFunction() {
-    exists(MethodCallExpr bindingCall, Expr binderRef, string name |
-      name = "bind" or
-      name = "call" or
-      name = "apply" |
-      binderRef.flow().getALocalSource() = DataFlow::valueNode(binder) and
-      bindingCall.calls(binderRef, name) and
-      thisSource.asExpr() = bindingCall.getArgument(0)
+    exists(string name |
+      name = "bind" or name = "call" or name = "apply" |
+      thisSource = binder.getAMethodCall(name).getArgument(0)
     )
     or
     exists(FunctionBindExpr binding |
-      binding.getCallee().flow().getALocalSource() = DataFlow::valueNode(binder) and
+      binder.flowsToExpr(binding.getCallee()) and
       thisSource.asExpr() = binding.getObject()
     )
   }
@@ -141,7 +137,7 @@ private class AnalyzedThisInConstructorFunction extends AnalyzedThisExpr {
   AbstractValue value;
 
   AnalyzedThisInConstructorFunction() {
-    value = TAbstractInstance(TAbstractFunction(binder))
+    value = TAbstractInstance(TAbstractFunction(binder.getFunction()))
   }
 
   override AbstractValue getALocalValue() {
@@ -164,7 +160,7 @@ private class AnalyzedThisInInstanceMember extends AnalyzedThisExpr {
     exists (MemberDefinition m |
       m = c.getAMember() and
       not m.isStatic() and
-      binder = c.getAMember().getInit()
+      binder = DataFlow::valueNode(c.getAMember().getInit())
     )
   }
 
@@ -195,7 +191,7 @@ private class AnalyzedThisInPropertyFunction extends AnalyzedThisExpr {
   DataFlow::AnalyzedNode base;
 
   AnalyzedThisInPropertyFunction() {
-    exists (PropWriteNode pwn |
+    exists (DataFlow::PropWrite pwn |
       pwn.getRhs() = binder and
       base = pwn.getBase().analyze()
     )

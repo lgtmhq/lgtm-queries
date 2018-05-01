@@ -25,9 +25,9 @@
  */
 
 import javascript
-import semmle.javascript.security.dataflow.StackTraceExposure
+import semmle.javascript.security.dataflow.StackTraceExposure::StackTraceExposure
 
-from StackTraceExposureTrackingConfig cfg, DataFlow::Node source, DataFlow::Node sink
+from Configuration cfg, Source source, Sink sink
 where cfg.flowsFrom(sink, source)
 select sink, "Stack trace information from $@ may be exposed to an external user here.",
        source, "here"

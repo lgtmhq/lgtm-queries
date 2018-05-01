@@ -73,7 +73,7 @@ private class AnalyzedPropertyAccess extends AnalyzedPropertyRead, DataFlow::Val
 
   AnalyzedPropertyAccess() {
     astNode.accesses(baseNode.asExpr(), propName) and
-    not exists(propName.toInt()) and
+    isNonNumericPropertyName(propName) and
     astNode instanceof RValue
   }
 
@@ -81,6 +81,16 @@ private class AnalyzedPropertyAccess extends AnalyzedPropertyRead, DataFlow::Val
     base = baseNode.getALocalValue() and
     prop = propName
   }
+}
+
+/**
+ * Holds if `prop` is a property name that does not look like an array index.
+ */
+private predicate isNonNumericPropertyName(string prop) {
+  exists (PropAccess pacc |
+    prop = pacc.getPropertyName() and
+    not exists(prop.toInt())
+  )
 }
 
 /**
@@ -106,16 +116,18 @@ abstract class AnalyzedPropertyWrite extends DataFlow::Node {
 /**
  * Flow analysis for property writes.
  */
-private class AnalyzedExplicitPropertyWrite extends AnalyzedPropertyWrite, DataFlow::ValueNode {
-  AnalyzedExplicitPropertyWrite() { astNode instanceof PropWriteNode }
+private class AnalyzedExplicitPropertyWrite extends AnalyzedPropertyWrite {
+  AnalyzedExplicitPropertyWrite() {
+    this instanceof DataFlow::PropWrite
+  }
 
   override predicate writes(AbstractValue base, string prop, DataFlow::AnalyzedNode source) {
-    explicitPropertyWrite(astNode, base, prop, source)
+    explicitPropertyWrite(this, base, prop, source)
   }
 }
 
 pragma[noopt]
-private predicate explicitPropertyWrite(PropWriteNode pw, AbstractValue base,
+private predicate explicitPropertyWrite(DataFlow::PropWrite pw, AbstractValue base,
                                         string prop, DataFlow::Node source) {
   exists (DataFlow::AnalyzedNode baseNode |
     pw.writes(baseNode, prop, source) and

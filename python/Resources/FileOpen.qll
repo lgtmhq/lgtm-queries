@@ -42,7 +42,7 @@ predicate expr_is_open(ControlFlowNode n, ControlFlowNode open) {
 /** Holds if `call` wraps the object referred to by `v` and returns it */
 private predicate wraps_file(CallNode call, EssaVariable v) {
     exists(ClassObject cls |
-        call.getFunction().refersTo(cls) and
+        call = cls.getACall() and
         call.getAnArg() = v.getAUse()
     )
 }

@@ -11,9 +11,8 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-/**
- * DEPRECATED: Either import `semmle.javascript.dataflow.TaintTracking`
- *             directly, or import `javascript`.
- */
-
-import semmle.javascript.dataflow.TaintTracking
+private import implementations.Inet
+private import implementations.Memcpy
+private import implementations.Strcat
+private import implementations.Strcpy
+private import implementations.Strftime

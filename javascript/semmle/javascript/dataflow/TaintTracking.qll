@@ -318,11 +318,12 @@ module TaintTracking {
             name = "toLocaleLowerCase" or
             name = "toLocaleUpperCase" or
             name = "toLowerCase" or
-            name = "toString" or
             name = "toUpperCase" or
             name = "trim" or
             name = "trimLeft" or
             name = "trimRight" or
+            // sorted, interesting, properties of Object.prototype
+            name = "toString" or
             name = "valueOf"
           ) or
           exists (int i | pred.asExpr() = astNode.(MethodCallExpr).getArgument(i) |
@@ -519,7 +520,7 @@ module TaintTracking {
         // one operand is of the form `o[x]`
         idx = getAnOperand() and idx.getPropertyNameExpr() = x and
         // and the other one is guaranteed to be `undefined`
-        undef.getTheType() = TTUndefined()
+        forex (InferredType tp | tp = undef.getAType() | tp = TTUndefined())
       )
     }
 

@@ -42,7 +42,13 @@ import javascript
 /**
  * A route handler that should be rate-limited.
  */
-abstract class ExpensiveRouteHandler extends Express::RouteHandler {
+abstract class ExpensiveRouteHandler extends HTTP::RouteHandler {
+  Express::RouteHandler impl;
+
+  ExpensiveRouteHandler() {
+    this = impl
+  }
+
   /**
    * Holds if `explanation` is a string explaining why this route handler should be rate-limited.
    *
@@ -51,6 +57,10 @@ abstract class ExpensiveRouteHandler extends Express::RouteHandler {
    * `referenceLabel` are ignored and should be bound to dummy values.
    */
   abstract predicate explain(string explanation, DataFlow::Node reference, string referenceLabel);
+
+  override HTTP::HeaderDefinition getAResponseHeader(string name) {
+    result = impl.getAResponseHeader(name)
+  }
 }
 
 /**
@@ -65,11 +75,11 @@ abstract class RateLimitedRouteHandlerExpr extends Express::RouteHandlerExpr {
 /**
  * A route handler that performs an expensive action, and hence should be rate-limited.
  */
-class RouteHandlerPerformingExpensiveAction extends ExpensiveRouteHandler {
+class RouteHandlerPerformingExpensiveAction extends ExpensiveRouteHandler, DataFlow::ValueNode {
   ExpensiveAction action;
 
   RouteHandlerPerformingExpensiveAction() {
-    function = action.getContainer()
+    astNode = action.getContainer()
   }
 
   override predicate explain(string explanation, DataFlow::Node reference, string referenceLabel) {

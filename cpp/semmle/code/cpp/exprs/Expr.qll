@@ -173,6 +173,35 @@ class Expr extends StmtParent, @expr {
     isPRValueCategory() or isXValueCategory()
   }
   
+  
+  /**
+   * Gets the parent of this expression, if any, in an alternative syntax tree
+   * that has `Conversion`s as part of the tree.
+   */
+  Element getParentWithConversions() { convparents(this,_,result) }
+  
+  /**
+   * Holds if this expression will not be evaluated because of its context,
+   * such as an expression inside a sizeof.
+   */
+  predicate isUnevaluated() {
+    exists (Element e |
+      e = getParentWithConversions+() |
+      e instanceof SizeofOperator or
+      exists ( Expr e2 |
+        e.(TypeidOperator).getExpr() = e2 and
+        (
+          not e2.getActualType().getUnspecifiedType().(Class).isPolymorphic() or
+          not e2.isGLValueCategory()
+        )
+      ) or
+      e instanceof NoExceptExpr or
+      e instanceof AlignofOperator
+    ) or exists (Decltype d |
+      d.getExpr() = getParentWithConversions*()
+    )
+  }
+  
   /**
    * Holds if this expression has undergone an lvalue-to-rvalue conversion to
    * extract its value.
@@ -749,4 +778,18 @@ class NoExceptExpr extends Expr, @noexceptexpr {
   Expr getExpr() {
     result = this.getChild(0)
   }
+}
+
+/**
+ * Holds if `child` is the `n`th child of `parent` in an alternative syntax
+ * tree that has `Conversion`s as part of the tree.
+ */
+private predicate convparents(Expr child, int idx, Element parent) {
+  child.getConversion() = parent and
+  idx = 0
+  or
+  exists(Expr astChild |
+    exprparents(astChild, idx, parent) and
+    child = astChild.getFullyConverted()
+  )
 }

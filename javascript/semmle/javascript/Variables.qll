@@ -54,6 +54,22 @@ class Scope extends @scope {
   }
 }
 
+/**
+ * A program element that induces a scope.
+ */
+class ScopeElement extends ASTNode {
+  Scope s;
+
+  ScopeElement() {
+    this = s.getScopeElement()
+  }
+
+  /** Gets the scope induced by this element. */
+  Scope getScope() {
+    result = s
+  }
+}
+
 /** The global scope. */
 class GlobalScope extends Scope, @globalscope {
   override string toString() {
@@ -224,12 +240,6 @@ class Variable extends @variable, LexicalName {
   /** Gets a definition for this variable. */
   VarDef getADefinition() {
     result.getAVariable() = this
-  }
-
-  /** DEPRECATED: Use `getAnAssignedExpr` instead. */
-  deprecated
-  Expr getAnAssignedValue() {
-    result = getAnAssignedExpr()
   }
 
   /** Gets an expression that is directly stored in this variable. */

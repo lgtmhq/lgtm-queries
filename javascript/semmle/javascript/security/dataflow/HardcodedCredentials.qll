@@ -17,53 +17,72 @@
 import javascript
 private import semmle.javascript.security.SensitiveActions
 
-/**
- * A data flow source for hardcoded credentials.
- */
-abstract class HardcodedCredentialsSource extends DataFlow::Node { }
+module HardcodedCredentials {
+  /**
+   * A data flow source for hardcoded credentials.
+   */
+  abstract class Source extends DataFlow::Node { }
 
-/**
- * A data flow sink for hardcoded credentials.
- */
-abstract class HardcodedCredentialsSink extends DataFlow::Node {
-  abstract string getKind();
+  /**
+   * A data flow sink for hardcoded credentials.
+   */
+  abstract class Sink extends DataFlow::Node {
+    abstract string getKind();
+  }
+
+  /**
+   * A sanitizer for hardcoded credentials.
+   */
+  abstract class Sanitizer extends DataFlow::Node { }
+
+  /**
+   * A data flow tracking configuration for hardcoded credentials.
+   */
+  class Configuration extends DataFlow::Configuration {
+    Configuration() {
+      this = "HardcodedCredentials" and
+      exists(Source s) and exists(Sink s)
+    }
+
+    override
+    predicate isSource(DataFlow::Node source) {
+      source instanceof Source
+    }
+
+    override
+    predicate isSink(DataFlow::Node sink) {
+      sink instanceof Sink
+    }
+  }
+
+  /** A constant string, considered as a source of hardcoded credentials. */
+  class ConstantStringSource extends Source, DataFlow::ValueNode {
+    override ConstantString astNode;
+  }
+
+  /**
+   * A subclass of `Sink` that includes every `CredentialsExpr`
+   * as a credentials sink.
+   */
+  class DefaultCredentialsSink extends Sink {
+    DefaultCredentialsSink() {
+      this.asExpr() instanceof CredentialsExpr
+    }
+
+    override string getKind() {
+      result = this.asExpr().(CredentialsExpr).getCredentialsKind()
+    }
+  }
 }
 
-/**
- * A sanitizer for hardcoded credentials.
- */
-abstract class HardcodedCredentialsSanitizer extends DataFlow::Node { }
+/** DEPRECATED: Use `HardcodedCredentials::Source` instead. */
+deprecated class HardcodedCredentialsSource = HardcodedCredentials::Source;
 
-/**
- * A data flow tracking configuration for hardcoded credentials.
- */
-class HardcodedCredentialsTrackingConfiguration extends DataFlow::Configuration {
-  HardcodedCredentialsTrackingConfiguration() {
-    this = "HardcodedCredentials"
-  }
+/** DEPRECATED: Use `HardcodedCredentials::Sink` instead. */
+deprecated class HardcodedCredentialsSink = HardcodedCredentials::Sink;
 
-  override
-  predicate isSource(DataFlow::Node source) {
-    source instanceof HardcodedCredentialsSource or
-    source.asExpr() instanceof ConstantString
-  }
+/** DEPRECATED: Use `HardcodedCredentials::Sanitizer` instead. */
+deprecated class HardcodedCredentialsSanitizer = HardcodedCredentials::Sanitizer;
 
-  override
-  predicate isSink(DataFlow::Node sink) {
-    sink instanceof HardcodedCredentialsSink
-  }
-}
-
-/**
- * A subclass of `HardcodedCredentialsSink` that includes every `CredentialsExpr`
- * as a credentials sink.
- */
-class DefaultCredentialsSink extends HardcodedCredentialsSink {
-  DefaultCredentialsSink() {
-    this.asExpr() instanceof CredentialsExpr
-  }
-
-  override string getKind() {
-    result = this.asExpr().(CredentialsExpr).getCredentialsKind()
-  }
-}
+/** DEPRECATED: Use `HardcodedCredentials::Configuration` instead. */
+deprecated class HardcodedCredentialsTrackingConfiguration = HardcodedCredentials::Configuration;

@@ -25,8 +25,8 @@
 
 import semmle.javascript.frameworks.React
 
-from PropWriteNode pwn, ReactComponent c
-where pwn.getBase() = c.getAStateAccess().asExpr() and
+from DataFlow::PropWrite pwn, ReactComponent c
+where pwn.getBase() = c.getAStateAccess() and
       // writes in constructors are ok
-      not pwn.(Expr).getEnclosingFunction() instanceof Constructor
+      not pwn.getContainer() instanceof Constructor
 select pwn, "Use `setState` instead of directly modifying component state."

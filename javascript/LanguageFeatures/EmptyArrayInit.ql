@@ -33,13 +33,10 @@ import javascript
  * first omitted array element.
  */
 class OmittedArrayElement extends ArrayExpr {
-  OmittedArrayElement() {
-    hasOmittedElement()
-  }
+  int idx;
 
-  /** Gets the index of the first omitted element in this array expression. */
-  int getFirstOmittedElementIndex() {
-    result = min(int i | elementIsOmitted(i))
+  OmittedArrayElement() {
+    idx = min(int i | elementIsOmitted(i))
   }
 
   /**
@@ -50,40 +47,13 @@ class OmittedArrayElement extends ArrayExpr {
    * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    exists (int i, Location pre, Location post |
-      i = getFirstOmittedElementIndex() and
-      pre = getTokenBeforeElement(i).getLocation() and
-      post = getTokenAfterElement(i).getLocation() and
-      filepath = pre.getFile().getAbsolutePath() and
-      startline = pre.getStartLine() and
-      startcolumn = pre.getStartColumn() and
-      endline = post.getEndLine() and
-      endcolumn = post.getEndColumn()
+    exists (Token pre, Location before, Location after |
+      idx = 0 and pre = getFirstToken() or
+      pre = getElement(idx-1).getLastToken().getNextToken() |
+      before = pre.getLocation() and after = pre.getNextToken().getLocation() and
+      before.hasLocationInfo(filepath, startline, startcolumn, _, _) and
+      after.hasLocationInfo(_, _, _, endline, endcolumn)
     )
-  }
-
-  /**
-   * Gets the token after the `i`th element of this array expression.
-   */
-  Token getTokenAfterElement(int i) {
-    i in [0..getSize()-1] and
-    if exists(getElement(i)) then
-      result = getElement(i).getLastToken().getNextToken()
-    else if i = 0 then
-      result = getFirstToken().getNextToken()
-    else
-      result = getTokenAfterElement(i-1).getNextToken()
-  }
-
-  /**
-   * Gets the token before the `i`th element of this array expression.
-   */
-  Token getTokenBeforeElement(int i) {
-    i in [0..getSize()-1] and
-    if i = 0 then
-      result = getFirstToken()
-    else
-      result = getTokenAfterElement(i-1)
   }
 }
 

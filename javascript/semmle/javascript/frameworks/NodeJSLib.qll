@@ -165,24 +165,6 @@ module NodeJSLib {
     }
   }
 
-  /**
-   * Holds if `nd` is an HTTP request object.
-   *
-   * DEPRECATED: use `instanceof RequestExpr` instead.
-   */
-  deprecated predicate isRequest(Expr nd) {
-    nd instanceof RequestExpr
-  }
-
-  /**
-   * Holds if `nd` is an HTTP response object.
-   *
-   * DEPRECATED: use `instanceof ResponseExpr` instead.
-   */
-  deprecated predicate isResponse(Expr nd) {
-    nd instanceof ResponseExpr
-  }
-
   class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
     ServerDefinition server;
     Expr handler;
@@ -240,29 +222,9 @@ module NodeJSLib {
     }
 
     override predicate definesExplicitly(string headerName, Expr headerValue) {
-      exists (DataFlow::SourceNode headers, PropWriteNode pwn |
+      exists (DataFlow::SourceNode headers |
         headers.flowsToExpr(astNode.getLastArgument()) and
-        headers.flowsToExpr(pwn.getBase()) and
-        pwn.getPropertyName() = headerName and
-        pwn.getRhs() = headerValue
-      )
-    }
-  }
-
-  /**
-   * A call to `url.parse` or `querystring.parse`.
-   */
-  private class UrlParsingFlowTarget extends TaintTracking::DefaultTaintStep, DataFlow::ValueNode {
-    UrlParsingFlowTarget() {
-      astNode.(MethodCallExpr).calls(_, "parse")
-    }
-
-    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
-      succ = this and
-      exists (DataFlow::ModuleImportNode m |
-        m.getPath() = "url" or m.getPath() = "querystring" |
-        this = m.getAMemberCall("parse") and
-        pred.asExpr() = astNode.(CallExpr).getArgument(0)
+        headers.hasPropertyWrite(headerName, DataFlow::valueNode(headerValue))
       )
     }
   }
@@ -325,11 +287,6 @@ module NodeJSLib {
       isCreateServer(this)
     }
   }
-
-  /**
-   * DEPRECATED: Use `ServerDefinition` instead.
-   */
-  deprecated class Server = ServerDefinition;
 
   /** An expression that is passed as `http.request({ auth: <expr> }, ...)`. */
   class Credentials extends CredentialsExpr {

@@ -39,5 +39,6 @@ from PythonModuleObject m, StrConst name, string exported_name
 where declaredInAll(m.getModule(), name) and
 exported_name = name.strValue() and
 not m.hasAttribute(exported_name) and
-not (m.getShortName() = "__init__" and exists(m.getPackage().getModule().getSubModule(exported_name)))
+not (m.getShortName() = "__init__" and exists(m.getPackage().getModule().getSubModule(exported_name))) and
+not exists(ImportStarNode imp | imp.getEnclosingModule() = m.getModule() | not imp.getModule().refersTo(_))
 select name, "The name '" + exported_name  + "' is exported by __all__ but is not defined."

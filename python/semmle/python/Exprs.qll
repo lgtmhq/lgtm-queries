@@ -84,6 +84,8 @@ class Expr extends Expr_, AstNode {
     predicate refersTo(Object value, ClassObject cls, AstNode origin) {
         not py_special_objects(cls, "_semmle_unknown_type")
         and
+        not value = unknownValue()
+        and
         FinalPointsTo::points_to(this.getAFlowNode(), _, value, cls, origin.getAFlowNode())
     }
 
@@ -101,11 +103,15 @@ class Expr extends Expr_, AstNode {
      */
     predicate refersTo(Object value, AstNode origin) {
         FinalPointsTo::points_to(this.getAFlowNode(), _, value, _, origin.getAFlowNode())
+        and
+        not value = unknownValue()
     }
 
     /** Equivalent to `this.refersTo(value, _)` */
     predicate refersTo(Object value) {
         FinalPointsTo::points_to(this.getAFlowNode(), _, value, _, _)
+        and
+        not value = unknownValue()
     }
 
 }
