@@ -95,6 +95,15 @@ class MethodCallNode extends CallNode {
 
   /** Gets the name of the invoked method, if it can be determined. */
   string getMethodName() { result = astNode.getMethodName() }
+
+  /**
+   * Holds if this data flow node calls method `methodName` on receiver node `receiver`.
+   */
+  predicate calls(DataFlow::Node receiver, string methodName) {
+    receiver = getReceiver() and
+    methodName = getMethodName()
+  }
+
 }
 
 /** A data flow node corresponding to a `new` expression. */
@@ -220,4 +229,21 @@ class ModuleImportNode extends DataFlow::DefaultSourceNode {
  */
 ModuleImportNode moduleImport(string path) {
   result.getPath() = path
+}
+
+/**
+ * Gets a data flow node that either imports `m` from the module with
+ * the given `path`, or accesses `m` as a member on a default or
+ * namespace import from `path`.
+ */
+DataFlow::SourceNode moduleMember(string path, string m) {
+  result = moduleImport(path).getAPropertyAccess(m)
+  or
+  exists (ImportDeclaration id, ImportSpecifier is, SsaExplicitDefinition ssa |
+    id.getImportedPath().getValue() = path and
+    is = id.getASpecifier() and
+    is.getImportedName() = m and
+    ssa.getDef() = is and
+    result = DataFlow::ssaDefinitionNode(ssa)
+  )
 }

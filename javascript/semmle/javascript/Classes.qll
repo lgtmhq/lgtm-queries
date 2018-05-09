@@ -118,7 +118,7 @@ class ClassOrInterface extends @classorinterface, TypeParameterized {
    * Anonymous classes and interfaces do not have a canonical name.
    */
   TypeName getTypeName() {
-    result = NameResolution::getTypeNameFromDefinition(this)
+    result.getADefinition() = this
   }
 }
 

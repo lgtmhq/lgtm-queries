@@ -75,22 +75,49 @@ abstract class RegExpTerm extends Locatable, @regexpterm {
   RegExpTerm getPredecessor() {
     exists (RegExpSequence seq, int i |
       seq.getChild(i) = this and
-      seq.getChild(i-1) = result
+      seq.getChild(i-getDirection()) = result
     ) or
-    result = ((RegExpTerm)getParent()).getPredecessor()
+    result = getParent().(RegExpTerm).getPredecessor()
   }
 
   /** Gets the regular expression term that is matched after this one, if any. */
   RegExpTerm getSuccessor() {
     exists (RegExpSequence seq, int i |
       seq.getChild(i) = this and
-      seq.getChild(i+1) = result
+      seq.getChild(i+getDirection()) = result
     ) or
     exists (RegExpTerm parent |
       parent = getParent() and
-      not parent instanceof RegExpLookahead |
+      not parent instanceof RegExpSubPattern |
       result = parent.getSuccessor()
     )
+  }
+
+  /**
+   * Gets the matching direction of this term: `1` if it is in a forward-matching
+   * context, `-1` if it is in a backward-matching context.
+   */
+  private int getDirection() {
+    if isInBackwardMatchingContext() then
+      result = -1
+    else
+      result = 1
+  }
+
+  /**
+   * Holds if this regular term is in a forward-matching context, that is,
+   * it has no enclosing lookbehind assertions.
+   */
+  predicate isInForwardMatchingContext() {
+    not isInBackwardMatchingContext()
+  }
+
+  /**
+   * Holds if this regular term is in a backward-matching context, that is,
+   * it has an enclosing lookbehind assertions.
+   */
+  predicate isInBackwardMatchingContext() {
+    this = any(RegExpLookbehind lbh).getAChild+()
   }
 }
 
@@ -210,8 +237,8 @@ class RegExpNonWordBoundary extends RegExpTerm, @regexp_nonwordboundary {
   }
 }
 
-/** A zero-width lookahead assertion. */
-abstract class RegExpLookahead extends RegExpTerm {
+/** A zero-width lookahead or lookbehind assertion. */
+class RegExpSubPattern extends RegExpTerm, @regexp_subpattern {
   /** Gets the lookahead term. */
   RegExpTerm getOperand() {
     result = getAChild()
@@ -222,12 +249,28 @@ abstract class RegExpLookahead extends RegExpTerm {
   }
 }
 
+/** A zero-width lookahead assertion. */
+class RegExpLookahead extends RegExpSubPattern, @regexp_lookahead {
+}
+
+/** A zero-width lookbehind assertion. */
+class RegExpLookbehind extends RegExpSubPattern, @regexp_lookbehind {
+}
+
 /** A positive-lookahead assertion, that is, a term of the form `(?=...)`. */
 class RegExpPositiveLookahead extends RegExpLookahead, @regexp_positive_lookahead {
 }
 
 /** A negative-lookahead assertion, that is, a term of the form `(?!...)`. */
 class RegExpNegativeLookahead extends RegExpLookahead, @regexp_negative_lookahead {
+}
+
+/** A positive-lookbehind assertion, that is, a term of the form `(?<=...)`. */
+class RegExpPositiveLookbehind extends RegExpLookbehind, @regexp_positive_lookbehind {
+}
+
+/** A negative-lookbehind assertion, that is, a term of the form `(?<!...)`. */
+class RegExpNegativeLookbehind extends RegExpLookbehind, @regexp_negative_lookbehind {
 }
 
 /** A star-quantified term, that is, a term of the form `...*`. */
@@ -296,6 +339,16 @@ class RegExpGroup extends RegExpTerm, @regexp_group {
     isCapture(this, result)
   }
 
+  /** Holds if this is a named capture group. */
+  predicate isNamed() {
+    isNamedCapture(this, _)
+  }
+
+  /** Gets the name of this capture group, if any. */
+  string getName() {
+    isNamedCapture(this, result)
+  }
+
   override predicate isNullable() {
     getAChild().isNullable()
   }
@@ -337,21 +390,61 @@ class RegExpCharacterClassEscape extends RegExpEscape, @regexp_char_class_escape
   }
 }
 
+/** A Unicode property escape such as `\p{Number}` or `\p{Script=Greek}`. */
+class RegExpUnicodePropertyEscape extends RegExpEscape, @regexp_unicode_property_escape {
+  /**
+   * Gets the name of this Unicode property; for example, `Number` for `\p{Number}` and
+   * `Script` for `\p{Script=Greek}`.
+   */
+  string getName() {
+    unicodePropertyEscapeName(this, result)
+  }
+
+  /**
+   * Gets the value of this Unicode property, if any.
+   *
+   * For example, the value of Unicode property `\p{Script=Greek}` is `Greek`, while
+   * `\p{Number}` does not have a value.
+   */
+  string getValue() {
+    unicodePropertyEscapeValue(this, result)
+  }
+
+  override predicate isNullable() {
+    none()
+  }
+}
+
 /** An identity escape such as `\\` or `\/` in a regular expression. */
 class RegExpIdentityEscape extends RegExpCharEscape, @regexp_id_escape {
 }
 
-/** A back reference, that is, a term of the form `\i` in a regular expression. */
+/**
+ * A back reference, that is, a term of the form `\i` or `\k<name>`
+ * in a regular expression.
+ */
 class RegExpBackRef extends RegExpTerm, @regexp_backref {
-  /** Gets the number of the capture group this back reference refers to. */
+  /**
+   * Gets the number of the capture group this back reference refers to, if any.
+   */
   int getNumber() {
     backref(this, result)
+  }
+
+  /**
+   * Gets the name of the capture group this back reference refers to, if any.
+   */
+  string getName() {
+    namedBackref(this, result)
   }
 
   /** Gets the capture group this back reference refers to. */
   RegExpGroup getGroup() {
     result.getLiteral() = this.getLiteral() and
-    result.getNumber() = this.getNumber()
+    (
+     result.getNumber() = this.getNumber() or
+     result.getName() = this.getName()
+    )
   }
 
   override predicate isNullable() {

@@ -46,27 +46,6 @@ predicate var_definition(LocalScopeVariable v, ControlFlowNode node) {
 }
 
 /**
- * Holds if `e` is used in a context where it is never dereferenced.  This
- * is a helper predicate for `addressTakenVariable`. It was added because
- * of this macro, which is used in the Linux source code:
- *
- *   #define min(x, y) ({        \
- *       typeof(x) _min1 = (x);      \
- *       typeof(y) _min2 = (y);      \
- *       (void) (&_min1 == &_min2);    \
- *       _min1 < _min2 ? _min1 : _min2; })
- *
- * The addresses of `_min1` and `_min2` are taken, but it does not cause
- * any aliasing, so there is no need to disable SSA for these variables.
- */
-private predicate neverDereferenced(Expr e) {
-  e.getParent() instanceof ComparisonOperation or
-  e.getParent() instanceof ExprStmt or
-  neverDereferenced(e.getParent().(PointerAddExpr)) or
-  neverDereferenced(e.getParent().(PointerSubExpr))
-}
-
-/**
  * Stack variables that have their address taken are excluded from the
  * analysis because the pointer could be used to change the value at
  * any moment.
@@ -85,36 +64,12 @@ private predicate addressTakenVariable(LocalScopeVariable var) {
     // Find a VariableAccess that takes the address of `var`.
     exists (VariableAccess va
     | va = var.getAnAccess() and
-
+      va.isAddressOfAccessNonConst() and
       // If the address is passed to a function then we will trust that it
       // is only used to modify the variable for the duration of the
       // function call.
-      not exists(Call call | call.passesByReference(_, va))
-
-    | // Taking the address.
-      exists (AddressOfExpr addrExpr
-      | addrExpr.getOperand() = va
-        and
-
-        // If the address is never dereferenced then there is no concern
-        // about aliasing, so we can safely ignore it.
-        not neverDereferenced(addrExpr)
-        and
-
-        // If the pointer is const then we will trust that it will not be
-        // used to modify the variable.
-        not (addrExpr.getFullyConverted().getUnderlyingType().(PointerType)
-                     .getBaseType().isConst()))
-      or
-
-      // Converting a variable to a reference is the same thing as taking
-      // its address.
-      exists (ReferenceType rt
-      | rt = va.getFullyConverted().getUnderlyingType() and
-
-        // If the reference is const then we will trust that it will not be
-        // used to modify the variable.
-        not rt.getBaseType().isConst()))
+      not exists(Call call | call.passesByReferenceNonConst(_, va))
+    )
 }
 
 private predicate isReferenceVar(LocalScopeVariable v) {

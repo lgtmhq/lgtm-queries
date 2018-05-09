@@ -12,21 +12,78 @@
 // permissions and limitations under the License.
 
 /**
- * Provides classes for performing customized data flow.
+ * Provides a class for performing customized inter-procedural data flow.
  *
- * The classes in this module allow performing inter-procedural data flow
- * from a custom set of source nodes to a custom set of sink nodes. Additional
- * data flow edges can be specified, and conversely certain nodes or edges can
- * be designated as _barriers_ that block flow.
+ * The class in this module provides an interface for performing inter-procedural
+ * data flow from a custom set of source nodes to a custom set of sink nodes.
+ * Additional data flow edges can be specified, and conversely certain nodes or
+ * edges can be designated as _barriers_ that block flow.
  *
  * NOTE: The API of this library is not stable yet and may change in
  *       the future.
+ *
+ *
+ * # Technical overview
+ *
+ * This module implements a summarization-based inter-procedural data flow
+ * analysis. Data flow is tracked through local variables, imports and (some)
+ * object properties, as well as into and out of function calls. The latter
+ * is done by computing function summaries that record which function parameters
+ * and captured variables may flow into the function's return value.
+ *
+ * For example, for the function
+ *
+ * ```
+ * function choice(b, x, y) {
+ *   return b ? x : y;
+ * }
+ * ```
+ *
+ * we determine that its second and third (but not the first) parameter may
+ * flow into its return value.
+ *
+ * Hence when we see a call `a = choice(b, c, d)`, we propagate flow from `c`
+ * to `a` and from `d` to `a` (but not from `b` to `a`).
+ *
+ * The inter-procedural data flow graph is represented by class `PathNode`
+ * and its member predicate `getASuccessor`. Each `PathNode` is a pair
+ * of an underlying `DataFlow::Node` and a `DataFlow::Configuration`, which
+ * can be accessed through member predicates `getNode` and `getConfiguration`,
+ * respectively.
+ *
+ * # Implementation details
+ *
+ * Function summaries are computed by predicate `forwardFlowThroughCall`.
+ * Predicate `flowStep` computes a "one-step" flow relation, where, however,
+ * a single step may be based on a function summary, and hence already involve
+ * inter-procedural flow.
+ *
+ * Flow steps are classified as being "down", "up" or "level": a down step
+ * goes from a call site to a callee, an up step from a return to a caller,
+ * and a level step is either a step that does not involve function calls
+ * or a step through a summary.
+ *
+ * Predicate `reachableFromSource` computes inter-procedural paths from
+ * sources along the `flowStep` relation, keeping track of whether any of
+ * these steps is a down step. Up steps are only allowed if no previous
+ * step was a down step to avoid confusion between different call sites.
+ *
+ * Predicate `onPath` builds on `reachableFromSource` to compute full
+ * paths from sources to sinks, this time starting with the sinks. Similar
+ * to above, it keeps track of whether any of the steps from a node to a
+ * sink is an up step, and only considers down steps for paths that do
+ * not contain an up step.
+ *
+ * Finally, we build `PathNode`s for all nodes that appear on a path
+ * computed by `onPath`.
  */
 
 import javascript
+private import internal.FlowSteps
 
 /**
- * A data flow tracking configuration.
+ * A data flow tracking configuration for finding inter-procedural paths from
+ * sources to sinks.
  *
  * Each use of the data flow tracking library must define its own unique extension
  * of this abstract class. A configuration defines a set of relevant sources
@@ -69,389 +126,363 @@ abstract class Configuration extends string {
   predicate isBarrier(DataFlow::Node src, DataFlow::Node trg) { none() }
 
   /**
-   * Holds if `source` flows to `sink`.
-   *
-   * The analysis searches *forwards* from the source to the sink.
-   *
-   * **Note**: use `flowsFrom(sink, source)` instead if the set of sinks is
-   * expected to be smaller than the set of sources.
+   * Holds if data may flow from `source` to `sink` for this configuration.
    */
-  predicate flowsTo(DataFlow::Node source, DataFlow::Node sink) {
-    flowsTo(source, sink, this, _) and
-    isSink(sink)
+  predicate hasFlow(DataFlow::Node source, DataFlow::Node sink) {
+    exists (SourcePathNode flowsource, SinkPathNode flowsink |
+      hasPathFlow(flowsource, flowsink) and
+      source = flowsource.getNode() and
+      sink = flowsink.getNode()
+    )
   }
 
   /**
-   * Holds if `source` flows to `sink`.
-   *
-   * The analysis searches *backwards* from the sink to the source.
-   *
-   * **Note**: use `flowsTo(source, sink)` instead if the set of sources is
-   * expected to be smaller than the set of sinks.
+   * Holds if data may flow from `source` to `sink` for this configuration.
    */
-  predicate flowsFrom(DataFlow::Node sink, DataFlow::Node source) {
-    flowsFrom(source, sink, this, _) and
-    isSource(source)
+  predicate hasPathFlow(SourcePathNode source, SinkPathNode sink) {
+    flowsTo(source, _, sink, _, this)
+  }
+
+  /**
+   * DEPRECATED: Use `hasFlow` instead.
+   *
+   * Holds if `source` flows to `sink`.
+   */
+  deprecated predicate flowsTo(DataFlow::Node source, DataFlow::Node sink) {
+    hasFlow(source, sink)
+  }
+
+  /**
+   * DEPRECATED: Use `hasFlow` instead.
+   *
+   * Holds if `source` flows to `sink`.
+   */
+  deprecated predicate flowsFrom(DataFlow::Node sink, DataFlow::Node source) {
+    hasFlow(source, sink)
   }
 }
 
 /**
- * Holds if `invk` may invoke `f`.
+ * A data flow edge that should be added to all data flow configurations in
+ * addition to standard data flow edges.
+ *
+ * Note: For performance reasons, all subclasses of this class should be part
+ * of the standard library. Override `Configuration::isAdditionalFlowStep`
+ * for analysis-specific flow steps.
  */
-private predicate calls(InvokeExpr invk, Function f) {
-  exists (CallSite cs | cs = invk |
-    if cs.isIndefinite("global") then
-      (f = cs.getACallee() and f.getFile() = invk.getFile())
-    else
-      f = cs.getACallee()
-  )
+abstract class AdditionalFlowStep extends DataFlow::Node {
+  /**
+   * Holds if `pred` &rarr; `succ` should be considered a data flow edge.
+   */
+  abstract cached predicate step(DataFlow::Node pred, DataFlow::Node succ);
 }
 
 /**
- * Holds if data can flow in one step from `src` to `trg`,  taking
- * additional steps and barriers from the configuration into account.
+ * Additional flow step to model flow from import specifiers into the SSA variable
+ * corresponding to the imported variable.
  */
-pragma[inline]
-private predicate localFlowStep(DataFlow::Node src, DataFlow::Node trg,
-                                Configuration configuration) {
+private class FlowStepThroughImport extends AdditionalFlowStep, DataFlow::ValueNode {
+  override ImportSpecifier astNode;
+
+  override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+    exists (SsaExplicitDefinition ssa |
+      pred = this and
+      ssa.getDef() = astNode and
+      succ = DataFlow::ssaDefinitionNode(ssa)
+    )
+  }
+}
+
+/**
+ * Holds if there is a flow step from `pred` to `succ` in direction `dir`
+ * under configuration `cfg`.
+ *
+ * Summary steps through function calls are not taken into account.
+ */
+private predicate basicFlowStep(DataFlow::Node pred, DataFlow::Node succ, FlowDirection dir,
+                                DataFlow::Configuration cfg) {
+  isRelevant(pred, cfg) and
   (
-   src = trg.getAPredecessor()
+   // Local flow
+   localFlowStep(pred, succ, cfg) and
+   dir = Level()
    or
-   // extra step: the flow analysis models import specifiers as property reads;
-   // they should flow into the SSA variable corresponding to the imported variable
-   flowStepThroughImport(src, trg)
+   // Flow through properties of objects
+   propertyFlowStep(pred, succ) and
+   dir = Level()
    or
-   configuration.isAdditionalFlowStep(src, trg)
-  ) and
-  not configuration.isBarrier(src, trg)
-}
-
-pragma[noinline]
-private predicate flowStepThroughImport(DataFlow::Node src, DataFlow::Node trg) {
-  exists (ImportSpecifier is, SsaExplicitDefinition ssa |
-    src = DataFlow::valueNode(is) and
-    ssa.getDef() = is and
-    trg = DataFlow::ssaDefinitionNode(ssa)
+   // Flow into function
+   callStep(pred, succ) and
+   dir = Down()
+   or
+   // Flow out of function
+   returnStep(pred, succ) and
+   dir = Up()
   )
 }
 
-
 /**
- * Holds if `arg` is passed as an argument into parameter `parm`
- * through invocation `invk` of function `f`.
+ * Holds if `nd` may be reachable from a source under `cfg`. No call/return matching
+ * is done, so this is a relatively coarse over-approximation.
  */
-private predicate argumentPassing(DataFlow::ValueNode invk, DataFlow::ValueNode arg, Function f, SimpleParameter parm) {
-  exists (int i, CallSite cs |
-    cs = invk.asExpr() and calls(cs, f) and
-    f.getParameter(i) = parm and not parm.isRestParameter() and
-    arg = cs.getArgumentNode(i)
+private predicate isRelevant(DataFlow::Node nd, DataFlow::Configuration cfg) {
+  cfg.isSource(nd)
+  or
+  exists (DataFlow::Node mid |
+    isRelevant(mid, cfg) and
+    basicFlowStep(mid, nd, _, cfg)
   )
 }
 
 /**
- * Holds if `def` is a parameter of `f` or a variable that is captured
- * by `f`, such that `def` may be reached by forward flow under `configuration`.
+ * Holds if `def` is a parameter of `f` or a variable that is captured by `f`,
+ * such that `def` may be reached by forward flow under configuration `cfg`.
  */
 private predicate hasForwardFlow(Function f, SsaDefinition def,
-                                 Configuration configuration) {
+                                 DataFlow::Configuration cfg) {
   exists (DataFlow::Node arg, SimpleParameter p |
-    argumentPassing(_, arg, f, p) and def.(SsaExplicitDefinition).getDef() = p |
-    forwardFlowFromInput(_, _, arg, configuration) or
-    flowsTo(_, arg, configuration, _)
+    argumentPassing(_, arg, f, p) and
+    def.(SsaExplicitDefinition).getDef() = p and
+    isRelevant(arg, cfg)
   )
   or
-  exists (DataFlow::SsaDefinitionNode previousDef |
-    defOfCapturedVar(previousDef.getSsaVariable().getDefinition(), def, f) |
-    forwardFlowFromInput(_, _, previousDef, configuration) or
-    flowsTo(_, previousDef, configuration, _)
-  )
-}
-
-/**
- * Holds if `expl` is a definition of the variable captured by `f` in `cap`.
- */
-private predicate defOfCapturedVar(SsaExplicitDefinition expl, SsaVariableCapture cap, Function f) {
-  expl.getSourceVariable() = cap.getSourceVariable() and
-  f = cap.getContainer()
-}
-
-/**
- * Holds if `def` is a parameter of `f` or a variable that is captured
- * by `f` whose value flows into `sink` under `configuration`, possibly through callees.
- */
-private predicate forwardFlowFromInput(Function f, SsaDefinition def,
-                                       DataFlow::Node sink, Configuration configuration) {
-  (
-    hasForwardFlow(f, def, configuration) and
-    sink = DataFlow::ssaDefinitionNode(def)
-    or
-    exists (DataFlow::Node mid | forwardFlowFromInput(f, def, mid, configuration) |
-      localFlowStep(mid, sink, configuration)
-      or
-      forwardFlowThroughCall(mid, sink, configuration) and
-      not configuration.isBarrier(mid, sink)
-    )
-  ) and
-  not configuration.isBarrier(sink)
-}
-
-/**
- * Holds if the return value of `f` may be reached by
- * backward flow under `configuration`.
- */
-private predicate hasBackwardFlow(Function f, Configuration configuration) {
-  exists (DataFlow::Node invk | calls(invk.asExpr(), f) |
-    backwardFlowFromInput(_, invk, _, configuration) or
-    flowsFrom(invk, _, configuration, _)
-  )
-}
-
-/**
- * Holds if the value of `source` may flow into `sink` (which is
- * an expression that may be returned from `f`), under `configuration`,
- * possibly through callees.
- */
-private predicate backwardFlowFromInput(Function f, DataFlow::Node source,
-                                        DataFlow::ValueNode sink, Configuration configuration) {
-  (
-    hasBackwardFlow(f, configuration) and
-    returnExpr(f, source, sink)
-    or
-    exists (DataFlow::Node mid | backwardFlowFromInput(f, mid, sink, configuration) |
-      localFlowStep(source, mid, configuration)
-      or
-      backwardFlowThroughCall(source, mid, configuration) and
-      not configuration.isBarrier(source, mid)
-    )
-  ) and
-  not configuration.isBarrier(source)
-}
-
-pragma[noinline]
-private predicate returnExpr(Function f, DataFlow::Node source, DataFlow::Node sink) {
-  sink.asExpr() = f.getAReturnedExpr() and source = sink
-}
-
-/**
- * Holds if function `f` returns an expression into which `def`, which is either a parameter
- * of `f` or a variable captured by `f`, flows under `configuration`, possibly through callees.
- */
-private predicate forwardReturnOfInput(Function f, SsaDefinition def, Configuration configuration) {
-  exists (DataFlow::ValueNode ret |
-    ret.asExpr() = f.getAReturnedExpr() and
-    forwardFlowFromInput(f, def, ret, configuration)
+  exists (SsaDefinition prevDef |
+    captures(f, prevDef, def) and
+    isRelevant(DataFlow::ssaDefinitionNode(prevDef), cfg)
   )
 }
 
 /**
  * Holds if function `f` returns an expression into which `def`, which is either a parameter
- * of `f` or a variable captured by `f`, flows under `configuration`, possibly through callees.
+ * of `f` or a variable captured by `f`, flows under configuration `cfg`, possibly through callees.
  */
-private predicate backwardReturnOfInput(Function f, SsaDefinition def, Configuration configuration) {
+private predicate forwardReturnOfInput(Function f, SsaDefinition def, DataFlow::Configuration cfg) {
   exists (DataFlow::ValueNode ret |
     ret.asExpr() = f.getAReturnedExpr() and
-    backwardFlowFromInput(f, DataFlow::ssaDefinitionNode(def), ret, configuration)
+    forwardFlowFromInput(f, def, ret, cfg)
   )
 }
 
 /**
  * Holds if `invk` is an invocation of a function such that `arg` is either passed as an argument
- * or captured by the function, and may flow into the function's return value under `configuration`.
+ * or captured by the function, and may flow into the function's return value under configuration
+ * `cfg`.
  *
  * Flow is tracked forward.
  */
-private predicate forwardFlowThroughCall(DataFlow::Node arg, DataFlow::Node invk, Configuration configuration) {
+private predicate forwardFlowThroughCall(DataFlow::Node arg, DataFlow::Node invk, DataFlow::Configuration cfg) {
   exists (Function g, SsaDefinition ssa |
-    argumentPassing(invk, arg, g, ssa.(SsaExplicitDefinition).getDef()) or
-    defOfCapturedVar(arg.(DataFlow::SsaDefinitionNode).getSsaVariable().getDefinition(), ssa, g) and calls(invk.asExpr(), g) |
-    forwardReturnOfInput(g, ssa, configuration)
+    argumentPassing(invk, arg, g, ssa.(SsaExplicitDefinition).getDef())
+    or
+    exists (SsaDefinition prevDef |
+      arg = DataFlow::ssaDefinitionNode(prevDef) and
+      captures(g, prevDef, ssa) and
+      calls(invk.asExpr(), g)
+    )
+    |
+    forwardReturnOfInput(g, ssa, cfg)
   )
 }
 
 /**
- * Holds if `invk` is an invocation of a function such that `arg` is either passed as an argument
- * or captured by the function, and may flow into the function's return value under `configuration`.
- *
- * Flow is tracked backward.
+ * Holds if `def` is a parameter of `f` or a variable that is captured
+ * by `f` whose value flows into `sink` under configuration `cfg`, possibly through callees.
  */
-private predicate backwardFlowThroughCall(DataFlow::Node arg, DataFlow::Node invk, Configuration configuration) {
-  exists (Function g, SsaDefinition ssa |
-    argumentPassing(invk, arg, g,  ssa.(SsaExplicitDefinition).getDef()) or
-    defOfCapturedVar(arg.(DataFlow::SsaDefinitionNode).getSsaVariable().getDefinition(), ssa, g) and calls(invk.asExpr(), g) |
-    backwardReturnOfInput(g, ssa, configuration)
-  )
-}
-
-/**
- * Holds if flow should be tracked through properties of `obj`.
- *
- * Currently, flow is tracked through object literals, `module` and
- * `module.exports` objects.
- */
-private predicate shouldTrackProperties(AbstractValue obj) {
-  obj instanceof AbstractExportsObject or
-  obj instanceof AbstractModuleObject or
-  obj instanceof AbstractObjectLiteral
-}
-
-/**
- * Holds if the value of `source` may flow into an assignment to property
- * `prop` of an object represented by `obj` under the given `configuration`.
- *
- * The parameter `stepIn` indicates whether steps from arguments to
- * parameters are necessary to derive this flow.
- */
-pragma[nomagic]
-private predicate forwardReachableProperty(DataFlow::Node source,
-                                           AbstractValue obj, string prop,
-                                           Configuration configuration,
-                                           boolean stepIn) {
-  exists (AnalyzedPropertyWrite pw, DataFlow::Node mid |
-    flowsTo(source, mid, configuration, stepIn) and
-    pw.writes(obj, prop, mid) and
-    shouldTrackProperties(obj)
-  )
-}
-
-/**
- * Holds if the value of property `prop` of an object represented by `obj`
- * may flow into `sink` under the given `configuration`.
- *
- * The parameter `stepOut` indicates whether steps from `return` statements to
- * invocation sites are necessary to derive this flow.
- */
-pragma[noinline]
-private predicate backwardReachableProperty(AbstractValue obj, string prop,
-                                            DataFlow::Node sink,
-                                            Configuration configuration,
-                                            boolean stepOut) {
-  exists (AnalyzedPropertyRead pr |
-    pr.reads(obj, prop) and
-    shouldTrackProperties(obj) and
-    flowsFrom(pr, sink, configuration, stepOut)
-  )
-}
-
-/**
- * Holds if `source` can flow to `sink` under the given `configuration`
- * in zero or more steps.
- *
- * The parameter `stepIn` indicates whether steps from arguments to
- * parameters are necessary to derive this flow.
- */
-pragma[nomagic]
-private predicate flowsTo(DataFlow::Node source, DataFlow::Node sink,
-                          Configuration configuration, boolean stepIn) {
+private predicate forwardFlowFromInput(Function f, SsaDefinition def,
+                                       DataFlow::Node sink, DataFlow::Configuration cfg) {
   (
-    // Base case
-    sink = source and
-    configuration.isSource(source) and
-    stepIn = false
+    hasForwardFlow(f, def, cfg) and
+    sink = DataFlow::ssaDefinitionNode(def)
     or
-    // Local flow
-    exists (DataFlow::Node mid |
-      flowsTo(source, mid, configuration, stepIn) and
-      localFlowStep(mid, sink, configuration)
+    exists (DataFlow::Node mid | forwardFlowFromInput(f, def, mid, cfg) |
+      localFlowStep(mid, sink, cfg)
+      or
+      forwardFlowThroughCall(mid, sink, cfg) and
+      not cfg.isBarrier(mid, sink)
     )
-    or
-    // Flow through properties of objects
-    exists (AbstractValue obj, string prop, AnalyzedPropertyRead read |
-      forwardReachableProperty(source, obj, prop, configuration, stepIn) and
-      read.reads(obj, prop) and
-      sink = read and
-      not configuration.isBarrier(source, sink)
-    )
-    or
-    // Flow into function
-    exists (DataFlow::Node arg, SimpleParameter parm |
-      flowsTo(source, arg, configuration, _) and
-      argumentPassing(_, arg, _, parm) and sink = DataFlow::parameterNode(parm) and
-      not configuration.isBarrier(arg, sink) and
-      stepIn = true
-    )
-    or
-    // Flow through a function that returns a value that depends on one of its arguments
-    // or a captured variable
-    exists(DataFlow::Node arg |
-      flowsTo(source, arg, configuration, stepIn) and
-      forwardFlowThroughCall(arg, sink, configuration) and
-      not configuration.isBarrier(arg, sink)
-    )
-    or
-    // Flow out of function
-    // This path is only enabled if the flow so far did not involve
-    // any interprocedural steps from an argument to a caller.
-    exists (DataFlow::ValueNode invk, DataFlow::ValueNode ret, Function f |
-      ret.asExpr() = f.getAReturnedExpr() and
-      flowsTo(source, ret, configuration, stepIn) and stepIn = false and
-      calls(invk.asExpr(), f) and
-      sink = invk and
-      not configuration.isBarrier(ret, sink)
-    )
-  )
-  and
-  not configuration.isBarrier(sink)
+  ) and
+  not cfg.isBarrier(sink)
 }
 
 /**
- * Holds if `source` can flow to `sink` under the given `configuration`
- * in zero or more steps.
- *
- * The parameter `stepOut` indicates whether steps from `return` statements to
- * invocation sites are necessary to derive this flow.
- *
- * Unlike `flowsTo`, this predicate searches backwards from the sink
- * to the source.
- */
-pragma[nomagic]
-private predicate flowsFrom(DataFlow::Node source, DataFlow::Node sink,
-                            Configuration configuration, boolean stepOut) {
+ * Holds if there is a flow step from `pred` to `succ` in direction `dir`
+ * under configuration `cfg`.
+*/
+private predicate flowStep(DataFlow::Node pred, DataFlow::Configuration cfg,
+                           DataFlow::Node succ, FlowDirection dir) {
   (
-    // Base case
-    sink = source and
-    configuration.isSink(sink) and
-    stepOut = false
-    or
-    // Local flow
-    exists (DataFlow::Node mid |
-      flowsFrom(mid, sink, configuration, stepOut) and
-      localFlowStep(source, mid, configuration)
-    )
-    or
-    // Flow through properties of objects
-    exists (AbstractValue obj, string prop, AnalyzedPropertyWrite pw |
-      backwardReachableProperty(obj, prop, sink, configuration, stepOut) and
-      pw.writes(obj, prop, source) and
-      not configuration.isBarrier(source, sink)
-    )
-    or
-    // Flow into function
-    // This path is only enabled if the flow so far did not involve
-    // any interprocedural steps from a `return` statement to the invocation site.
-    exists (SimpleParameter p |
-      flowsFrom(DataFlow::parameterNode(p), sink, configuration, stepOut) and
-      stepOut = false and
-      argumentPassing(_, source, _, p) and
-      not configuration.isBarrier(source, DataFlow::parameterNode(p))
-    )
-    or
-    // Flow through a function that returns a value that depends on one of its arguments
-    // or a captured variable
-    exists(DataFlow::Node invk |
-      flowsFrom(invk, sink, configuration, stepOut) and
-      backwardFlowThroughCall(source, invk, configuration) and
-      not configuration.isBarrier(source, invk)
-    )
-    or
-    // Flow out of function
-    exists (DataFlow::ValueNode invk, Function f |
-      flowsFrom(invk, sink, configuration, _) and
-      calls(invk.asExpr(), f) and
-      source.asExpr() = f.getAReturnedExpr() and
-      not configuration.isBarrier(source, invk) and
-      stepOut = true
-    )
+   basicFlowStep(pred, succ, dir, cfg)
+   or
+   // Flow through a function that returns a value that depends on one of its arguments
+   // or a captured variable
+   forwardFlowThroughCall(pred, succ, cfg) and
+   dir = Level()
+  ) and
+  not cfg.isBarrier(succ) and
+  not cfg.isBarrier(pred, succ)
+}
+
+/**
+ * Holds if `source` can flow to `sink` under configuration `cfg`
+ * in zero or more steps.
+ */
+pragma [nomagic]
+private predicate flowsTo(PathNode flowsource, DataFlow::Node source,
+                          SinkPathNode flowsink, DataFlow::Node sink,
+                          DataFlow::Configuration cfg) {
+  flowsource = MkPathNode(source, cfg, _) and
+  flowsink = flowsource.getASuccessor*() and
+  flowsink = MkPathNode(sink, id(cfg), _)
+}
+
+/**
+ * Holds if `nd` is reachable from a source under `cfg`. The parameter `stepIn`
+ * records whether the path from the source to `nd` contains a down step.
+ */
+private predicate reachableFromSource(DataFlow::Node nd, DataFlow::Configuration cfg, boolean stepIn) {
+  cfg.isSource(nd) and
+  not cfg.isBarrier(nd) and
+  stepIn = false
+  or
+  exists (DataFlow::Node pred, boolean oldStepIn, FlowDirection dir |
+    reachableFromSource(pred, cfg, oldStepIn) and
+    flowStep(pred, cfg, nd, dir) and
+    stepIn = stepIn(oldStepIn, dir)
   )
-  and
-  not configuration.isBarrier(source)
+}
+
+/**
+ * Gets the "step-out" flag of a path that has flag `oldStepOut` if it is extended by
+ * a flow step in direction `dir`: level steps do not change the flag, up steps make
+ * it `true`, and down steps keep the flag `false`.
+ *
+ * Note that `stepOut(true, Down())` is _not_ defined; this prevents us from extending
+ * paths already containing an up step with a down step and thereby losing precision.
+ */
+bindingset[oldStepOut]
+private boolean stepOut(boolean oldStepOut, FlowDirection dir) {
+  dir = Level() and result = oldStepOut
+  or
+  dir = Up() and result = true
+  or
+  // only allow call steps if `stepOut` is false
+  dir = Down() and oldStepOut = false and result = false
+}
+
+/**
+ * Holds if `nd` can be reached from a source under `cfg`, and in turn a sink is
+ * reachable from `nd`. The flag `stepIn` records whether a down step occurs on
+ * the path from the source to `nd`, and the `stepOut` flag whether an up step
+ * occurs on the path from `nd` to the sink.
+ */
+private predicate onPath(DataFlow::Node nd, DataFlow::Configuration cfg,
+                         boolean stepIn, boolean stepOut) {
+  reachableFromSource(nd, cfg, stepIn) and
+  cfg.isSink(nd) and
+  not cfg.isBarrier(nd) and
+  stepOut = false
+  or
+  exists (DataFlow::Node mid, FlowDirection dir, boolean oldStepOut |
+    onPath(mid, cfg, _, oldStepOut) and
+    flowStep(nd, cfg, mid, dir) and
+    reachableFromSource(nd, cfg, stepIn) and
+    stepOut = stepOut(oldStepOut, dir)
+  )
+}
+
+/**
+ * A data flow node on an inter-procedural path from a source.
+ */
+private newtype TPathNode =
+  MkPathNode(DataFlow::Node nd, DataFlow::Configuration cfg, boolean stepIn) {
+    onPath(nd, cfg, stepIn, _)
+  }
+
+/**
+ * Maps `cfg` to itself.
+ *
+ * This is an auxiliary predicate that is needed in some places to prevent us
+ * from computing a cross-product of all path nodes belonging to the same configuration.
+ */
+bindingset[cfg, result]
+private DataFlow::Configuration id(DataFlow::Configuration cfg) {
+  result >= cfg and cfg >= result
+}
+
+/**
+ * A data flow node on an inter-procedural path from a source to a sink.
+ *
+ * A path node is a triple `(nd, cfg, stepIn)` where `nd` is a data flow node and `cfg`
+ * is a data flow tracking configuration such that `nd` is on a path from a source to a
+ * sink under `cfg`. The `stepIn` flag records whether that path contains a down step.
+ */
+class PathNode extends TPathNode {
+  DataFlow::Node nd;
+  DataFlow::Configuration cfg;
+  boolean stepIn;
+
+  PathNode() { this = MkPathNode(nd, cfg, stepIn) }
+
+  /** Gets the underlying data flow node of this path node. */
+  DataFlow::Node getNode() {
+    result = nd
+  }
+
+  /** Gets the underlying data flow tracking configuration of this path node. */
+  DataFlow::Configuration getConfiguration() {
+    result = cfg
+  }
+
+  /** Gets a successor node of this path node. */
+  PathNode getASuccessor() {
+    exists (DataFlow::Node succ, FlowDirection dir |
+      flowStep(nd, id(cfg), succ, dir) and
+      result = MkPathNode(succ, id(cfg), stepIn(stepIn, dir))
+    )
+  }
+
+  /** Gets a textual representation of this path node. */
+  string toString() {
+    result = nd.toString()
+  }
+
+  /**
+   * Holds if this path node is at the specified location.
+   * The location spans column `startcolumn` of line `startline` to
+   * column `endcolumn` of line `endline` in file `filepath`.
+   * For more information, see
+   * [LGTM locations](https://lgtm.com/help/ql/locations).
+   */
+  predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                            int endline, int endcolumn) {
+    nd.hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
+  }
+}
+
+/**
+ * A path node corresponding to a flow source.
+ */
+class SourcePathNode extends PathNode {
+  SourcePathNode() {
+    cfg.isSource(nd)
+  }
+}
+
+/**
+ * A path node corresponding to a flow sink.
+ */
+class SinkPathNode extends PathNode {
+  SinkPathNode() {
+    cfg.isSink(nd)
+  }
+}
+
+/**
+ * Provides the query predicate needed to include a graph in a path-problem query.
+ */
+module PathGraph {
+  /** Holds if `pred` &rarr; `succ` is an edge in the graph of data flow path explanations. */
+  query predicate edges(PathNode pred, PathNode succ) {
+    pred.getASuccessor() = succ
+  }
 }

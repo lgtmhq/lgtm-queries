@@ -49,7 +49,7 @@ class NamespaceDefinition extends Stmt, @namespacedefinition, AST::ValueNode {
    * Gets the canonical name of the namespace being defined.
    */
   Namespace getNamespace() {
-    result = NameResolution::getNamespaceFromDefinition(this)
+    result.getADefinition() = this
   }
 }
 
@@ -71,7 +71,7 @@ class NamespaceDefinition extends Stmt, @namespacedefinition, AST::ValueNode {
 class NamespaceDeclaration extends NamespaceDefinition, StmtContainer, @namespacedeclaration {
   /** Gets the name of this namespace. */
   Identifier getId() {
-    result = getChild(-1)
+    result = getChildExpr(-1)
   }
 
   /** Gets the name of this namespace as a string. */
@@ -82,7 +82,7 @@ class NamespaceDeclaration extends NamespaceDefinition, StmtContainer, @namespac
   /** Gets the `i`th statement in this namespace. */
   Stmt getStmt(int i) {
     i >= 0 and
-    result = getChild(i)
+    result = getChildStmt(i)
   }
 
   /** Gets a statement in this namespace. */
@@ -144,7 +144,7 @@ class TypeDefinition extends ASTNode, @typedefinition {
    * Gets the canonical name of the type being defined.
    */
   TypeName getTypeName() {
-    result = NameResolution::getTypeNameFromDefinition(this)
+    result.getADefinition() = this
   }
 
   /**
@@ -183,7 +183,7 @@ class ExternalModuleDeclaration extends Stmt, StmtContainer, @externalmoduledecl
   /** Gets the `i`th statement in this namespace. */
   Stmt getStmt(int i) {
     i >= 0 and
-    result = getChild(i)
+    result = getChildStmt(i)
   }
 
   /** Gets a statement in this namespace. */
@@ -208,7 +208,7 @@ class GlobalAugmentationDeclaration extends Stmt, StmtContainer, @globalaugmenta
   /** Gets the `i`th statement in this namespace. */
   Stmt getStmt(int i) {
     i >= 0 and
-    result = getChild(i)
+    result = getChildStmt(i)
   }
 
   /** Gets a statement in this namespace. */
@@ -230,12 +230,12 @@ class GlobalAugmentationDeclaration extends Stmt, StmtContainer, @globalaugmenta
 class ImportEqualsDeclaration extends Stmt, @importequalsdeclaration {
   /** Gets the name under which the imported entity is imported. */
   Identifier getId() {
-    result = getChild(0)
+    result = getChildExpr(0)
   }
 
   /** Gets the expression specifying the imported module or entity. */
   Expr getImportedEntity() {
-    result = getChild(1)
+    result = getChildExpr(1)
   }
 }
 
@@ -252,7 +252,7 @@ class ImportEqualsDeclaration extends Stmt, @importequalsdeclaration {
 class ExternalModuleReference extends Expr, Import, @externalmodulereference {
   /** Gets the expression specifying the module. */
   Expr getExpression() {
-    result = getChild(0)
+    result = getChildExpr(0)
   }
 
   override PathExpr getImportedPath() {
@@ -281,7 +281,7 @@ private class LiteralExternalModulePath extends PathExprInModule, ConstantString
 class ExportAssignDeclaration extends Stmt, @exportassigndeclaration {
   /** Gets the expression exported by this declaration. */
   Expr getExpression() {
-    result = getChild(0)
+    result = getChildExpr(0)
   }
 }
 
@@ -333,7 +333,7 @@ class TypeAliasDeclaration extends @typealiasdeclaration, TypeParameterized, Stm
    * Gets the canonical name of the type being defined.
    */
   TypeName getTypeName() {
-    result = NameResolution::getTypeNameFromDefinition(this)
+    result.getADefinition() = this
   }
 }
 
@@ -349,7 +349,7 @@ class InterfaceDefinition extends @interfacedefinition, ClassOrInterface {
 /** A TypeScript interface declaration. */
 class InterfaceDeclaration extends Stmt, InterfaceDefinition, @interfacedeclaration {
   override Identifier getIdentifier() {
-    result = getChild(0)
+    result = getChildTypeExpr(0)
   }
 
   override TypeParameter getTypeParameter(int n) {
@@ -628,7 +628,7 @@ class LocalNamespaceName extends @local_namespace_name, LexicalName {
    * Gets the canonical name of the namespace referenced by this name.
    */
   Namespace getNamespace() {
-    result = NameResolution::getNamespaceFromLocalName(this)
+    result = getADeclaration().getNamespace()
   }
 
   override DeclarationSpace getDeclarationSpace() {
@@ -809,7 +809,7 @@ class TypeAccess extends @typeaccess, TypeExpr, TypeRef {
    * Gets the canonical name of the type being accessed.
    */
   TypeName getTypeName() {
-    result = NameResolution::getTypeNameFromAccess(this)
+    ast_node_symbol(this, result)
   }
 }
 
@@ -1361,7 +1361,7 @@ class LocalNamespaceDecl extends VarDecl, NamespaceRef {
    * Gets the canonical name of the namespace being defined or aliased by this name.
    */
   Namespace getNamespace() {
-    result = NameResolution::getNamespaceFromDeclarationId(this)
+    ast_node_symbol(this, result)
   }
 }
 
@@ -1381,7 +1381,7 @@ class NamespaceAccess extends TypeExpr, NamespaceRef, @namespaceaccess {
    * Gets the canonical name of the namespace being accessed.
    */
   Namespace getNamespace() {
-    result = NameResolution::getNamespaceFromAccess(this)
+    ast_node_symbol(this, result)
   }
 }
 
@@ -1448,7 +1448,7 @@ class EnumDeclaration extends NamespaceDefinition, @enumdeclaration, AST::ValueN
    * Gets the canonical name of the type being defined.
    */
   TypeName getTypeName() {
-    result = NameResolution::getTypeNameFromDefinition(this)
+    ast_node_symbol(this, result)
   }
 
   /**
@@ -1572,7 +1572,7 @@ class EnumMember extends ASTNode, @enum_member {
    * Gets the canonical name of the type defined by this enum member.
    */
   TypeName getTypeName() {
-    result = NameResolution::getTypeNameFromDefinition(this)
+    ast_node_symbol(this, result)
   }
 }
 
@@ -1788,9 +1788,27 @@ class Type extends @type {
 
   /**
    * Gets the type of the given property of this type.
+   *
+   * Note that this does not account for properties implied by index signatures.
    */
   Type getProperty(string name) {
     type_property(this, name, result)
+  }
+
+  /**
+   * Gets the type of the string index signature on this type,
+   * such as `T` in the type `{ [s: string]: T }`.
+   */
+  Type getStringIndexType() {
+    string_index_type(this, result)
+  }
+
+  /**
+   * Gets the type of the number index signature on this type,
+   * such as `T` in the type `{ [n: number]: T }`.
+   */
+  Type getNumberIndexType() {
+    number_index_type(this, result)
   }
 
   /**
@@ -1890,6 +1908,35 @@ class Type extends @type {
   int getNumConstructorSignature() {
     result = count(getAConstructorSignature())
   }
+
+  /**
+   * Gets the last signature of the method of the given name.
+   *
+   * For overloaded methods, this is the most general version of the its
+   * signature, which covers all cases, but with less precision than the
+   * overload signatures.
+   *
+   * Use `getAMethodOverload` to get any of its overload signatures.
+   */
+  FunctionCallSignatureType getMethod(string name) {
+    result = getProperty(name).getLastFunctionSignature()
+  }
+
+  /**
+   * Gets the `n`th overload signature of the given method.
+   */
+  FunctionCallSignatureType getMethodOverload(string name, int n) {
+    result = getProperty(name).getFunctionSignature(n)
+  }
+
+  /**
+   * Gets a signature of the method of the given name.
+   *
+   * Overloaded methods have multiple signatures.
+   */
+  FunctionCallSignatureType getAMethodOverload(string name) {
+    result = getProperty(name).getAFunctionSignature()
+  }
 }
 
 /**
@@ -1914,7 +1961,7 @@ class UnionOrIntersectionType extends Type, @unionorintersectiontype {
    * Gets the number of elements in this union or intersection.
    */
   int getNumElementType() {
-    result = count(getElementType(_))
+    result = count(int i | exists(getElementType(i)))
   }
 }
 
@@ -1934,9 +1981,57 @@ class IntersectionType extends UnionOrIntersectionType, @intersectiontype {
 }
 
 /**
+ * A type that describes a JavaScript `Array` object.
+ *
+ * Specifically, the following three kinds of types are considered array types:
+ * - Plain arrays such as `Array<string>`, or equivalently, `string[]`,
+ * - Read-only arrays such as `ReadonlyArray<string>`,
+ * - Tuple types such as `[string, number, number]`.
+ *
+ * Foreign array-like objects such as `HTMLCollection` are not normal JavaScript arrays,
+ * and their corresponding types are not considered array types either.
+ */
+class ArrayType extends Type {
+  ArrayType() {
+    this instanceof @tupletype or
+    this.(TypeReference).hasQualifiedName("Array") or
+    this.(TypeReference).hasQualifiedName("ReadonlyArray")
+  }
+
+  /**
+   * Gets the type of element in the type.
+   */
+  Type getArrayElementType() {
+    result = getNumberIndexType()
+  }
+}
+
+/**
+ * An array type such as `Array<string>`, or equivalently, `string[]`.
+ */
+class PlainArrayType extends ArrayType, TypeReference {
+  PlainArrayType() {
+    hasQualifiedName("Array")
+  }
+
+  override Type getNumberIndexType() {
+    result = getTypeArgument(0)
+  }
+}
+
+/**
+ * A read-only array type such as `ReadonlyArray<string>`.
+ */
+class ReadonlyArrayType extends ArrayType, TypeReference {
+  ReadonlyArrayType() {
+    hasQualifiedName("ReadonlyArray")
+  }
+}
+
+/**
  * A tuple type, such as `[number, string]`.
  */
-class TupleType extends Type, @tupletype {
+class TupleType extends ArrayType, @tupletype {
   /**
    * Gets the `i`th member of this tuple type, starting at 0.
    */
@@ -1955,7 +2050,17 @@ class TupleType extends Type, @tupletype {
    * Gets the number of elements in this tuple type.
    */
   int getNumElementType() {
-    result = count(getElementType(_))
+    result = count(int i | exists(getElementType(i)))
+  }
+
+  /**
+   * Gets the underlying instantiation of the `Array` type.
+   *
+   * For example, the tuple type `[string, number]` has `Array<string | number>`
+   * as its underlying array type.
+   */
+  PlainArrayType getUnderlyingArrayType() {
+    result.getArrayElementType() = getArrayElementType()
   }
 }
 
@@ -2035,7 +2140,10 @@ class PlainSymbolType extends SymbolType, @plainsymboltype {
  * A `unique symbol` type.
  */
 class UniqueSymbolType extends SymbolType, @uniquesymboltype {
-  private NameResolution::Symbol getSymbol() {
+  /**
+   * Gets the canonical name of the variable exposing the symbol.
+   */
+  CanonicalName getCanonicalName() {
     type_symbol(this, result)
   }
 
@@ -2043,21 +2151,21 @@ class UniqueSymbolType extends SymbolType, @uniquesymboltype {
    * Gets the unqualified name of the variable exposing this symbol.
    */
   string getName() {
-    result = getSymbol().getName()
+    result = getCanonicalName().getName()
   }
 
   /**
    * Holds if the variable exposing this symbol has the given global qualified name.
    */
   predicate hasQualifiedName(string globalName) {
-    getSymbol().hasQualifiedName(globalName)
+    getCanonicalName().hasQualifiedName(globalName)
   }
 
   /**
    * Holds if the variable exposing this symbol is exported from an external module under the given name.
    */
   predicate hasQualifiedName(string moduleName, string exportedName) {
-    getSymbol().hasQualifiedName(moduleName, exportedName)
+    getCanonicalName().hasQualifiedName(moduleName, exportedName)
   }
 }
 
@@ -2071,7 +2179,10 @@ class ObjectKeywordType extends Type, @objectkeywordtype {
  * A type that refers to a class, interface, enum, or enum member.
  */
 class TypeReference extends Type, @typereference {
-  private NameResolution::Symbol getSymbol() {
+  /**
+   * Gets the canonical name of the type being referenced.
+   */
+  TypeName getTypeName() {
     type_symbol(this, result)
   }
 
@@ -2079,14 +2190,7 @@ class TypeReference extends Type, @typereference {
    * Gets a syntactic declaration of this named type.
    */
   TypeDefinition getADefinition() {
-    ast_node_symbol(result, getSymbol())
-  }
-
-  /**
-   * Gets the canonical name of the type being defined.
-   */
-  TypeName getTypeName() {
-    result = getADefinition().getTypeName()
+    result = getTypeName().getADefinition()
   }
 
   /**
@@ -2114,7 +2218,7 @@ class TypeReference extends Type, @typereference {
    * Gets the number of type arguments provided in this type.
    */
   int getNumTypeArgument() {
-    result = count(getTypeArgument(_))
+    result = count(int i | exists(getTypeArgument(i)))
   }
 
   /**
@@ -2124,7 +2228,7 @@ class TypeReference extends Type, @typereference {
    * of the React `Component` class.
    */
   predicate hasQualifiedName(string globalName) {
-    getSymbol().hasQualifiedName(globalName)
+    getTypeName().hasQualifiedName(globalName)
   }
 
   /**
@@ -2134,7 +2238,7 @@ class TypeReference extends Type, @typereference {
    * of the React `Component` class.
    */
   predicate hasQualifiedName(string moduleName, string exportedName) {
-    getSymbol().hasQualifiedName(moduleName, exportedName)
+    getTypeName().hasQualifiedName(moduleName, exportedName)
   }
 }
 
@@ -2213,7 +2317,10 @@ class TypeVariableType extends Type, @typevariabletype {}
  * a class constructor, namespace object, enum object, or module object.
  */
 class TypeofType extends Type, @typeoftype {
-  private NameResolution::Symbol getSymbol() {
+  /**
+   * Gets the canonical name of the named value.
+   */
+  CanonicalName getCanonicalName() {
     type_symbol(this, result)
   }
 
@@ -2221,7 +2328,7 @@ class TypeofType extends Type, @typeoftype {
    * Gets the unqualified name of `X` in `typeof X`.
    */
   string getName() {
-    result = getSymbol().getName()
+    result = getCanonicalName().getName()
   }
 
   /**
@@ -2231,7 +2338,7 @@ class TypeofType extends Type, @typeoftype {
    * refers to the class constructor for `React.Component`.
    */
   predicate hasQualifiedName(string globalName) {
-    getSymbol().hasQualifiedName(globalName)
+    getCanonicalName().hasQualifiedName(globalName)
   }
 
   /**
@@ -2243,20 +2350,15 @@ class TypeofType extends Type, @typeoftype {
    * The `exportedName` may an empty string if this refers to the module object itself.
    */
   predicate hasQualifiedName(string moduleName, string exportedName) {
-    getSymbol().hasQualifiedName(moduleName, exportedName)
+    getCanonicalName().hasQualifiedName(moduleName, exportedName)
     or
     exportedName = "" and
-    getSymbol().getExternalModuleName() = moduleName
+    getCanonicalName().getExternalModuleName() = moduleName
   }
 
   override string toString() {
     // Avoid absolute path names in type strings.
-    if exists (getSymbol().getExternalModuleName()) then
-      result = "typeof module '" + getSymbol().getExternalModuleName() + "'"
-    else if exists (getSymbol().getModule().getFile().getRelativePath()) then
-      result = "typeof module '" + getSymbol().getModule().getFile().getRelativePath() + "'"
-    else
-      result = Type.super.toString()
+    result = "typeof " + getCanonicalName()
   }
 }
 
@@ -2354,7 +2456,7 @@ class CallSignatureType extends @signature_type {
    * Gets the number of parameters.
    */
   int getNumParameter() {
-    result = count(getAParameter())
+    result = count(int i | exists(getParameter(i)))
   }
 
   /**

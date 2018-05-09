@@ -13,6 +13,7 @@
 
 
 import semmle.code.cpp.Element
+private import semmle.code.cpp.Enclosing
 
 /**
  * A C/C++ expression.
@@ -28,7 +29,7 @@ class Expr extends StmtParent, @expr {
   predicate hasChild(Expr e, int n) { e = this.getChild(n) }
 
   /** Gets the enclosing function of this expression, if any. */
-  Function getEnclosingFunction() { exprcontainers(this,result) }
+  Function getEnclosingFunction() { result = exprEnclosingElement(this) }
 
   /** Gets the nearest enclosing set of curly braces around this expression in the source, if any. */
   Block getEnclosingBlock() {
@@ -43,7 +44,7 @@ class Expr extends StmtParent, @expr {
   }
 
   /** Gets the enclosing variable of this expression, if any. */
-  Variable getEnclosingVariable() { exprcontainers(this,result) }
+  Variable getEnclosingVariable() { result = exprEnclosingElement(this) }
 
   /** Gets a child of this expression. */
   Expr getAChild() { exists (int n | result = this.getChild(n)) }

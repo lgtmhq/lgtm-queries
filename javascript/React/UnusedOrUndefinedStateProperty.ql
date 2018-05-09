@@ -26,58 +26,14 @@
 import semmle.javascript.frameworks.React
 import semmle.javascript.RestrictedLocations
 
-/**
- * Gets the source for a value that will become the state object of `c`.
- */
-DataFlow::SourceNode futureStateSource(ReactComponent c) {
-  exists (Assignment def |
-    // a direct definition: `this.state = o`
-    c.getAStateSource().flowsToExpr(def.getLhs()) and
-    result.flowsToExpr(def.getRhs())
-  )
-  or
-  exists (MethodCallExpr mce, DataFlow::SourceNode arg0 |
-    mce = c.getAMethodCall("setState") or
-    mce = c.getAMethodCall("forceUpdate") |
-    arg0.flowsToExpr(mce.getArgument(0)) and
-    if arg0 instanceof DataFlow::FunctionNode then
-      // setState with callback: `this.setState(() => {foo: 42})`
-      result.flowsToExpr(arg0.(DataFlow::FunctionNode).getFunction().getAReturnedExpr())
-    else
-      // setState with object: `this.setState({foo: 42})`
-      result = arg0
-  )
-  or
-  c instanceof ES5Component and
-  result.flowsToExpr(c.getInstanceMethod("getInitialState").getAReturnedExpr())
-  or
-  result.flowsToExpr(c.(ES2015Component).getField("state").getInit())
-}
-
-/**
- * Gets the source for a value that used to be the state object of `c`.
- */
-DataFlow::SourceNode getAPastStateSource(ReactComponent c) {
-  exists (DataFlow::FunctionNode callback, int stateParameterIndex |
-    // "prevState" object as callback argument
-    callback.getParameter(stateParameterIndex).flowsTo(result) |
-    // setState: (prevState, props)
-    callback = c.getAMethodCall("setState").flow().(DataFlow::CallNode).getCallback(0) and
-    stateParameterIndex = 0
-    or
-    // componentDidUpdate: (prevProps, prevState)
-    callback = c.getInstanceMethod("componentDidUpdate").flow() and
-    stateParameterIndex = 1
-  )
-}
 
 /**
  * Gets the source of a future, present or past state object of `c`.
  */
 DataFlow::SourceNode potentialStateSource(ReactComponent c) {
-  result = futureStateSource(c) or
-  result = c.getAStateSource() or
-  result = getAPastStateSource(c)
+  result = c.getACandidateStateSource() or
+  result = c.getADirectStateAccess() or
+  result = c.getAPreviousStateSource()
 }
 
 /**
@@ -91,9 +47,9 @@ DataFlow::PropRef getAPotentialStateAccess(ReactComponent c) {
  * Holds if the state object of `c` escapes from the scope of this file's query.
  */
 predicate hasAStateEscape(ReactComponent c) {
-  exists (InvokeExpr invk |
+  exists (DataFlow::InvokeNode invk |
     not invk = c.getAMethodCall("setState") and
-    potentialStateSource(c).flowsToExpr(invk.getAnArgument())
+    potentialStateSource(c).flowsTo(invk.getAnArgument())
   )
 }
 
@@ -106,7 +62,7 @@ predicate hasUnknownStatePropertyWrite(ReactComponent c) {
     not exists (pwn.getPropertyName())
   ) or
   exists (DataFlow::SourceNode source |
-    source = futureStateSource(c) and
+    source = c.getACandidateStateSource() and
     not source instanceof DataFlow::ObjectExprNode
   )
 }

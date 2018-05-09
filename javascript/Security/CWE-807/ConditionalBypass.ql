@@ -84,12 +84,12 @@ predicate isTaintedGuardForSensitiveAction(Sink sink, Source source, SensitiveAc
   not sink instanceof SensitiveActionGuardComparisonOperand and
   exists (Configuration cfg  |
     // ordinary taint tracking to a guard
-    cfg.flowsFrom(sink, source) or
+    cfg.hasFlow(source, sink) or
     // taint tracking to both operands of a guard comparison
     exists (SensitiveActionGuardComparison cmp, DataFlow::Node lSource, DataFlow::Node rSource |
       sink = cmp.getGuard() and
-      cfg.flowsFrom(DataFlow::valueNode(cmp.getLeftOperand()), lSource) and
-      cfg.flowsFrom(DataFlow::valueNode(cmp.getRightOperand()), rSource) |
+      cfg.hasFlow(lSource, DataFlow::valueNode(cmp.getLeftOperand())) and
+      cfg.hasFlow(rSource, DataFlow::valueNode(cmp.getRightOperand())) |
       source = lSource or
       source = rSource
     )

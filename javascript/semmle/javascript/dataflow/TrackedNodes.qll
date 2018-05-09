@@ -60,93 +60,79 @@ private class TrackedExprNode extends TrackedNode {
  * of `TrackedNode`s without barriers or additional flow steps.
  */
 private module NodeTracking {
-  /**
-   * Holds if `invk` may invoke `f`.
-   */
-  private predicate calls(InvokeExpr invk, Function f) {
-    exists (CallSite cs | cs = invk |
-      if cs.isIndefinite("global") then
-        (f = cs.getACallee() and f.getFile() = invk.getFile())
-      else
-        f = cs.getACallee()
-    )
-  }
+  private import internal.FlowSteps
 
   /**
-   * Holds if data can flow in one step from `src` to `trg`,  taking
-   * additional steps and barriers from the configuration into account.
+   * Holds if data can flow in one step from `pred` to `succ`,  taking
+   * additional steps into account.
    */
   pragma[inline]
-  private predicate localFlowStep(DataFlow::Node src, DataFlow::Node trg) {
-    src = trg.getAPredecessor()
-    or
-    // extra step: the flow analysis models import specifiers as property reads;
-    // they should flow into the SSA variable corresponding to the imported variable
-    exists (ImportSpecifier is, SsaExplicitDefinition ssa |
-      src = DataFlow::valueNode(is) and
-      ssa.getDef() = is and
-      trg = DataFlow::ssaDefinitionNode(ssa)
-    )
+  predicate localFlowStep(DataFlow::Node pred, DataFlow::Node succ) {
+   pred = succ.getAPredecessor()
+   or
+   any(DataFlow::AdditionalFlowStep afs).step(pred, succ)
   }
 
   /**
-   * Holds if `arg` is passed as an argument into parameter `parm`
-   * through invocation `invk` of function `f`.
+   * Holds if there is a flow step from `pred` to `succ` in direction `dir`.
+   *
+   * Summary steps through function calls are not taken into account.
    */
-  private predicate argumentPassing(DataFlow::ValueNode invk, DataFlow::ValueNode arg, Function f, SimpleParameter parm) {
-    exists (int i, CallSite cs |
-      cs = invk.asExpr() and calls(cs, f) and
-      f.getParameter(i) = parm and not parm.isRestParameter() and
-      arg = cs.getArgumentNode(i)
+  private predicate basicFlowStep(DataFlow::Node pred, DataFlow::Node succ, FlowDirection dir) {
+    isRelevant(pred) and
+    (
+     // Local flow
+     localFlowStep(pred, succ) and
+     dir = Level()
+     or
+     // Flow through properties of objects
+     propertyFlowStep(pred, succ) and
+     dir = Level()
+     or
+     // Flow into function
+     callStep(pred, succ) and
+     dir = Down()
+     or
+     // Flow out of function
+     returnStep(pred, succ) and
+     dir = Up()
     )
   }
 
   /**
-   * Holds if `def` is a parameter of `f` or a variable that is captured
-   * by `f`, such that `def` may be reached by forward flow under `configuration`.
+   * Holds if `nd` may be reachable from a tracked node.
+   *
+   * No call/return matching is done, so this is a relatively coarse over-approximation.
+   */
+  private predicate isRelevant(DataFlow::Node nd) {
+    nd instanceof TrackedNode
+    or
+    exists (DataFlow::Node mid |
+      isRelevant(mid) and
+      basicFlowStep(mid, nd, _)
+    )
+  }
+
+  /**
+   * Holds if `def` is a parameter of `f` or a variable that is captured by `f`,
+   * such that `def` may be reachable from a tracked node.
    */
   private predicate hasForwardFlow(Function f, SsaDefinition def) {
     exists (DataFlow::Node arg, SimpleParameter p |
-      argumentPassing(_, arg, f, p) and def.(SsaExplicitDefinition).getDef() = p |
-      forwardFlowFromInput(_, _, arg) or
-      flowsTo(_, arg, _)
+      argumentPassing(_, arg, f, p) and
+      def.(SsaExplicitDefinition).getDef() = p and
+      isRelevant(arg)
     )
     or
-    exists (DataFlow::SsaDefinitionNode previousDef |
-      defOfCapturedVar(previousDef.getSsaVariable().getDefinition(), def, f) |
-      forwardFlowFromInput(_, _, previousDef) or
-      flowsTo(_, previousDef, _)
-    )
-  }
-  
-  /**
-   * Holds if `expl` is a definition of the variable captured by `f` in `cap`.
-   */
-  private predicate defOfCapturedVar(SsaExplicitDefinition expl, SsaVariableCapture cap, Function f) {
-    expl.getSourceVariable() = cap.getSourceVariable() and
-    f = cap.getContainer()
-  }
-
-  /**
-   * Holds if `def` is a parameter of `f` or a variable that is captured
-   * by `f` whose value flows into `sink` under `configuration`, possibly through callees.
-   */
-  private predicate forwardFlowFromInput(Function f, SsaDefinition def, DataFlow::Node sink) {
-    hasForwardFlow(f, def) and
-    (
-      sink = DataFlow::ssaDefinitionNode(def)
-      or
-      exists (DataFlow::Node mid | forwardFlowFromInput(f, def, mid) |
-        mid = sink.getAPredecessor()
-        or
-        forwardFlowThroughCall(mid, sink)
-      )
+    exists (SsaDefinition prevDef |
+      captures(f, prevDef, def) and
+      isRelevant(DataFlow::ssaDefinitionNode(prevDef))
     )
   }
 
   /**
    * Holds if function `f` returns an expression into which `def`, which is either a parameter
-   * of `f` or a variable captured by `f`, flows under `configuration`, possibly through callees.
+   * of `f` or a variable captured by `f`, flows, possibly through callees.
    */
   private predicate forwardReturnOfInput(Function f, SsaDefinition def) {
     exists (DataFlow::ValueNode ret |
@@ -157,98 +143,63 @@ private module NodeTracking {
 
   /**
    * Holds if `invk` is an invocation of a function such that `arg` is either passed as an argument
-   * or captured by the function, and may flow into the function's return value under `configuration`.
-   *
-   * Flow is tracked forward.
+   * or captured by the function, and may flow into the function's return value.
    */
   private predicate forwardFlowThroughCall(DataFlow::Node arg, DataFlow::Node invk) {
     exists (Function g, SsaDefinition ssa |
-      argumentPassing(invk, arg, g, ssa.(SsaExplicitDefinition).getDef()) or
-      defOfCapturedVar(arg.(DataFlow::SsaDefinitionNode).getSsaVariable().getDefinition(), ssa, g) and calls(invk.asExpr(), g) |
+      argumentPassing(invk, arg, g, ssa.(SsaExplicitDefinition).getDef())
+      or
+      exists (SsaDefinition prevDef |
+        arg = DataFlow::ssaDefinitionNode(prevDef) and
+        captures(g, prevDef, ssa) and
+        calls(invk.asExpr(), g)
+      )
+      |
       forwardReturnOfInput(g, ssa)
     )
   }
 
   /**
-   * Holds if flow should be tracked through properties of `obj`.
-   *
-   * Currently, flow is tracked through object literals, `module` and
-   * `module.exports` objects.
+   * Holds if `def` is a parameter of `f` or a variable that is captured
+   * by `f` whose value flows into `sink`, possibly through callees.
    */
-  private predicate shouldTrackProperties(AbstractValue obj) {
-    obj instanceof AbstractExportsObject or
-    obj instanceof AbstractModuleObject or
-    obj instanceof AbstractObjectLiteral
-  }
-
-  /**
-   * Holds if the value of `source` may flow into an assignment to property
-   * `prop` of an object represented by `obj` under the given `configuration`.
-   *
-   * The parameter `stepIn` indicates whether steps from arguments to
-   * parameters are necessary to derive this flow.
-   */
-  pragma[nomagic]
-  private predicate forwardReachableProperty(DataFlow::Node source,
-                                             AbstractValue obj, string prop,
-                                             boolean stepIn) {
-    exists (AnalyzedPropertyWrite pw, DataFlow::Node mid |
-      flowsTo(source, mid, stepIn) and
-      pw.writes(obj, prop, mid) and
-      shouldTrackProperties(obj)
+  private predicate forwardFlowFromInput(Function f, SsaDefinition def, DataFlow::Node sink) {
+    (
+      hasForwardFlow(f, def) and
+      sink = DataFlow::ssaDefinitionNode(def)
+      or
+      exists (DataFlow::Node mid | forwardFlowFromInput(f, def, mid) |
+        localFlowStep(mid, sink)
+        or
+        forwardFlowThroughCall(mid, sink)
+      )
     )
   }
 
   /**
-   * Holds if `source` can flow to `sink` under the given `configuration`
-   * in zero or more steps.
-   *
-   * The parameter `stepIn` indicates whether steps from arguments to
-   * parameters are necessary to derive this flow.
+   * Holds if there is a flow step from `pred` to `succ` in direction `dir`.
    */
-  pragma[nomagic]
-  predicate flowsTo(TrackedNode source, DataFlow::Node sink, boolean stepIn) {
-    (
-      // Base case
-      sink = source and
-      stepIn = false
-      or
-      // Local flow
-      exists (DataFlow::Node mid |
-        flowsTo(source, mid, stepIn) and
-        localFlowStep(mid, sink)
-      )
-      or
-      // Flow through properties
-      exists (AbstractValue obj, string prop, AnalyzedPropertyRead read |
-        forwardReachableProperty(source, obj, prop, stepIn) and
-        read.reads(obj, prop) and
-        sink = read
-      )
-      or
-      // Flow into function
-      exists (DataFlow::Node arg, SimpleParameter parm |
-        flowsTo(source, arg, _) and
-        argumentPassing(_, arg, _, parm) and sink = DataFlow::parameterNode(parm) and
-        stepIn = true
-      )
-      or
-      // Flow through a function that returns a value that depends on one of its arguments
-      // or a captured variable
-      exists(DataFlow::Node arg |
-        flowsTo(source, arg, stepIn) and
-        forwardFlowThroughCall(arg, sink)
-      )
-      or
-      // Flow out of function
-      // This path is only enabled if the flow so far did not involve
-      // any interprocedural steps from an argument to a caller.
-      exists (DataFlow::ValueNode invk, DataFlow::ValueNode ret, Function f |
-        ret.asExpr() = f.getAReturnedExpr() and
-        flowsTo(source, ret, stepIn) and stepIn = false and
-        calls(invk.asExpr(), f) and
-        sink = invk
-      )
+  private predicate flowStep(DataFlow::Node pred, DataFlow::Node succ, FlowDirection dir) {
+    basicFlowStep(pred, succ, dir)
+    or
+    // Flow through a function that returns a value that depends on one of its arguments
+    // or a captured variable
+    forwardFlowThroughCall(pred, succ) and
+    dir = Level()
+  }
+
+  /**
+   * Holds if there is a path from `source` to `nd`, where `stepIn` is true if that
+   * path contains a down step.
+   */
+  predicate flowsTo(TrackedNode source, DataFlow::Node nd, boolean stepIn) {
+    source = nd and
+    stepIn = false
+    or
+    exists (DataFlow::Node pred, boolean oldStepIn, FlowDirection dir |
+      flowsTo(source, pred, oldStepIn) and
+      flowStep(pred, nd, dir) and
+      stepIn = stepIn(oldStepIn, dir)
     )
   }
 }

@@ -18,7 +18,7 @@
  *              usually indicates a text error.
  * @kind problem
  * @problem.severity recommendation
- * @precision high
+ * @precision very-high
  * @id java/missing-space-in-concatenation
  * @tags readability
  */

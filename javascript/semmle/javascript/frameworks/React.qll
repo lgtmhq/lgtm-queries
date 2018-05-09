@@ -48,10 +48,15 @@ abstract class ReactComponent extends ASTNode {
   abstract AbstractValue getAbstractComponent();
 
   /**
-   * Holds if `e` is a reference to this component.
+   * Gets the value that instantiates this component when invoked.
    */
-  predicate isRef(Expr e) {
-    e.analyze().getAValue() = getAbstractComponent()
+  abstract DataFlow::SourceNode getComponentCreatorSource();
+
+  /**
+   * Gets a reference to this component.
+   */
+  DataFlow::Node ref() {
+    result.analyze().getAValue() = getAbstractComponent()
   }
 
   /**
@@ -62,30 +67,40 @@ abstract class ReactComponent extends ASTNode {
   }
 
   /**
-   * Gets a reference to the `props` object of this component.
+   * Gets an access to the `props` object of this component.
+   *
+   * DEPRECATED: Use `getADirectPropsAccess` instead.
    */
-  DataFlow::SourceNode getAPropsSource() {
-    exists (DataFlow::PropRef prn | result = prn |
-      isRef(prn.getBase().asExpr()) and
-      prn.getPropertyName() = "props"
-    )
+  deprecated DataFlow::SourceNode getAPropsSource() {
+    result = getADirectPropsAccess()
   }
 
   /**
-   * Gets a reference to the `state` object of this component.
+   * Gets an access to the `props` object of this component.
    */
-  DataFlow::SourceNode getAStateSource() {
-    exists (DataFlow::PropRef prn | result = prn |
-      isRef(prn.getBase().asExpr()) and
-      prn.getPropertyName() = "state"
-    )
+  abstract DataFlow::SourceNode getADirectPropsAccess();
+
+  /**
+   * Gets an access to the `state` object of this component.
+   *
+   * DEPRECATED: Use `getADirectStateAccess` instead.
+   */
+  deprecated DataFlow::SourceNode getAStateSource() {
+    result = getADirectStateAccess()
+  }
+
+  /**
+   * Gets an access to the `state` object of this component.
+   */
+  DataFlow::SourceNode getADirectStateAccess() {
+    result.(DataFlow::PropRef).accesses(ref(), "state")
   }
 
   /**
    * Gets a data flow node that reads a prop of this component.
    */
   DataFlow::PropRead getAPropRead() {
-    getAPropsSource().flowsTo(result.getBase())
+    getADirectPropsAccess().flowsTo(result.getBase())
   }
 
   /**
@@ -101,7 +116,7 @@ abstract class ReactComponent extends ASTNode {
    * of the state object of this component.
    */
   DataFlow::SourceNode getAStateAccess() {
-    result = getAStateSource()
+    result = getADirectStateAccess()
     or
     exists (DataFlow::PropRef prn | result = prn |
       getAStateAccess().flowsTo(prn.getBase())
@@ -109,13 +124,18 @@ abstract class ReactComponent extends ASTNode {
   }
 
   /**
-   * Holds if this component specifies default values for (some of) its props.
+   * Holds if this component specifies default values for (some of) its
+   * props.
    */
   predicate hasDefaultProps() {
-    exists (DataFlow::PropWrite pwn | isRef(pwn.getBase().asExpr()) |
-      pwn.getPropertyName() = "defaultProps"
-    )
+    exists (getADefaultPropsSource())
   }
+
+  /**
+   * Gets the object that specifies default values for (some of) this
+   * components' props.
+   */
+  abstract DataFlow::SourceNode getADefaultPropsSource();
 
   /**
    * Gets the render method of this component.
@@ -127,9 +147,97 @@ abstract class ReactComponent extends ASTNode {
   /**
    * Gets a call to method `name` on this component.
    */
-  MethodCallExpr getAMethodCall(string name) {
-    isRef(result.getReceiver()) and
-    result.getMethodName() = name
+  DataFlow::MethodCallNode getAMethodCall(string name) {
+    result.calls(ref(), name)
+  }
+
+  /**
+   * Gets a value that will become (part of) the state
+   * object of this component, for example an assignment to `this.state`.
+   */
+  DataFlow::SourceNode getACandidateStateSource() {
+    exists (DataFlow::PropWrite pwn, DataFlow::Node rhs |
+      // a direct definition: `this.state = o`
+      result.flowsTo(rhs) and
+      pwn.writes(ref(), "state", rhs)
+    )
+    or
+    exists (DataFlow::MethodCallNode mce, DataFlow::SourceNode arg0 |
+      mce = getAMethodCall("setState") or
+      mce = getAMethodCall("forceUpdate") |
+      arg0.flowsTo(mce.getArgument(0)) and
+      if arg0 instanceof DataFlow::FunctionNode then
+        // setState with callback: `this.setState(() => {foo: 42})`
+        result.flowsToExpr(arg0.(DataFlow::FunctionNode).getFunction().getAReturnedExpr())
+      else
+        // setState with object: `this.setState({foo: 42})`
+        result = arg0
+    )
+  }
+
+  /**
+   * Gets a value that used to be the state object of this
+   * component, for example the `prevState` parameter of the
+   * `comoponentDidUpdate` method of this component.
+   */
+  DataFlow::SourceNode getAPreviousStateSource() {
+    exists (DataFlow::FunctionNode callback, int stateParameterIndex |
+      // "prevState" object as callback argument
+      callback.getParameter(stateParameterIndex).flowsTo(result) |
+      // setState: (prevState, props)
+      callback = getAMethodCall("setState").getCallback(0) and
+      stateParameterIndex = 0
+      or
+      // componentDidUpdate: (prevProps, prevState)
+      callback = getInstanceMethod("componentDidUpdate").flow() and
+      stateParameterIndex = 1
+    )
+  }
+
+  /**
+   * Gets a value that will become (part of) the props
+   * object of this component, for example the argument to the
+   * constructor of this component.
+   */
+  DataFlow::SourceNode getACandidatePropsSource() {
+    exists (DataFlow::InvokeNode call |
+      getComponentCreatorSource().flowsTo(call.getCallee()) and
+      result.flowsTo(call.getArgument(0))
+    ) or
+    result = getADefaultPropsSource()
+  }
+
+  /**
+   * Gets an expression that will become the value of the props property
+   * `name` of this component, for example the attribute value of a JSX
+   * element that instantiates this component.
+   */
+  DataFlow::Node getACandidatePropsValue(string name) {
+    getACandidatePropsSource().hasPropertyWrite(name, result) or
+    exists (ReactJSXElement e, JSXAttribute attr |
+      this = e.getComponent() and
+      attr = e.getAttributeByName(name) and
+      result.asExpr() = attr.getValue()
+    )
+  }
+
+  /**
+   * Gets a value that used to be the props object of this
+   * component, for example the `prevProps` parameter of the
+   * `comoponentDidUpdate` method of this component.
+   */
+  DataFlow::SourceNode getAPreviousPropsSource() {
+    exists (DataFlow::FunctionNode callback, int propsParameterIndex |
+      // "prevProps" object as callback argument
+      callback.getParameter(propsParameterIndex).flowsTo(result) |
+      // setState: (prevState, props)
+      callback = getAMethodCall("setState").getCallback(0) and
+      propsParameterIndex = 1
+      or
+      // componentDidUpdate: (prevProps, prevState)
+      callback = getInstanceMethod("componentDidUpdate").flow() and
+      propsParameterIndex = 0
+    )
   }
 
 }
@@ -140,26 +248,40 @@ abstract class ReactComponent extends ASTNode {
 class FunctionalComponent extends ReactComponent, Function {
   FunctionalComponent() {
     // heuristic: a function with a single parameter named `props`
-    // that always returns a JSX element or fragment is probably
-    // a component
+    // that always returns a JSX element or fragment, or a React
+    // element is probably a component
     getNumParameter() = 1 and
     exists (Parameter p | p = getParameter(0) |
       p.(SimpleParameter).getName().regexpMatch("(?i).*props.*") or
       p instanceof ObjectPattern
     ) and
-    forex (Expr e | e = getAReturnedExpr() | e instanceof JSXNode)
+    forex (Expr e | e.flow().(DataFlow::SourceNode).flowsToExpr(getAReturnedExpr()) |
+      e instanceof JSXNode or
+      e instanceof ReactElementDefinition
+    )
   }
 
   override Function getInstanceMethod(string name) {
     name = "render" and result = this
   }
 
-  override DataFlow::SourceNode getAPropsSource() {
+  override DataFlow::SourceNode getADirectPropsAccess() {
     result = DataFlow::parameterNode(getParameter(0))
   }
 
   override AbstractValue getAbstractComponent() {
     result = TAbstractInstance(TAbstractFunction(this))
+  }
+
+  override DataFlow::SourceNode getComponentCreatorSource() {
+    result = DataFlow::valueNode(this)
+  }
+
+  override DataFlow::SourceNode getADefaultPropsSource() {
+    exists (DataFlow::Node props |
+      result.flowsTo(props) and
+      DataFlow::valueNode(this).(DataFlow::SourceNode).hasPropertyWrite("defaultProps", props)
+    )
   }
 
 }
@@ -170,10 +292,13 @@ class FunctionalComponent extends ReactComponent, Function {
  */
 class ES2015Component extends ReactComponent, ClassDefinition {
   ES2015Component() {
-    exists (PropAccess sup | sup = this.getSuperClass() |
-      sup.getQualifiedName() = "React.Component" or
-      sup.getQualifiedName() = "React.PureComponent"
-    )
+    exists (DataFlow::SourceNode sup | sup.flowsToExpr(getSuperClass()) |
+      exists (PropAccess access | access = sup.asExpr() |
+        access.getQualifiedName() = "React.Component" or
+        access.getQualifiedName() = "React.PureComponent") or
+      sup = DataFlow::moduleMember("react", "Component") or
+      sup = DataFlow::moduleMember("react", "PureComponent") or
+      sup.getAstNode() instanceof ReactComponent)
   }
 
   override Function getInstanceMethod(string name) {
@@ -184,8 +309,29 @@ class ES2015Component extends ReactComponent, ClassDefinition {
     )
   }
 
+  override DataFlow::SourceNode getADirectPropsAccess() {
+    result.(DataFlow::PropRef).accesses(ref(), "props") or
+    result = DataFlow::parameterNode(getConstructor().getBody().getParameter(0))
+  }
+
   override AbstractValue getAbstractComponent() {
     result = TAbstractInstance(TAbstractClass(this))
+  }
+
+  override DataFlow::SourceNode getComponentCreatorSource() {
+    result = DataFlow::valueNode(this)
+  }
+
+  override DataFlow::SourceNode getACandidateStateSource() {
+    result = ReactComponent.super.getACandidateStateSource() or
+    result.flowsToExpr(getField("state").getInit())
+  }
+
+  override DataFlow::SourceNode getADefaultPropsSource() {
+    exists (DataFlow::Node props |
+      result.flowsTo(props) and
+      DataFlow::valueNode(this).(DataFlow::SourceNode).hasPropertyWrite("defaultProps", props)
+    )
   }
 
 }
@@ -194,28 +340,46 @@ class ES2015Component extends ReactComponent, ClassDefinition {
  * A legacy React component implemented using `React.createClass` or `create-react-class`.
  */
 class ES5Component extends ReactComponent, ObjectExpr {
+
+  DataFlow::CallNode create;
+
   ES5Component() {
-    exists (DataFlow::CallNode create |
+    (
       // React.createClass({...})
       create = react().getAMethodCall("createClass")
       or
       // require('create-react-class')({...})
       create = DataFlow::moduleImport("create-react-class").getACall()
-      |
-      create.getArgument(0).getALocalSource().asExpr() = this
-    )
+    ) and
+    create.getArgument(0).getALocalSource().asExpr() = this
   }
 
   override Function getInstanceMethod(string name) {
     result = getPropertyByName(name).getInit()
   }
 
-  override predicate hasDefaultProps() {
-    exists (getInstanceMethod("getDefaultProps"))
+  override DataFlow::SourceNode getADirectPropsAccess() {
+    result.(DataFlow::PropRef).accesses(ref(), "props")
   }
 
   override AbstractValue getAbstractComponent() {
     result = TAbstractObjectLiteral(this)
+  }
+
+  override DataFlow::SourceNode getComponentCreatorSource() {
+    result = create
+  }
+
+  override DataFlow::SourceNode getACandidateStateSource() {
+    result = ReactComponent.super.getACandidateStateSource() or
+    result.flowsToExpr(getInstanceMethod("getInitialState").getAReturnedExpr())
+  }
+
+  override DataFlow::SourceNode getADefaultPropsSource() {
+    exists (Function f |
+      f = getInstanceMethod("getDefaultProps") and
+      result.flowsToExpr(f.getAReturnedExpr())
+    )
   }
 
 }
@@ -223,11 +387,16 @@ class ES5Component extends ReactComponent, ObjectExpr {
 /**
  * A DOM element created by a React function.
  */
-private abstract class ReactElementDefinition extends DOM::ElementDefinition {
+abstract class ReactElementDefinition extends DOM::ElementDefinition {
 
   override DOM::ElementDefinition getParent() {
     none()
   }
+
+  /**
+   * Gets the `props` argument of this definition.
+   */
+  abstract DataFlow::Node getProps();
 
 }
 
@@ -236,18 +405,19 @@ private abstract class ReactElementDefinition extends DOM::ElementDefinition {
  */
 private class CreateElementDefinition extends ReactElementDefinition {
 
-  string tagName;
+  DataFlow::MethodCallNode call;
 
   CreateElementDefinition() {
-    exists (MethodCallExpr mce |
-      mce = this and
-      mce = react().getAMethodCall("createElement").asExpr() and
-      mce.getArgument(0).mayHaveStringValue(tagName)
-    )
+    call.asExpr() = this and
+    call = react().getAMethodCall("createElement")
   }
 
   override string getName() {
-    result = tagName
+    call.getArgument(0).mayHaveStringValue(result)
+  }
+
+  override DataFlow::Node getProps() {
+    result = call.getArgument(1)
   }
 
 }
@@ -257,18 +427,22 @@ private class CreateElementDefinition extends ReactElementDefinition {
  */
 private class FactoryDefinition extends ReactElementDefinition {
 
-  string tagName;
+  DataFlow::MethodCallNode factory;
+
+  DataFlow::CallNode call;
 
   FactoryDefinition() {
-    exists (DataFlow::CallNode mce |
-      mce = react().getAMethodCall("createFactory") and
-      mce.getArgument(0).asExpr().mayHaveStringValue(tagName) and
-      this = mce.getACall().asExpr()
-    )
+    call.asExpr() = this and
+    call = factory.getACall() and
+    factory = react().getAMethodCall("createFactory")
   }
 
   override string getName() {
-    result = tagName
+      factory.getArgument(0).mayHaveStringValue(result)
+  }
+
+  override DataFlow::Node getProps() {
+    result = call.getArgument(0)
   }
 
 }
@@ -304,4 +478,23 @@ private class AnalyzedThisInBoundCallback extends AnalyzedValueNode {
     result = AnalyzedValueNode.super.getALocalValue()
   }
 
+}
+
+/**
+ * A `JSXElement` that instantiates a `ReactComponent`.
+ */
+private class ReactJSXElement extends JSXElement {
+
+  ReactComponent component;
+
+  ReactJSXElement() {
+    component.getComponentCreatorSource().flowsToExpr(getNameExpr())
+  }
+
+  /**
+   * Gets the component this element instantiates.
+   */
+  ReactComponent getComponent() {
+    result = component
+  }
 }

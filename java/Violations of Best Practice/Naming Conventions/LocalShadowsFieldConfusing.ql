@@ -17,7 +17,7 @@
  *              to understand.
  * @kind problem
  * @problem.severity recommendation
- * @precision very-high
+ * @precision high
  * @id java/local-shadows-field
  * @tags maintainability
  *       readability

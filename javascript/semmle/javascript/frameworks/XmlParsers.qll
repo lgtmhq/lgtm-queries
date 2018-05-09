@@ -48,7 +48,7 @@ module XML {
   class LibXmlJsParserInvocation extends ParserInvocation {
     LibXmlJsParserInvocation() {
       exists (string m |
-        this = js::DataFlow::moduleImport("libxmljs").getAMemberCall(m).asExpr() and
+        this = js::DataFlow::moduleMember("libxmljs", m).getACall().asExpr() and
         m.matches("parseXml%")
       )
     }

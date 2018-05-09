@@ -636,6 +636,18 @@ class Class extends UserType {
     this = result.getAClass()
   }
 
+  /**
+   * Gets the UUID that associated with this class via the `__declspec(uuid)`
+   * attribute.
+   *
+   * Regardless of the format of the UUID string in source code, the returned
+   * value is normalized to the standard "registry format", without braces, and
+   * using lowercase letters (e.g. "01234567-89ab-cdef-0123-456789abcdef").
+   */
+  string getUuid() {
+    usertype_uuid(this, result)
+  }
+
   private Type getAFieldSubobjectType() {
     result = stripArrayTypes(this.getAField().getUnderlyingType())
   }

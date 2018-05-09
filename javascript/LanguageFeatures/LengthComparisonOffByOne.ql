@@ -28,32 +28,51 @@
 import javascript
 
 /**
- * Holds if `cond` ensures that `index` is less than or equal to `array.length`.
+ * Gets an access to `array.length`.
  */
-predicate lengthGuard(ConditionGuardNode cond, Variable index, Variable array) {
-  exists (RelationalComparison cmp, PropAccess len |
+PropAccess arrayLen(Variable array) {
+  result.accesses(array.getAnAccess(), "length")
+}
+
+/**
+ * Gets a condition that checks that `index` is less than or equal to `array.length`.
+ */
+ConditionGuardNode getLengthLEGuard(Variable index, Variable array) {
+  exists (RelationalComparison cmp |
     cmp instanceof GEExpr or cmp instanceof LEExpr |
-    cmp = cond.getTest() and cond.getOutcome() = true and
-    cmp.getGreaterOperand() = len and cmp.getLesserOperand() = index.getAnAccess() and
-    len.accesses(array.getAnAccess(), "length")
+    cmp = result.getTest() and result.getOutcome() = true and
+    cmp.getGreaterOperand() = arrayLen(array) and
+    cmp.getLesserOperand() = index.getAnAccess()
   )
 }
 
 /**
- * Holds if `ea` is a read from `array[index]`, and `indexAccess` is the index expression.
+ * Gets a condition that checks that `index` is not equal to `array.length`.
  */
-predicate elementRead(IndexExpr ea, Variable array, Variable index, VarAccess indexAccess) {
-  ea.getBase() = array.getAnAccess() and
-  ea.getIndex() = indexAccess and
-  ea instanceof RValue and
-  indexAccess = index.getAnAccess()
+ConditionGuardNode getLengthNEGuard(Variable index, Variable array) {
+  exists (EqualityTest eq |
+    eq = result.getTest() and result.getOutcome() = eq.getPolarity().booleanNot() and
+    eq.hasOperands(index.getAnAccess(), arrayLen(array))
+  )
 }
 
-from ConditionGuardNode cond, Variable array, Variable index, IndexExpr ea, VarAccess indexAccess
+/**
+ * Holds if `ea` is a read from `array[index]` in basic block `bb`.
+ */
+predicate elementRead(IndexExpr ea, Variable array, Variable index, BasicBlock bb) {
+  ea.getBase() = array.getAnAccess() and
+  ea.getIndex() = index.getAnAccess() and
+  ea instanceof RValue and
+  bb = ea.getBasicBlock()
+}
+
+from ConditionGuardNode cond, Variable array, Variable index, IndexExpr ea, BasicBlock bb
 where // there is a comparison `index <= array.length`
-      lengthGuard(cond, index, array) and
+      cond = getLengthLEGuard(index, array) and
       // there is a read from `array[index]`
-      elementRead(ea, array, index, indexAccess) and
+      elementRead(ea, array, index, bb) and
       // and the read is guarded by the comparison
-      cond.dominates(indexAccess.getBasicBlock())
+      cond.dominates(bb) and
+      // but the read is not guarded by another check that `index != array.length`
+      not getLengthNEGuard(index, array).dominates(bb)
 select cond.getTest(), "Off-by-one index comparison against length may lead to out-of-bounds $@.", ea, "read"

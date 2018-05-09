@@ -348,17 +348,26 @@ private AbstractValue getImplicitInitValue(LocalVariable v) {
     )
   else if nodeBuiltins(v, _) then
     nodeBuiltins(v, result)
+  else if exists (getAFunDecl(v)) then
+    // model hoisting
+    result = TAbstractFunction(getAFunDecl(v))
   else
     result = TAbstractUndefined()
 }
 
 /**
+ * Gets a function declaration that declares `v`.
+ */
+private FunctionDeclStmt getAFunDecl(LocalVariable v) {
+  v = result.getVariable()
+}
+
+/**
  * Holds if `v` is a local variable that can never be observed in its uninitialized state.
  */
+pragma[noinline]
 private predicate guaranteedToBeInitialized(LocalVariable v) {
-  // function declarations can never be uninitialized due to hoisting
-  exists (FunctionDeclStmt fd | v = fd.getVariable()) or
-  // parameters also can never be uninitialized
+  // parameters can never be uninitialized
   exists (Parameter p | v = p.getAVariable())
 }
 

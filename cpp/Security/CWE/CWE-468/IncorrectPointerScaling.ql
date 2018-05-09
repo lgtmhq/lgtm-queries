@@ -147,6 +147,10 @@ where exists(pointerArithmeticParent(dest))
   // char pointer, then accessing it at byte offsets. For example, this can
   // be necessary in order to resume an interrupted `write(2)`.
   and not (destBase instanceof CharType)
+  
+  // Similarly, gcc and compilers emulating it will allow void pointer
+  // arithmetic as if void were a 1-byte type
+  and not (destBase instanceof VoidType)
 
   // Don't produce an alert if the root expression computes
   // an offset, rather than a pointer. For example:

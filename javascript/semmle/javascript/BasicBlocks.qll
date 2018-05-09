@@ -71,12 +71,21 @@ private cached module Internal {
   cached predicate bbIndex(BasicBlock bb, ControlFlowNode nd, int i) =
     shortestDistances(startsBB/1, intraBBSucc/2)(bb, nd, i)
 
+  cached int bbLength(BasicBlock bb) {
+    result = strictcount(ControlFlowNode nd | bbIndex(bb, nd, _))
+  }
+
   cached predicate useAt(BasicBlock bb, int i, Variable v, VarUse u) {
     v = u.getVariable() and bbIndex(bb, u, i)
   }
 
   cached predicate defAt(BasicBlock bb, int i, Variable v, VarDef d) {
     v = d.getAVariable() and bbIndex(bb, d, i)
+  }
+
+  cached predicate reachableBB(BasicBlock bb) {
+    entryBB(bb) or
+    exists (BasicBlock predBB | succBB(predBB, bb) | reachableBB(predBB))
   }
 }
 private import Internal
@@ -125,7 +134,7 @@ class BasicBlock extends @cfg_node, Locatable {
   ControlFlowNode getLastNode() { result = getNode(length()-1) }
 
   /** Gets the length of this block. */
-  int length() { result = strictcount(getANode()) }
+  int length() { result = bbLength(this) }
 
   /** Holds if this basic block uses variable `v` in its `i`th node `u`. */
   predicate useAt(int i, Variable v, VarUse u) {
@@ -292,8 +301,7 @@ class EntryBasicBlock extends BasicBlock {
  */
 class ReachableBasicBlock extends BasicBlock {
   ReachableBasicBlock() {
-    this instanceof EntryBasicBlock or
-    this.getAPredecessor() instanceof ReachableBasicBlock
+    reachableBB(this)
   }
 
   /**

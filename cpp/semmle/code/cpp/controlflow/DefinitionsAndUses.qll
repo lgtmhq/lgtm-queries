@@ -40,7 +40,7 @@ predicate definitionReaches(Expr def, Expr node) {
 }
 
 private predicate hasAddressOfAccess(SemanticStackVariable var) {
-  exists(VariableAccess va | va.getTarget() = var | va.isAddressOfAccess())
+  var.getAnAccess().isAddressOfAccessNonConst()
 }
 
 /**
@@ -274,8 +274,8 @@ predicate definitionBarrier(SemanticStackVariable v, ControlFlowNode barrier) {
      */
     va.getASuccessor() = barrier and
     va.getTarget() = v and
-    va.isAddressOfAccess() and
-    not exists(Call c | c.passesByReference(_, va)) // handled in definitionByReference
+    va.isAddressOfAccessNonConst() and
+    not exists(Call c | c.passesByReferenceNonConst(_, va)) // handled in definitionByReference
   )
 }
 
@@ -339,7 +339,7 @@ private predicate containsAssembly(Function f) {
  */
 predicate definitionByReference(VariableAccess va, Expr def) {
   exists(Call c, int i |
-    c.passesByReference(i, va)
+    c.passesByReferenceNonConst(i, va)
     and
     def = c.getArgument(i)
     and
@@ -353,16 +353,6 @@ predicate definitionByReference(VariableAccess va, Expr def) {
       // be conservative and assume that the parameter can be
       // modified.
       containsAssembly(f)
-    ) and
-    // If the resulting pointer is const then we will trust that it will not be
-    // used to modify the variable.
-    not def.getFullyConverted().getUnderlyingType().(PointerType)
-           .getBaseType().isConst() and
-    not def.getFullyConverted().getUnderlyingType().(ReferenceType)
-           .getBaseType().isConst() and
-    not (
-      c.getTarget().getNamespace().getName() = "std" and
-      c.getTarget().getName() = "move"
     )
   )
   or

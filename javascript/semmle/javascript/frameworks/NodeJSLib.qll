@@ -33,9 +33,9 @@ module NodeJSLib {
    * Holds if `call` is an invocation of `http.createServer` or `https.createServer`.
    */
   predicate isCreateServer(CallExpr call) {
-    exists (DataFlow::ModuleImportNode http |
-      http.getPath() = "http" or http.getPath() = "https" |
-      call = http.getAMemberCall("createServer").asExpr()
+    exists (string name |
+      name = "http" or name = "https" |
+      call = DataFlow::moduleMember(name, "createServer").getAnInvocation().asExpr()
     )
   }
 
@@ -58,29 +58,35 @@ module NodeJSLib {
   }
 
   /**
-   * A Node.js route handler.
+   * A function used as an Node.js server route handler.
+   *
+   * By default, only handlers installed by an Node.js server route setup are recognized,
+   * but support for other kinds of route handlers can be added by implementing
+   * additional subclasses of this class.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
-
-    Function function;
-
-    RouteHandler() {
-      function = astNode and
-      any(RouteSetup setup).getARouteHandler() = this
-    }
+  abstract class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::FunctionNode {
 
     /**
      * Gets the parameter of the route handler that contains the request object.
      */
     SimpleParameter getRequestParameter() {
-      result = function.getParameter(0)
+      result = getFunction().getParameter(0)
     }
 
     /**
      * Gets the parameter of the route handler that contains the response object.
      */
     SimpleParameter getResponseParameter() {
-      result = function.getParameter(1)
+      result = getFunction().getParameter(1)
+    }
+  }
+
+  /**
+   * A route handler installed by a route setup.
+   */
+  class StandardRouteHandler extends RouteHandler {
+    StandardRouteHandler() {
+      any(RouteSetup setup).getARouteHandler() = this
     }
   }
 
@@ -165,7 +171,7 @@ module NodeJSLib {
     }
   }
 
-  class RouteSetup extends MethodCallExpr, HTTP::Servers::StandardRouteSetup {
+  class RouteSetup extends CallExpr, HTTP::Servers::StandardRouteSetup {
     ServerDefinition server;
     Expr handler;
 
@@ -174,7 +180,7 @@ module NodeJSLib {
       handler = getArgument(0)
       or
       server.flowsTo(getReceiver()) and
-      getMethodName().regexpMatch("on(ce)?") and
+      this.(MethodCallExpr).getMethodName().regexpMatch("on(ce)?") and
       getArgument(0).getStringValue() = "request" and
       handler = getArgument(1)
     }
@@ -185,6 +191,13 @@ module NodeJSLib {
 
     override Expr getServer() {
       result = server
+    }
+
+    /**
+     * Gets the expression for the handler registered by this setup.
+     */
+    Expr getRouteHandlerExpr() {
+      result = handler
     }
 
   }
@@ -232,7 +245,7 @@ module NodeJSLib {
   /**
    * A call to a path-module method that preserves taint.
    */
-  private class PathFlowTarget extends TaintTracking::DefaultTaintStep, DataFlow::ValueNode {
+  private class PathFlowTarget extends TaintTracking::AdditionalTaintStep, DataFlow::ValueNode {
     override CallExpr astNode;
     Expr tainted;
 
@@ -362,16 +375,16 @@ module NodeJSLib {
   /**
    * A call to a method from module `child_process`.
    */
-  private class ChildProcessMethodCall extends SystemCommandExecution, DataFlow::ValueNode {
-    override MethodCallExpr astNode;
+  private class ChildProcessMethodCall extends SystemCommandExecution, DataFlow::CallNode {
+    string methodName;
 
     ChildProcessMethodCall() {
-      this = DataFlow::moduleImport("child_process").getAMemberCall(_)
+      this = DataFlow::moduleMember("child_process", methodName).getACall()
     }
 
     override DataFlow::Node getACommandArgument() {
       // check whether this is an invocation of an exec/spawn/fork method
-      exists (string methodName | methodName = astNode.getMethodName() |
+      (
         methodName = "exec" or
         methodName = "execSync" or
         methodName = "execFile" or
@@ -382,7 +395,62 @@ module NodeJSLib {
       )
       and
       // all of the above methods take the command as their first argument
-      result = DataFlow::valueNode(astNode.getArgument(0))
+      result = getArgument(0)
     }
   }
+
+  /**
+   * A function that looks like a Node.js route handler.
+   */
+  class RouteHandlerCandidate extends DataFlow::FunctionNode {
+
+    override Function astNode;
+
+    RouteHandlerCandidate() {
+      exists (string request, string response |
+        (request = "request" or request = "req") and
+        (response = "response" or response = "res") and
+        // heuristic: parameter names match the Node.js documentation
+        astNode.getNumParameter() = 2 and
+        astNode.getParameter(0).(SimpleParameter).getName() = request and
+        astNode.getParameter(1).(SimpleParameter).getName() = response |
+        not (
+          // heuristic: not a class method (Node.js invokes this with a function call)
+          astNode = any(MethodDefinition def).getBody() or
+          // heuristic: does not return anything (Node.js will not use the return value)
+          exists(getFunction().getAReturnedExpr()) or
+          // heuristic: is not invoked (Node.js invokes this at a call site we can not reason precisely about)
+          exists(CallSite cs | cs.getACallee() = astNode)
+        )
+      )
+    }
+  }
+
+  /**
+   * Tracking for `RouteHandlerCandidate`.
+   */
+  private class TrackedRouteHandlerCandidate extends DataFlow::TrackedNode {
+
+    TrackedRouteHandlerCandidate() {
+      this instanceof RouteHandlerCandidate
+    }
+
+  }
+
+  /**
+   * A function that looks like a Node.js route handler and flows to a route setup.
+   */
+  private class TrackedRouteHandlerCandidateWithSetup extends RouteHandler, HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
+
+    override Function astNode;
+
+    TrackedRouteHandlerCandidateWithSetup() {
+      exists(TrackedRouteHandlerCandidate tracked |
+        tracked.flowsTo(any(RouteSetup s).getRouteHandlerExpr().flow()) and
+        this = tracked
+      )
+    }
+
+  }
+
 }

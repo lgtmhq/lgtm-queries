@@ -24,7 +24,7 @@ module Hapi {
   class ServerDefinition extends HTTP::Servers::StandardServerDefinition, NewExpr {
     ServerDefinition() {
       // `server = new Hapi.Server()`
-      this = DataFlow::moduleImport("hapi").getAPropertyRead("Server").getAnInstantiation().asExpr()
+      this = DataFlow::moduleMember("hapi", "Server").getAnInstantiation().asExpr()
     }
   }
 

@@ -24,7 +24,7 @@ module Restify {
   class ServerDefinition extends HTTP::Servers::StandardServerDefinition, CallExpr, DataFlow::TrackedExpr {
     ServerDefinition() {
       // `server = restify.createServer()`
-      this = DataFlow::moduleImport("restify").getAMemberCall("createServer").asExpr()
+      this = DataFlow::moduleMember("restify", "createServer").getACall().asExpr()
     }
   }
 

@@ -29,5 +29,5 @@ import javascript
 import semmle.javascript.security.dataflow.CleartextStorage::CleartextStorage
 
 from Configuration cleartextStorage, Source source, Sink sink
-where cleartextStorage.flowsTo(source, sink)
+where cleartextStorage.hasFlow(source, sink)
 select sink, "Sensitive data returned by $@ is stored here.", source, source.describe()

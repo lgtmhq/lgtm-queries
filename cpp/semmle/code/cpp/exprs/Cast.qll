@@ -88,6 +88,21 @@ class DynamicCast extends Cast, @dynamic_cast {
 }
 
 /**
+ * A Microsoft C/C++ `__uuidof` expression that returns the UUID of a type, as
+ * specified by the `__declspec(uuid)` attribute.
+ */
+class UuidofOperator extends Expr, @uuidof {
+  override string toString() { result = "__uuidof(" + getTypeOperand().getName() + ")" }
+
+  override int getPrecedence() { result = 15 }
+
+  /** Gets the contained type. */
+  Type getTypeOperand() {
+    uuidof_bind(this, result)
+  }
+}
+
+/**
  * A C++ `typeid` expression which provides runtime type information
  * about an expression or type.
  */

@@ -82,9 +82,9 @@ where deadStoreOfLocal(dead, v) and
       not exists (FunctionExpr fe | dead = fe.getId()) and
       // don't flag function declarations nested inside blocks or other compound statements;
       // their meaning is only partially specified by the standard
-      not exists (FunctionDeclStmt fd, Function outer |
+      not exists (FunctionDeclStmt fd, StmtContainer outer |
         dead = fd.getId() and outer = fd.getEnclosingContainer() |
-        not fd = outer.getABodyStmt()
+        not fd = outer.getBody().(BlockStmt).getAStmt()
       ) and
       // don't flag overwrites with `null` or `undefined`
       not isNullOrUndef(dead.getSource()) and

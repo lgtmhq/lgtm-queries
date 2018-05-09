@@ -26,9 +26,9 @@ module Azure {
     string kind;
 
     Credentials() {
-      exists (MethodCallExpr mce, string methodName |
+      exists (CallExpr mce, string methodName |
         (methodName = "loginWithUsernamePassword" or methodName = "loginWithServicePrincipalSecret") and
-        mce = DataFlow::moduleImport("ms-rest-azure").getAMemberCall(methodName).asExpr() |
+        mce = DataFlow::moduleMember("ms-rest-azure", methodName).getACall().asExpr() |
         this = mce.getArgument(0) and kind = "user name" or
         this = mce.getArgument(1) and kind = "password"
       )

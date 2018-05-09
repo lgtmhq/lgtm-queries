@@ -110,6 +110,42 @@ class IncludeWithHasLocationInfo extends Top {
 }
 
 /**
+ * Holds if `f`, `line`, `column` indicate the start character
+ * of `cc`. 
+ */
+private predicate constructorCallStartLoc(ConstructorCall cc, File f, int line, int column) {
+  exists(Location l |
+    l = cc.getLocation() and
+    l.getFile() = f and
+    l.getStartLine() = line and
+    l.getStartColumn() = column
+  )
+}
+
+/**
+ * Holds if `f`, `line`, `column` indicate the start character
+ * of `tm`. 
+ */
+private predicate typeMentionStartLoc(TypeMention tm, File f, int line, int column) {
+  exists(Location l |
+    l = tm.getLocation() and
+    l.getFile() = f and
+    l.getStartLine() = line and
+    l.getStartColumn() = column
+  )
+}
+
+/**
+ * Holds if `cc` and `tm` begin at the same character.
+ */
+private cached predicate constructorCallTypeMention(ConstructorCall cc, TypeMention tm) {
+  exists(File f, int line, int column |
+    constructorCallStartLoc(cc, f, line, column) and
+    typeMentionStartLoc(tm, f, line, column)
+  )
+}
+
+/**
  * Gets an element, of kind `kind`, that element `e` uses, if any.
  *
  * The `kind` is a string representing what kind of use it is:
@@ -125,7 +161,8 @@ Top definitionOf(Top e, string kind) {
       // call -> function called
       kind = "M" and
       result = e.(Call).getTarget() and
-      not e.(Expr).isCompilerGenerated()
+      not e.(Expr).isCompilerGenerated() and
+      not e instanceof ConstructorCall // handled elsewhere
     ) or (
       // access -> function, variable or enum constant accessed
       kind = "V" and
@@ -136,9 +173,32 @@ Top definitionOf(Top e, string kind) {
       kind = "X" and
       result = e.(MacroAccess).getMacro()
     ) or (
-      // class derivation -> base class
+      // type mention -> type
       kind = "T" and
-      result = e.(ClassDerivation).getBaseClass()
+      e.(TypeMention).getMentionedType() = result and
+      not constructorCallTypeMention(_, e) and // handled elsewhere
+
+      // multiple mentions can be generated when a typedef is used.  Exclude
+      // all but the originating typedef.
+      not exists(TypeMention tm, File f, int startline, int startcol |
+        typeMentionStartLoc(e, f, startline, startcol) and
+        typeMentionStartLoc(tm, f, startline, startcol) and
+        (
+          e.(TypeMention).getMentionedType() = tm.getMentionedType().(TypedefType).getBaseType() or
+          e.(TypeMention).getMentionedType() = tm.getMentionedType().(TypedefType).getBaseType().(SpecifiedType).getBaseType()
+        )
+      )
+    ) or (
+      // constructor call -> function called
+      //  - but only if there is a corresponding type mention, since
+      //    we don't want links for implicit conversions.
+      //  - using the location of the type mention, since it's
+      //    tighter that the location of the function call.
+      kind = "M" and
+      exists(ConstructorCall cc |
+        constructorCallTypeMention(cc, e) and
+        result = cc.getTarget()
+      )
     ) or (
       // include -> included file
       kind = "I" and

@@ -284,7 +284,7 @@ private predicate maybeNonString(Expr e) {
  */
 private predicate isStringAppend(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  maybeString(e.getAChild())
+  maybeString(e.getAChildExpr())
 }
 
 /**
@@ -293,7 +293,7 @@ private predicate isStringAppend(Expr e) {
  */
 private predicate isAddition(Expr e) {
   (e instanceof AddExpr or e instanceof AssignAddExpr) and
-  maybeNonString(e.getChild(0)) and maybeNonString(e.getChild(1))
+  maybeNonString(e.getChildExpr(0)) and maybeNonString(e.getChildExpr(1))
 }
 
 /**
