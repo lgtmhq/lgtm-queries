@@ -96,7 +96,7 @@ module NosqlInjection {
     RemoteJson() {
       exists (DataFlow::Node parsedArg |
         parsedArg.asExpr() = astNode.(JsonParseCall).getArgument(0) and
-        any(RemoteJsonTrackingConfig cfg).flowsFrom(parsedArg, _)
+        any(RemoteJsonTrackingConfig cfg).hasFlow(_, parsedArg)
       )
     }
   }

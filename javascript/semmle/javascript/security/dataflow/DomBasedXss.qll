@@ -133,13 +133,22 @@ module DomBasedXss {
    */
   class DangerouslySetInnerHtmlSink extends Sink, DataFlow::ValueNode {
     DangerouslySetInnerHtmlSink() {
-      exists (JSXAttribute attr, DataFlow::SourceNode valueSrc |
-        attr.getName() = "dangerouslySetInnerHTML" and
-        valueSrc.flowsToExpr(attr.getValue()) and
+      exists (DataFlow::Node danger, DataFlow::SourceNode valueSrc |
+        exists (JSXAttribute attr |
+          attr.getName() = "dangerouslySetInnerHTML" and
+          attr.getValue() = danger.asExpr()
+        )
+        or
+        exists (ReactElementDefinition def, DataFlow::ObjectExprNode props |
+          props.flowsTo(def.getProps()) and
+          props.hasPropertyWrite("dangerouslySetInnerHTML", danger)
+        ) |
+        valueSrc.flowsTo(danger) and
         valueSrc.hasPropertyWrite("__html", this)
       )
     }
   }
+
 }
 
 /** DEPRECATED: Use `DomBasedXss::Source` instead. */

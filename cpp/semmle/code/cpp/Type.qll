@@ -1161,3 +1161,16 @@ predicate internalSpecString(Type t, string res, int i) {
 }
 
 private predicate suppressUnusedThis(Type t) { any() }
+
+/** A source code location referring to a type */
+class TypeMention extends Locatable, @type_mention {
+  string toString() {result = "mention of " + getMentionedType()}
+  
+  /**
+   * Gets the type being referenced by this type mention.
+   */
+  Type getMentionedType() { type_mentions(this, result, _, _) }
+  
+  override Location getLocation() { type_mentions(this, _, result, _)}
+}
+

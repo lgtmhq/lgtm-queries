@@ -37,15 +37,13 @@ module BasePointsTo {
 
 /** The kwargs parameter (**kwargs) in a function definition is always a dict */
 predicate kwargs_points_to(ControlFlowNode f, ClassObject cls) {
-    exists(Function func | func.getKwarg() = f.getNode()) 
-    and
+    exists(Function func | func.getKwarg() = f.getNode()) and
     cls = theDictType()
 }
 
 /** The varargs (*varargs) in a function definition is always a tuple */
 predicate varargs_points_to(ControlFlowNode f, ClassObject cls) {
-    exists(Function func | func.getVararg() = f.getNode()) 
-    and
+    exists(Function func | func.getVararg() = f.getNode()) and
     cls = theTupleType()
 }
 

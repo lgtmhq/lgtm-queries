@@ -14,6 +14,7 @@
 import semmle.code.cpp.exprs.Expr
 import semmle.code.cpp.Variable
 import semmle.code.cpp.Enum
+private import semmle.code.cpp.dataflow.EscapesTree
 
 /**
  * A C/C++ access expression. This refers to a function, variable, or enum constant.
@@ -122,15 +123,22 @@ class VariableAccess extends Access, @varaccess {
   }
 
   /**
-   * Holds if this access is used to get the address of the underlying variable.
-   * Either directly, `&x`, or indirectly, for example `T& y = x`.
+   * Holds if this access is used to get the address of the underlying variable
+   * in such a way that the address might escape. This can be either explicit,
+   * for example `&x`, or implicit, for example `T& y = x`.
    */
   predicate isAddressOfAccess() {
-    exists(AddressOfExpr aoe |
-      aoe.getOperand() = this
-    )
-    or
-    getConversion+() instanceof ReferenceToExpr
+    variableAddressEscapesTree(this, _)
+  }
+
+  /**
+   * Holds if this access is used to get the address of the underlying variable
+   * in such a way that the address might escape as a pointer or reference to
+   * non-const data. This can be either explicit, for example `&x`, or
+   * implicit, for example `T& y = x`.
+   */
+  predicate isAddressOfAccessNonConst() {
+    variableAddressEscapesTreeNonConst(this, _)
   }
 }
 

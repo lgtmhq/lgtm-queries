@@ -17,7 +17,7 @@
  *              confusing.
  * @kind problem
  * @problem.severity recommendation
- * @precision very-high
+ * @precision high
  * @id java/confusing-method-name
  * @tags maintainability
  *       readability
@@ -25,10 +25,18 @@
  */
 import java
 
+predicate methodTypeAndLowerCaseName(Method m, RefType t, string name) {
+  t = m.getDeclaringType() and
+  name = m.getName().toLowerCase()
+}
+
 from Method m, Method n
-where m.getDeclaringType() = n.getDeclaringType() and
-      m.getName().toLowerCase() = n.getName().toLowerCase() and
-      not m.getAnAnnotation() instanceof DeprecatedAnnotation and
-      not n.getAnAnnotation() instanceof DeprecatedAnnotation and
-      m.getName() < n.getName()
+where
+  exists(RefType t, string name |
+    methodTypeAndLowerCaseName(m, t, name) and
+    methodTypeAndLowerCaseName(n, t, name)
+  ) and
+  not m.getAnAnnotation() instanceof DeprecatedAnnotation and
+  not n.getAnAnnotation() instanceof DeprecatedAnnotation and
+  m.getName() < n.getName()
 select m, "The method '" + m.getName() + "' may be confused with $@.", n, n.getName()

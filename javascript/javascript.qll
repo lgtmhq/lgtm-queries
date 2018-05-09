@@ -42,7 +42,7 @@ import semmle.javascript.Modules
 import semmle.javascript.NodeJS
 import semmle.javascript.NPM
 import semmle.javascript.Paths
-import semmle.javascript.QualifiedNames
+import semmle.javascript.CanonicalNames
 import semmle.javascript.Regexp
 import semmle.javascript.SSA
 import semmle.javascript.StandardLibrary

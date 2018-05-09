@@ -375,16 +375,17 @@ module FinalPointsTo {
 
         /* Holds if ControlFlowNode `f` is reachable, given the context `context`. */
         predicate reachable(ControlFlowNode f, FinalContext context) {
-            exists(ConditionBlock guard, Object value |
-                points_to(guard.getLastNode(), context, value, _, _)
-                |
-                guard.controls(f.getBasicBlock(), true) and not value.booleanValue() = false
-                or
-                guard.controls(f.getBasicBlock(), false) and not value.booleanValue() = true
-            )
-            or
             context.appliesTo(f) and
-            not exists(ConditionBlock guard | guard.controls(f.getBasicBlock(), _))
+            forall(ConditionBlock guard |
+                guard.controls(f.getBasicBlock(), _) |
+                exists(Object value |
+                    points_to(guard.getLastNode(), context, value, _, _)
+                    |
+                    guard.controls(f.getBasicBlock(), true) and not value.booleanValue() = false
+                    or
+                    guard.controls(f.getBasicBlock(), false) and not value.booleanValue() = true
+                )
+            )
         }
 
         /* Holds if the edge `pred` -> `succ` is reachable, given the context `context`.
@@ -502,6 +503,8 @@ module FinalPointsTo {
         Calls::call_points_to(f, context, value, cls, origin)
         or
         super_bound_method(f, context, _, _) and value = f and origin = f and cls = theBoundMethodType()
+        or
+        subscript_points_to(f, context, value, cls, origin)
         or
         sys_version_info_slice(f, context, cls) and value = theSysVersionInfoTuple() and origin = f
         or
@@ -646,7 +649,7 @@ module FinalPointsTo {
             origin = origin_from_object_or_here(orig, f)
         )
         or
-        points_to(f.getObject(), context, unknownValue(), _, _) and value = unknownValue() and cls = theUnknownType() and origin = f
+        points_to(f.getObject(), context, unknownValue(), theUnknownType(), _) and value = unknownValue() and cls = theUnknownType() and origin = f
     }
 
     /** Holds if `f` is an expression node `tval if cond else fval` and points to `(value, cls, origin)`. */
@@ -897,6 +900,20 @@ module FinalPointsTo {
         )
     }
 
+    private predicate subscript_points_to(SubscriptNode sub, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+        exists(Object unknownCollection |
+            varargs_points_to(unknownCollection, _) or
+            kwargs_points_to(unknownCollection, _)
+            |
+            sub.isLoad() and
+            points_to(sub.getValue(), context, unknownCollection, _, _) and
+            value = unknownValue() and cls = theUnknownType() and origin = sub
+        )
+        or
+        points_to(sub.getValue(), context, unknownValue(), _, _) and
+        value = unknownValue() and cls = theUnknownType() and origin = sub
+    }
+
     /* **************
      * VERSION INFO *
      ****************/
@@ -1062,11 +1079,15 @@ module FinalPointsTo {
                 )
                 or exists(TupleObject t, ClassObject scls |
                     PenultimatePointsTo::points_to(clsNode, _, t, _, _) and
-                    scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
+                    (
+                        scls = t.getBuiltinElement(_)
+                        or
+                        PenultimatePointsTo::points_to(t.getSourceElement(_), _, scls, _, _)
+                    )
                     |
-                    scls = t.getBuiltinElement(_)
+                    scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
                     or
-                    PenultimatePointsTo::points_to(t.getSourceElement(_), _, scls, _, _)
+                    not scls = PenultimatePointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
                 )
                 or
                 objcls = theUnknownType() and (value = theTrueObject() or value = theFalseObject())
@@ -1279,6 +1300,12 @@ module FinalPointsTo {
                 succ_context.isRuntime() and succ_context = pred_context
                 or
                 pred_context.isImport() and pred_scope instanceof ImportTimeScope and succ_context.fromRuntime()
+                or
+                /* If predecessor scope is main, then we assume that any global defined exactly once
+                 * is available to all functions. Although not strictly true, this gives less surprising
+                 * results in practice. */
+                pred_context.isMain() and pred_scope instanceof Module and succ_context.fromRuntime() and
+                not strictcount(pred_var.getSourceVariable().(Variable).getAStore()) > 1
             )
         }
 
@@ -1502,9 +1529,11 @@ module FinalPointsTo {
                 param = def.getDefiningNode() |
                 exists(FinalContext imp | imp.isImport() | points_to(def.getDefault(), imp, value, cls, origin))
                 or
-                varargs_points_to(param, cls) and origin = value and value = param
+                varargs_points_to(param, cls) and value = theEmptyTupleObject() and origin = param
                 or
-                kwargs_points_to(param, cls) and origin = value and value = param
+                varargs_points_to(param, cls) and value = param and origin = param
+                or
+                kwargs_points_to(param, cls) and value = param and origin = param
             )
         }
 

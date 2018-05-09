@@ -52,7 +52,7 @@ DataFlow::PropRead getAnOutermostUnsafeAccess(ReactComponent c) {
  */
 DataFlow::PropWrite getAStateUpdate(ReactComponent c, string name) {
   exists (DataFlow::ObjectExprNode newState |
-    newState.flowsToExpr(c.getAMethodCall("setState").getArgument(0)) and
+    newState.flowsTo(c.getAMethodCall("setState").getArgument(0)) and
     result = newState.getAPropertyWrite(name)
   )
 }
@@ -73,7 +73,7 @@ DataFlow::PropWrite getAUniqueStateUpdate(ReactComponent c) {
 predicate isAStateUpdateFromSelf(ReactComponent c, DataFlow::PropWrite pwn, DataFlow::PropRead prn) {
   exists (string name |
     pwn = getAStateUpdate(c, name) and
-    c.getAStateSource().flowsTo(prn.getBase()) and
+    c.getADirectStateAccess().flowsTo(prn.getBase()) and
     prn.getPropertyName() = name and
     pwn.getRhs().asExpr() = prn.asExpr().getParentExpr*() and
     pwn.getContainer() = prn.getContainer()
@@ -81,7 +81,7 @@ predicate isAStateUpdateFromSelf(ReactComponent c, DataFlow::PropWrite pwn, Data
 }
 
 from ReactComponent c, MethodCallExpr setState, Expr getState
-where setState = c.getAMethodCall("setState") and
+where setState = c.getAMethodCall("setState").asExpr() and
       getState = getAnOutermostUnsafeAccess(c).asExpr() and
       getState.getParentExpr*() = setState.getArgument(0) and
       getState.getEnclosingFunction() = setState.getEnclosingFunction() and

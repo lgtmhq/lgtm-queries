@@ -164,7 +164,7 @@ predicate similarLinesPerEquivalenceClass(int equivClass, int lines, File f)
   lines = strictsum(SimilarBlock b, int toSum | (b.sourceFile() = f and b.getEquivalenceClass() = equivClass) and (toSum = b.sourceLines()) | toSum)
 }
 
-predicate similarLinesCovered(File f, int coveredLines, File otherFile) {
+private predicate similarLinesCoveredFiles(File f, File otherFile) {
   exists(int numLines | numLines = f.getMetrics().getNumberOfLines() |
   exists(int coveredApprox |
     coveredApprox = strictsum(int num |
@@ -175,7 +175,13 @@ predicate similarLinesCovered(File f, int coveredLines, File otherFile) {
       )
     ) and
     ((coveredApprox * 100) / numLines > 75)
-  ) and
+  )
+  )
+}
+
+predicate similarLinesCovered(File f, int coveredLines, File otherFile) {
+  exists(int numLines | numLines = f.getMetrics().getNumberOfLines() |
+  similarLinesCoveredFiles(f, otherFile) and
   exists(int notCovered |
     notCovered = count(int j |
       j in [1 .. numLines] and

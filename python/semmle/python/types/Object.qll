@@ -143,6 +143,8 @@ class Object extends @py_object {
         or
         this = theFalseObject() and result = false 
         or
+        this = theEmptyTupleObject() and result = false 
+        or
         exists(Tuple t | t = this.getOrigin() |
             exists(t.getAnElt()) and result = true
             or
@@ -351,9 +353,24 @@ class TupleObject extends SequenceObject {
         py_cobjecttypes(this, theTupleType())
         or
         this instanceof TupleNode
+        or
+        exists(Function func | func.getVararg().getAFlowNode() = this)
     }
 
 }
+
+class NonEmptyTupleObject extends TupleObject {
+
+    NonEmptyTupleObject() {
+        exists(Function func | func.getVararg().getAFlowNode() = this)
+    }
+
+    override boolean booleanValue() {
+        result = true
+    }
+
+}
+
 
 class ListObject extends SequenceObject {
 
@@ -475,6 +492,10 @@ Object quitterObject(string name) {
 /** The builtin object `NotImplemented`. Not be confused with `NotImplementedError`. */
 Object theNotImplementedObject() {
     result = builtin_object("NotImplemented")
+}
+
+Object theEmptyTupleObject() {
+    py_cobjecttypes(result, theTupleType()) and not py_citems(result, _, _)
 }
 
 

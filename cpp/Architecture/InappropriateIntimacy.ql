@@ -26,15 +26,27 @@
 import cpp
 
 predicate remoteVarAccess(File source, File target, VariableAccess va) {
-  va.getFile() = source and va.getTarget().getFile() = target and source != target
+  va.getFile() = source and
+  va.getTarget().getFile() = target and
+  // Ignore variables with locations in multiple files
+  strictcount(File f | f = va.getTarget().getFile()) = 1 and
+  source != target
 }
 
 predicate remoteFunAccess(File source, File target, FunctionCall fc) {
-  fc.getFile() = source and fc.getTarget().getFile() = target and source != target
+  fc.getFile() = source and
+  fc.getTarget().getFile() = target and
+  // Ignore functions with locations in multiple files
+  strictcount(File f | f = fc.getTarget().getFile()) = 1 and
+  source != target
 }
 
 predicate remoteMessagePass(File source, File target, MessageExpr me) {
-  me.getFile() = source and me.getStaticTarget().getFile() = target and source != target
+  me.getFile() = source and
+  me.getStaticTarget().getFile() = target and
+  // Ignore targets with locations in multiple files
+  strictcount(File f | f = me.getTarget().getFile()) = 1 and
+  source != target
 }
 
 predicate candidateFilePair(File source, File target) {

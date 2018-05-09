@@ -64,7 +64,7 @@ class XUnitTest extends Test, XUnitFact {
  */
 class TapeTest extends Test, @callexpr {
   TapeTest() {
-    this = DataFlow::moduleImport("tape").getAMemberCall("test").asExpr()
+    this = DataFlow::moduleMember("tape", "test").getACall().asExpr()
   }
 }
 
@@ -73,7 +73,7 @@ class TapeTest extends Test, @callexpr {
  */
 class AvaTest extends Test, @callexpr {
   AvaTest() {
-    this = DataFlow::moduleImport("ava").getAMemberCall("test").asExpr()
+    this = DataFlow::moduleMember("ava", "test").getACall().asExpr()
   }
 }
 

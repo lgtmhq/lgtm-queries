@@ -83,9 +83,7 @@ predicate isBackslashEscape(MethodCallExpr mce, RegExpLiteral re) {
     new.regexpMatch("\\\\\\$(&|\\d)")
     or
     // `new` is `\c`, where `c` is a constant matched by `re`
-    new.charAt(0) = "\\" and
-    new.charAt(1) = getAMatchedString(re) and
-    new.length() = 2
+    new.regexpMatch("\\\\\\Q" + getAMatchedString(re) + "\\E")
   )
 }
 

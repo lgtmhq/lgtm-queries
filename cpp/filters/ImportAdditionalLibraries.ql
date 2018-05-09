@@ -12,21 +12,22 @@
 // permissions and limitations under the License.
 
 /**
- * @name Call to parseInt without radix
- * @description Calls to the 'parseInt' function should always specify a radix to avoid accidentally
- *              parsing a number as octal.
- * @kind problem
- * @problem.severity recommendation
- * @id js/parseint-without-radix
- * @tags reliability
- *       maintainability
- *       external/cwe/cwe-676
- * @precision very-high
+ * @name (Import additional libraries)
+ * @description This query produces no results but imports some libraries we
+ *              would like to make available in the LGTM query console even
+ *              if they are not used by any queries.
+ * @kind file-classifier
+ * @id cpp/lgtm/import-additional-libraries
  */
 
-import javascript
+import cpp
 
-from DataFlow::CallNode parseInt
-where parseInt = DataFlow::globalVarRef("parseInt").getACall() and
-      parseInt.getNumArgument() = 1
-select parseInt, "Missing radix parameter."
+import semmle.code.cpp.dataflow.DataFlow
+import semmle.code.cpp.dataflow.DataFlow2
+import semmle.code.cpp.dataflow.DataFlow3
+import semmle.code.cpp.dataflow.DataFlow4
+import semmle.code.cpp.dataflow.TaintTracking
+
+from File f, string tag
+where none()
+select f, tag

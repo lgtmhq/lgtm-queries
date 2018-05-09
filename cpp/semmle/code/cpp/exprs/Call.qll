@@ -13,6 +13,7 @@
 
 import semmle.code.cpp.exprs.Expr
 import semmle.code.cpp.Function
+private import semmle.code.cpp.dataflow.EscapesTree
 
 /**
  * A C/C++ call.
@@ -100,21 +101,48 @@ abstract class Call extends Expr, NameQualifiableElement {
    * Holds if this call passes the variable accessed by `va` by
    * reference as the `i`th argument.
    *
-   * A variable is passed by reference if it is either passed as `&v` or
-   * to a function where the relevant parameter is a C++ reference type.
+   * A variable is passed by reference if the `i`th parameter of the function
+   * receives an address that points within the object denoted by `va`. For a
+   * variable named `x`, passing by reference includes both explicit pointers
+   * (`&x`) and implicit conversion to a C++ reference (`x`), but it also
+   * includes deeper expressions such as `&x[0] + length` or `&*&*&x`.
+   *
+   * When `Field`s are involved, an argument `i` may pass more than one
+   * variable by reference simultaneously. For example, the call `f(&x.m1.m2)`
+   * counts as passing both `x`, `m1` and `m2` to argument 0 of `f`.
+   *
+   * This predicate holds for variables passed by reference even if they are
+   * passed as references to `const` and thus cannot be changed through that
+   * reference. See `passesByNonConstReference` for a predicate that only holds
+   * for variables passed by reference to non-const.
    */
   predicate passesByReference(int i, VariableAccess va) {
-    // `f(..., &v, ...)`
-    getArgument(i).(AddressOfExpr).getOperand() = va
-    or
-    // `f(..., v, ...)`, where f has the signature `f(..., T& p, ...) { ... }`
-    exists(Function f, Parameter p, Type paramType |
-      f = getTarget()
-      and p = f.getParameter(i)
-      and paramType = p.getType().getUnspecifiedType()
-      and paramType instanceof ReferenceType |
-      getArgument(i) = va
-      or getArgument(i).(PointerDereferenceExpr).getOperand() = va
+    variableAddressEscapesTree(va, this.getArgument(i).getFullyConverted())
+  }
+
+  /**
+   * Holds if this call passes the variable accessed by `va` by
+   * reference to non-const data as the `i`th argument.
+   *
+   * A variable is passed by reference if the `i`th parameter of the function
+   * receives an address that points within the object denoted by `va`. For a
+   * variable named `x`, passing by reference includes both explicit pointers
+   * (`&x`) and implicit conversion to a C++ reference (`x`), but it also
+   * includes deeper expressions such as `&x[0] + length` or `&*&*&x`.
+   *
+   * When `Field`s are involved, an argument `i` may pass more than one
+   * variable by reference simultaneously. For example, the call `f(&x.m1.m2)`
+   * counts as passing both `x`, `m1` and `m2` to argument 0 of `f`.
+   *
+   * This predicate only holds for variables passed by reference to non-const
+   * data and thus can be changed through that reference. See
+   * `passesByReference` for a predicate that also holds for variables passed
+   * by reference to const.
+   */
+  predicate passesByReferenceNonConst(int i, VariableAccess va) {
+    variableAddressEscapesTreeNonConst(
+      va,
+      this.getArgument(i).getFullyConverted()
     )
   }
 }

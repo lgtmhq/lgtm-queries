@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.Element
+private import semmle.code.cpp.Enclosing
 
 /**
  * A C/C++ statement.
@@ -28,7 +29,7 @@ class Stmt extends StmtParent, @stmt {
   predicate hasChild(Element e, int n) { this.getChild(n) = e }
 
   /** Gets the enclosing function of this statement, if any. */
-  Function getEnclosingFunction() { stmtfunction(this,result) }
+  Function getEnclosingFunction() { result = stmtEnclosingElement(this) }
 
   /**
    * Gets the nearest enclosing block of this statement in the source, if any.

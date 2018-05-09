@@ -35,10 +35,29 @@ predicate declaredInAll(Module m, StrConst name)
     )
 }
 
+predicate mutates_globals(PythonModuleObject m) {
+    exists(CallNode globals |
+        globals = theGlobalsFunction().(FunctionObject).getACall() and
+        globals.getScope() = m.getModule() |
+        exists(AttrNode attr | attr.getObject() = globals)
+        or
+        exists(SubscriptNode sub | sub.getValue() = globals and sub.isStore())
+    )
+    or
+    exists(Object enum_convert |
+        enum_convert.hasLongName("enum.Enum._convert") and
+        exists(CallNode call |
+            call.getScope() = m.getModule() and
+            call.getFunction().refersTo(enum_convert)
+        )
+    )
+}
+
 from PythonModuleObject m, StrConst name, string exported_name
 where declaredInAll(m.getModule(), name) and
 exported_name = name.strValue() and
 not m.hasAttribute(exported_name) and
 not (m.getShortName() = "__init__" and exists(m.getPackage().getModule().getSubModule(exported_name))) and
-not exists(ImportStarNode imp | imp.getEnclosingModule() = m.getModule() | not imp.getModule().refersTo(_))
+not exists(ImportStarNode imp | imp.getEnclosingModule() = m.getModule() | not imp.getModule().refersTo(_)) and
+not mutates_globals(m)
 select name, "The name '" + exported_name  + "' is exported by __all__ but is not defined."

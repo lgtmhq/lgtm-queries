@@ -27,5 +27,6 @@
 import javascript
 
 from RegExpBackRef rebr
-where rebr.getLocation().getStartColumn() < rebr.getGroup().getLocation().getEndColumn()
+where rebr.getLocation().getStartColumn() < rebr.getGroup().getLocation().getEndColumn() and
+      not rebr.isInBackwardMatchingContext()
 select rebr, "This back reference precedes its capture group."

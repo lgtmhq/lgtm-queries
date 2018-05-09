@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.Location
+private import semmle.code.cpp.Enclosing
 
 /**
  * A C/C++ element. This class is the base class for all C/C++
@@ -129,9 +130,8 @@ class Element extends @element {
     exists (ControlStructure s
     | this = s and result = s.getParent())
 
-    // result instanceof namespace|class|function
     or
-    usings(this,_,result,_)
+    using_container(result, this)
   }
 
   /**
@@ -154,7 +154,7 @@ class Element extends @element {
 
   private Element getEnclosingElementPref() {
     enclosingfunction(this, result) or
-    stmtfunction(this, result) or
+    result.(Function) = stmtEnclosingElement(this) or
     this.(LocalScopeVariable).getFunction() = result or
     enumconstants(this, result, _, _, _, _) or
     derivations(this, result, _, _, _) or
@@ -187,7 +187,7 @@ class Element extends @element {
         or
         this = result.(Class).getAMember()
         or
-        exprcontainers(this, result)
+        result = exprEnclosingElement(this)
         or
         var_decls(this, result, _, _, _)
       )

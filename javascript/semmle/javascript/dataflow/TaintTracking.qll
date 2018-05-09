@@ -91,7 +91,7 @@ module TaintTracking {
     override predicate isAdditionalFlowStep(DataFlow::Node pred, DataFlow::Node succ) {
       isAdditionalTaintStep(pred, succ) or
       pred = succ.(FlowTarget).getATaintSource() or
-      any(DefaultTaintStep dts).step(pred, succ)
+      any(AdditionalTaintStep dts).step(pred, succ)
     }
   }
 
@@ -168,7 +168,8 @@ module TaintTracking {
   }
 
   /**
-   * A custom taint-propagating data flow edge, represented by its target node.
+   * DEPRECATED: Override `Configuration::isAdditionalTaintStep` or use
+   * `AdditionalTaintStep` instead.
    */
   abstract class FlowTarget extends DataFlow::Node {
     /** Gets another data flow node from which taint is propagated to this node. */
@@ -176,12 +177,14 @@ module TaintTracking {
   }
 
   /**
-   * A standard taint-propagating data flow edge.
+   * A taint-propagating data flow edge that should be added to all taint tracking
+   * configurations in addition to standard data flow edges.
    *
    * Note: For performance reasons, all subclasses of this class should be part
-   * of the standard library. Use `FlowTarget` for analysis-specific flow edges.
+   * of the standard library. Override `Configuration::isAdditionalTaintStep`
+   * for analysis-specific taint steps.
    */
-  abstract class DefaultTaintStep extends DataFlow::Node {
+  abstract class AdditionalTaintStep extends DataFlow::Node {
     /**
      * Holds if `pred` &rarr; `succ` should be considered a taint-propagating
      * data flow edge.
@@ -189,11 +192,14 @@ module TaintTracking {
     abstract cached predicate step(DataFlow::Node pred, DataFlow::Node succ);
   }
 
+  /** DEPRECATED: Use `AdditionalTaintStep` instead. */
+  deprecated class DefaultTaintStep = AdditionalTaintStep;
+
   /**
    * A taint propagating data flow edge through object or array elements and
    * promises.
    */
-  private class HeapTaintStep extends DefaultTaintStep {
+  private class HeapTaintStep extends AdditionalTaintStep {
     HeapTaintStep() {
       this = DataFlow::valueNode(_) or
       this = DataFlow::parameterNode(_)
@@ -248,7 +254,7 @@ module TaintTracking {
    * a map, not as a real object. In this case, it makes sense to consider the entire
    * map to be tainted as soon as one of its entries is.
    */
-  private class DictionaryTaintStep extends DefaultTaintStep, DataFlow::ValueNode {
+  private class DictionaryTaintStep extends AdditionalTaintStep, DataFlow::ValueNode {
     override VarAccess astNode;
     DataFlow::Node source;
 
@@ -268,13 +274,69 @@ module TaintTracking {
   }
 
   /**
+   * A taint propagating data flow edge for assignments of the form `c1.state.p = v`,
+   * where `c1` is an instance of React component `C`; in this case, we consider
+   * taint to flow from `v` to any read of `c2.state.p`, where `c2`
+   * also is an instance of `C`.
+   */
+  private class ReactComponentStateTaintStep extends AdditionalTaintStep, DataFlow::ValueNode {
+
+    DataFlow::Node source;
+
+    ReactComponentStateTaintStep() {
+      exists (ReactComponent c, DataFlow::PropRead prn, DataFlow::PropWrite pwn |
+        (
+          c.getACandidateStateSource().flowsTo(pwn.getBase()) or
+          c.getADirectStateAccess().flowsTo(pwn.getBase())
+        ) and (
+          c.getAPreviousStateSource().flowsTo(prn.getBase()) or
+          c.getADirectStateAccess().flowsTo(prn.getBase())
+        ) |
+        prn.getPropertyName() = pwn.getPropertyName() and
+        this = prn and
+        source = pwn.getRhs()
+      )
+    }
+
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred = source and succ = this
+    }
+
+  }
+
+  /**
+   * A taint propagating data flow edge for assignments of the form `c1.props.p = v`,
+   * where `c1` is an instance of React component `C`; in this case, we consider
+   * taint to flow from `v` to any read of `c2.props.p`, where `c2`
+   * also is an instance of `C`.
+   */
+  private class ReactComponentPropsTaintStep extends AdditionalTaintStep, DataFlow::ValueNode {
+
+    DataFlow::Node source;
+
+    ReactComponentPropsTaintStep() {
+      exists (ReactComponent c, string name, DataFlow::PropRead prn |
+        prn = c.getAPropRead(name) or
+        prn = c.getAPreviousPropsSource().getAPropertyRead(name) |
+        source = c.getACandidatePropsValue(name) and
+        this = prn
+      )
+    }
+
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred = source and succ = this
+    }
+
+  }
+
+  /**
    * A taint propagating data flow edge arising from string append and other string
    * operations defined in the standard library.
    *
    * Note that since we cannot easily distinguish string append from addition, we consider
    * any `+` operation to propagate taint.
    */
-  private class StringManipulationTaintStep extends DefaultTaintStep, DataFlow::ValueNode {
+  private class StringManipulationTaintStep extends AdditionalTaintStep, DataFlow::ValueNode {
     override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
       succ = this and
       (
@@ -361,7 +423,7 @@ module TaintTracking {
   /**
    * A taint propagating data flow edge arising from JSON parsing or unparsing.
    */
-  private class JsonManipulationTaintStep extends DefaultTaintStep, DataFlow::MethodCallNode {
+  private class JsonManipulationTaintStep extends AdditionalTaintStep, DataFlow::MethodCallNode {
     JsonManipulationTaintStep() {
       exists (string methodName |
         methodName = "parse" or methodName = "stringify" |
@@ -377,7 +439,7 @@ module TaintTracking {
   /**
    * A taint-propagating data flow edge arising from a destructuring assignment.
    */
-  private class DestructuringAssignTaintStep extends DefaultTaintStep, DataFlow::SsaDefinitionNode {
+  private class DestructuringAssignTaintStep extends AdditionalTaintStep, DataFlow::SsaDefinitionNode {
     override SsaExplicitDefinition ssa;
 
     DestructuringAssignTaintStep() {
@@ -411,7 +473,7 @@ module TaintTracking {
   /**
    * A taint propagating data flow edge arising from URL parameter parsing.
    */
-  private class UrlSearchParamsTaintStep extends DefaultTaintStep, DataFlow::ValueNode {
+  private class UrlSearchParamsTaintStep extends AdditionalTaintStep, DataFlow::ValueNode {
     DataFlow::Node source;
 
     UrlSearchParamsTaintStep() {

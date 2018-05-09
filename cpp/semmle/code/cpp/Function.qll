@@ -239,10 +239,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    * `FunctionTryStmt`.
    */
   Stmt getEntryPoint() {
-    if exists(FunctionTryStmt fts | fts.getEnclosingFunction() = this) then
-      result.(FunctionTryStmt).getEnclosingFunction() = this
-    else
-      result = getBlock()
+    function_entry_point(this, result)
   }
 
   /**

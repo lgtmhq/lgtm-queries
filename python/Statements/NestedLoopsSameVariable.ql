@@ -18,8 +18,8 @@
  * @kind problem
  * @tags maintainability
  *       correctness
- * @problem.severity warning
- * @sub-severity low
+ * @problem.severity recommendation
+ * @sub-severity high
  * @precision very-high
  * @id py/nested-loops-with-same-variable
  */

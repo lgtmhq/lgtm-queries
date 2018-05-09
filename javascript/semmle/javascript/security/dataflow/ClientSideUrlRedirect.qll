@@ -121,7 +121,7 @@ module ClientSideUrlRedirect {
   class LocationSearchSource extends Source {
     LocationSearchSource() {
       exists(LocationHrefDataFlowConfiguration cfg, DataFlow::Node nd |
-        cfg.flowsFrom(nd, _) and
+        cfg.hasFlow(_, nd) and
         queryAccess(nd, this)
       )
     }

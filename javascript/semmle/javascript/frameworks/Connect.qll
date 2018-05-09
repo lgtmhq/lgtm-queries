@@ -16,6 +16,7 @@
  */
 import javascript
 import semmle.javascript.frameworks.HTTP
+private import semmle.javascript.frameworks.ConnectExpressShared::ConnectExpressShared
 
 module Connect {
   /**
@@ -29,30 +30,50 @@ module Connect {
   }
 
   /**
-   * A Connect route handler.
+   * A function used as a Connect route handler.
+   *
+   * By default, only handlers installed by an Connect route setup are recognized,
+   * but support for other kinds of route handlers can be added by implementing
+   * additional subclasses of this class.
    */
-  class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
+  abstract class RouteHandler extends HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
 
-    Function function;
-
-    RouteHandler() {
-      function = astNode and
-      any(RouteSetup setup).getARouteHandler() = this
-    }
+    /**
+     * Gets the parameter of kind `kind` of this route handler.
+     *
+     * `kind` is one of: "error", "request", "response", "next".
+     */
+    abstract SimpleParameter getRouteHandlerParameter(string kind);
 
     /**
      * Gets the parameter of the route handler that contains the request object.
      */
     SimpleParameter getRequestParameter() {
-      result = function.getParameter(0)
+      result = getRouteHandlerParameter("request")
     }
 
     /**
      * Gets the parameter of the route handler that contains the response object.
      */
     SimpleParameter getResponseParameter() {
-      result = function.getParameter(1)
+      result = getRouteHandlerParameter("response")
     }
+  }
+
+  /**
+   * A Connect route handler installed by a route setup.
+   */
+  class StandardRouteHandler extends RouteHandler {
+    override Function astNode;
+
+    StandardRouteHandler() {
+      any(RouteSetup setup).getARouteHandler() = this
+    }
+
+    override SimpleParameter getRouteHandlerParameter(string kind) {
+      result = getRouteHandlerParameter(astNode, kind)
+    }
+
   }
 
   /**
@@ -114,19 +135,29 @@ module Connect {
     ServerDefinition server;
 
     RouteSetup() {
-      // app.use('/', fun)
-      // app.use(fun)
-      server.flowsTo(getReceiver()) and
-      getMethodName() = "use"
+      getMethodName() = "use" and
+      (
+        // app.use(fun)
+        server.flowsTo(getReceiver()) or
+        // app.use(...).use(fun)
+        this.getReceiver().(RouteSetup).getServer() = server
+      )
+
     }
 
     override DataFlow::SourceNode getARouteHandler() {
-      result.flowsToExpr(getAnArgument())
+      result.flowsToExpr(getARouteHandlerExpr())
     }
 
     override Expr getServer() {
       result = server
     }
+
+    /** Gets an argument that represents a route handler being registered. */
+    Expr getARouteHandlerExpr() {
+      result = getAnArgument()
+    }
+
   }
 
   /** An expression that is passed as `basicAuthConnect(<user>, <password>)`. */
@@ -172,6 +203,37 @@ module Connect {
     override string getKind() {
       result = kind
     }
+  }
+
+  /**
+   * Tracking for `RouteHandlerCandidate`.
+   */
+  private class TrackedRouteHandlerCandidate extends DataFlow::TrackedNode {
+
+    TrackedRouteHandlerCandidate() {
+      this instanceof RouteHandlerCandidate
+    }
+
+  }
+
+  /**
+   * A function that looks like a Connect route handler and flows to a route setup.
+   */
+  private class TrackedRouteHandlerCandidateWithSetup extends RouteHandler, HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
+
+    override Function astNode;
+
+    TrackedRouteHandlerCandidateWithSetup() {
+      exists(TrackedRouteHandlerCandidate tracked |
+        tracked.flowsTo(any(RouteSetup s).getARouteHandlerExpr().flow()) and
+        this = tracked
+      )
+    }
+
+    override SimpleParameter getRouteHandlerParameter(string kind) {
+      result = getRouteHandlerParameter(astNode, kind)
+    }
+
   }
 
 }

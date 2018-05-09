@@ -522,7 +522,7 @@ private module HashJs {
    */
   private DataFlow::CallNode getAlgorithmExpr(CryptographicAlgorithm algorithm) {
     exists(string algorithmName | algorithm.matchesName(algorithmName) |
-      result = DataFlow::moduleImport("hash.js").getAMemberCall(algorithmName)
+      result = DataFlow::moduleMember("hash.js", algorithmName).getACall()
       or
       exists(DataFlow::ModuleImportNode mod |
         mod.getPath() = "hash.js/lib/hash/" + algorithmName or

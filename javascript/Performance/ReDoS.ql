@@ -106,8 +106,15 @@ class RegExpRoot extends @regexpterm { // RegExpTerm is abstract, so do not exte
       this.(RegExpTerm).getParent() = literal)
   }
 
-  predicate hasRepetition() {
+  /**
+   * Holds if this root term is relevant to the ReDoS analysis.
+   */
+  predicate isRelevant() {
+    // there is at least one repetition
     exists (RegExpRepetition rep | getRoot(rep) = this)
+    and
+    // there are no lookbehinds
+    not exists (RegExpLookbehind lbh | getRoot(lbh) = this)
   }
 
   string toString() { result = this.(RegExpTerm).toString() }
@@ -145,7 +152,7 @@ newtype TInputSymbol =
    * (positive, non-universal) character class `recc`.
    */
   CharClass(RegExpCharacterClass recc) {
-    getRoot(recc).hasRepetition() and
+    getRoot(recc).isRelevant() and
     not recc.isInverted() and
     not isUniversalClass(recc)
   }
@@ -255,11 +262,11 @@ predicate compatible(InputSymbol s1, InputSymbol s2) {
 
 newtype TState =
   Match(RegExpTerm t) {
-    getRoot(t).hasRepetition()
+    getRoot(t).isRelevant()
   }
   or
   Accept(RegExpRoot l) {
-    l.hasRepetition()
+    l.isRelevant()
   }
 
 /**

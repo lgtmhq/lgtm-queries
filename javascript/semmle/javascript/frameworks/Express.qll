@@ -19,6 +19,7 @@ import javascript
 import semmle.javascript.frameworks.HTTP
 import semmle.javascript.frameworks.ExpressModules
 private import semmle.javascript.dataflow.InferredTypes
+private import semmle.javascript.frameworks.ConnectExpressShared::ConnectExpressShared
 
 module Express {
   /**
@@ -29,10 +30,10 @@ module Express {
     exists (DataFlow::ModuleImportNode express | express.getPath() = "express" |
       // `app = [new] express()`
       result = express.getAnInvocation()
-      or
-      // `app = express.createServer()`
-      result = express.getAMemberCall("createServer")
     )
+    or
+    // `app = express.createServer()`
+    result = DataFlow::moduleMember("express", "createServer").getAnInvocation()
   }
 
   /**
@@ -43,7 +44,7 @@ module Express {
     result = appCreation()
     or
     // `app = [new] express.Router()`
-    result = DataFlow::moduleImport("express").getAMemberInvocation("Router")
+    result = DataFlow::moduleMember("express", "Router").getAnInvocation()
   }
 
   /**
@@ -354,25 +355,6 @@ module Express {
   }
 
   /**
-   * Gets the parameter of kind `kind` of an express route handler function.
-   *
-   * `kind` is one of: "error", "request", "response", "next".
-   */
-  SimpleParameter getRouteHandlerParameter(Function routeHandler, string kind) {
-    exists (int index, int offset |
-      result = routeHandler.getParameter(index + offset) and
-      (if routeHandler.getNumParameter() = 4 then offset = 0 else offset = -1) |
-      kind = "error" and index = 0
-      or
-      kind = "request" and index = 1
-      or
-      kind = "response" and index = 2
-      or
-      kind = "next" and index = 3
-    )
-  }
-
-  /**
    * An Express route handler installed by a route setup.
    */
   class StandardRouteHandler extends RouteHandler, HTTP::Servers::StandardRouteHandler,
@@ -678,11 +660,10 @@ module Express {
     RouteHandler rh;
 
     TemplateInput() {
-      exists (MethodCallExpr mce, DataFlow::SourceNode locals, DataFlow::PropWrite pw |
-        mce.calls(rh.getAResponseExpr(), "render") and
-        locals.flowsToExpr(mce.getArgument(1)) and
-        locals.flowsTo(pw.getBase()) and
-        pw.getRhs().asExpr() = this
+      exists (MethodCallExpr render, DataFlow::SourceNode locals |
+        render.calls(rh.getAResponseExpr(), "render") and
+        locals.flowsToExpr(render.getArgument(1)) and
+        locals.hasPropertyWrite(_, this.flow())
       )
     }
 
@@ -810,39 +791,6 @@ module Express {
   }
 
   /**
-   * A function that looks like an Express route handler.
-   */
-  class RouteHandlerCandidate extends DataFlow::FunctionNode {
-
-    override Function astNode;
-
-    RouteHandlerCandidate() {
-      exists (string request, string response, string next, string error |
-        (request = "request" or request = "req") and
-        (response = "response" or response = "res") and
-        (next = "next") and
-        (error = "error" or error = "err") |
-        // heuristic: parameter names match the Express documentation
-        astNode.getNumParameter() >= 2 and
-        getRouteHandlerParameter(astNode, "request").getName() = request and
-        getRouteHandlerParameter(astNode, "response").getName() = response and
-        (astNode.getNumParameter() >= 3 implies getRouteHandlerParameter(astNode, "next").getName() = next) and
-        (astNode.getNumParameter() = 4 implies getRouteHandlerParameter(astNode, "error").getName() = error) and
-        not (
-          // heuristic: max four parameters (Express will only supply four arguments)
-          astNode.getNumParameter() > 4 or
-          // heuristic: not a class method (Express invokes this with a function call)
-          astNode = any(MethodDefinition def).getBody() or
-          // heuristic: does not return anything (Express will not use the return value)
-          exists(getFunction().getAReturnedExpr()) or
-          // heuristic: is not invoked (Express invokes this at a call site we can not reason precisely about)
-          exists(CallSite cs | cs.getACallee() = astNode)
-        )
-      )
-    }
-  }
-
-  /**
    * Tracking for `RouteHandlerCandidate`.
    */
   private class TrackedRouteHandlerCandidate extends DataFlow::TrackedNode {
@@ -856,7 +804,7 @@ module Express {
   /**
    * A function that looks like an Express route handler and flows to a route setup.
    */
-  class TrackedRouteHandlerCandidateWithSetup extends RouteHandler, HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
+  private class TrackedRouteHandlerCandidateWithSetup extends RouteHandler, HTTP::Servers::StandardRouteHandler, DataFlow::ValueNode {
 
     override Function astNode;
 

@@ -146,7 +146,7 @@ class NamespaceDeclarationEntry extends Locatable, @namespace_decl {
  * A C++ `using` directive or `using` declaration.
  */
 abstract class UsingEntry extends Locatable, @using {
-  override Location getLocation() { usings(this,_,_,result) }
+  override Location getLocation() { usings(this,_,result) }
 }
 
 /**
@@ -155,13 +155,13 @@ abstract class UsingEntry extends Locatable, @using {
  *   `using std::string;`
  */
 class UsingDeclarationEntry extends UsingEntry {
-  UsingDeclarationEntry() { not exists(Namespace n | usings(this,n,_,_)) }
+  UsingDeclarationEntry() { not exists(Namespace n | usings(this,n,_)) }
 
   /**
    * Gets the declaration that is referenced by this using declaration. For
    * example, `std::string` in `using std::string`.
    */
-  Declaration getDeclaration() { usings(this,result,_,_) }
+  Declaration getDeclaration() { usings(this,result,_) }
 
   override string toString() {
     result = "using " + this.getDeclaration().toString()
@@ -174,13 +174,13 @@ class UsingDeclarationEntry extends UsingEntry {
  *   `using namespace std;`
  */
 class UsingDirectiveEntry extends UsingEntry {
-  UsingDirectiveEntry() { exists(Namespace n | usings(this,n,_,_)) }
+  UsingDirectiveEntry() { exists(Namespace n | usings(this,n,_)) }
 
   /**
    * Gets the namespace that is referenced by this using directive. For
    * example, `std` in `using namespace std`.
    */
-  Namespace getNamespace() { usings(this,result,_,_) }
+  Namespace getNamespace() { usings(this,result,_) }
 
   override string toString() {
     result = "using namespace " + this.getNamespace().toString()

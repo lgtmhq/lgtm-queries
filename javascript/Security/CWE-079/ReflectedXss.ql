@@ -28,6 +28,6 @@ import javascript
 import semmle.javascript.security.dataflow.ReflectedXss::ReflectedXss
 
 from Configuration xss, Source source, Sink sink
-where xss.flowsFrom(sink, source)
+where xss.hasFlow(source, sink)
 select sink, "Cross-site scripting vulnerability due to $@.",
        source, "user-provided value"

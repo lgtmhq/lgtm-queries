@@ -170,26 +170,23 @@ abstract class SourceNode extends DataFlow::Node {
  */
 class DefaultSourceNode extends SourceNode {
   DefaultSourceNode() {
-    not exists(getAPredecessor()) and
-    (
-      exists (ASTNode astNode | this = DataFlow::valueNode(astNode) |
-        astNode instanceof PropAccess or
-        astNode instanceof Function or
-        astNode instanceof ClassDefinition or
-        astNode instanceof InvokeExpr or
-        astNode instanceof ObjectExpr or
-        astNode instanceof ArrayExpr or
-        astNode instanceof JSXNode or
-        astNode instanceof ThisExpr or
-        astNode instanceof GlobalVarAccess or
-        astNode instanceof ExternalModuleReference
-      )
-      or
-      exists (SsaExplicitDefinition ssa, VarDef def |
-        this = DataFlow::ssaDefinitionNode(ssa) and def = ssa.getDef() |
-        def instanceof SimpleParameter or
-        def instanceof ImportSpecifier
-      )
+    exists (ASTNode astNode | this = DataFlow::valueNode(astNode) |
+      astNode instanceof PropAccess or
+      astNode instanceof Function or
+      astNode instanceof ClassDefinition or
+      astNode instanceof InvokeExpr or
+      astNode instanceof ObjectExpr or
+      astNode instanceof ArrayExpr or
+      astNode instanceof JSXNode or
+      astNode instanceof ThisExpr or
+      astNode instanceof GlobalVarAccess or
+      astNode instanceof ExternalModuleReference
+    )
+    or
+    exists (SsaExplicitDefinition ssa, VarDef def |
+      this = DataFlow::ssaDefinitionNode(ssa) and def = ssa.getDef() |
+      def instanceof SimpleParameter or
+      def instanceof ImportSpecifier
     )
   }
 }

@@ -28,6 +28,6 @@ import javascript
 import semmle.javascript.security.dataflow.StackTraceExposure::StackTraceExposure
 
 from Configuration cfg, Source source, Sink sink
-where cfg.flowsFrom(sink, source)
+where cfg.hasFlow(source, sink)
 select sink, "Stack trace information from $@ may be exposed to an external user here.",
        source, "here"

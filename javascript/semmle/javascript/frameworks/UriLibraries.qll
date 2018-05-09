@@ -20,7 +20,7 @@ import javascript
 /**
  * A taint propagating data flow edge arising from an operation in a URI library.
  */
-abstract class UriLibraryStep extends DataFlow::ValueNode, TaintTracking::DefaultTaintStep {}
+abstract class UriLibraryStep extends DataFlow::ValueNode, TaintTracking::AdditionalTaintStep {}
 
 /**
  * Provides classes for working with [urijs](http://medialize.github.io/URI.js/) code.

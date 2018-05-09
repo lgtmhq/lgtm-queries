@@ -22,7 +22,7 @@ class Module extends Module_, Scope, AstNode {
         result = this.getKind() + " " + this.getName()
         or
         /* No name is defined, which means that this is not on an import path. So it must be a script */
-        not exists(this.getName()) and this.getKind() = "Module" and 
+        not exists(this.getName()) and not this.isPackage() and
         result = "Script " + this.getFile().getShortName()
     }
 
@@ -54,7 +54,7 @@ class Module extends Module_, Scope, AstNode {
 
     /** Gets the name of this module */
     string getName() {
-        result = Module_.super.getName() and legalIdentifier(result)
+        result = Module_.super.getName() and legalDottedName(result)
         or
         not exists(Module_.super.getName()) and
         result = moduleNameFromFile(this.getPath())
@@ -94,7 +94,7 @@ class Module extends Module_, Scope, AstNode {
 
     /** Whether this is a package */
     predicate isPackage() {
-        exists(Module m | m.getPackage() = this)
+        this.getPath() instanceof Folder
     }
 
     /** Gets the package containing this module (or parent package if this is a package) */
@@ -179,23 +179,49 @@ class Module extends Module_, Scope, AstNode {
         Scope.super.containsInScope(inner)
     }
 
+    /** Gets the kind of this module. */
+    string getKind() {
+        if this.isPackage() then
+            result = "Package"
+        else (
+            not exists(Module_.super.getKind()) and result = "Module"
+            or
+            result = Module_.super.getKind()
+        )
+    }
+
 }
- 
+
 bindingset[name]
-private predicate legalIdentifier(string name) {
+private predicate legalDottedName(string name) {
     name.regexpMatch("(\\p{L}|_)(\\p{L}|\\d|_)*(\\.(\\p{L}|_)(\\p{L}|\\d|_)*)*")
+}
+
+bindingset[name]
+private predicate legalShortName(string name) {
+    name.regexpMatch("(\\p{L}|_)(\\p{L}|\\d|_)*")
 }
 
 private predicate hasInit(Folder f) {
     exists(f.getFile("__init__.py"))
 }
 
+private string moduleNameFromBase(Container file) {
+    file instanceof Folder and result = file.getBaseName()
+    or
+    file instanceof File and result = file.getStem()
+}
+
 private string moduleNameFromFile(Container file) {
-    legalIdentifier(file.getBaseName()) and
-    (
-        result = moduleNameFromFile(file.getParent()) + "." + file.getStem()
+    exists(string basename |
+        basename = moduleNameFromBase(file) and
+        legalShortName(basename)
+        |
+        result = moduleNameFromFile(file.getParent()) + "." + basename
         or
         hasInit(file) and result = file.getStem() and
-        (not hasInit(file.getParent()) or not legalIdentifier(file.getParent().getBaseName()))
+        (not hasInit(file.getParent()) or not legalDottedName(file.getParent().getBaseName()))
+        or
+        result = file.getStem() and file.getParent().isImportRoot()
     )
 }
