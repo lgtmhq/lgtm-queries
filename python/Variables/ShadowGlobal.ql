@@ -42,7 +42,7 @@ predicate shadows(Name d, GlobalVariable g, Scope scope, int line) {
             i.contains(defn)
         )
     ) and
-    not optimising_parameter(d)
+    not optimizing_parameter(d)
 }
 
 /* pytest dynamically populates its namespace so, we cannot look directly for the pytest.fixture function */

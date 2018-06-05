@@ -52,7 +52,7 @@ private string trimmedCommentText(JavadocText line) {
   result = line.getText().trim()
                          .regexpReplaceAll("\\s*//.*$", "")
                          .regexpReplaceAll("\\{@[^}]+\\}", "")
-                         .regexpReplaceAll("(?i)&#?[a-z0-9]{1,31};", "") 
+                         .regexpReplaceAll("(?i)&#?[a-z0-9]{1,31};", "")
 }
 
 /**
@@ -121,20 +121,20 @@ class CommentedOutCode extends JavadocFirst {
     not this instanceof JSNIComment and
     not this instanceof OCNIComment
   }
-  
+
   /**
    * The number of lines that appear to be commented-out code.
    */
   int getCodeLines(){
     result = codeCount(this)
   }
-  
+
   private Javadoc getLastSuccessor() {
     result = getNextComment*(this) and
     not exists(getNextComment(result))
   }
-  
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+
+  override predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
     path = getLocation().getFile().getAbsolutePath() and
     sl = getLocation().getStartLine() and
     sc = getLocation().getStartColumn() and

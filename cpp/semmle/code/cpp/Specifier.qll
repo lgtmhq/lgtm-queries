@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.Element
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ specifier: `friend`, `auto`, `register`, `static`, `extern`,
@@ -283,7 +284,7 @@ class AttributeArgument extends Element, @attribute_arg {
    * Gets the value of this argument, if its value is a type.
    */
   Type getValueType() {
-    attribute_arg_type(this, result)
+    attribute_arg_type(this, unresolve(result))
   }
 
   /**

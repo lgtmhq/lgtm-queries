@@ -45,14 +45,6 @@ class EqualsCall extends MethodAccess {
     this.getMethod().getDeclaringType() instanceof TypeObject
   }
 
-  /** Return the (static) type of the object on which `equals` is invoked. */
-  RefType getReceiverType() {
-    if exists(this.getQualifier()) then
-      result = this.getQualifier().getType()
-    else
-      result = this.getEnclosingCallable().getDeclaringType()
-  }
-
   /** Return the (static) type of the argument to `equals`. */
   RefType getArgumentType() {
     result = this.getArgument(0).getType()

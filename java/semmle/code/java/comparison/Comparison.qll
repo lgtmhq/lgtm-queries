@@ -11,7 +11,7 @@
 // KIND, either express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-import java 
+import java
 
 /**
  * If `e1` evaluates to `b1` then the direct subexpression `e2` evaluates to `b2`.

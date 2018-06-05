@@ -239,7 +239,26 @@ class NumberLiteral extends @numberliteral, Literal {
   }
 
   /** Gets the floating point value of this literal. */
-  int getFloatValue() {
+  float getFloatValue() {
+    result = getValue().toFloat()
+  }
+}
+
+/** A bigint literal. */
+class BigIntLiteral extends @bigintliteral, Literal {
+  /**
+   * Gets the integer value of this literal if it can be represented
+   * as a QL integer value.
+   */
+  override int getIntValue() {
+    result = getValue().toInt()
+  }
+
+  /**
+   * Gets the floating point value of this literal if it can be represented
+   * as a QL floating point value.
+   */
+  float getFloatValue() {
     result = getValue().toFloat()
   }
 }
@@ -713,6 +732,47 @@ class InvokeExpr extends @invokeexpr, Expr {
    */
   predicate hasOptionArgument(int i, string name, Expr value) {
     value = flow().(DataFlow::InvokeNode).getOptionArgument(i, name).asExpr()
+  }
+
+  /**
+   * Gets the call signature of the invoked function, as determined by the TypeScript
+   * type system, with overloading resolved and type parameters substituted.
+   *
+   * This predicate is only populated for files extracted with full TypeScript extraction.
+   */
+  CallSignatureType getResolvedSignature() {
+    invoke_expr_signature(this, result)
+  }
+
+  /**
+   * Gets the index of the targeted call signature among the overload signatures
+   * on the invoked function.
+   *
+   * This predicate is only populated for files extracted with full TypeScript extraction.
+   */
+  int getResolvedOverloadIndex() {
+    invoke_expr_overload_index(this, result)
+  }
+
+  /**
+   * Gets the canonical name of the static call target, as determined by the TypeScript type system.
+   *
+   * This predicate is only populated for files extracted with full TypeScript extraction.
+   */
+  CanonicalFunctionName getResolvedCalleeName() {
+    ast_node_symbol(this, result)
+  }
+
+  /**
+   * Gets the statically resolved target function, as determined by the TypeScript type system, if any.
+   *
+   * This predicate is only populated for files extracted with full TypeScript extraction.
+   *
+   * Note that the resolved function may be overridden in a subclass and thus is not
+   * necessarily the actual target of this invocation at runtime. 
+   */
+  Function getResolvedCallee() {
+    result = getResolvedCalleeName().getImplementation()
   }
 }
 

@@ -28,7 +28,7 @@ class CompilationUnit extends Element, File {
   }
 
   /** The name of the compilation unit (not including its extension). */
-  string getName() {
+  override string getName() {
     result = Element.super.getName()
   }
 
@@ -36,11 +36,11 @@ class CompilationUnit extends Element, File {
    * Holds if this compilation unit has the specified `name`,
    * which must not include the file extension.
    */
-  predicate hasName(string name) {
+  override predicate hasName(string name) {
     Element.super.hasName(name)
   }
 
-  string toString() {
+  override string toString() {
     result = Element.super.toString()
   }
 

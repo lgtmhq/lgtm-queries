@@ -16,6 +16,7 @@
  */
 
 import javascript
+private import NodeModuleResolutionImpl
 
 /** A `package.json` configuration object. */
 class PackageJSON extends JSONObject {
@@ -233,6 +234,13 @@ class PackageJSON extends JSONObject {
   JSONValue getPublishConfig() {
     result = getPropValue("publishConfig")
   }
+
+  /**
+   * Gets the main module of this package.
+   */
+  Module getMainModule() {
+    result = min(Module m, int prio | m.getFile() = resolveMainModule(this, prio) | m order by prio)
+  }
 }
 
 /**
@@ -343,6 +351,7 @@ class NPMPackage extends @folder {
     pkg.getFile().getParentContainer() = this
   }
 
+  /** Gets a textual representation of this package. */
   string toString() {
     result = this.(Folder).toString()
   }
@@ -388,6 +397,13 @@ class NPMPackage extends @folder {
    */
   Module getAModule() {
     result.getFile() = getAFile()
+  }
+
+  /**
+   * Gets the main module of this package.
+   */
+  Module getMainModule() {
+    result = pkg.getMainModule()
   }
 }
 

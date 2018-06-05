@@ -80,6 +80,11 @@ module HTTP {
      * Holds if the header named `headerName` is set to the value of `headerValue`.
      */
     abstract predicate definesExplicitly(string headerName, Expr headerValue);
+    
+    /**
+     * Returns the expression used to compute the header name. 
+     */
+    abstract Expr getNameExpr();
   }
 
   /**
@@ -225,6 +230,12 @@ module HTTP {
   }
 
   /**
+   * An expression that sets up a route on a server.
+   */
+  abstract class RouteSetup extends Expr {
+  }
+
+  /**
    * An expression that may contain a request object.
    */
   abstract class RequestExpr extends Expr {
@@ -338,8 +349,12 @@ module HTTP {
       override MethodCallExpr astNode;
 
       override predicate definesExplicitly(string headerName, Expr headerValue) {
-        headerName = astNode.getArgument(0).(ConstantString).getStringValue() and
+        headerName = getNameExpr().(ConstantString).getStringValue() and
         headerValue = astNode.getArgument(1)
+      }
+      
+      override Expr getNameExpr() {
+      	 result = astNode.getArgument(0)
       }
 
     }
@@ -347,7 +362,7 @@ module HTTP {
     /**
      * A standard route setup on a server.
      */
-    abstract class StandardRouteSetup extends Expr {
+    abstract class StandardRouteSetup extends RouteSetup {
 
       /**
        * Gets a route handler that is defined by this setup.
@@ -378,8 +393,33 @@ module HTTP {
     /**
      * Gets the kind of the accessed input,
      * Can be one of "parameter", "header", "body", "url", "cookie".
+     *
+     * Note that this predicate is functional.
      */
     abstract string getKind();
+  }
+  
+  /**
+   * A node that looks like a route setup on a server.
+   *
+   * This is useful for tasks such as heuristic analyses
+   * and exploratory queries.
+   */
+  abstract class RouteSetupCandidate extends DataFlow::ValueNode {
+
+    /**
+     * Gets an expression that contains a route handler of this setup.
+     */
+    abstract DataFlow::ValueNode getARouteHandlerArg();
+  }
+
+  /**
+   * A function that looks like a route handler.
+   *
+   * This is useful for tasks such as heuristic analyses
+   * and exploratory queries.
+   */
+  abstract class RouteHandlerCandidate extends DataFlow::FunctionNode {
   }
 
 }

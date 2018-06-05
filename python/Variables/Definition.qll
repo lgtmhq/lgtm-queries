@@ -53,22 +53,22 @@ class Definition extends NameNode, DefinitionNode {
             defIdx = rank[result](int idx, Definition def | idx = def.indexInBB(bb) and def.getVariable() = this.getVariable() | idx)
         )
     }
-    
+
     /** Is this definition the first in its basic block for its variable? */
     predicate isFirst() {
         this.rankInBB(_) = 1
     }
-    
+
     /** Is this definition the last in its basic block for its variable? */
     predicate isLast() {
         exists(BasicBlock b |
             this.rankInBB(b) = max(Definition other | this.getVariable() = other.getVariable() | other.rankInBB(b))
         )
     }
-    
+
     /**
      * Is this definition unused? A definition is unused if the value it provides
-     * is not read anywhere. 
+     * is not read anywhere.
      */
     predicate isUnused() {
         // SSA variables only exist for definitions that have at least one use.
@@ -84,7 +84,7 @@ class Definition extends NameNode, DefinitionNode {
             locals_or_vars = "locals" or locals_or_vars = "vars"
         )
     }
-  
+
     /**
      * An immediate re-definition of this definition's variable.
      */
@@ -103,9 +103,9 @@ class Definition extends NameNode, DefinitionNode {
          )
        )
     }
-  
+
     /**
-     * We only consider assignments as potential violation targets, not parameters 
+     * We only consider assignments as potential alert targets, not parameters
      * and imports and other name-defining constructs.
      * We also ignore anything named "_", "empty", "unused" or "dummy"
      */
@@ -144,13 +144,13 @@ predicate reaches_without_redef(Variable v, BasicBlock a, BasicBlock b) {
 }
 
 private predicate maybe_redefined(Variable v) {
-    strictcount(Definition d | d.defines(v)) > 1 
+    strictcount(Definition d | d.defines(v)) > 1
 }
 
 predicate name_acceptable_for_unused_variable(Variable var) {
     exists(string name |
         var.getId() = name |
-        name.regexpMatch("_+") or name = "empty" or 
+        name.regexpMatch("_+") or name = "empty" or
         name.matches("%unused%") or name = "dummy" or
         name.regexpMatch("__.*")
     )

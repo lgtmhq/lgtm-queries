@@ -63,7 +63,7 @@ predicate hasUnknownStatePropertyWrite(ReactComponent c) {
   ) or
   exists (DataFlow::SourceNode source |
     source = c.getACandidateStateSource() and
-    not source instanceof DataFlow::ObjectExprNode
+    not source instanceof DataFlow::ObjectLiteralNode
   )
 }
 

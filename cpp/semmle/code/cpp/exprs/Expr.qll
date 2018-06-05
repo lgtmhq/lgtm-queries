@@ -14,6 +14,7 @@
 
 import semmle.code.cpp.Element
 private import semmle.code.cpp.Enclosing
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ expression.
@@ -67,7 +68,7 @@ class Expr extends StmtParent, @expr {
    * As the type of an expression can sometimes be a TypedefType, calling getUnderlyingType()
    * is often more useful than calling this predicate.
    */
-  Type getType() { expr_types(this,result,_) }
+  pragma[nomagic] Type getType() { expr_types(this,unresolve(result),_) }
 
   /**
    * Gets the type of this expression after typedefs have been resolved.
@@ -174,7 +175,29 @@ class Expr extends StmtParent, @expr {
     isPRValueCategory() or isXValueCategory()
   }
   
-  
+  /**
+   * Gets a string representation of the value category of the expression.
+   * This is intended only for debugging. The possible values are:
+   *
+   * - "lvalue"
+   * - "xvalue"
+   * - "prvalue"
+   * - "prvalue(load)"
+   *
+   * The "prvalue(load)" string is used when the expression is a prvalue, but
+   * `hasLValueToRvalueConversion()` holds.
+   */
+  string getValueCategoryString() {
+    if isLValueCategory() then
+      result = "lvalue"
+    else if isXValueCategory() then
+      result = "xvalue"
+    else if hasLValueToRValueConversion() then
+      result = "prvalue(load)"
+    else
+      result = "prvalue"
+  }
+
   /**
    * Gets the parent of this expression, if any, in an alternative syntax tree
    * that has `Conversion`s as part of the tree.
@@ -578,7 +601,7 @@ class NewExpr extends Expr, @new_expr {
    * For example, for `new int` the result is `int`.
    */
   Type getAllocatedType() {
-    new_allocated_type(this, result)
+    new_allocated_type(this, unresolve(result))
   }
 
   /**
@@ -616,7 +639,7 @@ class NewArrayExpr extends Expr, @new_array_expr {
    * For example, for `new int[5]` the result is `int[5]`.
    */
   Type getAllocatedType() {
-    new_array_allocated_type(this, result)
+    new_array_allocated_type(this, unresolve(result))
   }
 
   /**

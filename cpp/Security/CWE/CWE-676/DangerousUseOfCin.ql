@@ -203,11 +203,11 @@ class CinAccess extends PotentiallyDangerousInput {
     this.(VariableAccess).getTarget() instanceof CinVariable
   }
 
-  Variable getStreamVariable() {
+  override Variable getStreamVariable() {
     result = this.(VariableAccess).getTarget()
   }
 
-  PotentiallyDangerousInput getPreviousAccess() {
+  override PotentiallyDangerousInput getPreviousAccess() {
     nextPotentiallyDangerousInput(result.getASuccessor(), this, result.getStreamVariable())
   }
 }
@@ -220,11 +220,11 @@ class IFStreamAccess extends PotentiallyDangerousInput {
     this.(VariableAccess).getTarget().getUnderlyingType() instanceof IFStream
   }
 
-  Variable getStreamVariable() {
+  override Variable getStreamVariable() {
     result = this.(VariableAccess).getTarget()
   }
 
-  PotentiallyDangerousInput getPreviousAccess() {
+  override PotentiallyDangerousInput getPreviousAccess() {
     nextPotentiallyDangerousInput(result.getASuccessor(), this, result.getStreamVariable())
   }
 }
@@ -237,11 +237,11 @@ class ChainedInput extends PotentiallyDangerousInput {
     this.(OperatorRShiftCall).getSource() instanceof PotentiallyDangerousInput
   }
 
-  Variable getStreamVariable() {
+  override Variable getStreamVariable() {
     result = this.(OperatorRShiftCall).getSource().(PotentiallyDangerousInput).getStreamVariable()
   }
 
-  PotentiallyDangerousInput getPreviousAccess() {
+  override PotentiallyDangerousInput getPreviousAccess() {
     result = this.(OperatorRShiftCall).getSource()
   }
 }

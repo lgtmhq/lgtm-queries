@@ -256,7 +256,7 @@ private class ScriptSrcPath extends PathString {
 /**
  * An HTML text node like `<div>this-is-the-node</div>`.
  *
- * NB: Instances of this class are only available if extraction is done with `--html all` or `--experimental`.
+ * Note that instances of this class are only available if extraction is done with `--html all` or `--experimental`.
  */
 class HtmlText extends Locatable, @xmlcharacters {
   HtmlText() {

@@ -42,8 +42,10 @@ module ConnectExpressShared {
 
   /**
    * A function that looks like a Connect/Express route handler.
+   *
+   * For example, this could be the function `function(req, res, next){...}`.
    */
-  class RouteHandlerCandidate extends DataFlow::FunctionNode {
+  class RouteHandlerCandidate extends HTTP::RouteHandlerCandidate, DataFlow::FunctionNode {
 
     override Function astNode;
 

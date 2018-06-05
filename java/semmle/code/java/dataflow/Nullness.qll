@@ -56,7 +56,7 @@ private import semmle.code.java.Collections
 private import semmle.code.java.frameworks.Assertions
 
 /** An expression that may be `null`. */
-private Expr nullExpr() {
+Expr nullExpr() {
   result instanceof NullLiteral or
   result.(ParExpr).getExpr() = nullExpr() or
   result.(ConditionalExpr).getTrueExpr() = nullExpr() or
@@ -85,9 +85,10 @@ private predicate unboxed(Expr e) {
 }
 
 /** An expression that is being dereferenced. These are the points where `NullPointerException`s can occur. */
-private predicate dereference(Expr e) {
+predicate dereference(Expr e) {
   exists(EnhancedForStmt for | for.getExpr() = e) or
   exists(SynchronizedStmt synch | synch.getExpr() = e) or
+  exists(SwitchStmt switch | switch.getExpr() = e) or
   exists(FieldAccess fa, Field f | fa.getQualifier() = e and fa.getField() = f and not f.isStatic()) or
   exists(MethodAccess ma, Method m | ma.getQualifier() = e and ma.getMethod() = m and not m.isStatic()) or
   exists(ClassInstanceExpr cie | cie.getQualifier() = e) or

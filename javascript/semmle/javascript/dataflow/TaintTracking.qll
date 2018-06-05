@@ -63,7 +63,7 @@ module TaintTracking {
 
     /** Holds if the intermediate node `node` is a taint sanitizer. */
     predicate isSanitizer(DataFlow::Node node) {
-      sanitizedByGuard(this, node)
+      none()
     }
 
     /** Holds if the edge from `source` to `sink` is a taint sanitizer. */
@@ -72,10 +72,14 @@ module TaintTracking {
     }
 
     final
-    override predicate isBarrier(DataFlow::Node node) { isSanitizer(node) }
+    override predicate isBarrier(DataFlow::Node node) {
+      super.isBarrier(node) or
+      isSanitizer(node)
+    }
 
     final
     override predicate isBarrier(DataFlow::Node source, DataFlow::Node sink) {
+      super.isBarrier(source, sink) or
       isSanitizer(source, sink)
     }
 
@@ -93,78 +97,29 @@ module TaintTracking {
       pred = succ.(FlowTarget).getATaintSource() or
       any(AdditionalTaintStep dts).step(pred, succ)
     }
-  }
 
-  /**
-   * Holds if data flow node `nd` acts as a sanitizer for the purposes of taint-tracking
-   * configuration `cfg`.
-   */
-  private predicate sanitizedByGuard(Configuration cfg, DataFlow::Node nd) {
-    // 1) `nd` is a use of a refinement node that sanitizes its input variable
-    exists (SsaRefinementNode ref |
-      nd = DataFlow::ssaDefinitionNode(ref) and
-      forex (SsaVariable input | input = ref.getAnInput() |
-        guardSanitizes(cfg, ref.getGuard(), input)
-      )
-    )
-    or
-    // 2) `nd` is a use of an SSA variable `ssa`, and dominated by a sanitizer for `ssa`
-    exists (SsaVariable ssa, BasicBlock bb |
-      nd = DataFlow::valueNode(ssa.getAUseIn(bb)) and
-      exists (ConditionGuardNode guard |
-        guardSanitizes(cfg, guard, ssa) and
-        guard.dominates(bb)
-      )
-    )
-    or
-    // 3) `nd` is a property access `ssa.p.q` on an SSA variable `ssa`, and dominated by
-    // a sanitizer for `ssa.p.q`
-    exists (SsaVariable ssa, string props, BasicBlock bb |
-      nd = DataFlow::valueNode(nestedPropAccessOnSsaVar(ssa, props)) and
-      bb = nd.getBasicBlock() |
-      exists (ConditionGuardNode guard |
-        guard.getTest().(SanitizingGuard).sanitizes(cfg, guard.getOutcome(), nestedPropAccessOnSsaVar(ssa, props)) and
-        guard.dominates(bb)
-      )
-    )
-  }
-
-  /**
-   * Holds if props is a string of the form `p.q.r`, and the result is a property access
-   * of the form `v.p.q.r`.
-   */
-  private DotExpr nestedPropAccessOnSsaVar(SsaVariable v, string props) {
-    exists (Expr base, string prop | result.accesses(base, prop) |
-      base = v.getAUse() and props = prop
-      or
-      exists (string prevProps |
-        base = nestedPropAccessOnSsaVar(v, prevProps) and
-        props = prevProps + "." + prop
-      )
-    )
-  }
-
-  /**
-   * Holds if `guard` is sanitizes `v` for the purposes of taint-tracking
-   * configuration `cfg`.
-   */
-  private predicate guardSanitizes(Configuration cfg,
-                                   ConditionGuardNode guard, SsaVariable v) {
-    exists (SanitizingGuard sanitizer | sanitizer = guard.getTest() |
-      sanitizer.sanitizes(cfg, guard.getOutcome(), v.getAUse())
-    )
+    final
+    override predicate isAdditionalFlowStep(DataFlow::Node pred, DataFlow::Node succ, boolean valuePreserving) {
+      isAdditionalFlowStep(pred, succ) and valuePreserving = false
+    }
   }
 
   /**
    * An expression that can act as a sanitizer for a variable when appearing
    * in a condition.
    */
-  abstract class SanitizingGuard extends Expr {
+  abstract class SanitizingGuard extends DataFlow::BarrierGuard {
+
+    final override predicate blocks(DataFlow::Configuration cfg, boolean outcome, Expr e) {
+      sanitizes(cfg, outcome, e)
+    }
+
     /**
      * Holds if this expression sanitizes expression `e` for the purposes of taint-tracking
      * configuration `cfg`, provided it evaluates to `outcome`.
      */
     abstract predicate sanitizes(Configuration cfg, boolean outcome, Expr e);
+
   }
 
   /**
@@ -209,11 +164,6 @@ module TaintTracking {
       succ = this and
       (
         exists (Expr e, Expr f | e = this.asExpr() and f = pred.asExpr() |
-          // iterating over a tainted iterator taints the loop variable
-          exists (EnhancedForLoop efl | f = efl.getIterationDomain() |
-            e = efl.getAnIterationVariable().getAnAccess()
-          )
-          or
           // arrays with tainted elements and objects with tainted property names are tainted
           e.(ArrayExpr).getAnElement() = f or
           exists (Property prop | e.(ObjectExpr).getAProperty() = prop |
@@ -240,6 +190,14 @@ module TaintTracking {
           this = DataFlow::parameterNode(p) and
           pred.asExpr() = m.getReceiver()
         )
+      )
+      or
+      // iterating over a tainted iterator taints the loop variable
+      exists (EnhancedForLoop efl, SsaExplicitDefinition ssa |
+        this = DataFlow::valueNode(efl.getIterationDomain()) and
+        pred = this and
+        ssa.getDef() = efl.getIteratorExpr() and
+        succ = DataFlow::ssaDefinitionNode(ssa)
       )
     }
   }

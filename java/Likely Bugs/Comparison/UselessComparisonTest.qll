@@ -25,27 +25,27 @@ library class BoundKind extends string {
     this = ">=" or
     this = "<="
   }
-  
+
   predicate isEqual() {
     this = "="
   }
-  
+
   predicate isNotEqual() {
     this = "!="
   }
-  
+
   predicate isLower() {
     this = ">="
   }
-  
+
   predicate isUpper() {
     this = "<="
   }
-  
+
   predicate providesLowerBound() {
     isEqual() or isLower()
   }
-  
+
   predicate providesUpperBound() {
     isEqual() or isUpper()
   }

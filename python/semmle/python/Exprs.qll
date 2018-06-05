@@ -50,6 +50,16 @@ class Expr extends Expr_, AstNode {
         not this.isVariable()
     }
 
+    /** Use isParenthesized instead. */
+    deprecated predicate isParenthesised() {
+        this.isParenthesized()
+    }
+
+    /** Whether the parenthesized property of this expression is true. */
+    predicate isParenthesized() {
+        Expr_.super.isParenthesised()
+    }
+
     private predicate isVariable() {
         this.hasSideEffects() or
         this instanceof Name or

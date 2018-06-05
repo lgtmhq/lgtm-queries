@@ -74,7 +74,7 @@ class CollectionType extends RefType {
       this.hasSupertype*(coll)
     )
   }
-  
+
   /** The type of elements stored in this collection. */
   RefType getElementType() {
     exists (GenericInterface coll | coll.hasQualifiedName("java.util", "Collection") |
@@ -88,7 +88,7 @@ class CollectionMethod extends Method {
   CollectionMethod() {
     this.getDeclaringType() instanceof CollectionType
   }
-  
+
   /** The type of elements of the collection to which this method belongs. */
   RefType getReceiverElementType() {
     result = this.getDeclaringType().(CollectionType).getElementType()
@@ -114,9 +114,9 @@ class CollectionMutation extends MethodAccess {
   CollectionMutation() {
     this.getMethod() instanceof CollectionMutator
   }
-  
+
   predicate resultIsChecked() {
-    not this.getParent() instanceof ExprStmt 
+    not this.getParent() instanceof ExprStmt
   }
 }
 

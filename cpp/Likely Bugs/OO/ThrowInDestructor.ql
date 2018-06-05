@@ -51,6 +51,7 @@ predicate bindThrownType(ThrowExpr te, Type thrown)
 }
 
 // This predicate determines the catch blocks that can catch the exceptions thrown by each throw expression.
+pragma[inline]
 predicate canCatch(ThrowExpr te, CatchBlock cb)
 {
   exists(Type thrown, Type caught |

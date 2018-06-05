@@ -40,7 +40,7 @@ private class AnalyzedLiteral extends DataFlow::AnalyzedValueNode {
       )
       or
       // flow analysis for number literals
-      astNode instanceof NumberLiteral and
+      (astNode instanceof NumberLiteral or astNode instanceof BigIntLiteral) and
       exists (float fv | fv = value.toFloat() |
         if fv = 0.0 or fv = -0.0 then
           result = TAbstractZero()

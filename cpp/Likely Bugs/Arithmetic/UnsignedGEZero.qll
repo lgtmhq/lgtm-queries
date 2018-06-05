@@ -60,7 +60,8 @@ predicate unsignedGEZero(UnsignedGEZero ugez, string msg) {
     mi.getAnExpandedElement() = ugez and
 
     // and ugez was apparently not passed in as a macro parameter
-    mi.getLocation().toString() = ugez.getLocation().toString()
+    ugez.getLocation().getStartLine() = mi.getLocation().getStartLine() and
+    ugez.getLocation().getStartColumn() = mi.getLocation().getStartColumn()
   ) and
   msg = "Pointless comparison of unsigned value to zero."
 }

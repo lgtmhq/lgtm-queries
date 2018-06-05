@@ -68,7 +68,7 @@ class InvokeNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode {
    * `name` is set to `result`.
    */
   DataFlow::ValueNode getOptionArgument(int i, string name) {
-    exists (ObjectExprNode obj |
+    exists (ObjectLiteralNode obj |
       obj.flowsTo(getArgument(i)) and
       obj.hasPropertyWrite(name, result)
     )
@@ -165,9 +165,25 @@ class FunctionNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode {
   }
 }
 
-/** A data flow node corresponding to an object expression. */
-class ObjectExprNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode {
+/** A data flow node corresponding to an object literal expression. */
+class ObjectLiteralNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode {
   override ObjectExpr astNode;
+}
+
+/** A data flow node corresponding to an array literal expression. */
+class ArrayLiteralNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode {
+  override ArrayExpr astNode;
+
+  /** Gets the `i`th element of this array literal. */
+  DataFlow::ValueNode getElement(int i) {
+    result = DataFlow::valueNode(astNode.getElement(i))
+  }
+
+  /** Gets an element of this array literal. */
+  DataFlow::ValueNode getAnElement() {
+    result = DataFlow::valueNode(astNode.getAnElement())
+  }
+
 }
 
 /**

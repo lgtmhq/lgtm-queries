@@ -26,7 +26,7 @@ class PathsGet extends PathCreation, MethodAccess {
     )
   }
 
-  Expr getInput() { result = this.getAnArgument() }
+  override Expr getInput() { result = this.getAnArgument() }
 }
 
 class FileSystemGetPath extends PathCreation, MethodAccess {
@@ -37,7 +37,7 @@ class FileSystemGetPath extends PathCreation, MethodAccess {
     )
   }
 
-  Expr getInput() { result = this.getAnArgument() }
+  override Expr getInput() { result = this.getAnArgument() }
 }
 
 class FileCreation extends PathCreation, ClassInstanceExpr {
@@ -45,10 +45,10 @@ class FileCreation extends PathCreation, ClassInstanceExpr {
     this.getConstructedType() instanceof TypeFile
   }
 
-  Expr getInput() {
+  override Expr getInput() {
     result = this.getAnArgument() and
     // Relevant arguments include those that are not a `File`.
-    not result.getType() instanceof TypeFile 
+    not result.getType() instanceof TypeFile
   }
 }
 
@@ -57,10 +57,10 @@ class FileWriterCreation extends PathCreation, ClassInstanceExpr {
     this.getConstructedType().getQualifiedName() = "java.io.FileWriter"
   }
 
-  Expr getInput() {
+  override Expr getInput() {
     result = this.getAnArgument() and
     // Relevant arguments are those of type `String`.
-    result.getType() instanceof TypeString 
+    result.getType() instanceof TypeString
   }
 }
 

@@ -323,6 +323,30 @@ private class JQueryDataTables extends FrameworkLibraryWithGenericURL,
 }
 
 /**
+ * The jQuery jsTree framework.
+ */
+private class JQueryJsTree extends FrameworkLibraryWithGenericURL,
+                                    FrameworkLibraryWithMarkerComment {
+  JQueryJsTree() { this = "jquery-jstree" }
+  override string getAnAlias() { result = "jquery.jstree" }
+  override string getAMarkerCommentRegex() {
+    result = "(?s).*jsTree (<VERSION>).*"
+  }
+}
+
+/**
+ * The jQuery Snippet framework.
+ */
+private class JQuerySnippet extends FrameworkLibraryWithGenericURL,
+                                    FrameworkLibraryWithMarkerComment {
+  JQuerySnippet() { this = "jquery-snippet" }
+  override string getAnAlias() { result = "jquery.snippet" }
+  override string getAMarkerCommentRegex() {
+    result = "(?s).*Snippet :: jQuery Syntax Highlighter v(<VERSION>).*"
+  }
+}
+
+/**
  * The Bootstrap framework.
  */
 private class Bootstrap extends FrameworkLibraryWithGenericURL, FrameworkLibraryWithMarkerComment {

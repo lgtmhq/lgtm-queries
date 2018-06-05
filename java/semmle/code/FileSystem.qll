@@ -174,7 +174,7 @@ class Container extends @container, Top {
    *
    * This is the absolute path of the container.
    */
-  string toString() {
+  override string toString() {
     result = getAbsolutePath()
   }
 

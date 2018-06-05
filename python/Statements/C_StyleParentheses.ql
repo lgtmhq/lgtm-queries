@@ -26,7 +26,7 @@
 import python
 
 from Expr e, Location l, string kind, string what
-where e.isParenthesised() and
+where e.isParenthesized() and
 not e instanceof Tuple and
 (
     exists(If i | i.getTest() = e) and kind = "if" and what = "condition"
@@ -41,4 +41,4 @@ and
 // These require parentheses
 (not e instanceof Yield and not e instanceof YieldFrom and not e instanceof GeneratorExp) and
 l = e.getLocation() and l.getStartLine() = l.getEndLine()
-select e, "Parenthesised " + what + " in '" + kind + "' statement."
+select e, "Parenthesized " + what + " in '" + kind + "' statement."

@@ -43,6 +43,6 @@ exists(List l, Expr other |
     string_const(other)
 ) and
 exists(s.getAnImplicitlyConcatenatedPart()) and
-not s.isParenthesised()
+not s.isParenthesized()
 
 select s, "Implicit string concatenation. Maybe missing a comma?"

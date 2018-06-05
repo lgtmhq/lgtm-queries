@@ -45,4 +45,5 @@ from Function f, LocalVariable lv, ParameterDeclarationEntry pde
 where f = lv.getFunction() and
       pde = functionParameterNames(f, lv.getName()) and
       not lv.isInMacroExpansion()
-select lv, "This local variable hides a $@.", pde, "parameter of the same name"
+select lv, "Local variable '"+ lv.getName() +"' hides a $@.",
+       pde, "parameter of the same name"

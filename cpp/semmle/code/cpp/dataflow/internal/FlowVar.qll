@@ -157,7 +157,20 @@ module FlowVar_internal {
     SsaVar() { this = TSsaVar(def, v) }
 
     override VariableAccess getAnAccess() {
-      result = this.getAReachedSsaDefinition().getAUse(v)
+      // There is no need to know about direct accesses to phi nodes because
+      // the data flow library will never see those, and the `FlowVar` library
+      // is only meant to be used by the data flow library.
+      this.isNonPhi() and
+      ( // This base case could be included in the transitive case by changing
+        // `+` to `*`, but that's slower because it goes through the `TSsaVar`
+        // indirection.
+        result = def.getAUse(v)
+        or
+        exists(SsaDefinition descendentDef |
+          getASuccessorSsaVar+() = TSsaVar(descendentDef, _) and
+          result = descendentDef.getAUse(v)
+        )
+      )
     }
 
     override predicate definedByExpr(Expr e, ControlFlowNode node) {
@@ -172,10 +185,29 @@ module FlowVar_internal {
       param = v
     }
 
-    private SsaDefinition getAReachedSsaDefinition() {
-      def = result
+    /**
+     * Holds if this `SsaVar` corresponds to a non-phi definition. Users of this
+     * library will never directly use an `SsaVar` that comes from a phi node,
+     * so such values are purely for implementation use.
+     */
+    private predicate isNonPhi() {
+      // This implementation is positively phrased in terms of these two helper
+      // predicates because it performs better than phrasing it negatively in
+      // terms of `def.isPhiNode`.
+      this.definedByExpr(_, _)
       or
-      getAReachedSsaDefinition() = result.getAPhiInput(v)
+      this.definedByInitialValue(_)
+    }
+
+    /**
+     * Holds if `result` might have the same value as `this` because `result` is
+     * a phi node with `this` as input.
+     */
+    private SsaVar getASuccessorSsaVar() {
+      exists(SsaDefinition succDef |
+        result = TSsaVar(succDef, v) and
+        def = succDef.getAPhiInput(v)
+      )
     }
 
     override string toString() { result = def.toString(v) }

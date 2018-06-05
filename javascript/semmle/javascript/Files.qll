@@ -14,7 +14,7 @@
 /** Provides classes for working with files and folders. */
 
 import javascript
-private import FilesInternal
+private import NodeModuleResolutionImpl
 
 /** A file or folder. */
 abstract class Container extends @container {
@@ -220,7 +220,7 @@ class Folder extends Container, @folder {
   }
 
   /** Gets the URL of this folder. */
-  string getURL() {
+  override string getURL() {
     result = "folder://" + getAbsolutePath()
   }
 }
@@ -260,7 +260,7 @@ class File extends Container, @file, Locatable {
   }
 
   /** Gets the URL of this file. */
-  string getURL() {
+  override string getURL() {
     result = "file://" + this.getAbsolutePath() + ":0:0:0:0"
   }
 

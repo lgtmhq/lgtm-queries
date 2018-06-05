@@ -38,7 +38,7 @@ predicate isRandValue(Expr e) {
 }
 
 class SecurityOptionsArith extends SecurityOptions {
-  predicate isUserInput(Expr expr, string cause) {
+  override predicate isUserInput(Expr expr, string cause) {
     isRandValue(expr) and cause = "rand"
     and not expr.getParent*() instanceof DivExpr
   }

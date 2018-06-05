@@ -132,7 +132,7 @@ class AnnAssign extends AnnAssign_ {
         exists(Name n |
             n = this.getTarget()
             and
-            not n.isParenthesised()
+            not n.isParenthesized()
         )
     }
 

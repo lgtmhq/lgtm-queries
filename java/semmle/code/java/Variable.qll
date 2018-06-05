@@ -31,7 +31,7 @@ class Variable extends @variable, Annotatable, Element, Modifiable {
     or
     exists(AssignExpr e | e.getDest().getProperExpr() = this.getAnAccess() and result = e.getSource())
   }
-  
+
   /** The initializer expression of this variable. */
   Expr getInitializer() {
     none()
@@ -39,7 +39,7 @@ class Variable extends @variable, Annotatable, Element, Modifiable {
 
   /** A printable representation of this variable together with its type. */
   string pp() {
-    result = this.getType().getName() + " " + this.getName() 
+    result = this.getType().getName() + " " + this.getName()
   }
 }
 
@@ -52,8 +52,8 @@ class LocalScopeVariable extends Variable, @localscopevariable {
 /** A local variable declaration */
 class LocalVariableDecl extends @localvar, LocalScopeVariable {
   /** The type of this local variable. */
-  Type getType() { localvars(this,_,result,_) }
-  
+  override Type getType() { localvars(this,_,result,_) }
+
   /** The expression declaring this variable. */
   LocalVariableDeclExpr getDeclExpr() { localvars(this, _, _, result) }
 
@@ -66,10 +66,10 @@ class LocalVariableDecl extends @localvar, LocalScopeVariable {
   /** The callable in which this declaration occurs. */
   Callable getEnclosingCallable() { result = getCallable() }
 
-  string toString() { result = this.getType().getName() + " " + this.getName() }
+  override string toString() { result = this.getType().getName() + " " + this.getName() }
 
   /** The initializer expression of this local variable declaration. */
-  Expr getInitializer() {
+  override Expr getInitializer() {
     result = getDeclExpr().getInit()
   }
 }
@@ -77,7 +77,7 @@ class LocalVariableDecl extends @localvar, LocalScopeVariable {
 /** A formal parameter of a callable. */
 class Parameter extends Element, @param, LocalScopeVariable {
   /** The type of this formal parameter. */
-  Type getType() { params(this,result,_,_,_) }
+  override Type getType() { params(this,result,_,_,_) }
 
   /** Holds if the parameter is never assigned a value in the body of the callable. */
   predicate isEffectivelyFinal() { not exists(getAnAssignedValue()) }
@@ -93,7 +93,7 @@ class Parameter extends Element, @param, LocalScopeVariable {
 
   /** Holds if this formal parameter is the same as its source declaration. */
   predicate isSourceDeclaration() { this.getSourceDeclaration() = this }
-  
+
   /** Holds if this formal parameter is a variable arity parameter. */
   predicate isVarargs() {
     isVarargsParam(this)

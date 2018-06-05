@@ -113,7 +113,7 @@ module Koa {
     /**
      * Gets the route handler that provides this response.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = ctx.getRouteHandler()
     }
   }
@@ -132,7 +132,7 @@ module Koa {
     /**
      * Gets the route handler that provides this response.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = ctx.getRouteHandler()
     }
   }

@@ -67,7 +67,7 @@ module Connect {
     override Function astNode;
 
     StandardRouteHandler() {
-      any(RouteSetup setup).getARouteHandler() = this
+      this = any(RouteSetup setup).getARouteHandler()
     }
 
     override SimpleParameter getRouteHandlerParameter(string kind) {
@@ -90,7 +90,7 @@ module Connect {
     /**
      * Gets the route handler that provides this response.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }
@@ -109,7 +109,7 @@ module Connect {
     /**
      * Gets the route handler that handles this request.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }
@@ -146,7 +146,8 @@ module Connect {
     }
 
     override DataFlow::SourceNode getARouteHandler() {
-      result.flowsToExpr(getARouteHandlerExpr())
+      result.(DataFlow::SourceNode).flowsTo(getARouteHandlerExpr().flow()) or
+      result.(DataFlow::TrackedNode).flowsTo(getARouteHandlerExpr().flow())
     }
 
     override Expr getServer() {
@@ -234,6 +235,26 @@ module Connect {
       result = getRouteHandlerParameter(astNode, kind)
     }
 
+  }
+
+  /**
+   * A call that looks like a route setup on a Connect server.
+   *
+   * For example, this could be the call `router.use(handler)` where
+   * it is unknown if `router` is a Connect router.
+   */
+  class RouteSetupCandidate extends HTTP::RouteSetupCandidate, DataFlow::MethodCallNode {
+
+    DataFlow::ValueNode routeHandlerArg;
+
+    RouteSetupCandidate() {
+      getMethodName() = "use" and
+      routeHandlerArg = getAnArgument()
+    }
+
+    override DataFlow::ValueNode getARouteHandlerArg() {
+      result = routeHandlerArg
+    }
   }
 
 }

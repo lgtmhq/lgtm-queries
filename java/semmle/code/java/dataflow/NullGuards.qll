@@ -188,7 +188,7 @@ private predicate validReturnInCustomNullGuard(ReturnStmt ret, Parameter p, bool
 }
 
 private predicate validReturnHelper(ReturnStmt ret, SsaImplicitInit ssa, ConditionBlock cond, boolean isnull) {
-  exists(boolean branch | 
+  exists(boolean branch |
     cond.controls(ret.getBasicBlock(), branch) and
     cond.getCondition() = nullGuard(ssa, branch, isnull)
   )

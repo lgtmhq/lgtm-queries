@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.Type
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ typedef type. See 4.9.1.
@@ -20,10 +21,10 @@ class TypedefType extends UserType {
 
   TypedefType() { usertypes(this,_,5) }
 
-  /** 
+  /**
    * Gets the base type of this typedef type.
    */
-  Type getBaseType() { typedefbase(this,result) }
+  Type getBaseType() { typedefbase(this,unresolve(result)) }
 
   override Type getUnderlyingType() { result = this.getBaseType().getUnderlyingType() }
 

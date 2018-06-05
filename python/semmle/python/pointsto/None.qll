@@ -14,7 +14,7 @@
 import python
 import PointsToContext
 
-/* Fake predicates so that This.qll behaves correctly in Studio */
+/* Fake predicates so that This.qll behaves correctly in QL for Eclipse */
 
 module NonePointsTo {
 

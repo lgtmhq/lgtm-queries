@@ -47,15 +47,15 @@ newtype MaybeLabel = JustLabel(Label l) or NoLabel()
  /**
   * A completion of a statement or an expression.
   */
-newtype Completion = 
+newtype Completion =
   /**
-   * The statement or expression completes normally and continues to the next statement. 
+   * The statement or expression completes normally and continues to the next statement.
    */
   NormalCompletion() or
   /**
    * The statement or expression completes by returning from the function.
    */
-  ReturnCompletion() or 
+  ReturnCompletion() or
   /**
    * The expression completes with value `outerValue` overall and with the last control
    * flow node having value `innerValue`.

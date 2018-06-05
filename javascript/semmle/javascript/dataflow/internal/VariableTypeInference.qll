@@ -418,13 +418,13 @@ private class AnalyzedGlobalVarUse extends DataFlow::AnalyzedValueNode {
   }
 
   override predicate isIncomplete(DataFlow::Incompleteness reason) {
-    DataFlow::AnalyzedValueNode.super.isIncomplete(reason)
+    super.isIncomplete(reason)
     or
     clobberedProp(gv, reason)
   }
 
   override AbstractValue getALocalValue() {
-    result = DataFlow::AnalyzedValueNode.super.getALocalValue()
+    result = super.getALocalValue()
     or
     result = getAnAssigningPropWrite().getRhs().analyze().getALocalValue()
     or

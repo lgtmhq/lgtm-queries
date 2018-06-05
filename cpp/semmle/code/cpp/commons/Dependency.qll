@@ -208,7 +208,6 @@ predicate dependsOnDeclOnly(Element src, Element dest) {
  * A dependency from src to dest.  This predicate inlines
  * template dependencies.
  */
-pragma[noopt]
 private predicate dependsOnViaTemplate(Declaration src, Element dest) {
   // A template instantiation depends on everything that anything
   // inside it depends upon.  This effectively inlines the things

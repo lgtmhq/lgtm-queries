@@ -100,7 +100,7 @@ predicate typeArgumentsContain(GenericType g, ParameterizedType s, Parameterized
  *
  * See JLS 4.5.1, Type Arguments of Parameterized Types.
  */
-private 
+private
 predicate contains(GenericType g, ParameterizedType sParm, ParameterizedType tParm, int n) {
   exists (RefType s, RefType t |
     containsAux(g, tParm, n, s, t) and
@@ -116,7 +116,7 @@ private predicate containsAux(GenericType g, ParameterizedType tParm, int n, Ref
 
 /**
  * Holds if the type argument `s` contains the type argument `t`.
- * 
+ *
  * See JLS 4.5.1, Type Arguments of Parameterized Types.
  */
 private
@@ -208,7 +208,7 @@ class Array extends RefType, @array {
   /**
    * The JVM descriptor for this type, as used in bytecode.
    */
-  string getTypeDescriptor() {
+  override string getTypeDescriptor() {
     result = "[" + this.getComponentType().getTypeDescriptor()
   }
 }
@@ -230,7 +230,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   }
 
   /** The compilation unit in which this type is declared. */
-  CompilationUnit getCompilationUnit() { result = this.getFile() }
+  override CompilationUnit getCompilationUnit() { result = this.getFile() }
 
   /** Holds if `t` is an immediate supertype of this type. */
   predicate hasSupertype(RefType t) { hasSubtype(t,this) }
@@ -416,7 +416,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /**
    * The JVM descriptor for this type, as used in bytecode.
    */
-  string getTypeDescriptor() {
+  override string getTypeDescriptor() {
     result = "L" + this.getPackage().getName().replaceAll(".", "/") + "/" +
       this.getSourceDeclaration().nestedName() + ";"
   }
@@ -487,14 +487,14 @@ class Class extends RefType, @class {
   /** Holds if this class is a local class. */
   predicate isLocal() { isLocalClass(this,_) }
 
-  RefType getSourceDeclaration() { classes(this,_,_,result) }
+  override RefType getSourceDeclaration() { classes(this,_,_,result) }
 
   /**
    * An annotation that applies to this class.
    *
    * Note that a class may inherit annotations from super-classes.
    */
-  Annotation getAnAnnotation() {
+  override Annotation getAnAnnotation() {
     result = RefType.super.getAnAnnotation() or
     exists(AnnotationType tp | tp = result.getType() |
       tp.isInherited() and
@@ -528,7 +528,7 @@ class AnonymousClass extends NestedClass {
    * enclosing type followed by a (1-based) counter of anonymous classes
    * declared within that type.
    */
-  string getTypeDescriptor() {
+  override string getTypeDescriptor() {
     exists(RefType parent | parent = this.getEnclosingType() |
       exists(int num | num = 1 + count(AnonymousClass other | other.rankInParent(parent) < rankInParent(parent)) |
         exists(string parentWithSemi | parentWithSemi = parent.getTypeDescriptor() |
@@ -541,7 +541,7 @@ class AnonymousClass extends NestedClass {
   /** The class instance expression where this anonymous class occurs. */
   ClassInstanceExpr getClassInstanceExpr() { isAnonymClass(this, result) }
 
-  string toString() { result = "new " + this.getClassInstanceExpr().getTypeName() + "(...) { ... }" }
+  override string toString() { result = "new " + this.getClassInstanceExpr().getTypeName() + "(...) { ... }" }
 
   /**
    * The qualified name of this type.
@@ -549,7 +549,7 @@ class AnonymousClass extends NestedClass {
    * Anonymous classes do not have qualified names, so we use
    * the string `"<anonymous class>"` as a placeholder.
    */
-  string getQualifiedName() { result = "<anonymous class>" }
+  override string getQualifiedName() { result = "<anonymous class>" }
 }
 
 /** A local class. */
@@ -579,7 +579,7 @@ class NestedType extends RefType {
   }
 
   /** The type enclosing this nested type. */
-  RefType getEnclosingType() {
+  override RefType getEnclosingType() {
     enclInReftype(this,result)
   }
 
@@ -591,13 +591,13 @@ class NestedType extends RefType {
       result = 1
   }
 
-  predicate isPublic() {
+  override predicate isPublic() {
     super.isPublic() or
     // JLS 9.5: A member type declaration in an interface is implicitly public and static
     exists(Interface i | this = i.getAMember())
   }
 
-  predicate isStrictfp() {
+  override predicate isStrictfp() {
     super.isStrictfp() or
     // JLS 8.1.1.3, JLS 9.1.1.2
     getEnclosingType().isStrictfp()
@@ -617,7 +617,7 @@ class NestedType extends RefType {
    * See JLS v8, section 8.5.1 (Static Member Type Declarations),
    * section 8.9 (Enums) and section 9.5 (Member Type Declarations).
    */
-  predicate isStatic() {
+  override predicate isStatic() {
     super.isStatic() or
     // JLS 8.5.1: A member interface is implicitly static.
     this instanceof Interface or
@@ -659,9 +659,9 @@ class InnerClass extends NestedClass {
 
 /** An interface. */
 class Interface extends RefType, @interface {
-  RefType getSourceDeclaration() { interfaces(this,_,_,result) }
+  override RefType getSourceDeclaration() { interfaces(this,_,_,result) }
 
-  predicate isAbstract() {
+  override predicate isAbstract() {
     // JLS 9.1.1.1: "Every interface is implicitly abstract"
     any()
   }
@@ -695,7 +695,7 @@ class PrimitiveType extends Type, @primitive {
   /**
    * The JVM descriptor for this type, as used in bytecode.
    */
-  string getTypeDescriptor() {
+  override string getTypeDescriptor() {
        (this.hasName("float") and result = "F")
     or (this.hasName("double") and result = "D")
     or (this.hasName("int") and result = "I")
@@ -734,7 +734,7 @@ class VoidType extends Type, @primitive {
   /**
    * The JVM descriptor for this type, as used in bytecode.
    */
-  string getTypeDescriptor() {
+  override string getTypeDescriptor() {
     result = "V"
   }
 }
@@ -799,7 +799,7 @@ class EnumType extends Class {
     fields(result,_,_,this,_)
   }
 
-  predicate isFinal() {
+  override predicate isFinal() {
     // JLS 8.9: An enum declaration is implicitly `final` unless it contains
     // at least one enum constant that has a class body.
     not getAnEnumConstant().getAnAssignedValue().getType() instanceof AnonymousClass
@@ -813,9 +813,9 @@ class EnumConstant extends Field {
   // JLS 8.9.3: For each enum constant `c` in the body of the declaration of
   // [enum type] `E`, `E` has an implicitly declared `public static final`
   // field of type `E` that has the same name as `c`.
-  predicate isPublic() { any() }
-  predicate isStatic() { any() }
-  predicate isFinal() { any() }
+  override predicate isPublic() { any() }
+  override predicate isStatic() { any() }
+  override predicate isFinal() { any() }
 }
 
 /**

@@ -103,7 +103,7 @@ predicate depends(RefType t, RefType dep) {
  * and bounds of type variables or wildcards.
  */
 cached
-predicate usesType(Type t, RefType dep) { 
+predicate usesType(Type t, RefType dep) {
   dep = inside*(t).getSourceDeclaration() and
   not dep instanceof TypeVariable and
   not dep instanceof Wildcard and

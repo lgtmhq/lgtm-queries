@@ -28,7 +28,7 @@ import semmle.code.cpp.security.SensitiveExprs
 import semmle.code.cpp.security.TaintTracking
 
 class UserInputIsSensitiveExpr extends SecurityOptions {
-  predicate isUserInput(Expr expr, string cause) {
+  override predicate isUserInput(Expr expr, string cause) {
     expr instanceof SensitiveExpr and cause = "sensitive information"
   }
 }

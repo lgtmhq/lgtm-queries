@@ -12,18 +12,22 @@
 // permissions and limitations under the License.
 
 /**
- * @name Use of HTML comments
- * @description HTML-style comments are not a standard ECMAScript feature and should be avoided.
+ * @name Dereferenced expression may be null
+ * @description Dereferencing an expression whose value may be 'null' may cause a
+ *              'NullPointerException'.
  * @kind problem
- * @problem.severity recommendation
- * @id js/html-comment
- * @tags maintainability
- *       language-features
- *       external/cwe/cwe-758
- * @precision very-high
+ * @problem.severity warning
+ * @precision high
+ * @id java/dereferenced-expr-may-be-null
+ * @tags reliability
+ *       correctness
+ *       exceptions
+ *       external/cwe/cwe-476
  */
 
-import javascript
+import java
+import semmle.code.java.dataflow.Nullness
 
-from HTMLComment c
-select c, "Do not use HTML comments."
+from Expr e
+where dereference(e) and e = nullExpr()
+select e, "This expression is dereferenced and may be null."

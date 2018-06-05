@@ -19,7 +19,7 @@
  * back to.
  *
  * The predicates provided are not intended to be used directly (although they are available to the advanced user), but are exposed in the user API as methods on key classes.
- * 
+ *
  * For example, the most important predicate in the points-to relation is:
  * ```ql
  * predicate FinalPointsTo::points_to(ControlFlowNode f, FinalContext ctx, Object value, ClassObject cls, ControlFlowNode origin)
@@ -28,12 +28,12 @@
  * `value` is a static approximation to a value, such as a number, a class, or an object instantiation.
  * `cls` is the class of this value if known, or `theUnknownType()` which is an internal `ClassObject` and should not be exposed to the general QL user.
  * `origin` is the point in the source from where `value` originates and is useful when presenting query results.
- * 
+ *
  * The `FinalPointsTo::points_to` relation is exposed at the user API level as
  * ```ql
  * ControlFlowNode.refersTo(Context context, Object value, ClassObject cls, ControlFlowNode origin)
  * ```
- * 
+ *
  */
 
 import python
@@ -97,17 +97,9 @@ module Layer0PointsTo {
         /** Gets the value that `expr` evaluates to (when converted to a boolean) when `use` refers to `(val, cls, origin)`
          * and `expr` is a test (a branch) and contains `use`. */
         
-        boolean test_evaluates_boolean(ControlFlowNode expr, ControlFlowNode use, Layer0Context context, Object val, ClassObject cls, ObjectOrCfg origin) {
+        boolean test_evaluates_boolean(ControlFlowNode expr, ControlFlowNode use, Layer0Context context, Object val, ClassObject cls, ControlFlowNode origin) {
             test_contains(expr, use) and
-            result = Filters::evaluates_boolean(expr, use, context, val, cls) and
-            (
-                exists(EssaVariable var | use = var.getAUse() | ssa_variable_points_to(var, context, val, cls, origin))
-                or
-                exists(EssaVariable var, string name |
-                    use.(AttrNode).getObject(name) = var.getAUse() |
-                    SSA::ssa_variable_named_attribute_points_to(var, context, name, val, cls, origin)
-                )
-            )
+            result = Filters::evaluates_boolean(expr, use, context, val, cls, origin)
         }
 
         /** INTERNAL -- Do not use.
@@ -175,7 +167,7 @@ module Layer0PointsTo {
             exists(ControlFlowNode fv, ControlFlowNode fc, Object val |
                 comparison(cmp, fv, fc, _) and
                 points_to(cmp, context, val, _, _) and
-                value = val.booleanValue() 
+                value = val.booleanValue()
                 |
                 sys_version_info_slice(fv, context, _)
                 or
@@ -435,7 +427,7 @@ module Layer0PointsTo {
         }
 
         ClassObject class_explicit_metaclass(ClassObject cls) {
-            exists(EssaVariable var | 
+            exists(EssaVariable var |
                 var.getName() = "__metaclass__" and var.getAUse() = cls.getPyClass().getANormalExit() and
                 ssa_variable_points_to(var, _, result, _, _)
             )
@@ -554,7 +546,7 @@ module Layer0PointsTo {
     }
 
     pragma [noinline]
-    private predicate local_variable_undefined(NameNode f, Layer0Context context) { 
+    private predicate local_variable_undefined(NameNode f, Layer0Context context) {
         ssa_variable_points_to(name_local_variable(f), context, undefinedVariable(), _, _)
     }
 
@@ -649,7 +641,7 @@ module Layer0PointsTo {
             origin = origin_from_object_or_here(orig, f)
         )
         or
-        points_to(f.getObject(), context, unknownValue(), theUnknownType(), _) and value = unknownValue() and cls = theUnknownType() and origin = f
+        points_to(f.getObject(), context, unknownValue(), theUnknownType(), origin) and value = unknownValue() and cls = theUnknownType()
     }
 
     /** Holds if `f` is an expression node `tval if cond else fval` and points to `(value, cls, origin)`. */
@@ -730,7 +722,7 @@ module Layer0PointsTo {
             exists(Object lobj, Object robj |
                 points_to(left, context, lobj, _, _) and
                 points_to(right, context, robj, _, _) |
-                not Filters::comparable_value(lobj) 
+                not Filters::comparable_value(lobj)
                 or
                 not Filters::comparable_value(robj)
             )
@@ -886,7 +878,7 @@ module Layer0PointsTo {
         cls = theBoolType() and origin = cmp and
         exists(ControlFlowNode x, ControlFlowNode y, Object xobj, Object yobj, boolean is |
             BaseFilters::equality_test(cmp, x, is, y) and
-            points_to(x, context, xobj, _, _) and 
+            points_to(x, context, xobj, _, _) and
             points_to(y, context, yobj, _, _) and
             Filters::equatable_value(xobj) and Filters::equatable_value(yobj)
             |
@@ -1578,8 +1570,8 @@ module Layer0PointsTo {
 
         /** Points-to for deletion: `del name`. */
         pragma [noinline]
-        private predicate delete_points_to(DeletionDefinition def, Layer0Context context, Object value, ClassObject cls, ObjectOrCfg origin) {
-            value = undefinedVariable() and cls = theUnknownType() and origin = value and context.appliesToScope(def.getScope())
+        private predicate delete_points_to(DeletionDefinition def, Layer0Context context, Object value, ClassObject cls, ControlFlowNode origin) {
+            value = undefinedVariable() and cls = theUnknownType() and origin = def.getDefiningNode() and context.appliesToScope(def.getScope())
         }
 
         /** Implicit "definition" of the names of submodules at the start of an `__init__.py` file.
@@ -1625,7 +1617,7 @@ module Layer0PointsTo {
                 or
                 def.getSourceVariable() instanceof LocalVariable and (context.isImport() or context.isRuntime() or context.isMain())
             ) and
-            value = undefinedVariable() and cls = theUnknownType() and origin = value
+            value = undefinedVariable() and cls = theUnknownType() and origin = def.getDefiningNode()
         }
 
         /** Points-to for a variable (possibly) redefined by a call:
@@ -1724,6 +1716,7 @@ module Layer0PointsTo {
         }
 
         /** Holds if the attribute `name` of the ssa phi-function definition `phi` refers to `(value, cls, origin)`. */
+        pragma[noinline]
         private predicate ssa_phi_named_attribute_points_to(PhiFunction phi, Layer0Context context, string name, Object value, ClassObject cls, ControlFlowNode origin) {
             ssa_variable_named_attribute_points_to(phi.getAnInput(), context, name, value, cls, origin)
         }
@@ -1855,7 +1848,7 @@ module Layer0PointsTo {
             def.getSourceVariable().getName() = "*" and
             exists(ControlFlowNode fmod |
                 fmod = imp.getModule() and
-                imp = def.getDefiningNode() and 
+                imp = def.getDefiningNode() and
                 points_to(fmod, context, mod, _, _)
             )
         }
@@ -1863,11 +1856,16 @@ module Layer0PointsTo {
         /* Helper for import_star_named_attribute_points_to */
         pragma [noinline]
         private predicate ssa_star_variable_input_points_to(ImportStarRefinement def, Layer0Context context, string name, Object value, ClassObject cls, ControlFlowNode origin) {
-            def.getSourceVariable().getName() = "*" and
             exists(EssaVariable var |
-                var = def.getInput() and
+                ssa_star_import_star_input(def, var) and
                 ssa_variable_named_attribute_points_to(var, context, name, value, cls, origin)
             )
+        }
+
+        /* Helper for ssa_star_variable_input_points_to */
+        pragma [noinline]
+        private predicate ssa_star_import_star_input(ImportStarRefinement def, EssaVariable var) {
+            def.getSourceVariable().getName() = "*" and var = def.getInput()
         }
 
         pragma [noinline]
@@ -1901,12 +1899,12 @@ module Layer0PointsTo {
         /** Gets the value that `expr` evaluates to (when converted to a boolean) when `use` refers to `(val, cls, origin)`
          * and `expr` contains `use` and both are contained within a test. */
         pragma [nomagic]
-        boolean evaluates_boolean(ControlFlowNode expr, ControlFlowNode use, Layer0Context context, Object val, ClassObject cls) {
+        boolean evaluates_boolean(ControlFlowNode expr, ControlFlowNode use, Layer0Context context, Object val, ClassObject cls, ControlFlowNode origin) {
             contains_interesting_expression_within_test(expr, use) and
             result = evaluates_boolean_unbound(expr, use, val, cls) and
-            points_to(use, context, val, cls, _)
+            points_to(use, context, val, cls, origin)
             or
-            result = evaluates_boolean(not_operand(expr), use, context, val, cls).booleanNot()
+            result = evaluates_boolean(not_operand(expr), use, context, val, cls, origin).booleanNot()
         }
 
         /** Holds if meaningful equality tests can be made with `o`.
@@ -2084,20 +2082,43 @@ module Layer0PointsTo {
         }
 
         /** Holds if the named attibute of ESSA edge refinement, `def`, refers to `(value, cls, origin)`. */
+        pragma[noinline]
         predicate ssa_filter_definition_named_attribute_points_to(PyEdgeRefinement def, Layer0Context context, string name, Object value, ClassObject cls, ObjectOrCfg origin) {
-            exists(ControlFlowNode test, EssaVariable input |
+            exists(ControlFlowNode test, AttrNode use, boolean sense |
+                edge_refinement_attr_use_sense(def, test, use, name, sense) and
+                sense = test_evaluates_boolean(test, use, context, value, cls, origin)
+            )
+            or
+            exists(EssaVariable input |
+                input = def.getInput() and
+                not edge_refinement_test(def, input, name) and
+                SSA::ssa_variable_named_attribute_points_to(input, context, name, value, cls, origin)
+            )
+        }
+
+        /* Helper for ssa_filter_definition_named_attribute_points_to 
+         * Holds if `use` is of the form `var.name` in the test of `def`, and `var` is the source variable of `def`, and `def` has sense `sense`.
+         */
+        pragma[noinline]
+        private predicate edge_refinement_attr_use_sense(PyEdgeRefinement def, ControlFlowNode test, AttrNode use, string name, boolean sense) {
+            def.getSense() = sense and
+            exists(EssaVariable input |
+                input = def.getInput() and
+                test = def.getTest() and
+                use.getObject(name) = def.getInput().getSourceVariable().(Variable).getAUse() and
+                test_contains(test, use)
+            )
+        }
+
+        /* Helper for ssa_filter_definition_named_attribute_points_to */
+        pragma[noinline]
+        private predicate edge_refinement_test(PyEdgeRefinement def, EssaVariable input, string name) {
+            exists(ControlFlowNode test |
                 input = def.getInput() and
                 test = def.getTest() |
                 exists(AttrNode use |
-                    use.getObject(name) = def.getInput().getSourceVariable().(Variable).getAUse() and
-                    test_contains(test, use) and
-                    def.getSense() = test_evaluates_boolean(test, use, context, value, cls, origin)
-                )
-                or
-                not exists(AttrNode use |
                     refinement_test(test, use.getObject(name), _, def)
-                ) and
-                SSA::ssa_variable_named_attribute_points_to(input, context, name, value, cls, origin)
+                )
             )
         }
 
@@ -2120,17 +2141,52 @@ module Layer0PointsTo {
              result = builtin_base_type(cls) and n = 0
          }
 
-         /** INTERNAL -- Use `ClassObject.isNewStyle()` instead. */
-         
-         predicate is_new_style(ClassObject cls) {
-             cls.isBuiltin()
-             or
-             major_version() = 3
-             or
-             exists(Layer::class_explicit_metaclass(cls))
-             or
-             is_new_style(class_base_type(cls, _))
-         }
+        private int class_base_count(ClassObject cls) {
+            exists(ClassExpr cls_expr |
+                cls.getOrigin() = cls_expr |
+                result = strictcount(cls_expr.getABase())
+                or
+                is_new_style_bool(cls) = true and not exists(cls_expr.getBase(0)) and result = 1
+                or
+                is_new_style_bool(cls) = false and not exists(cls_expr.getBase(0)) and result = 0
+            )
+            or
+            cls = theObjectType() and result = 0
+            or
+            exists(builtin_base_type(cls)) and not cls = theObjectType() and result = 1
+        }
+
+
+        private boolean is_new_style_bool(ClassObject cls) {
+            major_version() = 3 and result = true
+            or
+            cls.isBuiltin() and result = true
+            or
+            major_version() = 2 and
+            if Layer::has_explicit_metaclass(cls) then
+                result = true
+            else
+                result = is_new_style_bool(cls, 0)
+        }
+
+        private boolean is_new_style_bool(ClassObject cls, int n) {
+            major_version() = 2 and
+            exists(ClassExpr cls_expr |
+                cls.getOrigin() = cls_expr and
+                n = count(cls_expr.getABase()) |
+                result = false
+            )
+            or
+            result = is_new_style_bool(cls, n+1).booleanOr(is_new_style_bool(class_base_type(cls, n)))
+        }
+
+        /** INTERNAL -- Use `ClassObject.isNewStyle()` instead. */
+        
+        predicate is_new_style(ClassObject cls) {
+            class_base_type(cls, _) = theObjectType()
+            or
+            is_new_style_bool(cls) = true
+        }
 
          /** INTERNAL -- Do not use */
          private predicate mro_sparse(ClassObject cls, ClassObject sup, int index) {
@@ -2246,30 +2302,196 @@ module Layer0PointsTo {
              origin = value and vcls = builtin_object_type(value)
          }
 
-         /** INTERNAL -- Use `ClassObject.hasAttribute(name)` instead. */
-         
-         predicate class_has_attribute(ClassObject cls, string name) {
-             class_declares_attribute(Types::get_an_improper_super_type(cls), name)
-         }
+        private predicate possible_attribute(ClassObject cls, string name) {
+            exists(ClassObject sub |
+                get_an_improper_super_type(sub) = cls and
+                class_declares_attribute(get_an_improper_super_type(sub), name)
+            )
+        }
 
-         pragma [nomagic]
-         private ClassObject class_supertype_declaring_attr(ClassObject cls, string name) {
-             exists(int i |
-                 i = min(int j | class_declares_attribute(get_mro_item(cls, j), name)) |
-                 result = get_mro_item(cls, i)
-             )
-         }
+        pragma [nomagic]
+        private boolean class_has_attribute_from_base(ClassObject cls, int n, string name) {
+           n = class_base_count(cls) and possible_attribute(cls, name) and result = false
+           or
+           exists(ClassObject baseN |
+               baseN = class_base_type(cls, n) |
+               true = class_has_attribute_bool(baseN, name) and result = true
+               or
+               true = class_has_attribute_from_base(cls, n+1, name) and result = true
+               or
+               false = class_has_attribute_bool(baseN, name) and false = class_has_attribute_from_base(cls, n+1, name) and result = false
+           )
+        }
+
+        /** Mostly holds when all `first` precedes `second` in mro of `cls` and both declare `name`.
+         * If this holds then then `first` precedes `second`. If this predicate doesn't hold, then
+         * for sufficiently complex class hierarchies, it is still possible for `first` to precede `second`.
+         * For example take the classes `X(A)`, `Y(B)` and `Z(X, Y)` then `precedes_in_mro(Z, A, B)` may not hold
+         * even though `A` will precede `B` in the MRO of `Z`.
+         */
+        pragma [noinline, nomagic]
+        
+        predicate precedes_in_mro(ClassObject cls, ClassObject first, ClassObject second) {
+            first = get_an_improper_super_type(cls) and
+            second = get_a_super_type(cls) and
+            not second = theObjectType() and
+            not first.getPyClass() = second.getPyClass() and
+            (
+                cls = first
+                or
+                second = get_a_super_type(first)
+                or
+                class_base_type(cls, 0) = first
+                or
+                /* first and second are both base types */
+                exists(int i, int j |
+                    class_base_type(cls, i) = first and
+                    get_an_improper_super_type(class_base_type(cls, j)) = second |
+                    i < j
+                )
+           )
+        }
+
+        private pragma[noinline, nomagic]
+        private predicate declaration_precedes_in_mro(ClassObject cls, string name, ClassObject first, ClassObject second) {
+            precedes_in_mro(cls, first, second) and
+            class_declares_attribute(first, name) and
+            class_declares_attribute(second, name)
+        }
+
+        /** Holds if the class `cls` has an attribute called `name` */
+        
+        predicate class_has_attribute(ClassObject cls, string name) {
+            class_declares_attribute(get_an_improper_super_type(cls), name)
+        }
+
+        pragma [noinline]
+        private
+        boolean class_has_attribute_bool(ClassObject cls, string name) {
+            cls = theObjectType() and possible_attribute(cls, name) and result = false
+            or
+            class_declares_attribute(cls, name) and not cls = theObjectType() and result = true
+            or
+            not class_declares_attribute(cls, name) and result = class_has_attribute_from_base(cls, 0, name)
+        }
+
+        /** Gets the number of declarations of `name` in the inheritance *tree* of `cls`, excluding `object`.
+         * Note that since the inheritance is treated as a tree not a DAG, it is possible that a single declaration
+         * may be counted multiple times.
+         */
+        pragma [noinline, nomagic]
+        
+        int declarations_in_tree(ClassObject cls, string name) {
+            cls = theObjectType() and possible_attribute(cls, name) and result = 0
+            or
+            class_declares_attribute(cls, name) and not cls = theObjectType() and  result = declarations_in_tree_to_base_n(cls, 0, name)+1
+            or
+            not class_declares_attribute(cls, name) and result = declarations_in_tree_to_base_n(cls, 0, name)
+        }
+
+        pragma [noinline, nomagic]
+        private
+        int declarations_in_tree_to_base_n(ClassObject cls, int n, string name) {
+            possible_attribute(cls, name) and n = class_base_count(cls) and result = 0
+            or
+            result = declarations_in_tree_to_base_n(cls, n+1, name) + declarations_in_tree(class_base_type(cls, n), name)
+        }
 
          /** INTERNAL -- Use `ClassObject.attributeRefersTo(name, value, vlcs, origin). instead.
           */
          
          predicate class_attribute_lookup(ClassObject cls, string name, Object value, ClassObject vcls, ObjectOrCfg origin) {
-             /* Choose attribute declared in (super)class  closest to start of MRO. */
+            /* Built-in attribute */
+            value = builtin_class_attribute(cls, name) and vcls = builtin_object_type(value) and origin = value
+            or
+            /* Attribute declared in this class */
+            class_declared_attribute(cls, name, value, vcls, origin)
+            or
+            /* Attribute not declared in this class, but declared in first base class (which must be second in MRO) */
+            not cls.declaresAttribute(name) and
+            class_declared_attribute(class_base_type(cls, 0), name, value, vcls, origin)
+            or
+            /* Attribute not declared in inheritance tree, but is defined by `object` */
+            declarations_in_tree(cls,name) = 0 and
+            class_declared_attribute(theObjectType(), name, value, vcls, origin)
+            or
+            /* Attribute declared exactly once in inheritance tree */
+            declarations_in_tree(cls,name) = 1 and
              exists(ClassObject decl |
-                 decl = class_supertype_declaring_attr(cls, name)
-                 and
-                 class_declared_attribute(decl, name, value, vcls, origin)
-             )
+                decl = get_a_super_type(cls) and not decl = theObjectType() and
+                class_declared_attribute(decl, name, value, vcls, origin)
+            )
+            or
+            /* Attribute declared exactly twice in inheritance tree and both declare the same attribute.
+             *  */
+            declarations_in_tree(cls,name) = 2 and
+            exists(ClassObject decl1, ClassObject decl2 |
+                decl1 = get_a_super_type(cls) and
+                decl2 = get_a_super_type(cls) and
+                decl1 != decl2 and
+                not decl1 = theObjectType() and not decl2 = theObjectType() and
+                class_declared_attribute(decl1, name, value, vcls, origin) and
+                class_declared_attribute(decl2, name, value, vcls, origin)
+            )
+            or
+            /* Attribute declared exactly twice in the inheritance tree and chosen class is known to precede the other in the MRO */
+            declarations_in_tree(cls,name) = 2 and
+            exists(ClassObject decl |
+                declaration_precedes_in_mro(cls, name, decl, _) and class_declared_attribute(decl, name, value, vcls, origin)
+            )
+            or
+            /* Attribute declared exactly thrice in the inheritance tree and chosen class is known to precede both of the others in the MRO */
+            declarations_in_tree(cls,name) = 3 and
+            exists(ClassObject decl, ClassObject c1, ClassObject c2 |
+                c1 != c2 and
+                declaration_precedes_in_mro(cls, name, decl, c1) and
+                declaration_precedes_in_mro(cls, name, decl, c2) and
+                class_declared_attribute(decl, name, value, vcls, origin)
+            )
+            or
+            /* Attribute declared exactly four times in the inheritance tree and chosen class is known to precede all three of the others in the MRO */
+            declarations_in_tree(cls,name) = 4 and
+            exists(ClassObject decl, ClassObject c1, ClassObject c2, ClassObject c3 |
+                c1 != c2 and c1 != c3 and c2 != c3 and
+                declaration_precedes_in_mro(cls, name, decl, c1) and
+                declaration_precedes_in_mro(cls, name, decl, c2) and
+                declaration_precedes_in_mro(cls, name, decl, c3) and
+                class_declared_attribute(decl, name, value, vcls, origin)
+            )
+            or
+            /* Class has exactly two base classes and the class does not declare the attribute */
+            class_base_count(cls) = 2 and
+            not cls.declaresAttribute(name) and
+            (
+                /* The first base class has the attribute and the second base class does not */
+                class_has_attribute_bool(class_base_type(cls, 1), name) = false and class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin)
+                or
+                /* The first base class does not inherit the attribute, but the second base class does */
+                class_has_attribute_bool(class_base_type(cls, 0), name) = false and class_attribute_lookup(class_base_type(cls, 1), name, value, vcls, origin)
+                or
+                /* Both base classes have same attribute */
+                class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin) and class_attribute_lookup(class_base_type(cls, 1), name, value, vcls, origin)
+                or
+                /* Occurs exactly twice in tree and first base class has the attribute. Either both occur in first subtree or the inheritance graph is actually a tree. */
+                declarations_in_tree(cls,name) = 2 and class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin)
+            )
+            or
+            /* Class has exactly three base classes and the class does not declare the attribute */
+            class_base_count(cls) = 3 and
+            not cls.declaresAttribute(name) and
+            (
+                /* The first base class has the attribute and the others do not */
+                class_has_attribute_bool(class_base_type(cls, 1), name) = false and class_has_attribute_bool(class_base_type(cls, 2), name) = false and
+                class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin)
+                or
+                /* The second base class has the attribute and the others do not */
+                class_has_attribute_bool(class_base_type(cls, 0), name) = false and class_has_attribute_bool(class_base_type(cls, 2), name) = false and
+                class_attribute_lookup(class_base_type(cls, 1), name, value, vcls, origin)
+                or
+                /* The third base class has the attribute and the others do not */
+                class_has_attribute_bool(class_base_type(cls, 0), name) = false and class_has_attribute_bool(class_base_type(cls, 1), name) = false and
+                class_attribute_lookup(class_base_type(cls, 2), name, value, vcls, origin)
+            )
          }
 
 
@@ -2282,7 +2504,7 @@ module Layer0PointsTo {
              or
              exists(cls.getPyClass().getADecorator()) and not six_add_metaclass(_, cls, _) and reason = "Decorator not understood"
              or
-             exists(int i | 
+             exists(int i |
                  exists(((ClassExpr)cls.getOrigin()).getBase(i)) and reason = "Missing base " + i
                  |
                  not exists(class_base_type(cls, i)) or class_base_type(cls, i) = unknownValue()
@@ -2323,7 +2545,7 @@ module Layer0PointsTo {
                  decorator_call.getArg(0) = decorated and
                  decorator = decorator_call.getFunction() and
                  decorator.getArg(0) = metaclass |
-                 points_to(decorator.getFunction(), _, six_add_metaclass_function(), _, _) 
+                 points_to(decorator.getFunction(), _, six_add_metaclass_function(), _, _)
                  or
                  exists(ModuleObject six |
                     six.getName() = "six" and

@@ -12,20 +12,24 @@
 // permissions and limitations under the License.
 
 /**
- * @name Backspace escape in regular expression
- * @description Using '\b' to escape the backspace character in a regular expression is confusing
- *              since it could be mistaken for a word boundary assertion.
+ * @name Remote property injection
+ * @description Allowing writes to arbitrary properties or calls to arbitrary 
+ *       methods of an object may lead to denial-of-service attacks. 
+ *   
  * @kind problem
- * @problem.severity recommendation
- * @id js/regex/backspace-escape
- * @tags maintainability
- *       readability
- *       regular-expressions
- * @precision very-high
- */
+ * @problem.severity warning
+ * @precision high
+ * @id js/remote-property-injection
+ * @tags security
+ *       external/cwe/cwe-250
+ *       external/cwe/cwe-400
+  */
 
 import javascript
+import semmle.javascript.security.dataflow.RemotePropertyInjection::RemotePropertyInjection
 
-from RegExpCharEscape rece
-where rece.toString() = "\\b"
-select rece, "Backspace escape in regular expression."
+from Configuration c, Source source, Sink sink
+where c.hasFlow(source, sink)  
+select sink, "A $@ is used as" + sink.getMessage(),
+       source, "user-provided value"
+       

@@ -51,7 +51,7 @@ class AndroidReceiveIntentMethod extends Method {
 
 class ContextStartActivityMethod extends Method {
   ContextStartActivityMethod() {
-    (hasName("startActivity") or hasName("startActivities")) and 
+    (hasName("startActivity") or hasName("startActivities")) and
     getDeclaringType() instanceof TypeContext
   }
 }

@@ -26,7 +26,7 @@
 import python
 
 /* This assumes that any indexing operation where the value is not a sequence or numpy array involves hashing.
- * For sequences, the index must be an int ,which are hashable, so we don't need to treat them specially.
+ * For sequences, the index must be an int, which are hashable, so we don't need to treat them specially.
  * For numpy arrays, the index may be a list, which are not hashable and needs to be treated specially.
  */
  

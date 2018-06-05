@@ -62,7 +62,7 @@ module Hapi {
     /**
      * Gets the route handler that provides this response.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = req.getRouteHandler()
     }
   }
@@ -81,7 +81,7 @@ module Hapi {
     /**
      * Gets the route handler that handles this request.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }

@@ -70,7 +70,7 @@ module InsufficientPasswordHash {
   }
 
   /**
-   * A potential clear-text password, considired as a source for password hashing
+   * A potential clear-text password, considered as a source for password hashing
    * with insufficient computational effort.
    */
   class CleartextPasswordSource extends Source, DataFlow::ValueNode {

@@ -33,6 +33,7 @@ private predicate fieldAccessInCallable(FieldAccess fa, Field f, Callable c) {
   c = fa.getEnclosingCallable()
 }
 
+cached
 private newtype TSsaSourceVariable =
   TLocalVar(Callable c, LocalScopeVariable v) { c = v.getCallable() or c = v.getAnAccess().getEnclosingCallable() } or
   TPlainField(Callable c, Field f) {
@@ -858,6 +859,7 @@ private import SsaImpl
 private import SsaDefReaches
 import SsaPublic
 
+cached
 private newtype TSsaVariable =
   TSsaPhiNode(TrackedVar v, BasicBlock b) { phiNode(v, b) } or
   TSsaCertainUpdate(TrackedVar v, ControlFlowNode n, BasicBlock b, int i) { certainVariableUpdate(v, n, b, i) } or

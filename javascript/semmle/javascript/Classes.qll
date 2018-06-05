@@ -210,6 +210,20 @@ class ClassDefinition extends @classdefinition, ClassOrInterface, AST::ValueNode
       result = "class " + vd.getTarget().(VarRef).getName()
     )
   }
+
+  /**
+   * Gets an instance method of this class with the given name.
+   *
+   * Note that constructors aren't considered instance methods.
+   */
+  Function getInstanceMethod(string name) {
+    exists (MemberDefinition mem | mem = getMember(name) |
+      result = mem.getInit() and
+      not mem.isStatic() and
+      not mem instanceof ConstructorDefinition
+    )
+  }
+
 }
 
 /**

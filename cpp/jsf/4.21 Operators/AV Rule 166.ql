@@ -15,7 +15,7 @@
  * @name Sizeof with side effects
  * @description The sizeof operator should not be used on expressions that contain side effects. It is subtle whether the side effects will occur or not.
  * @kind problem
- * @problem.severity error
+ * @problem.severity recommendation
  * @precision high
  * @id cpp/sizeof-side-effect
  * @tags reliability

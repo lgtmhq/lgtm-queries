@@ -92,6 +92,7 @@ private predicate derivedInstanceAccess(ExprParent e, int i, RefType t1, RefType
   )
 }
 
+cached
 private newtype TInstanceAccessExt =
   TExplicitInstanceAccess(InstanceAccess ia) or
   TThisQualifier(FieldAccess fa) {

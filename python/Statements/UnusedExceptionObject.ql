@@ -13,7 +13,7 @@
 
 /**
  * @name Unused exception object
- * @description An exception object is created, but it not used.
+ * @description An exception object is created, but is not used.
  * @kind problem
  * @tags reliability
  *       maintainability

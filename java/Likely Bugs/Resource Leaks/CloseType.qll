@@ -91,9 +91,9 @@ predicate closeableInit(Expr e, Expr parent) {
   exists(ClassInstanceExpr cie | cie = e |
     closeableType(cie.getType()) and
     (
-      exists(Expr arg | arg = cie.getAnArgument() | 
-        closeableType(arg.getType()) and 
-        parent = arg) 
+      exists(Expr arg | arg = cie.getAnArgument() |
+        closeableType(arg.getType()) and
+        parent = arg)
       or
       (
         not exists(Expr arg | arg = cie.getAnArgument() | closeableType(arg.getType())) and
@@ -105,7 +105,7 @@ predicate closeableInit(Expr e, Expr parent) {
   exists(SqlResourceOpeningMethodAccess ma | ma = e and parent = e)
   or
   exists(LocalVariableDecl v, Expr f |
-    e = v.getAnAccess() and flowsInto(f, v) | 
+    e = v.getAnAccess() and flowsInto(f, v) |
     closeableInit(f, parent)
   )
 }
@@ -124,7 +124,7 @@ predicate transitiveCloseableInit(Expr init, Expr transParent) {
 private
 predicate closeableInitRootCause(Expr cie, Expr root) {
   transitiveCloseableInit(cie, root) and
-  not exists(Expr other | 
+  not exists(Expr other |
     transitiveCloseableInit(root, other) and other != root
   )
 }
@@ -146,7 +146,7 @@ RefType typeInDerivation(ClassInstanceExpr cie) {
 private
 predicate locallyInitializedCloseable(Expr cie) {
   exists(Expr root | closeableInitRootCause(cie, root) |
-    not exists(VarAccess va | va = root | 
+    not exists(VarAccess va | va = root |
       va.getVariable() instanceof Parameter or
       va.getVariable() instanceof Field)
   )
@@ -167,7 +167,7 @@ predicate safeCloseableInit(ClassInstanceExpr cie) {
 private
 predicate unassignedCloseableInit(CloseableInitExpr cie) {
   locallyInitializedCloseable(cie) and
-  not flowsInto(cie, _) and 
+  not flowsInto(cie, _) and
   not exists(ClassInstanceExpr outer | safeCloseableInit(outer) | cie = outer.getAnArgument())
 }
 

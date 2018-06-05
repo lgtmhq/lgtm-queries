@@ -63,7 +63,7 @@ predicate shadows(Name d, string name, Scope scope, int line) {
     d.getScope() = scope and
     d.getLocation().getStartLine() = line and
     not white_list(name) and
-    not optimising_parameter(d)
+    not optimizing_parameter(d)
 }
 
 predicate first_shadowing_definition(Name d, string name) {

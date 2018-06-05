@@ -150,20 +150,14 @@ class CredentialsFunctionName extends SensitiveDataFunctionName {
 abstract class SensitiveAction extends DataFlow::Node { }
 
 /** A call that may perform authorization. */
-class AuthorizationCall extends SensitiveAction {
+class AuthorizationCall extends SensitiveAction, DataFlow::CallNode {
 
   AuthorizationCall() {
-    exists(string s | s = this.asExpr().(CallExpr).getCalleeName().toLowerCase() |
-      (
-        s.matches("%login%") or
-        s.matches("%auth%")
-      )
-      and not
-      (
-        s.matches("get%") or
-        s.matches("set%") or
-        s.matches("%loginfo%")
-      )
+    exists(string s | s = astNode.getCalleeName() |
+      // name contains `login` or `auth` (but not as part of `loginfo` or `unauth`)
+      s.regexpMatch("(?i).*(login(?!fo)|(?<!un)auth).*") and
+      // but it does not start with `get` or `set`
+      not s.regexpMatch("(?i)(get|set).*")
     )
   }
 

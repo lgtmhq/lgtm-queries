@@ -22,7 +22,7 @@ class AntTarget extends XMLElement {
   AntTarget() { super.getName() = "target" }
 
   /** The name of this Ant target. */
-  string getName() { result = this.getAttributeValue("name") }
+  override string getName() { result = this.getAttributeValue("name") }
 
   /**
    * A string containing the dependencies of this Ant target,
@@ -30,7 +30,7 @@ class AntTarget extends XMLElement {
    *
    * This is a utility method used for extracting individual dependencies.
    */
-  string getDependsString() { 
+  string getDependsString() {
     result = "," +
       this.getAttributeValue("depends").replaceAll(" ", "")
           .replaceAll("\r","").replaceAll("\n","").replaceAll("\t","") + ","

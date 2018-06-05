@@ -89,6 +89,18 @@ module CodeInjection {
   }
 
   /**
+   * An expression which may be evaluated as JavaScript in NodeJS using the 
+   * `vm` module.
+   */
+  class NodeJSVmSink extends Sink, DataFlow::ValueNode {
+    NodeJSVmSink() {
+      exists(NodeJSLib::VmModuleMethodCall call | 
+        this = call.getACodeArgument()
+      )
+    }
+  }
+  
+  /**
    * An expression which may be evaluated as JavaScript.
    */
   class EvalJavaScriptSink extends Sink, DataFlow::ValueNode {

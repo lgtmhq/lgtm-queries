@@ -29,7 +29,7 @@ class OrdPrimitiveType extends PrimitiveType {
     or
     (not this.widerThan(that) and result = that)
   }
-  
+
   int getWidthRank() {
     (this.getName() = "byte" and result = 1)
     or
@@ -43,7 +43,7 @@ class OrdPrimitiveType extends PrimitiveType {
     or
     (this.getName() = "double" and result = 6)
   }
-  
+
   float getMaxValue() {
     (this.getName() = "byte" and result = 127.0)
     or
@@ -79,11 +79,11 @@ class NumType extends Type {
     or
     (this instanceof BoxedType and result = this.(BoxedType).getPrimitiveType())
   }
-  
+
   predicate widerThan(NumType that) {
     this.getOrdPrimitiveType().widerThan(that.getOrdPrimitiveType())
   }
-  
+
   predicate widerThanOrEqualTo(NumType that) {
     this.getOrdPrimitiveType().widerThanOrEqualTo(that.getOrdPrimitiveType())
   }
@@ -99,7 +99,7 @@ class ArithExpr extends BinaryExpr {
     or this instanceof SubExpr or this instanceof DivExpr)
     and forall(Expr e | e = this.getAnOperand() | e.getType() instanceof NumType)
   }
-  
+
   OrdPrimitiveType getOrdPrimitiveType() {
     exists(OrdPrimitiveType t1, OrdPrimitiveType t2 |
       t1 = this.getLeftOperand().getType().(NumType).getOrdPrimitiveType() and

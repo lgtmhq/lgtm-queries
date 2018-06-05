@@ -18,6 +18,7 @@ private import java
 private import semmle.code.java.dataflow.SSA
 import semmle.code.java.dataflow.InstanceAccess
 
+  cached
   private newtype TNode =
     TExprNode(Expr e) or
     TExplicitParameterNode(Parameter p) { exists(p.getCallable().getBody()) } or
@@ -226,6 +227,7 @@ import semmle.code.java.dataflow.InstanceAccess
   /**
    * Holds if data can flow from `node1` to `node2` in one local step.
    */
+  cached
   predicate localFlowStep(Node node1, Node node2) {
     // Variable flow steps through adjacent def-use and use-use pairs.
     exists(SsaExplicitUpdate upd |

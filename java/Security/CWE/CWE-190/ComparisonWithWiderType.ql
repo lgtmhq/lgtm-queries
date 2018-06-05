@@ -48,12 +48,12 @@ class LTWideningComparison extends WideningComparison {
     (this instanceof LEExpr or this instanceof LTExpr) and
     leftWidth(this) < rightWidth(this)
   }
-  
-  Expr getNarrower() {
+
+  override Expr getNarrower() {
     result = getLeftOperand()
   }
-  
-  Expr getWider() {
+
+  override Expr getWider() {
     result = getRightOperand()
   }
 }
@@ -63,18 +63,18 @@ class GTWideningComparison extends WideningComparison {
     (this instanceof GEExpr or this instanceof GTExpr) and
     leftWidth(this) > rightWidth(this)
   }
-  
-  Expr getNarrower() {
+
+  override Expr getNarrower() {
     result = getRightOperand()
   }
-  
-  Expr getWider() {
+
+  override Expr getWider() {
     result = getLeftOperand()
   }
 }
 
 from WideningComparison c, LoopStmt l
-where 
+where
   not c.getAnOperand().isCompileTimeConstant()
   and l.getCondition().getAChildExpr*() = c
 select c, "Comparison between $@ of type " + c.getNarrower().getType().getName() +

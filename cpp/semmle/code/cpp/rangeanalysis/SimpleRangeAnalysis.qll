@@ -337,18 +337,18 @@ float getTruncatedLowerBounds(Expr expr) {
           // need to call getLowerBoundsImpl.
           if exists(expr.getValue().toFloat())
              then result = expr.getValue().toFloat()
-             else // Some of the bounds computed by getLowerBoundsImpl might
-                  // overflow, so we replace invalid bounds with exprMinVal.
-                  exists (float newLB
-                  | newLB = getLowerBoundsImpl(expr)
-                  | if exprMinVal(expr) <= newLB and newLB <= exprMaxVal(expr)
-                       then result = newLB
-                       else result = exprMinVal(expr))
-                  or
-                  // The expression might overflow and wrap. If so, the
-                  // lower bound is exprMinVal.
-                  (exprMightOverflowPositively(expr) and
-                   result = exprMinVal(expr))
+             else (// Some of the bounds computed by getLowerBoundsImpl might
+                   // overflow, so we replace invalid bounds with exprMinVal.
+                   exists (float newLB
+                   | newLB = getLowerBoundsImpl(expr)
+                   | if exprMinVal(expr) <= newLB and newLB <= exprMaxVal(expr)
+                        then result = newLB
+                        else result = exprMinVal(expr))
+                   or
+                   // The expression might overflow and wrap. If so, the
+                   // lower bound is exprMinVal.
+                   (exprMightOverflowPositively(expr) and
+                    result = exprMinVal(expr)))
      else // The expression is not analyzable, so its lower bound is
           // unknown. Note that the call to exprMinVal restricts the
           // expressions to just those with arithmetic types. There is no
@@ -388,19 +388,19 @@ float getTruncatedUpperBounds(Expr expr) {
           // need to call getUpperBoundsImpl.
           if exists(expr.getValue().toFloat())
              then result = expr.getValue().toFloat()
-             else // Some of the bounds computed by `getUpperBoundsImpl`
-                  // might overflow, so we replace invalid bounds with
-                  // `exprMaxVal`.
-                  exists (float newUB
-                  | newUB = getUpperBoundsImpl(expr)
-                  | if exprMinVal(expr) <= newUB and newUB <= exprMaxVal(expr)
-                       then result = newUB
-                       else result = exprMaxVal(expr))
-                  or
-                  // The expression might overflow negatively and wrap. If so,
-                  // the upper bound is `exprMaxVal`.
-                  (exprMightOverflowNegatively(expr) and
-                   result = exprMaxVal(expr))
+             else (// Some of the bounds computed by `getUpperBoundsImpl`
+                   // might overflow, so we replace invalid bounds with
+                   // `exprMaxVal`.
+                   exists (float newUB
+                   | newUB = getUpperBoundsImpl(expr)
+                   | if exprMinVal(expr) <= newUB and newUB <= exprMaxVal(expr)
+                        then result = newUB
+                        else result = exprMaxVal(expr))
+                   or
+                   // The expression might overflow negatively and wrap. If so,
+                   // the upper bound is `exprMaxVal`.
+                   (exprMightOverflowNegatively(expr) and
+                    result = exprMaxVal(expr)))
      else // The expression is not analyzable, so its upper bound is
           // unknown. Note that the call to exprMaxVal restricts the
           // expressions to just those with arithmetic types. There is no

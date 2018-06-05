@@ -23,8 +23,8 @@
 
 /*
  * The implementation is centered around the concept of a _completion_, which
- * models how the execution of a statement or expression terminates. 
- * Completions are represented as an algebraic data type `Completion` defined in 
+ * models how the execution of a statement or expression terminates.
+ * Completions are represented as an algebraic data type `Completion` defined in
  * `Completion.qll`.
  *
  * The CFG is built by structural recursion over the AST. To achieve this the
@@ -864,7 +864,7 @@ private cached module ControlFlowGraphImpl {
    * `booleanCompletion` (for example in an if-statement with an else-branch or
    * in a `ConditionalExpr`) or a `normalCompletion` (for example in an
    * if-statement without an else-part).
-   * 
+   *
    * If the other successor ends a finally block it may also be tagged with an
    * abnormal completion instead of a `normalCompletion`. This completion is
    * calculated by the `resumption` predicate. In this case the successor might

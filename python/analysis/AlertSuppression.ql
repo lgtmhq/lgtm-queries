@@ -45,11 +45,11 @@ abstract class SuppressionComment extends Comment {
 abstract class LineSuppressionComment extends SuppressionComment {
 
     /** Gets the scope of this suppression. */
-    SuppressionScope getScope() {
+    override SuppressionScope getScope() {
         result = this
     }
 
-    predicate covers(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
+    override predicate covers(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
         this.getLocation().hasLocationInfo(filepath, startline, _, endline, endcolumn) and
         startcolumn = 1
     }
@@ -68,7 +68,7 @@ class LgtmSuppressionComment extends LineSuppressionComment {
     }
 
     /** Gets the suppression annotation in this comment. */
-    string getAnnotation() {
+    override string getAnnotation() {
         result = annotation
     }
 
@@ -83,7 +83,7 @@ class NoqaSuppressionComment extends LineSuppressionComment {
         this.getContents().toLowerCase().regexpMatch("\\s*noqa\\s*")
     }
 
-    string getAnnotation() {
+    override string getAnnotation() {
         result = "lgtm"
     }
 
