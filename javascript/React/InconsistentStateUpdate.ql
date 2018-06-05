@@ -51,7 +51,7 @@ DataFlow::PropRead getAnOutermostUnsafeAccess(ReactComponent c) {
  * Gets a property write through `setState` for state property `name` of `c`.
  */
 DataFlow::PropWrite getAStateUpdate(ReactComponent c, string name) {
-  exists (DataFlow::ObjectExprNode newState |
+  exists (DataFlow::ObjectLiteralNode newState |
     newState.flowsTo(c.getAMethodCall("setState").getArgument(0)) and
     result = newState.getAPropertyWrite(name)
   )

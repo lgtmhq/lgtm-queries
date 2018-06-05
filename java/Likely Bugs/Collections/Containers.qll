@@ -36,11 +36,11 @@ class ContainerMutation extends MethodAccess {
     this instanceof CollectionMutation or
     this instanceof MapMutation
   }
-  
+
   predicate resultIsChecked() {
     this.(CollectionMutation).resultIsChecked() or
     this.(MapMutation).resultIsChecked()
-  }  
+  }
 }
 
 class ContainerQueryMethod extends Method {

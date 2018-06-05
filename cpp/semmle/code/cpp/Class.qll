@@ -15,6 +15,7 @@ import semmle.code.cpp.Type
 import semmle.code.cpp.UserType
 import semmle.code.cpp.metrics.MetricClass
 import semmle.code.cpp.Linkage
+private import semmle.code.cpp.internal.Type
 
 /**
  * A class type [N4140 9].
@@ -23,10 +24,8 @@ import semmle.code.cpp.Linkage
  * includes types declared with the `struct` and `union` keywords.
  */
 class Class extends UserType {
-
   Class() {
-    usertypes(this,_,1) or usertypes(this,_,2) or usertypes(this,_,3) or usertypes(this,_,6)
-    or usertypes(this,_,10) or usertypes(this,_,11) or usertypes(this,_,12)
+    isClass(this) and this = resolve(_)
   }
 
   /** Gets a child declaration of this class. */
@@ -611,7 +610,7 @@ class Class extends UserType {
    * `i`th template parameter.
    */
   Type getTemplateArgument(int i) {
-    class_template_argument(this,i,result)
+    class_template_argument(this,i,unresolve(result))
   }
 
   /**
@@ -778,7 +777,7 @@ class ClassDerivation extends Locatable,  @derivation {
    * struct D : T {};
    */
   Type getBaseType() {
-    derivations(this,_,_,result,_)
+    derivations(this,_,_,unresolve(result),_)
   }
 
   /**
@@ -789,7 +788,7 @@ class ClassDerivation extends Locatable,  @derivation {
    * struct D : B {};
    */
   Class getDerivedClass() {
-    derivations(this,result,_,_,_)
+    derivations(this,unresolve(result),_,_,_)
   }
 
   /**
@@ -809,6 +808,11 @@ class ClassDerivation extends Locatable,  @derivation {
   /** Holds if the derivation has specifier `s`. */
   predicate hasSpecifier(string s) {
     this.getASpecifier().hasName(s)
+  }
+
+  /** Holds if the derivation is for a virtual base class. */
+  predicate isVirtual() {
+    hasSpecifier("virtual")
   }
 
   /** Gets the location of the derivation. */

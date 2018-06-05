@@ -184,12 +184,12 @@ class NamespaceScope extends Scope, @namespacescope {
 /** A variable declared in a scope. */
 class Variable extends @variable, LexicalName {
   /** Gets the name of this variable. */
-  string getName() {
+  override string getName() {
     variables(this, result, _)
   }
 
   /** Gets the scope this variable is declared in. */
-  Scope getScope() {
+  override Scope getScope() {
     variables(this, _, result)
   }
 
@@ -220,6 +220,11 @@ class Variable extends @variable, LexicalName {
   /** Holds if this variable is a parameter. */
   predicate isParameter() {
     exists (Parameter p | p.getAVariable() = this)
+  }
+
+  /** Gets a reference to this variable. */
+  VarRef getAReference() {
+    result.getVariable() = this
   }
 
   /** Gets an access to this variable. */
@@ -271,11 +276,11 @@ class Variable extends @variable, LexicalName {
   }
 
   /** Gets a textual representation of this element. */
-  string toString() {
+  override string toString() {
     result = getName()
   }
 
-  DeclarationSpace getDeclarationSpace() {
+  override DeclarationSpace getDeclarationSpace() {
       result = "variable"
   }
 }

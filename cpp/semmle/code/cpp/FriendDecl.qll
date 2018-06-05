@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.Declaration
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C++ friend declaration [N4140 11.3].
@@ -69,7 +70,7 @@ class FriendDecl extends Declaration, @frienddecl {
    * Gets the declaring class (also known as the befriending class).
    * For example: `A` in `class A { friend class X }`.
    */
-  Class getDeclaringClass() { frienddecls(this,result,_,_) }
+  Class getDeclaringClass() { frienddecls(this,unresolve(result),_,_) }
 
   /* Holds if this declaration is a top-level declaration. */
   override predicate isTopLevel() { none() }

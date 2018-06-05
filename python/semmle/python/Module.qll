@@ -202,7 +202,11 @@ private predicate legalShortName(string name) {
     name.regexpMatch("(\\p{L}|_)(\\p{L}|\\d|_)*")
 }
 
-private predicate hasInit(Folder f) {
+/** Holds if `f` is potentially a source package.
+ * Does it have an __init__.py file and is it within the source archive?
+ */
+private predicate isPotentialSourcePackage(Folder f) {
+    f.getRelativePath() != "" and
     exists(f.getFile("__init__.py"))
 }
 
@@ -219,8 +223,8 @@ private string moduleNameFromFile(Container file) {
         |
         result = moduleNameFromFile(file.getParent()) + "." + basename
         or
-        hasInit(file) and result = file.getStem() and
-        (not hasInit(file.getParent()) or not legalDottedName(file.getParent().getBaseName()))
+        isPotentialSourcePackage(file) and result = file.getStem() and
+        (not isPotentialSourcePackage(file.getParent()) or not legalShortName(file.getParent().getBaseName()))
         or
         result = file.getStem() and file.getParent().isImportRoot()
     )

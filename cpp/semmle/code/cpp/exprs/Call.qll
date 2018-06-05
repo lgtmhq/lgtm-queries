@@ -445,34 +445,48 @@ class VacuousDestructorCall extends Expr, @vacuous_destructor_call {
 }
 
 /**
- * A call to a constructor of a direct non-virtual base class as part of a
- * constructor's initializer list or compiler-generated actions.
+ * An initialization of a base class or member variable performed as part
+ * of a constructor's explicit initializer list or implicit actions.
  */
-class ConstructorDirectInit extends ConstructorCall, @ctordirectinit {
+class ConstructorInit extends Expr, @ctorinit {
 }
 
 /**
- * A call to a constructor of a direct virtual base class as part of a
+ * A call to a constructor of a base class as part of a constructor's
+ * initializer list or compiler-generated actions.
+ */
+class ConstructorBaseInit extends ConstructorInit, ConstructorCall {
+}
+
+/**
+ * A call to a constructor of a direct non-virtual base class as part of a
+ * constructor's initializer list or compiler-generated actions.
+ */
+class ConstructorDirectInit extends ConstructorBaseInit, @ctordirectinit {
+}
+
+/**
+ * A call to a constructor of a virtual base class as part of a
  * constructor's initializer list or compiler-generated actions.
  *
  * If the virtual base class has already been initialized, then this
  * call won't be performed.
  */
-class ConstructorVirtualInit extends ConstructorCall, @ctorvirtualinit {
+class ConstructorVirtualInit extends ConstructorBaseInit, @ctorvirtualinit {
 }
 
 /**
  * A call to a constructor of the same class as part of a constructor's
  * initializer list, which delegates object construction (C++11 only).
  */
-class ConstructorDelegationInit extends ConstructorCall, @ctordelegatinginit {
+class ConstructorDelegationInit extends ConstructorBaseInit, @ctordelegatinginit {
 }
 
 /**
  * An initialization of a member variable performed as part of a
  * constructor's explicit initializer list or implicit actions.
  */
-class ConstructorFieldInit extends Expr, @ctorfieldinit {
+class ConstructorFieldInit extends ConstructorInit, @ctorfieldinit {
   /** Gets the field being initialized. */
   Field getTarget() { varbind(this,result) }
  
@@ -497,12 +511,24 @@ class ConstructorFieldInit extends Expr, @ctorfieldinit {
 }
 
 /**
+ * A call to a destructor of a base class or field as part of a destructor's
+ * compiler-generated actions.
+ */
+class DestructorDestruction extends Expr, @dtordestruct {
+}
+
+/**
+ * A call to a destructor of a base class as part of a destructor's
+ * compiler-generated actions.
+ */
+class DestructorBaseDestruction extends DestructorCall, DestructorDestruction {
+}
+
+/**
  * A call to a destructor of a direct non-virtual base class as part of a
  * destructor's compiler-generated actions.
  */
-class DestructorDirectDestruction extends FunctionCall, @dtordirectdestruct {
-  /** Gets the destructor being called. */
-  Destructor getTarget() { result = FunctionCall.super.getTarget() }
+class DestructorDirectDestruction extends DestructorBaseDestruction, @dtordirectdestruct {
 }
 
 /**
@@ -512,16 +538,14 @@ class DestructorDirectDestruction extends FunctionCall, @dtordirectdestruct {
  * If the virtual base class wasn't initialized by the ConstructorVirtualInit
  * in the corresponding constructor, then this call won't be performed.
  */
-class DestructorVirtualDestruction extends FunctionCall, @dtorvirtualdestruct {
-  /** Gets the destructor being called. */
-  Destructor getTarget() { result = FunctionCall.super.getTarget() }
+class DestructorVirtualDestruction extends DestructorBaseDestruction, @dtorvirtualdestruct {
 }
 
 /**
  * A destruction of a member variable performed as part of a
  * destructor's compiler-generated actions.
  */
-class DestructorFieldDestruction extends Expr, @dtorfielddestruct {
+class DestructorFieldDestruction extends DestructorDestruction, @dtorfielddestruct {
   /** Gets the field being destructed. */
   Field getTarget() { varbind(this,result) }
  

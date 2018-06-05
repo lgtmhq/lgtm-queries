@@ -12,8 +12,8 @@
 // permissions and limitations under the License.
 
 /**
- * Provides a local analysis for identifying where a variable address may
- * escape an _expression tree_, meaning that it is assigned to a variable,
+ * Provides a local analysis for identifying where a variable address or value
+ * may escape an _expression tree_, meaning that it is assigned to a variable,
  * passed to a function, or similar.
  */
 private import cpp
@@ -31,15 +31,8 @@ predicate stdIdentityFunction(Function f) {
     f.getName() = "forward" )
 }
 
-private predicate lvalueToLvalueStep(Expr lvalueIn, Expr lvalueOut) {
+private predicate lvalueToLvalueStepPure(Expr lvalueIn, Expr lvalueOut) {
   lvalueIn = lvalueOut.(DotFieldAccess).getQualifier().getFullyConverted()
-  or
-  // C++ only
-  lvalueIn = lvalueOut.(PrefixCrementOperation).getOperand()
-                      .getFullyConverted()
-  or
-  // C++ only
-  lvalueIn = lvalueOut.(Assignment).getLValue().getFullyConverted()
   or
   lvalueIn.getConversion() = lvalueOut.(ParenthesisExpr)
   or
@@ -53,6 +46,17 @@ private predicate lvalueToLvalueStep(Expr lvalueIn, Expr lvalueOut) {
   // such casts.
   lvalueIn.getConversion() = lvalueOut and
   lvalueOut.(CStyleCast).isImplicit()
+}
+
+private predicate lvalueToLvalueStep(Expr lvalueIn, Expr lvalueOut) {
+  lvalueToLvalueStepPure(lvalueIn, lvalueOut)
+  or
+  // C++ only
+  lvalueIn = lvalueOut.(PrefixCrementOperation).getOperand()
+                      .getFullyConverted()
+  or
+  // C++ only
+  lvalueIn = lvalueOut.(Assignment).getLValue().getFullyConverted()
 }
 
 private predicate pointerToLvalueStep(Expr pointerIn, Expr lvalueOut) {
@@ -117,10 +121,9 @@ private predicate referenceToReferenceStep(Expr referenceIn, Expr referenceOut) 
 }
 
 private predicate lvalueFromVariableAccess(VariableAccess va, Expr lvalue) {
-  // Base case. This includes reference types, but those will not escape
-  // because they are immediately followed by a `ReferenceDereferenceExpr`
-  // conversion, which does not make an LValue escape.
-  lvalue = va
+  // Base case for non-reference types.
+  lvalue = va and
+  not va.getConversion() instanceof ReferenceDereferenceExpr
   or
   // Base case for reference types where we pretend that they are
   // non-reference types. The type of the target of `va` can be `ReferenceType`
@@ -284,4 +287,26 @@ predicate variableAddressEscapesTree(VariableAccess va, Expr e) {
 predicate variableAddressEscapesTreeNonConst(VariableAccess va, Expr e) {
   valueMayEscapeMutablyAt(e) and
   addressFromVariableAccess(va, e)
+}
+
+/**
+ * Holds if `e` is a fully-converted expression that evaluates to an lvalue
+ * derived from `va` and is used for reading from or assigning to. This is in
+ * contrast with a variable access that is used for taking an address (`&x`)
+ * or simply discarding its value (`x;`).
+ *
+ * This analysis does not propagate across assignments or calls. The analysis
+ * is also not concerned with whether the lvalue `e` is converted to an rvalue
+ * -- to examine that, use the relevant member predicates on `Expr`.
+ *
+ * If `va` has reference type, the analysis concerns the value pointed to by
+ * the reference rather than the reference itself. The expression `e` may be a
+ * `Conversion`.
+ */
+predicate variableAccessedAsValue(VariableAccess va, Expr e) {
+  lvalueFromVariableAccess(va, e) and
+  not lvalueToLvalueStepPure(e, _) and
+  not lvalueToPointerStep(e, _) and
+  not lvalueToReferenceStep(e, _) and
+  not e = any(ExprInVoidContext eivc | e = eivc.getConversion*())
 }

@@ -142,7 +142,7 @@ class MockitoMockedField extends MockitoAnnotatedField {
     hasAnnotation("org.mockito", "MockitoAnnotations$Mock")
   }
 
-  predicate isValid() {
+  override predicate isValid() {
     super.isValid() and
     // The type must also be mockable, otherwise it will not be initialized.
     getType() instanceof MockitoMockableType
@@ -172,12 +172,12 @@ class MockitoInjectedField extends MockitoAnnotatedField {
     hasAnnotation("org.mockito", "InjectMocks")
   }
 
-  predicate isValid() {
+  override predicate isValid() {
     super.isValid() and
     (
       /*
        * If we need to initialize the field, it is only valid if the type is a `Class` that is not
-       * local, is static if it is a nested class, and is not abstract. 
+       * local, is static if it is a nested class, and is not abstract.
        */
       exists(getInitializer()) or
       exists(Class c |
@@ -298,7 +298,7 @@ class MockitoSpiedField extends MockitoAnnotatedField {
     hasAnnotation("org.mockito", "Spy")
   }
 
-  predicate isValid() {
+  override predicate isValid() {
     super.isValid() and
     (
       exists(getInitializer()) or

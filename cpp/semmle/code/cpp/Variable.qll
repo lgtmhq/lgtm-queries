@@ -14,6 +14,7 @@
 import semmle.code.cpp.Element
 import semmle.code.cpp.exprs.Access
 import semmle.code.cpp.Initializer
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ variable.
@@ -79,7 +80,7 @@ class Variable extends Declaration, @variable {
    *
    *   `const auto& c = container;`
    */
-  Type getTypeWithAuto() { autoderivation(this, result) }
+  Type getTypeWithAuto() { autoderivation(this, unresolve(result)) }
 
   /**
    * Holds if the type of this variable is declared using the C++ `auto`
@@ -155,7 +156,7 @@ class Variable extends Declaration, @variable {
    * template variable.
    */
   Type getTemplateArgument(int index) {
-    variable_template_argument(this, index, result)
+    variable_template_argument(this, index, unresolve(result))
   }
 
   /**
@@ -202,7 +203,7 @@ class VariableDeclarationEntry extends DeclarationEntry, @var_decl {
   /**
    * Gets the type of the variable which is being declared or defined.
    */
-  override Type getType() { var_decls(this,_,result,_,_) }
+  override Type getType() { var_decls(this,_,unresolve(result),_,_) }
 
   override Location getLocation() { var_decls(this,_,_,_,result) }
 
@@ -302,7 +303,7 @@ class LocalVariable extends LocalScopeVariable, @localvariable {
 
   override string getName() { localvariables(this,_,result) }
 
-  override Type getType() { localvariables(this,result,_) }
+  override Type getType() { localvariables(this,unresolve(result),_) }
 
   override Function getFunction() {
     exists(DeclStmt s | s.getADeclaration() = this and s.getEnclosingFunction() = result)
@@ -317,7 +318,7 @@ class GlobalOrNamespaceVariable extends Variable, @globalvariable {
 
   override string getName() { globalvariables(this,_,result) }
 
-  override Type getType() { globalvariables(this,result,_) }
+  override Type getType() { globalvariables(this,unresolve(result),_) }
 
   override Element getEnclosingElement() { none() }
 }
@@ -366,12 +367,23 @@ class MemberVariable extends Variable, @membervariable {
 
   override string getName() { membervariables(this,_,result) }
 
-  override Type getType() { membervariables(this,result,_) }
+  override Type getType() {
+    if (strictcount(this.getAType()) = 1) then (
+       result = this.getAType()
+     ) else (
+       // In rare situations a member variable may have multiple types in
+       // different translation units. In that case, we return the unspecified
+       // type.
+       result = this.getAType().getUnspecifiedType()
+    )
+  }
 
   /** Holds if this member is mutable. */
   predicate isMutable() {
     getADeclarationEntry().hasSpecifier("mutable")
   }
+
+  private Type getAType() { membervariables(this,unresolve(result),_) }
 }
 
 /**

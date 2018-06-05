@@ -12,16 +12,12 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.Type
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ enum [N4140 7.2].
  */
-class Enum extends UserType {
-
-  Enum() {
-    usertypes(this,_,4) or usertypes(this,_,13)
-  }
-
+class Enum extends UserType, IntegralOrEnumType {
   /** Gets an enumerator of this enumeration. */
   EnumConstant getAnEnumConstant() { result.getDeclaringEnum() = this }
   EnumConstant getEnumConstant(int index) { enumconstants(result,this,index,_,_,_) }
@@ -123,7 +119,7 @@ class EnumConstant extends @enumconstant, Declaration {
   string getValue() { result = this.getInitializer().getExpr().getValue() }
 
   /** Gets the type of this enumerator. */
-  Type getType() { enumconstants(this,_,_,result,_,_) }
+  Type getType() { enumconstants(this,_,_,unresolve(result),_,_) }
 
   /** Gets the location of a declaration of this enumerator. */
   Location getADeclarationLocation() { result = this.getDefinitionLocation() }

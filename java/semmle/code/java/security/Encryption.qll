@@ -112,7 +112,7 @@ private string algorithmRegex(string algorithmString) {
 private string algorithmBlacklist() {
   result = "DES" or
   result = "RC2" or
-  result = "RC4" or 
+  result = "RC4" or
   result = "RC5" or
   result = "ARCFOUR" // a variant of RC4
 }
@@ -185,8 +185,8 @@ class JavaxCryptoCipher extends JavaxCryptoAlgoSpec {
       m.getName() = "getInstance"
     )
   }
-  
-  Expr getAlgoSpec() {
+
+  override Expr getAlgoSpec() {
     result = this.(MethodAccess).getArgument(0)
   }
 }
@@ -197,9 +197,9 @@ class JavaxCryptoSecretKey extends JavaxCryptoAlgoSpec {
       c.getDeclaringType().getQualifiedName() = "javax.crypto.spec.SecretKeySpec"
     )
   }
-  
-  Expr getAlgoSpec() {
-    exists(ConstructorCall c | c = this | 
+
+  override Expr getAlgoSpec() {
+    exists(ConstructorCall c | c = this |
       if c.getNumArgument() = 2
       then result = c.getArgument(1)
       else result = c.getArgument(3)
@@ -214,8 +214,8 @@ class JavaxCryptoKeyGenerator extends JavaxCryptoAlgoSpec {
       m.getName() = "getInstance"
     )
   }
-  
-  Expr getAlgoSpec() {
+
+  override Expr getAlgoSpec() {
     result = this.(MethodAccess).getArgument(0)
   }
 }
@@ -227,8 +227,8 @@ class JavaxCryptoKeyAgreement extends JavaxCryptoAlgoSpec {
       m.getName() = "getInstance"
     )
   }
-  
-  Expr getAlgoSpec() {
+
+  override Expr getAlgoSpec() {
     result = this.(MethodAccess).getArgument(0)
   }
 }
@@ -240,8 +240,8 @@ class JavaxCryptoKeyFactory extends JavaxCryptoAlgoSpec {
       m.getName() = "getInstance"
     )
   }
-  
-  Expr getAlgoSpec() {
+
+  override Expr getAlgoSpec() {
     result = this.(MethodAccess).getArgument(0)
   }
 }
@@ -254,8 +254,8 @@ class JavaSecurityMessageDigest extends JavaSecurityAlgoSpec {
       c.getDeclaringType().getQualifiedName() = "java.security.MessageDigest"
     )
   }
-  
-  Expr getAlgoSpec() {
+
+  override Expr getAlgoSpec() {
     result = this.(ConstructorCall).getArgument(0)
   }
 }
@@ -266,8 +266,8 @@ class JavaSecuritySignature extends JavaSecurityAlgoSpec {
       c.getDeclaringType().getQualifiedName() = "java.security.Signature"
     )
   }
-  
-  Expr getAlgoSpec() {
+
+  override Expr getAlgoSpec() {
     result = this.(ConstructorCall).getArgument(0)
   }
 }

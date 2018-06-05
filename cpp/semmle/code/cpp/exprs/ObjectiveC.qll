@@ -14,6 +14,7 @@
 import semmle.code.cpp.exprs.Expr
 import semmle.code.cpp.Class
 import semmle.code.cpp.ObjectiveC
+private import semmle.code.cpp.internal.Type
 
 /**
  * An Objective C message expression, for example `[myColor changeColorToRed:5.0 green:2.0 blue:6.0]`.
@@ -108,7 +109,7 @@ class ClassMessageExpr extends MessageExpr, @msgexpr_normal {
    * Gets the class which is the receiver of this message.
    */
   Type getReceiver() {
-    msgexpr_receiver_type(this, result)
+    msgexpr_receiver_type(this, unresolve(result))
   }
 }
 
@@ -225,7 +226,7 @@ class AtEncodeExpr extends Expr, @atencodeexpr {
    * Gets the type this `@encode` expression encodes, for example `int *`.
    */
   Type getEncodedType() {
-    atencodeexpr_type(this, result)
+    atencodeexpr_type(this, unresolve(result))
   }
 }
 

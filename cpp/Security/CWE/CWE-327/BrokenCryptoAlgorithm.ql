@@ -34,10 +34,10 @@ class InsecureFunctionCall extends InsecureCryptoSpec, FunctionCall {
     this.getTarget().getName().regexpMatch(algorithmBlacklistRegex())
   }
 
-  string description() { result = "function call" }
+  override string description() { result = "function call" }
 
-  string toString() { result = FunctionCall.super.toString() }
-  Location getLocation() { result = FunctionCall.super.getLocation() }
+  override string toString() { result = FunctionCall.super.toString() }
+  override Location getLocation() { result = FunctionCall.super.getLocation() }
 }
 
 class InsecureMacroSpec extends InsecureCryptoSpec, MacroInvocation {
@@ -45,10 +45,10 @@ class InsecureMacroSpec extends InsecureCryptoSpec, MacroInvocation {
     this.getMacro().getName().regexpMatch(algorithmBlacklistRegex())
   }
 
-  string description() { result = "macro invocation" }
+  override string description() { result = "macro invocation" }
 
-  string toString() { result = MacroInvocation.super.toString() }
-  Location getLocation() { result = MacroInvocation.super.getLocation() }
+  override string toString() { result = MacroInvocation.super.toString() }
+  override Location getLocation() { result = MacroInvocation.super.getLocation() }
 }
 
 from InsecureCryptoSpec c

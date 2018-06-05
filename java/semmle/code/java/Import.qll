@@ -21,12 +21,12 @@ import CompilationUnit
 /** A common super-class for all kinds of Java import declarations. */
 class Import extends Element, @import {
   /** The compilation unit in which this import declaration occurs. */
-  CompilationUnit getCompilationUnit() { result = this.getFile() }
+  override CompilationUnit getCompilationUnit() { result = this.getFile() }
 
   /** Holds if this import declaration occurs in source code. */
-  predicate fromSource() { any() }
+  override predicate fromSource() { any() }
 
-  /*abstract*/ string toString() { result = "import" }
+  /*abstract*/ override string toString() { result = "import" }
 }
 
 /**
@@ -40,7 +40,7 @@ class ImportType extends Import {
   /** The imported type. */
   RefType getImportedType() { imports(this,result,_,_) }
 
-  string toString() { result = "import " + this.getImportedType().toString() }
+  override string toString() { result = "import " + this.getImportedType().toString() }
 }
 
 /**
@@ -60,8 +60,8 @@ class ImportOnDemandFromType extends Import {
   /** An imported type. */
   NestedType getAnImport() { result.getEnclosingType() = this.getTypeHoldingImport() }
 
-  string toString() { 
-    result = "import " + this.getTypeHoldingImport().toString() + ".*" 
+  override string toString() {
+    result = "import " + this.getTypeHoldingImport().toString() + ".*"
   }
 }
 
@@ -81,7 +81,7 @@ class ImportOnDemandFromPackage extends Import {
   RefType getAnImport() { result.getPackage() = this.getPackageHoldingImport() }
 
   /** A printable representation of this import declaration. */
-  string toString() { 
+  override string toString() {
     result = "import " + this.getPackageHoldingImport().toString() + ".*"
   }
 }
@@ -108,8 +108,8 @@ class ImportStaticOnDemand extends Import {
   Field getAFieldImport() { result.getDeclaringType() = this.getTypeHoldingImport() }
 
   /** A printable representation of this import declaration. */
-  string toString() { 
-    result = "import static " + this.getTypeHoldingImport().toString() + ".*" 
+  override string toString() {
+    result = "import static " + this.getTypeHoldingImport().toString() + ".*"
   }
 }
 
@@ -128,11 +128,11 @@ class ImportStaticTypeMember extends Import {
   RefType getTypeHoldingImport() { imports(this,result,_,_) }
 
   /** The name of the imported member(s). */
-  string getName() { imports(this,_,result,_) }
+  override string getName() { imports(this,_,result,_) }
 
   /** An imported member. */
-  Member getAMemberImport() { 
-    this.getTypeHoldingImport().getAMember() = result 
+  Member getAMemberImport() {
+    this.getTypeHoldingImport().getAMember() = result
     and result.getName() = this.getName() and result.isStatic()
   }
 
@@ -146,8 +146,8 @@ class ImportStaticTypeMember extends Import {
   Field getAFieldImport() { result = this.getAMemberImport() }
 
   /** A printable representation of this import declaration. */
-  string toString() { 
-    result = "import static " + this.getTypeHoldingImport().toString() 
-             + "." + this.getName() 
+  override string toString() {
+    result = "import static " + this.getTypeHoldingImport().toString()
+             + "." + this.getName()
   }
 }

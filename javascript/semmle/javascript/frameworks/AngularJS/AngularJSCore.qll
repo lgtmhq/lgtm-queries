@@ -377,7 +377,7 @@ abstract class CustomDirective extends DirectiveInstance {
   /**
    * Gets a scope object for this directive.
    */
-  AngularScope getAScope() {
+  override AngularScope getAScope() {
     if hasIsolateScope() then
       result = MkIsolateScope(this)
     else
@@ -491,7 +491,7 @@ class GeneralDirective extends CustomDirective, MkCustomDirective {
     getMemberInit("bindToController").asExpr().mayHaveBooleanValue(true)
   }
 
-  predicate hasIsolateScope() {
+  override predicate hasIsolateScope() {
     getMember("scope").asExpr() instanceof ObjectExpr
   }
 }
@@ -1055,7 +1055,7 @@ class RouteSetup extends DataFlow::CallNode, DependencyInjection {
    */
   InjectableFunction getController() {
     exists(DataFlow::SourceNode controllerProperty |
-      // NB: can not use `.getController` here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
+      // Note that `.getController` cannot be used here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
       controllerProperty = getRouteParam("controller") |
       result = controllerProperty or
       exists(ControllerDefinition def |

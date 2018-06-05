@@ -39,7 +39,7 @@ class PersistenceQueryInjectionSink extends QueryInjectionSink {
       call.getMethod() = em.getACreateQueryMethod() or
       call.getMethod() = em.getACreateNativeQueryMethod()
       // note: `createNamedQuery` is safe, as it takes only the query name,
-      // and named queries can only be constructed using constants as the query text 
+      // and named queries can only be constructed using constants as the query text
     )
   }
 }

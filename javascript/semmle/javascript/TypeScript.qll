@@ -70,12 +70,12 @@ class NamespaceDefinition extends Stmt, @namespacedefinition, AST::ValueNode {
  */
 class NamespaceDeclaration extends NamespaceDefinition, StmtContainer, @namespacedeclaration {
   /** Gets the name of this namespace. */
-  Identifier getId() {
+  override Identifier getId() {
     result = getChildExpr(-1)
   }
 
   /** Gets the name of this namespace as a string. */
-  string getName() {
+  override string getName() {
     result = getId().getName()
   }
 
@@ -86,7 +86,7 @@ class NamespaceDeclaration extends NamespaceDefinition, StmtContainer, @namespac
   }
 
   /** Gets a statement in this namespace. */
-  Stmt getAStmt() {
+  override Stmt getAStmt() {
     result = getStmt(_)
   }
 
@@ -187,7 +187,7 @@ class ExternalModuleDeclaration extends Stmt, StmtContainer, @externalmoduledecl
   }
 
   /** Gets a statement in this namespace. */
-  Stmt getAStmt() {
+  override Stmt getAStmt() {
     result = getStmt(_)
   }
 
@@ -212,7 +212,7 @@ class GlobalAugmentationDeclaration extends Stmt, StmtContainer, @globalaugmenta
   }
 
   /** Gets a statement in this namespace. */
-  Stmt getAStmt() {
+  override Stmt getAStmt() {
     result = getStmt(_)
   }
 
@@ -502,17 +502,17 @@ class TypeDecl extends Identifier, TypeRef, LexicalDecl {
  */
 class LocalTypeName extends @local_type_name, LexicalName {
   /** Gets the local name of this type. */
-  string getName() {
+  override string getName() {
     local_type_names(this, result, _)
   }
 
   /** Gets the scope this type name is declared in. */
-  Scope getScope() {
+  override Scope getScope() {
     local_type_names(this, _, result)
   }
 
   /** Gets a textual representation of this element. */
-  string toString() {
+  override string toString() {
     result = getName()
   }
 
@@ -578,17 +578,17 @@ class LocalTypeName extends @local_type_name, LexicalName {
  */
 class LocalNamespaceName extends @local_namespace_name, LexicalName {
   /** Gets the local name of this namespace. */
-  string getName() {
+  override string getName() {
     local_namespace_names(this, result, _)
   }
 
   /** Gets the scope this namespace name is declared in. */
-  Scope getScope() {
+  override Scope getScope() {
     local_namespace_names(this, _, result)
   }
 
   /** Gets a textual representation of this element. */
-  string toString() {
+  override string toString() {
     result = getName()
   }
 
@@ -643,7 +643,7 @@ class LocalNamespaceName extends @local_namespace_name, LexicalName {
  * types inferred by the TypeScript compiler are not type expressions.
  */
 class TypeExpr extends ExprOrType, @typeexpr {
-  string toString() {
+  override string toString() {
     typeexprs(this, _, _, _, result)
   }
 
@@ -696,7 +696,7 @@ class TypeExpr extends ExprOrType, @typeexpr {
   predicate isObjectKeyword() { none() }
 
   /** Gets this type expression, with any surrounding parentheses removed. */
-  TypeExpr stripParens() {
+  override TypeExpr stripParens() {
     result = this
   }
 
@@ -1418,7 +1418,7 @@ class EnumDeclaration extends NamespaceDefinition, @enumdeclaration, AST::ValueN
   }
 
   /** Gets the name of this enum as a string. */
-  string getName() {
+  override string getName() {
     result = getIdentifier().getName()
   }
 
@@ -1937,6 +1937,59 @@ class Type extends @type {
   FunctionCallSignatureType getAMethodOverload(string name) {
     result = getProperty(name).getAFunctionSignature()
   }
+
+  /**
+   * Repeatedly unfolds union and intersection types and gets any of the underlying types,
+   * or this type itself if it is not a union or intersection.
+   *
+   * For example, for a type `(S & T) | U` this gets the types `S`, `T`, and `U`.
+   */
+  Type unfold() {
+    not result instanceof UnionOrIntersectionType
+    and
+    (
+      result = this
+      or
+      result = this.(UnionOrIntersectionType).getAnElementType()
+      or
+      // The TypeScript compiler normalizes nested unions/intersections to unions of intersections.
+      // We can use this to avoid recursion.
+      result = this.(UnionType).getAnElementType().(IntersectionType).getAnElementType()
+    )
+  }
+
+  /**
+   * Holds if this refers to the given named type, or is declared as a subtype thereof,
+   * or is a union or intersection containing such a type.
+   *
+   * This is useful for recognising expressions that may refer to an instance of a given type,
+   * without relying on the exact static type of the expression.
+   */
+  predicate hasUnderlyingTypeName(TypeName typeName) {
+    unfold().(TypeReference).getTypeName().getABaseTypeName*() = typeName
+  }
+
+  /**
+   * Holds if this refers to the given named type, or is declared as a subtype thereof,
+   * or is a union or intersection containing such a type.
+   *
+   * This is useful for recognising expressions that may refer to an instance of a given type,
+   * without relying on the exact static type of the expression.
+   */
+  predicate hasUnderlyingType(string globalName) {
+    any(TypeName tn | hasUnderlyingTypeName(tn)).hasQualifiedName(globalName)
+  }
+
+  /**
+   * Holds if this refers to the given named type, or is declared as a subtype thereof,
+   * or is a union or intersection containing such a type.
+   *
+   * This is useful for recognising expressions that may refer to an instance of a given type,
+   * without relying on the exact static type of the expression.
+   */
+  predicate hasUnderlyingType(string moduleName, string exportedName) {
+    any(TypeName tn | hasUnderlyingTypeName(tn)).hasQualifiedName(moduleName, exportedName)
+  }
 }
 
 /**
@@ -2080,9 +2133,19 @@ class StringType extends Type, @stringtype {}
 class NumberType extends Type, @numbertype {}
 
 /**
+ * A boolean, number, or string literal type.
+ */
+class LiteralType extends Type, @literaltype {
+  /**
+   * Gets the string value of this literal.
+   */
+  string getStringValue() { none() }
+}
+
+/**
  * The boolean literal type `true` or `false`.
  */
-class BooleanLiteralType extends Type, @booleanliteraltype {
+class BooleanLiteralType extends LiteralType, @booleanliteraltype {
   /**
    * Gets the boolean value represented by this type.
    */
@@ -2091,6 +2154,45 @@ class BooleanLiteralType extends Type, @booleanliteraltype {
       result = true
     else
       result = false
+  }
+
+  override string getStringValue() {
+    if this instanceof @truetype then
+      result = "true"
+    else
+      result = "false"
+  }
+}
+
+/**
+ * A number literal as a static type.
+ */
+class NumberLiteralType extends LiteralType, @numberliteraltype {
+  override string getStringValue() {
+    type_literal_value(this, result)
+  }
+
+  /**
+   * Gets the value of the literal as an integer.
+   */
+  int getIntValue() {
+    result = getStringValue().toInt()
+  }
+
+  /**
+   * Gets the value of the literal as a floating-point value.
+   */
+  float getFloatValue() {
+    result = getStringValue().toFloat()
+  }
+}
+
+/**
+ * A string literal as a static type.
+ */
+class StringLiteralType extends LiteralType, @stringliteraltype {
+  override string getStringValue() {
+    type_literal_value(this, result)
   }
 }
 
@@ -2102,6 +2204,36 @@ class BooleanType extends UnionType {
     getAnElementType() instanceof @truetype and
     getAnElementType() instanceof @falsetype and
     count(getAnElementType()) = 2
+  }
+}
+
+/**
+ * The `string` type or a string literal type.
+ */
+class StringLikeType extends Type {
+  StringLikeType() {
+    this instanceof StringType or
+    this instanceof StringLiteralType
+  }
+}
+
+/**
+ * The `number` type or a number literal type.
+ */
+class NumberLikeType extends Type {
+  NumberLikeType() {
+    this instanceof NumberType or
+    this instanceof NumberLiteralType
+  }
+}
+
+/**
+ * The `boolean`, `true,` or `false` type.
+ */
+class BooleanLikeType extends Type {
+  BooleanLikeType() {
+    this instanceof BooleanType or
+    this instanceof BooleanLiteralType
   }
 }
 
@@ -2310,7 +2442,105 @@ class AnonymousInterfaceType extends Type, @objecttype {}
 /**
  * A type that refers to a type variable.
  */
-class TypeVariableType extends Type, @typevariabletype {}
+class TypeVariableType extends Type, @typevariabletype {
+  /**
+   * Gets a syntactic declaration of this type variable.
+   *
+   * In the case of multiply declared interfaces,
+   * there may be more than one declaration of the type variable.
+   *
+   * Some type variables have no associated declaration.
+   */
+  TypeParameter getADeclaration() {
+    ast_node_type(result.getIdentifier(), this)
+  }
+
+  /**
+   * Gets a declaration of the type or function declaring this type parameter.
+   *
+   * In the case of multiply declared interfaces,
+   * there may be more than one declaration of the type variable.
+   *
+   * Some type variables have no associated host declaration.
+   */
+  TypeParameterized getAHostDeclaration() {
+    result = getADeclaration().getHost()
+  }
+
+  /**
+   * Gets the type declaring this type variable, if any.
+   */
+  TypeName getHostType() { none() }
+
+  /**
+   * Gets the canonical name of the type variable being referenced, if it has one.
+   */
+  CanonicalName getCanonicalName() { none() }
+
+  /**
+   * Gets the unqualified name of the type variable being referenced.
+   */
+  string getName() { none() } // Overridden by subclasses.
+}
+
+/**
+ * A type that refers to a type variable declared on a class, interface or function.
+ */
+class CanonicalTypeVariableType extends TypeVariableType, @canonicaltypevariabletype {
+  override TypeName getHostType() {
+    result = getCanonicalName().getParent()
+  }
+
+  override CanonicalName getCanonicalName() {
+    type_symbol(this, result)
+  }
+
+  override string getName() {
+    result = getCanonicalName().getName()
+  }
+}
+
+/**
+ * A type that refers to a type variable without a canonical name.
+ *
+ * These arise in generic call signatures such as `<T>(x: T) => T`.
+ * The lexical type variable is not associated with a specific call signature, however.
+ * The type entity is shared between all such type variables named `T`.
+ *
+ * For example, the following call signatures will appear to have the same return type,
+ * as they both return a lexically bound type variable named `T`:
+ * - `<T>(x: T) => T`
+ * - `<S, T>(x: S, y: T) => T`.
+ */
+class LexicalTypeVariableType extends TypeVariableType, @lexicaltypevariabletype {
+  override string getName() {
+    types(this, _, result) // The toString value contains the name.
+  }
+}
+
+/**
+ * A `this` type in a specific class or interface.
+ *
+ * For example, the return type of `span` below is a `this` type
+ * with enclosing type `Builder`:
+ * ```
+ * interface Builder {
+ *   span(text: string): this;
+ * }
+ * ```
+ */
+class ThisType extends Type, @thistype {
+  /**
+   * Gets the type containing the `this` type.
+   */
+  TypeReference getEnclosingType() {
+    result = getChild(0)
+  }
+
+  override string toString() {
+    result = getEnclosingType().getTypeName().getName() + ".this"
+  }
+}
 
 /**
  * The type of a named value, `typeof X`, typically denoting the type of
@@ -2404,14 +2634,14 @@ class CallSignatureType extends @signature_type {
    * Gets a value indicating if this is a function or constructor signature.
    */
   SignatureKind getKind() {
-    signature_types(this, result.getId(), _, _)
+    signature_types(this, result.getId(), _, _, _)
   }
 
   /**
    * Gets a string representation of this signature.
    */
   string toString() {
-    signature_types(this, _, result, _)
+    signature_types(this, _, result, _, _)
   }
 
   /**
@@ -2439,10 +2669,40 @@ class CallSignatureType extends @signature_type {
   }
 
   /**
+   * Gets the number of type parameters on this call signature.
+   */
+  int getNumTypeParameter() {
+    signature_types(this, _, _, result, _)
+  }
+
+  /**
+   * Gets the bound on the `n`th type parameter.
+   */
+  Type getTypeParameterBound(int n) {
+    n >= 0 and n < getNumTypeParameter() and
+    result = getChild(n)
+  }
+
+  /**
+   * Gets the name of the `n`th type parameter.
+   */
+  string getTypeParameterName(int n) {
+    n >= 0 and n < getNumTypeParameter() and
+    signature_parameter_name(this, n, result)
+  }
+
+  /**
+   * Holds if this call signature declares type parameters.
+   */
+  predicate hasTypeParameters() {
+    getNumTypeParameter() > 0
+  }
+
+  /**
    * Gets the type of the `n`th parameter of this signature.
    */
   Type getParameter(int n) {
-    n >= 0 and result = getChild(n)
+    n >= 0 and result = getChild(n + getNumTypeParameter())
   }
 
   /**
@@ -2464,7 +2724,7 @@ class CallSignatureType extends @signature_type {
    * parameters that are not marked as optional with the `?` suffix.
    */
   int getNumRequiredParameter() {
-    signature_types(this, _, _, result)
+    signature_types(this, _, _, _, result)
   }
 
   /**
@@ -2496,7 +2756,8 @@ class CallSignatureType extends @signature_type {
    * Gets the name of the `n`th parameter.
    */
   string getParameterName(int n) {
-    signature_parameter_name(this, n, result)
+    n >= 0 and
+    signature_parameter_name(this, n + getNumTypeParameter(), result)
   }
 
   /**
@@ -2516,3 +2777,47 @@ class FunctionCallSignatureType extends CallSignatureType, @function_signature_t
  * A constructor call signature in a type, that is, a signature with the `new` keyword.
  */
 class ConstructorCallSignatureType extends CallSignatureType, @constructor_signature_type {}
+
+/**
+ * A type name that defines a promise.
+ *
+ * This is any type name satisfying all of these criteria:
+ * - Its name ends with `Promise`, `PromiseLike` `Thenable`, or `Deferred`
+ * - It has one type parameter, say, `T`
+ * - It has a `then` method whose first argument is a callback that takes a `T` as argument.
+ */
+private class PromiseTypeName extends TypeName {
+  PromiseTypeName() {
+    // The name must suggest it is a promise.
+    exists(string name | name = getName() |
+      name.matches("%Promise") or
+      name.matches("%PromiseLike") or
+      name.matches("%Thenable") or
+      name.matches("%Deferred"))
+    and
+    // The `then` method should take a callback, taking an argument of type `T`.
+    exists(TypeReference self | self = getType() |
+      self.getNumTypeArgument() = 1 and
+      self.getAMethodOverload("then").getParameter(0).unfold().getAFunctionSignature().getParameter(0) = self.getTypeArgument(0))
+  }
+}
+
+/**
+ * A type such as `Promise<T>`, describing a promise or promise-like object.
+ *
+ * This includes types whose name and `then` method signature suggest it is a promise,
+ * such as `PromiseLike<T>` and `Thenable<T>`.
+ */
+class PromiseType extends TypeReference {
+  PromiseType() {
+    getNumTypeArgument() = 1 and
+    getTypeName() instanceof PromiseTypeName
+  }
+
+  /**
+   * Gets the content type of the promise.
+   */
+  Type getElementType() {
+    result = getTypeArgument(0)
+  }
+}

@@ -30,11 +30,11 @@ import javascript
  * Holds if `setupCall` is a call to `$sceDelegateProvider.resourceUrlWhitelist` with
  * argument `list`.
  */
-predicate isResourceUrlWhitelist(MethodCallExpr setupCall, ArrayExpr list) {
+predicate isResourceUrlWhitelist(DataFlow::MethodCallNode setupCall, DataFlow::ArrayLiteralNode list) {
   exists (AngularJS::ServiceReference service |
     service.getName() = "$sceDelegateProvider" and
-    setupCall = service.getAMethodCall("resourceUrlWhitelist") and
-    setupCall.getArgument(0).flow().getALocalSource().asExpr() = list
+    setupCall.asExpr() = service.getAMethodCall("resourceUrlWhitelist") and
+    list.flowsTo(setupCall.getArgument(0))
   )
 }
 
@@ -42,13 +42,13 @@ predicate isResourceUrlWhitelist(MethodCallExpr setupCall, ArrayExpr list) {
  * An entry in a resource URL whitelist.
  */
 class ResourceUrlWhitelistEntry extends Expr {
-  MethodCallExpr setupCall;
+  DataFlow::MethodCallNode setupCall;
   string pattern;
 
   ResourceUrlWhitelistEntry() {
-    exists (ArrayExpr whitelist |
+    exists (DataFlow::ArrayLiteralNode whitelist |
       isResourceUrlWhitelist(setupCall, whitelist) and
-      this = whitelist.getAnElement() and
+      this = whitelist.getAnElement().asExpr() and
       this.mayHaveStringValue(pattern)
     )
   }
@@ -56,7 +56,7 @@ class ResourceUrlWhitelistEntry extends Expr {
   /**
    * Gets the method call that sets up this whitelist.
    */
-  MethodCallExpr getSetupCall() {
+  DataFlow::MethodCallNode getSetupCall() {
     result = setupCall
   }
 
@@ -87,7 +87,7 @@ class ResourceUrlWhitelistEntry extends Expr {
   }
 }
 
-from ResourceUrlWhitelistEntry entry, MethodCallExpr setupCall, string explanation
+from ResourceUrlWhitelistEntry entry, DataFlow::MethodCallNode setupCall, string explanation
 where entry.isInsecure(explanation) and
       setupCall = entry.getSetupCall()
 select setupCall, "'$@' is not a secure whitelist entry, because " + explanation + ".",

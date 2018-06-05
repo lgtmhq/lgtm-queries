@@ -86,7 +86,7 @@ module NodeJSLib {
    */
   class StandardRouteHandler extends RouteHandler {
     StandardRouteHandler() {
-      any(RouteSetup setup).getARouteHandler() = this
+      this = any(RouteSetup setup).getARouteHandler()
     }
   }
 
@@ -104,7 +104,7 @@ module NodeJSLib {
     /**
      * Gets the route handler that provides this response.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }
@@ -123,7 +123,7 @@ module NodeJSLib {
     /**
      * Gets the route handler that handles this request.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }
@@ -186,7 +186,8 @@ module NodeJSLib {
     }
 
     override DataFlow::SourceNode getARouteHandler() {
-      result.flowsToExpr(handler)
+      result.(DataFlow::SourceNode).flowsTo(handler.flow()) or
+      result.(DataFlow::TrackedNode).flowsTo(handler.flow())
     }
 
     override Expr getServer() {
@@ -401,8 +402,10 @@ module NodeJSLib {
 
   /**
    * A function that looks like a Node.js route handler.
+   *
+   * For example, this could be the function `function(req, res){...}`.
    */
-  class RouteHandlerCandidate extends DataFlow::FunctionNode {
+  class RouteHandlerCandidate extends HTTP::RouteHandlerCandidate, DataFlow::FunctionNode {
 
     override Function astNode;
 
@@ -451,6 +454,55 @@ module NodeJSLib {
       )
     }
 
+  }
+  
+  /**
+   * A call to a method from module `vm`
+   */
+  class VmModuleMethodCall extends DataFlow::CallNode {
+    string methodName;
+    
+    VmModuleMethodCall() {
+      this = DataFlow::moduleMember("vm", methodName).getACall()
+    }
+    
+    /**
+     * Gets the code to be executed as part of this call.
+     */
+    DataFlow::Node getACodeArgument() {      
+      (
+        methodName = "runInContext" or
+        methodName = "runInNewContext" or
+        methodName = "runInThisContext"
+      )
+      and
+      // all of the above methods take the command as their first argument
+      result = getArgument(0)
+    }
+  }
+
+  /**
+   * A call that looks like a route setup on a Node.js server.
+   *
+   * For example, this could be the call `server.on("request", handler)`
+   * where it is unknown if `server` is a Node.js server.
+   */
+  class RouteSetupCandidate extends HTTP::RouteSetupCandidate, DataFlow::MethodCallNode {
+
+    DataFlow::ValueNode arg;
+
+    RouteSetupCandidate() {
+      getMethodName() = "createServer" and
+      arg = getArgument(0)
+      or
+      getMethodName().regexpMatch("on(ce)?") and
+      getArgument(0).mayHaveStringValue("request") and
+      arg = getArgument(1)
+    }
+
+    override DataFlow::ValueNode getARouteHandlerArg() {
+      result = arg
+    }
   }
 
 }

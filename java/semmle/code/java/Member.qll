@@ -68,7 +68,7 @@ class Callable extends StmtParent, Member, @callable {
     result.getCaller() = this and
     result.getCallee() = callee
   }
-  
+
   /**
    * The bytecode method descriptor, encoding parameter and return types,
    * but not the name of the callable.
@@ -78,7 +78,7 @@ class Callable extends StmtParent, Member, @callable {
       result = "(" + descriptorUpTo(this.getNumberOfParameters()) + ")" + return
     )
   }
-  
+
   private string descriptorUpTo(int n) {
     (n = 0 and result = "") or
     exists(Parameter p | p = this.getParameter(n-1) |
@@ -103,7 +103,7 @@ class Callable extends StmtParent, Member, @callable {
    * Holds if this callable calls `target`
    * using a `this(...)` constructor call.
    */
-  predicate callsThis(Constructor target) { 
+  predicate callsThis(Constructor target) {
     getACallSite(target) instanceof ThisConstructorInvocationStmt
   }
 
@@ -130,7 +130,7 @@ class Callable extends StmtParent, Member, @callable {
    */
   predicate polyCalls(Callable m) {
     this.calls(m) or
-    exists(Method mSuper, VirtualMethodAccess c | 
+    exists(Method mSuper, VirtualMethodAccess c |
       c.getCaller() = this and c.getMethod() = mSuper |
       m.(Method).overrides(mSuper)
     )
@@ -170,7 +170,7 @@ class Callable extends StmtParent, Member, @callable {
   predicate hasNoParameters() { not exists(getAParameter()) }
 
   /** The number of formal parameters of this callable. */
-  int getNumberOfParameters() { 
+  int getNumberOfParameters() {
     result = count(getAParameter())
   }
 
@@ -195,7 +195,7 @@ class Callable extends StmtParent, Member, @callable {
 
   /** A parenthesized string containing all parameter types of this callable, separated by a comma. */
   string paramsString() {
-    exists(int n | n = getNumberOfParameters() | 
+    exists(int n | n = getNumberOfParameters() |
       n = 0 and result = "()"
       or
       n > 0 and result = "(" + this.paramUpTo(n-1) + ")"
@@ -225,7 +225,7 @@ class Callable extends StmtParent, Member, @callable {
 
   /** A call site that references this callable. */
   Call getAReference() {
-    result.getCallee() = this 
+    result.getCallee() = this
   }
 
   /** The body of this callable, if any. */
@@ -334,7 +334,7 @@ class Method extends Callable, @method {
     this.overrides+(result)
   }
 
-  string getSignature() { methods(this,_,result,_,_,_) }
+  override string getSignature() { methods(this,_,result,_,_,_) }
 
   /**
    * Holds if this method and method `m` are declared in the same type
@@ -351,7 +351,7 @@ class Method extends Callable, @method {
    not exists(int n | this.getParameterType(n) != m.getParameterType(n))
   }
 
-  Method getSourceDeclaration() { methods(this,_,_,_,_,result) }
+  override Method getSourceDeclaration() { methods(this,_,_,_,_,result) }
 
   /**
    * All the methods that could possibly be called when this method
@@ -373,18 +373,18 @@ class Method extends Callable, @method {
     (exists(result.getBody()) or result.hasModifier("native"))
   }
 
-  MethodAccess getAReference() {
+  override MethodAccess getAReference() {
     result = Callable.super.getAReference()
   }
 
-  predicate isPublic() {
+  override predicate isPublic() {
     Callable.super.isPublic() or
     // JLS 9.4: Every method declaration in the body of an interface is implicitly public.
     getDeclaringType() instanceof Interface or
     exists(FunctionalExpr func | func.asMethod() = this)
   }
 
-  predicate isAbstract() {
+  override predicate isAbstract() {
     Callable.super.isAbstract() or
     // JLS 9.4: An interface method lacking a `default` modifier or a `static` modifier
     // is implicitly abstract.
@@ -392,7 +392,7 @@ class Method extends Callable, @method {
      not this.isDefault() and not this.isStatic())
   }
 
-  predicate isStrictfp() {
+  override predicate isStrictfp() {
     Callable.super.isStrictfp() or
     // JLS 8.1.1.3, JLS 9.1.1.2
     getDeclaringType().isStrictfp()
@@ -482,8 +482,8 @@ class GetterMethod extends Method {
  */
 class FinalizeMethod extends Method {
   FinalizeMethod() {
-    this.hasName("finalize") and 
-    this.getReturnType().hasName("void") and 
+    this.hasName("finalize") and
+    this.getReturnType().hasName("void") and
     this.isProtected()
   }
 }
@@ -493,9 +493,9 @@ class Constructor extends Callable, @constructor {
   /** Holds if this is a default constructor, not explicitly declared in source code. */
   predicate isDefaultConstructor() { isDefConstr(this) }
 
-  Constructor getSourceDeclaration() { constrs(this,_,_,_,_,result) }
+  override Constructor getSourceDeclaration() { constrs(this,_,_,_,_,result) }
 
-  string getSignature() { constrs(this,_,result,_,_,_) }
+  override string getSignature() { constrs(this,_,result,_,_,_) }
 }
 
 /**
@@ -539,7 +539,7 @@ class FieldDeclaration extends ExprParent, @fielddecl, Annotatable {
   /** The number of fields declared in this declaration. */
   int getNumField() { result = max(int idx | fieldDeclaredIn(_, this, idx) | idx) + 1 }
 
-  string toString() {
+  override string toString() {
     if this.getNumField() = 0 then
       result = this.getTypeAccess() + " " + this.getField(0) + ";"
     else
@@ -550,10 +550,10 @@ class FieldDeclaration extends ExprParent, @fielddecl, Annotatable {
 /** A class or instance field. */
 class Field extends Member, ExprParent, @field, Variable {
   /** The declared type of this field. */
-  Type getType() { fields(this, _, result, _, _) }
+  override Type getType() { fields(this, _, result, _, _) }
 
   /** The type in which this field is declared. */
-  RefType getDeclaringType() { fields(this, _, _, result, _) }
+  override RefType getDeclaringType() { fields(this, _, _, result, _) }
 
   /**
    * The field declaration in which this field is declared.
@@ -563,7 +563,7 @@ class Field extends Member, ExprParent, @field, Variable {
   FieldDeclaration getDeclaration() { result.getAField() = this }
 
   /** The initializer expression of this field, if any. */
-  Expr getInitializer() {
+  override Expr getInitializer() {
     exists(AssignExpr e, InitializerMethod im |
       e.getDest() = this.getAnAccess() and
       e.getSource() = result and
@@ -587,21 +587,21 @@ class Field extends Member, ExprParent, @field, Variable {
   /** Holds if this field is the same as its source declaration. */
   predicate isSourceDeclaration() { this.getSourceDeclaration() = this }
 
-  predicate isPublic() {
+  override predicate isPublic() {
     Member.super.isPublic() or
     // JLS 9.3: Every field declaration in the body of an interface is
     // implicitly public, static, and final
     getDeclaringType() instanceof Interface
   }
 
-  predicate isStatic() {
+  override predicate isStatic() {
     Member.super.isStatic() or
     // JLS 9.3: Every field declaration in the body of an interface is
     // implicitly public, static, and final
     this.getDeclaringType() instanceof Interface
   }
 
-  predicate isFinal() {
+  override predicate isFinal() {
     Member.super.isFinal() or
     // JLS 9.3: Every field declaration in the body of an interface is
     // implicitly public, static, and final

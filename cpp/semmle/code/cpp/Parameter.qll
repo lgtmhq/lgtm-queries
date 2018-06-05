@@ -13,6 +13,7 @@
 
 import semmle.code.cpp.Location
 import semmle.code.cpp.Declaration
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ function parameter or catch block parameter.
@@ -136,7 +137,7 @@ class Parameter extends LocalScopeVariable, @parameter {
    * as they are syntactic sugar for parameters of pointer type. The
    * result is an array type for such parameters.
    */
-  override Type getType() { params(this,_,_,result) }
+  override Type getType() { params(this,_,_,unresolve(result)) }
 
   /**
    * Gets the canonical location, or locations, of this parameter.

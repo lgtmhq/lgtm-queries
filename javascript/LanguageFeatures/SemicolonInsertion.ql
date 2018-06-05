@@ -13,7 +13,7 @@
 
 /**
  * @name Semicolon insertion
- * @description Code that relies on automatic semicolon insertion is hard to read and maintain.
+ * @description Code that uses automatic semicolon insertion inconsistently is hard to read and maintain.
  * @kind problem
  * @problem.severity recommendation
  * @id js/automatic-semicolon-insertion

@@ -24,7 +24,7 @@
  *       statistical
  *       non-attributable
  *       duplicate-code
- * @precision very-high
+ * @precision high
  */
 
 import javascript

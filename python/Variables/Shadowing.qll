@@ -13,10 +13,11 @@
 
 import python
 
-/* Parameters with defaults that are used as an (ugly) optimization. 
- * E.g. def f(x, len=len): ... 
+/* Parameters with defaults that are used as an optimization. 
+ * E.g. def f(x, len=len): ...
+ * (In general, this kind of optimization is not recommended.)
  */
-predicate optimising_parameter(Parameter p) {
+predicate optimizing_parameter(Parameter p) {
     exists(string name, Name glob |
         p.getDefault() = glob |
         glob.getId() = name and 

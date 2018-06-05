@@ -37,7 +37,7 @@ class MetricElement extends Element {
    * depend on multiple other elements.
    */
   MetricElement getADependency() {
-    result = this 
+    result = this
   }
 
   /** A dependency of this element that is from source. */
@@ -59,7 +59,7 @@ class MetricElement extends Element {
    */
   int getALevel() {
     this.fromSource() and
-    not(this.getADependencySrc+() = this) and 
+    not(this.getADependencySrc+() = this) and
     (
       (not(exists(MetricElement t | t = this.getADependency())) and result = 0)
       or
@@ -118,7 +118,7 @@ class MetricElement extends Element {
    * `MetricRefType` and `MetricCallable` provide concrete implementations.
    */
   float getMaintainabilityIndex() {
-    result =   this.getMaintainabilityIndexWithoutComments() 
+    result =   this.getMaintainabilityIndexWithoutComments()
              + this.getMaintainabilityIndexCommentWeight()
   }
 }

@@ -74,25 +74,84 @@ class JQueryMethodCall extends CallExpr {
   }
 
   /**
+   * DEPRECATED: Use `interpretsArgumentAsHtml` instead.
+   *
    * Holds if this call interprets its arguments as HTML.
    */
+  deprecated
   predicate interpretsArgumentsAsHtml() {
-      name = "addClass" or
-      name = "after" or
-      name = "append" or
-      name = "appendTo" or
-      name = "before" or
-      name = "html" or
-      name = "insertAfter" or
-      name = "insertBefore" or
-      name = "parseHTML" or
-      name = "prepend" or
-      name = "prependTo" or
-      name = "prop" or
-      name = "replaceWith" or
-      name = "wrap" or
-      name = "wrapAll" or
-      name = "wrapInner"
+    name = "addClass" or
+    name = "after" or
+    name = "append" or
+    name = "appendTo" or
+    name = "before" or
+    name = "html" or
+    name = "insertAfter" or
+    name = "insertBefore" or
+    name = "parseHTML" or
+    name = "prepend" or
+    name = "prependTo" or
+    name = "prop" or
+    name = "replaceWith" or
+    name = "wrap" or
+    name = "wrapAll" or
+    name = "wrapInner"
+  }
+
+  /**
+   * Holds if `e` is an argument that this method may interpret as HTML.
+   *
+   * Note that some jQuery methods decide whether to interpret an argument
+   * as HTML based on its syntactic shape, so this predicate and
+   * `interpretsArgumentAsSelector` below overlap.
+   */
+  predicate interpretsArgumentAsHtml(Expr e) {
+    // some methods interpret all their arguments as (potential) HTML
+    (
+     name = "after" or
+     name = "append" or
+     name = "appendTo" or
+     name = "before" or
+     name = "html" or
+     name = "insertAfter" or
+     name = "insertBefore" or
+     name = "prepend" or
+     name = "prependTo" or
+     name = "replaceWith" or
+     name = "wrap" or
+     name = "wrapAll" or
+     name = "wrapInner"
+    ) and
+    e = getAnArgument()
+    or
+    // for `$, it's only the first one
+    name = "$" and
+    e = getArgument(0)
+  }
+
+  /**
+   * Holds if `e` is an argument that this method may interpret as a selector.
+   *
+   * Note that some jQuery methods decide whether to interpret an argument
+   * as a selector based on its syntactic shape, so this predicate and
+   * `interpretsArgumentAsHtml` above overlap.
+   */
+  predicate interpretsArgumentAsSelector(Expr e) {
+    // some methods interpret all their arguments as (potential) selectors
+    (
+     name = "appendTo" or
+     name = "insertAfter" or
+     name = "insertBefore" or
+     name = "prependTo" or
+     name = "wrap" or
+     name = "wrapAll" or
+     name = "wrapInner"
+    ) and
+    e = getAnArgument()
+    or
+    // for `$, it's only the first one
+    name = "$" and
+    e = getArgument(0)
   }
 }
 

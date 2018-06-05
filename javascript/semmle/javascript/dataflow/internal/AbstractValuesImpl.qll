@@ -21,7 +21,7 @@ import semmle.javascript.dataflow.AbstractValues
 private import semmle.javascript.dataflow.InferredTypes
 
 /** An abstract value inferred by the flow analysis. */
-newtype TAbstractValue =
+cached newtype TAbstractValue =
   /** An abstract representation of `null`. */
   TAbstractNull()
   or
@@ -31,10 +31,10 @@ newtype TAbstractValue =
   /** An abstract representation of Boolean value `b`. */
   TAbstractBoolean(boolean b) { b = true or b = false }
   or
-  /** An abstract representation of the number zero. */
+  /** An abstract representation of the number (or bigint) zero. */
   TAbstractZero()
   or
-  /** An abstract representation of a non-zero number. */
+  /** An abstract representation of a non-zero number (or bigint). */
   TAbstractNonZero()
   or
   /** An abstract representation of the empty string. */

@@ -34,7 +34,7 @@
 import javascript
 
 module DataFlow {
-  private newtype TNode =
+  private cached newtype TNode =
      TValueNode(AST::ValueNode nd)
   or TSsaDefNode(SsaDefinition d)
   or TPropNode(@property p)
@@ -421,7 +421,7 @@ module DataFlow {
     }
 
     override Node getRhs() {
-      exists (ObjectExprNode propdesc |
+      exists (ObjectLiteralNode propdesc |
         propdesc.flowsTo(odp.getPropertyDescriptor()) and
         propdesc.hasPropertyWrite("value", result)
       )

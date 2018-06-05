@@ -73,14 +73,14 @@ predicate assignmentToShadowingLocal(LocalVariableDecl d, Field f) {
 predicate assignmentFromShadowingLocal(LocalVariableDecl d, Field f) {
   shadows(d, _, _, _) and
   exists(VarAccess access | access = d.getAnAccess() |
-    exists(MethodAccess set, Expr arg, Method setter | 
-      access = getARelevantChild(arg) and 
+    exists(MethodAccess set, Expr arg, Method setter |
+      access = getARelevantChild(arg) and
       arg = set.getAnArgument() and
-      setter = set.getMethod() and 
+      setter = set.getMethod() and
       setterFor(setter, f)
     ) or
-    exists(Field instance, Expr assignedValue | 
-      access = getARelevantChild(assignedValue) and 
+    exists(Field instance, Expr assignedValue |
+      access = getARelevantChild(assignedValue) and
       assignedValue = instance.getAnAssignedValue() and
       instance.getSourceDeclaration() = f
     )

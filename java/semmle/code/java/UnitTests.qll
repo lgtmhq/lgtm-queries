@@ -65,8 +65,8 @@ class TearDownMethod extends Method {
  */
 class TestClass extends Class {
   TestClass() {
-    this instanceof JUnit38TestClass or 
-    this.getASupertype*().getSourceDeclaration().getName().matches("%Test%") 
+    this instanceof JUnit38TestClass or
+    this.getASupertype*().getSourceDeclaration().getName().matches("%Test%")
   }
 }
 

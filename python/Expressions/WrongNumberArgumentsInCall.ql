@@ -13,7 +13,7 @@
 
 /**
  * @name Wrong number of arguments in a call
- * @description A call to function may have an incorrect number of arguments. This will cause a TypeError to be raised.
+ * @description Using too many or too few arguments in a call to a function will result in a TypeError at runtime.
  * @kind problem
  * @tags reliability
  *       correctness

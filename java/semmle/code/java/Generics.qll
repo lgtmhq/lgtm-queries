@@ -89,11 +89,11 @@ class GenericType extends RefType {
 }
 
 /** A generic type that is a class. */
-class GenericClass extends GenericType, Class { 
+class GenericClass extends GenericType, Class {
 }
 
 /** A generic type that is an interface. */
-class GenericInterface extends GenericType, Interface { 
+class GenericInterface extends GenericType, Interface {
 }
 
 /**
@@ -147,7 +147,7 @@ class TypeVariable extends BoundedType, @typevariable {
    * if no explicit type bound is present.
    */
   pragma[nomagic]
-  RefType getUpperBoundType() {
+  override RefType getUpperBoundType() {
     if this.hasTypeBound() then
       result = this.getATypeBound().getType()
     else
@@ -159,7 +159,7 @@ class TypeVariable extends BoundedType, @typevariable {
    * if no explicit type bound is present.
    */
   pragma[nomagic]
-  RefType getFirstUpperBoundType() {
+  override RefType getFirstUpperBoundType() {
     if this.hasTypeBound() then
       result = this.getFirstTypeBound().getType()
     else
@@ -167,7 +167,7 @@ class TypeVariable extends BoundedType, @typevariable {
   }
 
   /** The lexically enclosing package of this type parameter, if any. */
-  Package getPackage() {
+  override Package getPackage() {
     result = getGenericType().getPackage() or
     result = getGenericCallable().getDeclaringType().getPackage()
   }
@@ -226,7 +226,7 @@ class Wildcard extends BoundedType, @wildcard {
    * Gets an upper bound type of this wildcard, or `Object`
    * if no explicit type bound is present.
    */
-  RefType getUpperBoundType() {
+  override RefType getUpperBoundType() {
     if this.hasUpperBound() then
       result = this.getUpperBound().getType()
     else
@@ -237,7 +237,7 @@ class Wildcard extends BoundedType, @wildcard {
    * Gets the first upper bound type of this wildcard, or `Object`
    * if no explicit type bound is present.
    */
-  RefType getFirstUpperBoundType() {
+  override RefType getFirstUpperBoundType() {
     if this.hasUpperBound() then
       result = this.getFirstTypeBound().getType()
     else
@@ -248,7 +248,7 @@ class Wildcard extends BoundedType, @wildcard {
   TypeBound getLowerBound() {
     this.hasLowerBound() and result = this.getATypeBound()
   }
-  
+
   /**
    * The lower bound type for this wildcard,
    * if an explicit lower bound is present.
@@ -331,7 +331,7 @@ class ParameterizedType extends RefType {
    *
    * For example, the erasure of both `X<Number>` and `X<Integer>` is `X<T>`.
    */
-  RefType getErasure() { erasure(this,result) or this.(GenericType) = result }
+  override RefType getErasure() { erasure(this,result) or this.(GenericType) = result }
 
   /**
    * The generic type corresponding to this parameterized type.
@@ -365,11 +365,11 @@ class ParameterizedType extends RefType {
   }
 
   /** Holds if this type originates from source code. */
-  predicate fromSource() { typeVars(_,_,_,_,this) and RefType.super.fromSource() }
+  override predicate fromSource() { typeVars(_,_,_,_,this) and RefType.super.fromSource() }
 }
 
 /** A parameterized type that is a class. */
-class ParameterizedClass extends Class, ParameterizedType { 
+class ParameterizedClass extends Class, ParameterizedType {
 }
 
 /** A parameterized type that is an interface. */
@@ -394,18 +394,18 @@ class RawType extends RefType {
    *
    * For example, the erasure of `List` is `List<E>`.
    */
-   RefType getErasure() { erasure(this,result) }
+  override RefType getErasure() { erasure(this,result) }
 
   /** Holds if this type originates from source code. */
-  predicate fromSource() { not any() }
+  override predicate fromSource() { not any() }
 }
 
 /** A raw type that is a class. */
-class RawClass extends Class, RawType { 
+class RawClass extends Class, RawType {
 }
 
 /** A raw type that is an interface. */
-class RawInterface extends Interface, RawType { 
+class RawInterface extends Interface, RawType {
 }
 
 // -------- Generic callables  --------
@@ -557,8 +557,8 @@ private predicate hasParameterSubstitution(GenericType g1, ParameterizedType pt1
  * For example, `<T> C(T t) { }` is a generic constructor for type `C`.
  */
 class GenericConstructor extends Constructor, GenericCallable {
-  GenericConstructor getSourceDeclaration() { result = Constructor.super.getSourceDeclaration() }
-  ConstructorCall getAReference() { result = Constructor.super.getAReference() }
+  override GenericConstructor getSourceDeclaration() { result = Constructor.super.getSourceDeclaration() }
+  override ConstructorCall getAReference() { result = Constructor.super.getAReference() }
 }
 
 /**
@@ -567,5 +567,5 @@ class GenericConstructor extends Constructor, GenericCallable {
  * For example, `<T> void m(T t) { }` is a generic method.
  */
 class GenericMethod extends Method, GenericCallable {
-  GenericMethod getSourceDeclaration() { result = Method.super.getSourceDeclaration() }
+  override GenericMethod getSourceDeclaration() { result = Method.super.getSourceDeclaration() }
 }

@@ -36,7 +36,7 @@ class BooleanControllingAssignmentInExpr extends BooleanControllingAssignment {
     or exists(ConditionalExpr c | c.getCondition() = this)
   }
 
-  predicate isWhitelisted() {
+  override predicate isWhitelisted() {
     this.getConversion().(ParenthesisExpr).isParenthesised()
   }
 }
@@ -49,7 +49,7 @@ class BooleanControllingAssignmentInStmt extends BooleanControllingAssignment {
     or exists(DoStmt d | d.getCondition() = this)
   }
 
-  predicate isWhitelisted() {
+  override predicate isWhitelisted() {
     this.isParenthesised()
   }
 }

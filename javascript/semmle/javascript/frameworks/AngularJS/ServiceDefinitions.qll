@@ -105,7 +105,7 @@ class BuiltinServiceReference extends ServiceReference, MkBuiltinServiceReferenc
 /**
  * Holds if `ref` is a reference to the builtin service with the name `serviceName`.
  *
- * NB: Use `BuiltinServiceReference.getAnAccess` instead of this predicate when possible (they are semantically equivalent for builtin services).
+ * Note that `BuiltinServiceReference.getAnAccess` should be used instead of this predicate when possible (they are semantically equivalent for builtin services).
  * This predicate can avoid the non-monotonic recursion that `getAnAccess` can cause.
  */
 DataFlow::ParameterNode builtinServiceRef(string serviceName) {
@@ -459,7 +459,7 @@ private class CustomDirectiveControllerDependencyInjection extends DependencyInj
   override DataFlow::Node getAnInjectableFunction() {
     exists (CustomDirective d |
       d.getDefinition() = this and
-      // NB: can not use `.getController` here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
+      // Note that `.getController` cannot be used here, since that involves a cast to InjectableFunction, and that cast only succeeds because of this method
       result = d.getMember("controller")
     )
   }

@@ -18,6 +18,7 @@ import semmle.code.cpp.Parameter
 import semmle.code.cpp.exprs.Call
 import semmle.code.cpp.metrics.MetricFunction
 import semmle.code.cpp.Linkage
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ function [N4140 8.3.5]. Both member functions and non-member
@@ -43,6 +44,42 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    * namespace, use `hasGlobalName`.
    */
   string getName() { functions(this,result,_) }
+
+  /**
+   * Gets the full signature of this function, including return type, parameter
+   * types, and template arguments.
+   *
+   * For example, in the following code:
+   * ```
+   * template<typename T> T min(T x, T y);
+   * int z = min(5, 7);
+   * ```
+   * The full signature of the function called on the last line would be
+   * "min<int>(int, int) -> int", and the full signature of the uninstantiated
+   * template on the first line would be "min<T>(T, T) -> T".
+   */
+  string getFullSignature() {
+    exists(string name, string templateArgs, string args |
+      result = name + templateArgs + args + " -> " + getType().toString() and
+      name = getQualifiedName() and
+      (
+        if exists(getATemplateArgument()) then (
+          templateArgs = "<" +
+            concat(int i |
+              exists(getTemplateArgument(i)) |
+              getTemplateArgument(i).toString(), ", " order by i
+            ) + ">"
+        )
+        else
+          templateArgs = ""
+      ) and
+      args = "(" +
+        concat(int i |
+          exists(getParameter(i)) |
+          getParameter(i).getType().toString(), ", " order by i
+        ) + ")"
+     )
+  }
 
   /** Gets a specifier of this function. */
   Specifier getASpecifier() {
@@ -100,7 +137,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
   }
 
   /** Gets the return type of this function. */
-  Type getType() { function_return_type(this,result) }
+  Type getType() { function_return_type(this,unresolve(result)) }
 
   /** Gets the nth parameter of this function. */
   Parameter getParameter(int n) { params(result,this,n,_) }
@@ -333,7 +370,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    * template class.
    */
   Type getTemplateArgument(int index) {
-    function_template_argument(this,index,result)
+    function_template_argument(this,index,unresolve(result))
   }
 
   /**
@@ -481,7 +518,7 @@ class FunctionDeclarationEntry extends DeclarationEntry, @fun_decl {
    * Gets the return type of the function which is being declared or
    * defined.
    */
-  Type getType() { fun_decls(this,_,result,_,_) }
+  Type getType() { fun_decls(this,_,unresolve(result),_,_) }
 
   /** Gets the location of this declaration entry. */
   override Location getLocation() { fun_decls(this,_,_,_,result) }
@@ -628,7 +665,7 @@ class FunctionDeclarationEntry extends DeclarationEntry, @fun_decl {
    * `int`, and that with index 1 would be `float`.
    */
   Type getThrownType(int i) {
-    fun_decl_throws(this,i,result)
+    fun_decl_throws(this,i,unresolve(result))
   }
 
   /**
@@ -790,8 +827,18 @@ class Constructor extends MemberFunction {
    * compiler-generated action which initializes a base class or member
    * variable.
    */
-  Expr getAnInitializer() {
-    exists(@ctorinit ci | result = ci and result.getParent() = this)
+  ConstructorInit getAnInitializer() {
+    result = getInitializer(_)
+  }
+
+  /**
+   * Gets an entry in the constructor's initializer list, or a
+   * compiler-generated action which initializes a base class or member
+   * variable. The index specifies the order in which the initializer is
+   * to be evaluated.
+   */
+  ConstructorInit getInitializer(int i) {
+    exists(@ctorinit ci | result = ci and exprparents(ci, i, this))
   }
 }
 
@@ -948,8 +995,17 @@ class Destructor extends MemberFunction {
    * Gets a compiler-generated action which destructs a base class or member
    * variable.
    */
-  Expr getADestruction() {
-    exists(@dtordestruct dd | result = dd and result.getParent() = this)
+  DestructorDestruction getADestruction() {
+    result = getDestruction(_)
+  }
+
+  /**
+   * Gets a compiler-generated action which destructs a base class or member
+   * variable. The index specifies the order in which the destruction should
+   * be evaluated.
+   */
+  DestructorDestruction getDestruction(int i) {
+    exists(@dtordestruct dd | result = dd and exprparents(dd, i, this))
   }
 }
 

@@ -13,7 +13,9 @@
 
 /**
  * @name Wrong name for an argument in a call
- * @description A call to function may name an argument for a parameter that does not exist. This will cause a TypeError to be raised.
+ * @description Using a named argument whose name does not correspond to a
+ *              parameter of the called function or method, will result in a
+ *              TypeError at runtime.
  * @kind problem
  * @tags reliability
  *       correctness

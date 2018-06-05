@@ -125,10 +125,10 @@ private predicate isSeedingSource(Expr arg, RValue use, Expr source) {
 }
 
 private predicate isRandomSeeding(MethodAccess m, Expr arg) {
-  exists(Method def | 
-    m.getMethod() = def | 
-    def.getDeclaringType() instanceof SecureRandomNumberGenerator 
-    and def.getName() = "setSeed" 
+  exists(Method def |
+    m.getMethod() = def |
+    def.getDeclaringType() instanceof SecureRandomNumberGenerator
+    and def.getName() = "setSeed"
     and arg = m.getArgument(0)
   )
 }

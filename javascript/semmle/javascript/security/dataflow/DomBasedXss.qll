@@ -62,7 +62,13 @@ module DomBasedXss {
 
     override predicate isSanitizer(DataFlow::Node node) {
       super.isSanitizer(node) or
-      isSafeLocationProperty(node.asExpr()) or
+      exists (PropAccess pacc | pacc = node.asExpr() |
+        isSafeLocationProperty(pacc) or
+        // `$(location.hash)` is a fairly common and safe idiom
+        // (because `location.hash` always starts with `#`),
+        // so we mark `hash` as safe for the purposes of this query
+        pacc.getPropertyName() = "hash"
+      ) or
       node instanceof Sanitizer
     }
   }
@@ -82,18 +88,42 @@ module DomBasedXss {
   }
 
   /**
-   * An expression whose value is interpreted as HTML or CSS
+   * An expression whose value is interpreted as HTML
    * and may be inserted into the DOM through a library.
    */
-  class LibrarySink extends Sink {
+  class LibrarySink extends Sink, DataFlow::ValueNode {
     LibrarySink() {
-      // Call to a jQuery method that inserts its argument into the DOM
-      exists(JQueryMethodCall call |
-        call.interpretsArgumentsAsHtml() and
-        this.asExpr() = call.getAnArgument()
-      ) or
+      // call to a jQuery method that interprets its argument as HTML
+      exists(JQueryMethodCall call | call.interpretsArgumentAsHtml(astNode) |
+        // either the argument is always interpreted as HTML
+        not call.interpretsArgumentAsSelector(astNode)
+        or
+        // or it doesn't start with something other than `<`, and so at least
+        // _may_ be interpreted as HTML
+        not exists (Expr prefix, string strval |
+          isPrefixOfJQueryHtmlString(astNode, prefix) and
+          strval = prefix.getStringValue() and
+          not strval.regexpMatch("\\s*<.*")
+        )
+      )
+      or
+      // call to an Angular method that interprets its argument as HTML
       any(AngularJS::AngularJSCall call).interpretsArgumentAsHtml(this.asExpr())
     }
+  }
+
+  /**
+   * Holds if `prefix` is a prefix of `htmlString`, which may be intepreted as
+   * HTML by a jQuery method.
+   */
+  private predicate isPrefixOfJQueryHtmlString(Expr htmlString, Expr prefix) {
+    any(JQueryMethodCall call).interpretsArgumentAsHtml(htmlString) and
+    prefix = htmlString
+    or
+    exists (Expr pred | isPrefixOfJQueryHtmlString(htmlString, pred) |
+      prefix = pred.(AddExpr).getLeftOperand() or
+      prefix = pred.(ParExpr).getExpression()
+    )
   }
 
   /**
@@ -139,7 +169,7 @@ module DomBasedXss {
           attr.getValue() = danger.asExpr()
         )
         or
-        exists (ReactElementDefinition def, DataFlow::ObjectExprNode props |
+        exists (ReactElementDefinition def, DataFlow::ObjectLiteralNode props |
           props.flowsTo(def.getProps()) and
           props.hasPropertyWrite("dangerouslySetInnerHTML", danger)
         ) |

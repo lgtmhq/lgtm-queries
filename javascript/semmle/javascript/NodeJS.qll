@@ -14,7 +14,7 @@
 /** Provides classes for working with Node.js modules. */
 
 import javascript
-private import FilesInternal
+private import NodeModuleResolutionImpl
 
 /**
  * A Node.js module.
@@ -249,63 +249,6 @@ class Require extends CallExpr, Import {
       result = loadAsDirectory(this, r, priority - (prioritiesPerCandidate() * r + numberOfExtensions() + 1))
     )
   }
-}
-
-private int prioritiesPerCandidate() {
-  result = 3 * (numberOfExtensions() + 1)
-}
-
-private int numberOfExtensions() {
-  result = count(getFileExtensionPriority(_))
-}
-
-/**
- * Gets the resolution target with the given `priority` of `req`
- * when resolved from the root with priority `rootPriority`.
- */
-private File loadAsFile(Require req, int rootPriority, int priority) {
-  exists (PathExpr path | path = req.getImportedPath() |
-    result = path.resolve(rootPriority) and priority = 0 or
-    exists (Folder encl | encl = path.resolveUpTo(path.getNumComponent()-1, rootPriority) |
-      result = tryExtensions(encl, path.getBaseName(), priority-1)
-    )
-  )
-}
-
-/**
- * Gets the default main module of the folder that is the resolution target
- * with the given `priority` of `req` when resolved from the root with
- * priority `rootPriority`.
- */
-private File loadAsDirectory(Require req, int rootPriority, int priority) {
-  exists (Folder dir | dir = req.getImportedPath().resolve(rootPriority) |
-    result = resolveMainModule(dir.(NPMPackage).getPackageJSON(), priority) or
-    result = tryExtensions(dir, "index", priority-4)
-  )
-}
-
-/**
- * Gets the main module described by `pkgjson` with the given `priority`.
- */
-private File resolveMainModule(PackageJSON pkgjson, int priority) {
-  exists (Folder dir, string main |
-    dir = pkgjson.getFile().getParentContainer() and main = pkgjson.getMain() |
-    result = dir.getFile(main) and priority = 0 or
-    result = tryExtensions(dir, main, priority-1)
-  )
-}
-
-/**
- * Gets a file in folder `dir` whose name is of the form `basename.extension`,
- * where `extension` has the given `priority`.
- *
- * This may resolve to an `mjs` file even though `require` will never find those files at runtime.
- * We do this to handle the case where an `mjs` file is transpiled to `js`, and we want to find the
- * original source file.
- */
-bindingset[basename]
-private File tryExtensions(Folder dir, string basename, int priority) {
-  exists (string ext | result = dir.getFile(basename, ext) | priority = getFileExtensionPriority(ext))
 }
 
 /** A literal path expression appearing in a `require` import. */

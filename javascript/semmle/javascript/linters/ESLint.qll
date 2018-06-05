@@ -134,7 +134,7 @@ module ESLint {
       getConfiguration().appliesTo(s.getTopLevel())
     }
 
-    abstract Configuration getConfiguration();
-    abstract boolean getBooleanProperty(string p);
+    override abstract Configuration getConfiguration();
+    override abstract boolean getBooleanProperty(string p);
   }
 }

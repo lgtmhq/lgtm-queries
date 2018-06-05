@@ -39,7 +39,7 @@ module SyntacticConstants {
   /**
    * A literal primitive expression.
    *
-   * NB: `undefined`, `NaN` and `Infinity` are global variables, and are not covered by this class.
+   * Note that `undefined`, `NaN` and `Infinity` are global variables, and are not covered by this class.
    */
   class PrimitiveLiteralConstant extends SyntacticConstant {
 

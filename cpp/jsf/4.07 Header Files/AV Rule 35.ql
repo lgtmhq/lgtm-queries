@@ -45,11 +45,11 @@ abstract class MaybePreprocessorDirective extends TMaybePreprocessorDirective {
 }
 
 class NoPreprocessorDirective extends TNoPreprocessorDirective, MaybePreprocessorDirective {
-  string toString() {
+  override string toString() {
     result = ""
   }
   
-  Location getLocation() {
+  override Location getLocation() {
     result instanceof UnknownDefaultLocation
   }
 }
@@ -61,11 +61,11 @@ class SomePreprocessorDirective extends TSomePreprocessorDirective, MaybePreproc
     this = TSomePreprocessorDirective(pd)
   }
 
-  string toString() {
+  override string toString() {
     result = pd.toString()
   }
   
-  Location getLocation() {
+  override Location getLocation() {
     result = pd.getLocation()
   }
   

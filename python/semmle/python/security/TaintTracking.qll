@@ -23,7 +23,7 @@
  *
  * ## Specification
  *
- * There are five parts to the specification of a taint tracking query.
+ * There are four parts to the specification of a taint tracking query.
  * These are:
  *
  * 1. Kinds

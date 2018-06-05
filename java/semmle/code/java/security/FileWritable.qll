@@ -82,7 +82,7 @@ private VarAccess getFileForPathConversion(Expr pathExpr) {
       pathsGet = pathExpr and
       pathsGet.getMethod().hasName("get") and
       pathsGet.getMethod().getDeclaringType().hasQualifiedName("java.nio.file", "Paths") and
-      fileGetPath = pathsGet.getArgument(0) and 
+      fileGetPath = pathsGet.getArgument(0) and
       result = fileGetPath.getQualifier() |
       fileGetPath.getMethod().hasName("getPath") or
       fileGetPath.getMethod().hasName("getAbsolutePath") or

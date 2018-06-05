@@ -188,3 +188,67 @@ class AnalyzedNode extends DataFlow::Node {
  */
 class AnalyzedValueNode extends AnalyzedNode, DataFlow::ValueNode {
 }
+
+/**
+ * A module for which analysis results are available.
+ *
+ * The type inference supports AMD, CommonJS and ES2015 modules. All three
+ * variants are modelled as CommonJS modules, with `module` object and a default
+ * `exports` object which is the initial value of `module.exports`. ES2015
+ * exports are modelled as property writes on `module.exports`, and imports
+ * as property reads on any potential value of `module.exports`.
+ */
+class AnalyzedModule extends TopLevel {
+  Module m;
+
+  AnalyzedModule() { this = m }
+
+  /** Gets the name of this module. */
+  string getName() {
+    result = m.getName()
+  }
+
+  /**
+   * Gets the abstract value representing this module's `module` object.
+   */
+  AbstractModuleObject getModuleObject() {
+    result.getModule() = this
+  }
+
+  /**
+   * Gets the abstract property representing this module's `module.exports`
+   * property.
+   */
+  AbstractProperty getExportsProperty() {
+    result.getBase() = getModuleObject() and
+    result.getPropertyName() = "exports"
+  }
+
+  /**
+   * Gets an abstract value inferred for this module's `module.exports`
+   * property.
+   */
+  AbstractValue getAnExportsValue() {
+    result = getExportsProperty().getAValue()
+  }
+
+  /**
+   * Gets an abstract value representing a value exported by this module
+   * under the given `name`.
+   */
+  AbstractValue getAnExportedValue(string name) {
+    exists (AbstractValue exports | exports = getAnExportsValue() |
+      // CommonJS modules export `module.exports` as their `default`
+      // export in an ES2015 setting
+      not m instanceof ES2015Module and
+      name = "default" and
+      result = exports
+      or
+      exists (AbstractProperty exported |
+        exported.getBase() = exports and
+        exported.getPropertyName() = name and
+        result = exported.getAValue()
+      )
+    )
+  }
+}

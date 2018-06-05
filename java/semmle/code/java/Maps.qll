@@ -22,14 +22,14 @@ class MapType extends RefType {
       this.hasSupertype*(coll)
     )
   }
-  
+
   /** The type of keys stored in this map. */
   RefType getKeyType() {
     exists (GenericInterface map | map.hasQualifiedName("java.util", "Map") |
       indirectlyInstantiates(this, map, 0, result)
     )
   }
-  
+
   /** The type of values stored in this map. */
   RefType getValueType() {
     exists (GenericInterface map | map.hasQualifiedName("java.util", "Map") |
@@ -43,12 +43,12 @@ class MapMethod extends Method {
   MapMethod() {
     this.getDeclaringType() instanceof MapType
   }
-  
+
   /** The type of keys of the map to which this method belongs. */
   RefType getReceiverKeyType() {
     result = this.getDeclaringType().(MapType).getKeyType()
   }
-  
+
   /** The type of values of the map to which this method belongs. */
   RefType getReceiverValueType() {
     result = this.getDeclaringType().(MapType).getValueType()
@@ -74,9 +74,9 @@ class MapMutation extends MethodAccess {
   MapMutation() {
     this.getMethod() instanceof MapMutator
   }
-  
+
   predicate resultIsChecked() {
-    not this.getParent() instanceof ExprStmt 
+    not this.getParent() instanceof ExprStmt
   }
 }
 

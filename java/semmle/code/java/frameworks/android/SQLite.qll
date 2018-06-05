@@ -28,8 +28,8 @@ class ExecSqlMethod extends SQLiteRunner {
     this.getDeclaringType() instanceof TypeSQLiteDatabase and
     this.getName() = "execSql"
   }
-  
-  int sqlIndex() { result = 0 }
+
+  override int sqlIndex() { result = 0 }
 }
 
 class QueryMethod extends SQLiteRunner {
@@ -37,12 +37,12 @@ class QueryMethod extends SQLiteRunner {
     this.getDeclaringType() instanceof TypeSQLiteDatabase and
     this.getName().matches("rawQuery%")
   }
-  
-  int sqlIndex() {
-    this.getName() = "query" and 
+
+  override int sqlIndex() {
+    this.getName() = "query" and
     (
-      if this.getParameter(0).getType() instanceof TypeString 
-      then result = 2 
+      if this.getParameter(0).getType() instanceof TypeString
+      then result = 2
       else result = 3
     ) or
     this.getName() = "queryWithFactory" and result = 4
@@ -54,8 +54,8 @@ class RawQueryMethod extends SQLiteRunner {
     this.getDeclaringType() instanceof TypeSQLiteDatabase and
     this.getName().matches("rawQuery%")
   }
-  
-  int sqlIndex() {
+
+  override int sqlIndex() {
     this.getName() = "rawQuery" and result = 0 or
     this.getName() = "rawQueryWithFactory" and result = 1
   }

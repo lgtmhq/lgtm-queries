@@ -461,7 +461,7 @@ class NgAst extends TNgAst, NgAstNode {
     this = TNgAst(start, end, _, _)
   }
 
-  string pp() {
+  override string pp() {
     exists(string oneTime |
       (if isOneTime () then oneTime = " <oneTime>" else oneTime = "") and
       result = "(NgAst:" + oneTime + " " + ppChildren() + ")"

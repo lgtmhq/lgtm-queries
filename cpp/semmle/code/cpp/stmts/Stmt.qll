@@ -13,6 +13,7 @@
 
 import semmle.code.cpp.Element
 private import semmle.code.cpp.Enclosing
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ statement.
@@ -1900,7 +1901,7 @@ class VlaDeclStmt extends Stmt, @stmt_vla_decl {
    * Gets the type that this VLA declaration statement relates to,
    * if any.
    */
-  Type getType() { type_vla(result, this) }
+  Type getType() { type_vla(unresolve(result), this) }
 
   /**
    * Gets the variable that this VLA declaration statement relates to,

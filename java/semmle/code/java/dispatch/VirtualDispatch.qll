@@ -13,6 +13,8 @@
 
 import java
 import semmle.code.java.dataflow.TypeFlow
+private import semmle.code.java.dataflow.internal.BaseSSA
+private import semmle.code.java.dataflow.Guards
 
 /**
  * A conservative analysis that returns a single method - if we can establish
@@ -138,6 +140,30 @@ cached private module Dispatch {
    */
   cached
   Method viableImpl_v1(MethodAccess source) {
+    result = viableImpl_v1_cand(source) and
+    not impossibleDispatchTarget(source, result)
+  }
+
+  /**
+   * Holds if `source` cannot dispatch to `tgt` due to a negative `instanceof` guard.
+   */
+  private predicate impossibleDispatchTarget(MethodAccess source, Method tgt) {
+    tgt = viableImpl_v1_cand(source) and
+    exists(ConditionBlock cond, InstanceOfExpr ioe, BaseSsaVariable v, Expr q, RefType t |
+      source.getQualifier() = q and
+      v.getAUse() = q and
+      cond.getCondition() = ioe and
+      cond.controls(q.getBasicBlock(), false) and
+      ioe.getExpr() = v.getAUse() and
+      ioe.getTypeName().getType().getErasure() = t and
+      tgt.getDeclaringType().getSourceDeclaration().getASourceSupertype*() = t
+    )
+  }
+
+  /**
+   * Gets a viable implementation of the method called in the given method access.
+   */
+  private Method viableImpl_v1_cand(MethodAccess source) {
     not result.isAbstract() and
     if source instanceof VirtualMethodAccess then
       exists(CalledMethod def, RefType t, boolean exact |

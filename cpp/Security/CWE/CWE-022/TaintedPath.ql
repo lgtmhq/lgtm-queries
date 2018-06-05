@@ -66,7 +66,7 @@ class FileFunction extends FunctionWithWrappers {
   }
 
   // conveniently, all of these functions take the path as the first parameter!
-  predicate interestingArg(int arg) {
+  override predicate interestingArg(int arg) {
     arg = 0
   }
 }

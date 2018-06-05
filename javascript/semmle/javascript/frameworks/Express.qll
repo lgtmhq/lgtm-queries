@@ -157,7 +157,8 @@ module Express {
     }
 
     override DataFlow::SourceNode getARouteHandler() {
-      result.flowsToExpr(getARouteHandlerExpr())
+      result.(DataFlow::SourceNode).flowsTo(getARouteHandlerExpr().flow()) or
+      result.(DataFlow::TrackedNode).flowsTo(getARouteHandlerExpr().flow())
     }
 
     override Expr getServer() {
@@ -362,7 +363,7 @@ module Express {
     override Function astNode;
 
     StandardRouteHandler() {
-      any(RouteSetup s).getARouteHandler() = this
+      this = any(RouteSetup setup).getARouteHandler()
     }
 
     override SimpleParameter getRouteHandlerParameter(string kind) {
@@ -412,7 +413,7 @@ module Express {
     /**
      * Gets the route handler that provides this response.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }
@@ -431,7 +432,7 @@ module Express {
     /**
      * Gets the route handler that handles this request.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }
@@ -453,7 +454,7 @@ module Express {
   /**
    * An access to a user-controlled Express request input.
    */
-  private class RequestInputAccess extends HTTP::RequestInputAccess {
+  class RequestInputAccess extends HTTP::RequestInputAccess {
     RouteHandler rh;
     string kind;
 
@@ -589,7 +590,7 @@ module Express {
    * An invocation of the `set` or `header` method on an HTTP response object that
    * sets multiple headers.
    */
-  private class SetMultipleHeaders extends ExplicitHeader, DataFlow::ValueNode {
+  class SetMultipleHeaders extends ExplicitHeader, DataFlow::ValueNode {
     override MethodCallExpr astNode;
     RouteHandler rh;
 
@@ -599,16 +600,27 @@ module Express {
       astNode.getMethodName() = any(string n | n = "set" or n = "header") and
       astNode.getNumArgument() = 1
     }
+    
+    /**
+     * Gets a reference to the multiple headers object that is to be set. 
+     */
+    private DataFlow::SourceNode getAHeaderSource() {
+      result.flowsToExpr(astNode.getArgument(0))
+    }
 
     override predicate definesExplicitly(string headerName, Expr headerValue) {
-      exists (DataFlow::SourceNode headers |
-        headers.flowsToExpr(astNode.getArgument(0)) and
-        headers.hasPropertyWrite(headerName, DataFlow::valueNode(headerValue))
-      )
+      getAHeaderSource().hasPropertyWrite(headerName, DataFlow::valueNode(headerValue))      
     }
 
     override RouteHandler getRouteHandler() {
       result = rh
+    }
+    
+    override Expr getNameExpr() {
+      exists (DataFlow::PropWrite write  | 
+        getAHeaderSource().flowsTo(write.getBase()) and
+        result = write.getPropertyNameExpr()
+      )      
     }
   }
 
@@ -682,7 +694,7 @@ module Express {
     /**
      * Gets a route handler of the application, regardless of nesting.
      */
-    HTTP::RouteHandler getARouteHandler() {
+    override HTTP::RouteHandler getARouteHandler() {
       result = this.(RouterDefinition).getASubRouter*().getARouteHandler()
     }
 
@@ -761,7 +773,7 @@ module Express {
       exists (DataFlow::CallNode call, DataFlow::ModuleImportNode mod |
         mod.getPath() = "express-basic-auth" and
         call = mod.getAnInvocation() and
-        exists (DataFlow::ObjectExprNode usersSrc, DataFlow::PropWrite pwn |
+        exists (DataFlow::ObjectLiteralNode usersSrc, DataFlow::PropWrite pwn |
           usersSrc.flowsTo(call.getOptionArgument(0, "users")) and
           usersSrc.flowsTo(pwn.getBase()) |
           this = pwn.getPropertyNameExpr() and kind = "user name"
@@ -819,6 +831,39 @@ module Express {
       result = getRouteHandlerParameter(astNode, kind)
     }
 
+  }
+
+  /**
+   * A call that looks like a route setup on an Express server.
+   *
+   * For example, this could be the call `router.use(handler)` or
+   * `router.post(handler)` where it is unknown if `router` is an
+   * Express router.
+   */
+  class RouteSetupCandidate extends HTTP::RouteSetupCandidate, DataFlow::MethodCallNode {
+
+    DataFlow::ValueNode routeHandlerArg;
+
+    RouteSetupCandidate() {
+      exists (string methodName |
+        methodName = "all" or
+        methodName = "use" or
+        methodName = any(HTTP::RequestMethodName m).toLowerCase() |
+        getMethodName() = methodName and
+        exists (DataFlow::ValueNode arg |
+          arg = getAnArgument() |
+          exists (DataFlow::ArrayLiteralNode array |
+            array.flowsTo(arg) and
+            routeHandlerArg = array.getAnElement()
+          ) or
+          routeHandlerArg = arg
+        )
+      )
+    }
+
+    override DataFlow::ValueNode getARouteHandlerArg() {
+      result = routeHandlerArg
+    }
   }
 
 }

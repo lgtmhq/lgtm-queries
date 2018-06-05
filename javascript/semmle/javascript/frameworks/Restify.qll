@@ -69,7 +69,7 @@ module Restify {
     /**
      * Gets the route handler that provides this response.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }
@@ -88,7 +88,7 @@ module Restify {
     /**
      * Gets the route handler that handles this request.
      */
-    RouteHandler getRouteHandler() {
+    override RouteHandler getRouteHandler() {
       result = rh
     }
   }

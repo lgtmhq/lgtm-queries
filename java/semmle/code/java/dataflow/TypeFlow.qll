@@ -21,8 +21,9 @@
  * explicit or implicit cast that lost type information.
  */
 import java
-import semmle.code.java.dispatch.VirtualDispatch
-import semmle.code.java.dataflow.internal.BaseSSA
+private import semmle.code.java.dispatch.VirtualDispatch
+private import semmle.code.java.dataflow.internal.BaseSSA
+private import semmle.code.java.dataflow.Guards
 
 private newtype TTypeFlowNode =
   TField(Field f) or
@@ -193,6 +194,35 @@ private predicate upcastEnhancedForStmt(BaseSsaUpdate v, RefType t) {
 }
 
 /**
+ * Holds if `va` is an access to a value that has previously been downcast to `t`.
+ */
+private predicate downcastSuccessor(VarAccess va, RefType t) {
+  exists(CastExpr cast, BaseSsaVariable v, RefType t1, RefType t2 |
+    cast.getExpr() = v.getAUse() and
+    t = cast.getType() and
+    t1 = t.getErasure() and
+    t2 = v.getSourceVariable().getType().getErasure() and
+    t1.getASourceSupertype+() = t2 and
+    va = v.getAUse() and
+    dominates(cast, va) and
+    dominates(cast.(ControlFlowNode).getANormalSuccessor(), va)
+  )
+}
+
+/**
+ * Holds if `va` is an access to a value that is guarded by `instanceof t`.
+ */
+private predicate instanceOfGuarded(VarAccess va, RefType t) {
+  exists(ConditionBlock cond, InstanceOfExpr ioe, BaseSsaVariable v |
+    cond.getCondition() = ioe and
+    ioe.getExpr() = v.getAUse() and
+    t = ioe.getTypeName().getType() and
+    va = v.getAUse() and
+    cond.controls(va.getBasicBlock(), true)
+  )
+}
+
+/**
  * Holds if `t` is a bound that holds on one of the incoming edges to `n` and
  * thus is a candidate bound for `n`.
  */
@@ -227,6 +257,8 @@ private predicate typeFlowJoin(int r, TypeFlowNode n, RefType t) {
 private predicate typeFlow(TypeFlowNode n, RefType t) {
   exists(Expr e | n.asExpr() = e and upcast(e) and t = e.getType()) or
   upcastEnhancedForStmt(n.asSsa(), t) or
+  downcastSuccessor(n.asExpr(), t) or
+  instanceOfGuarded(n.asExpr(), t) or
   exists(TypeFlowNode mid | typeFlow(mid, t) and step(mid, n)) or
   typeFlowJoin(lastRank(n), n, t)
 }

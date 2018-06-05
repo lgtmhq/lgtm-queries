@@ -23,8 +23,8 @@ import semmle.code.java.UnitTests
 /** This class provides access to metrics information for reference types. */
 class MetricRefType extends RefType, MetricElement {
   /** The percentage of lines in this reference type that consist of comments. */
-  float getPercentageOfComments() { 
-    exists(float n | 
+  override float getPercentageOfComments() {
+    exists(float n |
       n = this.getTotalNumberOfLines() and
       n > 0 and
       result = 100 * (this.getNumberOfCommentLines() / n)
@@ -96,7 +96,7 @@ class MetricRefType extends RefType, MetricElement {
   /**
    * A dependency of this element, for use with John Lakos's "level metric".
    */
-  MetricElement getADependency() {
+  override MetricElement getADependency() {
     depends(this,result) and this != result
   }
 
@@ -105,11 +105,11 @@ class MetricRefType extends RefType, MetricElement {
    * and both are declared in this type.
    */
   predicate accessesLocalField(Method m,Field f) {
-    m.accesses(f) and 
+    m.accesses(f) and
     m.getDeclaringType() = this and
     f.getDeclaringType() = this
   }
-     
+
   /** Any method declared in this type that accesses a field declared in this type. */
   Method getAccessingMethod() {
     exists(Field f | this.accessesLocalField(result,f))
@@ -171,7 +171,7 @@ class MetricRefType extends RefType, MetricElement {
     not (c instanceof TestMethod) and
     exists(Field f | c.getDeclaringType() = this and c.accesses(f) and relevantFieldForCohesion(f))
   }
-  
+
   private pragma[noopt] predicate relevantFieldForCohesion(Field f) {
     exists(RefType t |
       t = this.getAnAncestor()
@@ -296,17 +296,17 @@ class MetricRefType extends RefType, MetricElement {
    */
   int getResponse() {
     result = sum(Callable c | c.getDeclaringType() = this | count(c.getACallee()))
-  } 
+  }
 
   /**
    * Exclusions from the number of overriding methods,
    * for use with the specialization index metric.
    */
   predicate ignoreOverride(Method c) {
-    c.hasStringSignature("equals(Object)") 
-    or c.hasStringSignature("hashCode()") 
-    or c.hasStringSignature("toString()") 
-    or c.hasStringSignature("finalize()") 
+    c.hasStringSignature("equals(Object)")
+    or c.hasStringSignature("hashCode()")
+    or c.hasStringSignature("toString()")
+    or c.hasStringSignature("finalize()")
     or c.hasStringSignature("clone()")
   }
 
@@ -316,7 +316,7 @@ class MetricRefType extends RefType, MetricElement {
     exists(Method c | result.overrides(c) and not(c.isAbstract())) and
     not(this.ignoreOverride(result))
   }
- 
+
   /** The number of methods that are overridden by this class. */
   int getNumberOverridden() {
     result = count(this.getOverrides())
@@ -339,27 +339,26 @@ class MetricRefType extends RefType, MetricElement {
   }
 
   /** The Halstead length of a type is estimated as the sum of the Halstead lengths of its callables. */
-  int getHalsteadLength() { 
+  override int getHalsteadLength() {
     result = sum(Callable c, int toSum | (c = this.getACallable()) and (toSum = c.getMetrics().getHalsteadLength()) | toSum)
   }
 
   /** The Halstead vocabulary of a type is estimated as the sum of the Halstead vocabularies of its callables. */
-  int getHalsteadVocabulary() { 
+  override int getHalsteadVocabulary() {
     result = sum(Callable c, int toSum | (c = this.getACallable()) and (toSum = c.getMetrics().getHalsteadVocabulary()) | toSum)
   }
 
   /** The cyclomatic complexity of a type is estimated as the sum of the cyclomatic complexities of its callables. */
-  int getCyclomaticComplexity() {
+  override int getCyclomaticComplexity() {
     result = sum(Callable c, int toSum | (c = this.getACallable()) and (toSum = c.getMetrics().getCyclomaticComplexity()) | toSum)
   }
-   
+
   /** The number of lines of code in this reference type. */
-  int getNumberOfLinesOfCode() { numlines(this, _, result, _) }
-  
+  override int getNumberOfLinesOfCode() { numlines(this, _, result, _) }
+
   /** The number of lines of comments in this reference type. */
-  int getNumberOfCommentLines() { numlines(this, _, _, result) }
+  override int getNumberOfCommentLines() { numlines(this, _, _, result) }
 
   /** The total number of lines in this reference type, including code, comments and whitespace-only lines. */
-  int getTotalNumberOfLines() { numlines(this, result, _, _) }
+  override int getTotalNumberOfLines() { numlines(this, result, _, _) }
 }
-     

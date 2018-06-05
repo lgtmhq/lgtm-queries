@@ -49,7 +49,7 @@ class TargetAnnotation extends Annotation {
   TargetAnnotation() {
     this.getType().hasQualifiedName("java.lang.annotation", "Target")
   }
-  
+
   /**
    * A target expression within this annotation.
    *
@@ -61,7 +61,7 @@ class TargetAnnotation extends Annotation {
     (result = this.getAValue() or
      result = this.getAValue().(ArrayInit).getAnInit())
   }
-  
+
   /**
    * The name of a target element type.
    *
@@ -91,7 +91,7 @@ class RetentionAnnotation extends Annotation {
   Expr getRetentionPolicyExpression() {
     result = this.getValue("value")
   }
-  
+
   /**
    * The name of the retention policy of this annotation.
    *

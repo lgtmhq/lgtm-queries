@@ -12,6 +12,7 @@
 // permissions and limitations under the License.
 
 import semmle.code.cpp.Class
+private import semmle.code.cpp.internal.Type
 
 /**
  * An Objective C class.
@@ -178,7 +179,7 @@ class Property extends Declaration, @property {
   override Location getLocation() { property_decl_location(this, result) }
 
   /** Gets the type of this property. */
-  Type getType() { properties(this, result, _, _) }
+  Type getType() { properties(this, unresolve(result), _, _) }
 
   /**
    * Gets the instance method which is called to get the value of this

@@ -38,12 +38,12 @@ class JavadocParent extends @javadocParent, Top {
     result = this.getAChild() and result.getTagName() = name
   }
 
-  /*abstract*/ string toString() { result = "Javadoc" }
+  /*abstract*/ override string toString() { result = "Javadoc" }
 }
 
 /** A Javadoc comment. */
 class Javadoc extends JavadocParent, @javadoc {
- 
+
   /** The number of lines in this Javadoc comment. */
   int getNumberOfLines() {
     result = this.getLocation().getNumberOfCommentLines()
@@ -59,7 +59,7 @@ class Javadoc extends JavadocParent, @javadoc {
     result = this.getATag("@author").getChild(0).toString()
   }
 
-  string toString() {
+  override string toString() {
     result = toStringPrefix() + getChild(0) + toStringPostfix()
   }
 
@@ -113,8 +113,8 @@ abstract class JavadocElement extends @javadocElement, Top {
   }
 
   /** A printable representation of this Javadoc element. */
-  /*abstract*/ string toString() { result = "Javadoc element" }
-  
+  /*abstract*/ override string toString() { result = "Javadoc element" }
+
   /** The line of text associated with this Javadoc element. */
   abstract string getText();
 }
@@ -125,10 +125,10 @@ class JavadocTag extends JavadocElement, JavadocParent, @javadocTag {
   string getTagName() { javadocTag(this,result,_,_) }
 
   /** A printable representation of this Javadoc tag. */
-  string toString() { result = this.getTagName() }
-  
+  override string toString() { result = this.getTagName() }
+
   /** The text associated with this Javadoc tag. */
-  string getText() { result = this.getChild(0).toString() }
+  override string getText() { result = this.getChild(0).toString() }
 }
 
 /** A Javadoc `@param` tag. */
@@ -139,7 +139,7 @@ class ParamTag extends JavadocTag {
   string getParamName() { result = this.getChild(0).toString() }
 
   /** The documentation for the parameter. */
-  string getText() { result = this.getChild(1).toString() }
+  override string getText() { result = this.getChild(1).toString() }
 }
 
 /** A Javadoc `@throws` or `@exception` tag. */
@@ -150,7 +150,7 @@ class ThrowsTag extends JavadocTag {
   string getExceptionName() { result = this.getChild(0).toString() }
 
   /** The documentation for the exception. */
-  string getText() { result = this.getChild(1).toString() }
+  override string getText() { result = this.getChild(1).toString() }
 }
 
 /** A Javadoc `@see` tag. */
@@ -176,8 +176,8 @@ class JavadocText extends JavadocElement, @javadocText {
   Javadoc getJavadoc() { result.getAChild+() = this }
 
   /** The text itself. */
-  string getText() { javadocText(this,result,_,_) }
+  override string getText() { javadocText(this,result,_,_) }
 
   /** A printable representation of this Javadoc element. */
-  string toString() { result = this.getText() }
+  override string toString() { result = this.getText() }
 }

@@ -40,10 +40,10 @@ class Annotation extends @annotation, Expr {
   Element getAnnotatedElement() { this.getParent() = result }
 
   /** The annotation type declaration for this annotation. */
-  AnnotationType getType() { result = Expr.super.getType() }
+  override AnnotationType getType() { result = Expr.super.getType() }
 
   /** The annotation element with the specified `name`. */
-  AnnotationElement getAnnotationElement(string name) { 
+  AnnotationElement getAnnotationElement(string name) {
     result = this.getType().getAnnotationElement(name)
   }
 
@@ -54,16 +54,16 @@ class Annotation extends @annotation, Expr {
   Expr getValue(string name) {
     filteredAnnotValue(this, this.getAnnotationElement(name), result)
   }
- 
+
   /** The element being annotated. */
   Element getTarget() {
     exprs(this, _, _, result, _)
-  } 
+  }
 
-  string toString() { result = this.getType().getName() }
+  override string toString() { result = this.getType().getName() }
 
   /** This expression's Halstead ID (used to compute Halstead metrics). */
-  string getHalsteadID() { result = "Annotation" }
+  override string getHalsteadID() { result = "Annotation" }
 
   /**
    * A value of the annotation element with the specified `name`, which must be declared as an array
@@ -98,15 +98,13 @@ class TypeAnnotation extends @typeannotation, Annotation {
  * from source. This removes the duplication.
  */
 private
-predicate filteredAnnotValue(Annotation a, Method m, Expr val)
-{
+predicate filteredAnnotValue(Annotation a, Method m, Expr val) {
   annotValue(a, m, val) and
   (sourceAnnotValue(a, m, val) or not sourceAnnotValue(a, m, _))
 }
 
 private
-predicate sourceAnnotValue(Annotation a, Method m, Expr val)
-{
+predicate sourceAnnotValue(Annotation a, Method m, Expr val) {
   annotValue(a, m, val) and
   val.getFile().getExtension() = "java"
 }
@@ -123,13 +121,13 @@ class Annotatable extends Element {
 
   /** An annotation that applies to this element. */
   Annotation getAnAnnotation() { result.getAnnotatedElement() = this }
-  
+
   /**
    * Holds if this or any enclosing `Annotatable` has a `@SuppressWarnings("<category>")`
    * annotation attached to it for the specified `category`.
    */
   predicate suppressesWarningsAbout(string category) {
-    exists(string withQuotes 
+    exists(string withQuotes
       | withQuotes = ((SuppressWarningsAnnotation) getAnAnnotation()).getASuppressedWarning()
       | category = withQuotes.substring(1, withQuotes.length() - 1)
     ) or
@@ -154,7 +152,7 @@ class AnnotationType extends Interface {
   AnnotationElement getAnAnnotationElement() {
     methods(result,_,_,_,this,_)
   }
-  
+
   /** Holds if this annotation type is annotated with the meta-annotation `@Inherited`. */
   predicate isInherited() {
     exists(Annotation ann |

@@ -150,7 +150,7 @@ class TypeMath extends Class {
 /** A numeric type, including both primitive and boxed types. */
 class NumericType extends Type {
   NumericType() {
-    exists (string name | 
+    exists (string name |
       name = this.(PrimitiveType).getName() or
       name = this.(BoxedType).getPrimitiveType().getName() |
       name.regexpMatch("byte|short|int|long|double|float")
@@ -386,11 +386,11 @@ class CloneMethod extends Method {
  */
 class MainMethod extends Method {
   MainMethod() {
-    this.isPublic() and 
+    this.isPublic() and
     this.isStatic() and
     this.getReturnType().hasName("void") and
     this.hasName("main") and
-    this.getNumberOfParameters() = 1 and 
+    this.getNumberOfParameters() = 1 and
     exists(Array a | a = this.getAParameter().getType() and
                      a.getDimension() = 1 and
                      a.getElementType() instanceof TypeString)

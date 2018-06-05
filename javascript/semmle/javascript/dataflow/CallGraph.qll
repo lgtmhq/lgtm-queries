@@ -61,9 +61,17 @@ class CallSite extends @invokeexpr {
     (earlierSpreadArgument(i-1) and i < invk.getNumArgument())
   }
 
+  /** Gets a potential callee based on dataflow analysis results. */
+  private Function getACalleeFromDataflow() {
+    result = getACalleeValue().(AbstractCallable).getFunction()
+  }
+
   /** Gets a potential callee of this call site. */
   Function getACallee() {
-    result = getACalleeValue().(AbstractCallable).getFunction()
+    result = getACalleeFromDataflow()
+    or
+    not exists(getACalleeFromDataflow()) and
+    result = invk.getResolvedCallee()
   }
 
   /**

@@ -39,7 +39,7 @@ module StackTraceExposure {
       src instanceof Source
     }
 
-    predicate isSink(DataFlow::Node snk) {
+    override predicate isSink(DataFlow::Node snk) {
       snk instanceof Sink
     }
   }

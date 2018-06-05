@@ -12,22 +12,20 @@
 // permissions and limitations under the License.
 
 /**
- * @name Redeclared variable
- * @description Declaring the same variable twice is confusing and may even suggest a latent bug.
+ * @name XPath injection
+ * @description Building an XPath expression from user-controlled sources is vulnerable to insertion of
+ *              malicious code by the user.
  * @kind problem
- * @problem.severity recommendation
- * @id js/variable-redeclaration
- * @tags reliability
- *       readability
- * @precision very-high
+ * @problem.severity error
+ * @precision high
+ * @id js/xpath-injection
+ * @tags security
+ *       external/cwe/cwe-643
  */
 
 import javascript
-private import Declarations
+import semmle.javascript.security.dataflow.XpathInjection::XpathInjection
 
-from Variable v, TopLevel tl, VarDecl decl, VarDecl redecl
-where decl = firstRefInTopLevel(v, Decl(), tl) and
-      redecl = refInTopLevel(v, Decl(), tl) and
-      redecl != decl and
-      not tl.isExterns()
-select redecl, "This variable has already been declared $@.", decl, "here"
+from Configuration c, Source source, Sink sink
+where c.hasFlow(source, sink)
+select sink, "$@ flows here and is used in an XPath expression.", source, "User-provided value"

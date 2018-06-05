@@ -34,10 +34,10 @@ class Exception extends Element, @exception {
   Callable getCallable() { exceptions(this,_,result) }
 
   /** The name of this exception is the name of its type. */
-  string getName() { result = this.getType().getName() }
+  override string getName() { result = this.getType().getName() }
 
   /** Holds if this exception has the specified `name`. */
-  predicate hasName(string name) { this.getType().hasName(name) }
+  override predicate hasName(string name) { this.getType().hasName(name) }
 
-  string toString() { result = this.getType().toString() }
+  override string toString() { result = this.getType().toString() }
 }

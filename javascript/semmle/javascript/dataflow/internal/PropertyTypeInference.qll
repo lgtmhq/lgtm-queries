@@ -111,6 +111,12 @@ abstract class AnalyzedPropertyWrite extends DataFlow::Node {
    * concrete objects represented by `baseVal`.
    */
   abstract predicate writes(AbstractValue baseVal, string propName, DataFlow::AnalyzedNode source);
+
+  /**
+   * Holds if the flow information for the base node of this property write is incomplete
+   * due to `reason`.
+   */
+  predicate baseIsIncomplete(DataFlow::Incompleteness reason) { none() }
 }
 
 /**
@@ -123,6 +129,10 @@ private class AnalyzedExplicitPropertyWrite extends AnalyzedPropertyWrite {
 
   override predicate writes(AbstractValue base, string prop, DataFlow::AnalyzedNode source) {
     explicitPropertyWrite(this, base, prop, source)
+  }
+
+  override predicate baseIsIncomplete(DataFlow::Incompleteness reason) {
+    this.(DataFlow::PropWrite).getBase().isIncomplete(reason)
   }
 }
 

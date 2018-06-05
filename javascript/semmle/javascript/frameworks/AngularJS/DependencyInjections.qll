@@ -159,7 +159,7 @@ private DataFlow::PropWrite getAPropertyDependencyInjection(Function function) {
  */
 private class FunctionWithInjectProperty extends InjectableFunction {
   override Function astNode;
-  ArrayExpr dependencies;
+  DataFlow::ArrayLiteralNode dependencies;
 
   FunctionWithInjectProperty() {
     (
@@ -169,7 +169,7 @@ private class FunctionWithInjectProperty extends InjectableFunction {
     and
     exists (DataFlow::PropWrite pwn |
       pwn = getAPropertyDependencyInjection(astNode) and
-      pwn.getRhs().getALocalSource().asExpr() = dependencies
+      pwn.getRhs().getALocalSource() = dependencies
     )
   }
 
@@ -180,8 +180,11 @@ private class FunctionWithInjectProperty extends InjectableFunction {
   }
 
   override ASTNode getDependencyDeclaration(int i, string name) {
-    result = dependencies.getElement(i) and
-    result.(Expr).mayHaveStringValue(name)
+    exists (DataFlow::ValueNode decl |
+      decl = dependencies.getElement(i) and
+      decl.mayHaveStringValue(name) and
+      result = decl.getAstNode()
+    )
   }
 
   override Function asFunction() { result = astNode }

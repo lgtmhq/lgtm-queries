@@ -551,7 +551,7 @@ class TypeQuery extends Interface {
   TypeQuery() {
     this.hasQualifiedName("javax.persistence", "Query")
   }
-  
+
   /** Gets a method named `setParameter` declared in the `Query` interface. */
   Method getASetParameterMethod() {
     result.hasName("setParameter") and

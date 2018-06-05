@@ -64,7 +64,7 @@ class Top extends @top {
       filepath = f.getAbsolutePath()
     )
   }
-  
+
   /** Returns the file associated with this element. */
   File getFile() {
     fixedHasLocation(this, _, result)
@@ -134,14 +134,14 @@ class Location extends @location {
   }
 
   /** The file containing this location. */
-  File getFile() { locations_default(this,result,_,_,_,_) } 
+  File getFile() { locations_default(this,result,_,_,_,_) }
 
   /** A string representation containing the file and range for this location. */
   string toString() {
     exists(File f, int startLine, int endLine | locations_default(this,f,startLine,_,endLine,_) |
       if endLine = startLine then
         result = f.toString() + ":" + startLine.toString()
-      else 
+      else
         result = f.toString() + ":" + startLine.toString() + "-" + endLine.toString()
     )
   }

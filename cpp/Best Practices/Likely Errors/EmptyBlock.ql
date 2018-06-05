@@ -12,8 +12,11 @@
 // permissions and limitations under the License.
 
 /**
- * @name Empty branch of conditional or empty loop body
- * @description Finds empty branches of conditionals and empty loop bodies. This may indicate badly maintained code.
+ * @name Empty branch of conditional
+ * @description An empty block after a conditional can be a sign of an omission
+ *              and can decrease maintainability of the code. Such blocks
+ *              should contain an explanatory comment to aid future
+ *              maintainers.
  * @kind problem
  * @problem.severity recommendation
  * @precision very-high
@@ -23,54 +26,72 @@
  */
 import cpp
 
-predicate macroUse(Locatable l) {
-  l instanceof PreprocessorDirective or l instanceof MacroInvocation
-}
-
-predicate macroUseLocation(File f, int start, int end) {
-  exists(Locatable l, Location loc |
-    macroUse(l) and
-    loc = l.getLocation() and
-    f = loc.getFile() and
-    start = loc.getStartLine() and
-    end = loc.getEndLine()
-  )
-}
-
-pragma[noopt]
-predicate emptyBlock(ControlStructure s, Block b, File f, int start, int end) {
-  s instanceof ControlStructure and
+predicate emptyBlock(ControlStructure s, Block b) {
   b = s.getAChild() and
-  b instanceof Block and
   not exists(b.getAChild()) and
-  f = b.getFile() and
-  exists (Location l |
-    l = b.getLocation() and
-    start = l.getStartLine() and
-    end = l.getEndLine()
-  )
+  not b.isInMacroExpansion() and
+  not s instanceof Loop
 }
 
-pragma[noopt]
-predicate query(ControlStructure s, Block b) {
-  exists(File f, int blockStart, int blockEnd |
-    emptyBlock(s, b, f, blockStart, blockEnd) and
-    not exists(int macroStart, int macroEnd |
-      macroUseLocation(f, macroStart, macroEnd) and
-      macroStart > blockStart and
-      macroEnd < blockEnd
+class AffectedFile extends File {
+  AffectedFile() {
+    exists(Block b |
+      emptyBlock(_, b) and
+      this = b.getFile()
     )
-  )
+  }
 }
 
-predicate sameLine(ControlStructure cs, Block b) {
-  cs instanceof Loop and
-  b = cs.getAChild() and
-  b.getLocation().getStartLine() = b.getLocation().getEndLine()
+class BlockOrNonChild extends Element {
+  BlockOrNonChild() {
+    ( this instanceof Block
+      or
+      this instanceof Comment
+      or
+      this instanceof PreprocessorDirective
+      or
+      this instanceof MacroInvocation
+    ) and
+    this.getFile() instanceof AffectedFile
+  }
+
+  private int getNonContiguousStartRankIn(AffectedFile file) {
+    // When using `rank` with `order by`, the ranks may not be contiguous.
+    this = rank[result](BlockOrNonChild boc, int startLine, int startCol |
+      boc.getLocation()
+         .hasLocationInfo(file.getAbsolutePath(), startLine, startCol, _, _)
+    | boc
+    order by startLine, startCol
+    )
+  }
+
+  int getStartRankIn(AffectedFile file) {
+    this.getNonContiguousStartRankIn(file) = rank[result](int rnk |
+      exists(BlockOrNonChild boc | boc.getNonContiguousStartRankIn(file) = rnk)
+    )
+  }
+
+  int getNonContiguousEndRankIn(AffectedFile file) {
+    this = rank[result](BlockOrNonChild boc, int endLine, int endCol |
+      boc.getLocation()
+         .hasLocationInfo(file.getAbsolutePath(), _, _, endLine, endCol)
+    | boc
+    order by endLine, endCol
+    )
+  }
+}
+
+predicate emptyBlockContainsNonchild(Block b) {
+  emptyBlock(_, b) and
+  exists(BlockOrNonChild c, AffectedFile file |
+    c.(BlockOrNonChild).getStartRankIn(file) =
+      1 + b.(BlockOrNonChild).getStartRankIn(file) and
+    c.(BlockOrNonChild).getNonContiguousEndRankIn(file) <
+      b.(BlockOrNonChild).getNonContiguousEndRankIn(file)
+  )
 }
 
 from ControlStructure s, Block eb
-where query(s, eb) and
-      not eb.isInMacroExpansion() and
-      not sameLine(s, eb)
-select eb, "Empty block"
+where emptyBlock(s, eb)
+  and not emptyBlockContainsNonchild(eb)
+select eb, "Empty block without comment"

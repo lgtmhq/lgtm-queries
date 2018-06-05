@@ -156,5 +156,11 @@ where noSideEffects(e) and inVoidContext(e) and
       not e instanceof XUnitAnnotation and
       // exclude common patterns that are most likely intentional
       not isIndirectEval(_, e) and
-      not isReceiverSuppressingCall(_, e, _)
+      not isReceiverSuppressingCall(_, e, _) and
+      // exclude anonymous function expressions as statements; these can only arise
+      // from a syntax error we already flag
+      not exists (FunctionExpr fe, ExprStmt es | fe = e |
+        fe = es.getExpr() and
+        not exists(fe.getName())
+      )
 select (FirstLineOf)e, "This expression has no effect."

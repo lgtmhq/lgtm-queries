@@ -22,7 +22,7 @@ import Statement
 
 /** A common super-class that represents all kinds of expressions. */
 class Expr extends ExprParent, @expr {
-  /*abstract*/ string toString() { result = "expr" }
+  /*abstract*/ override string toString() { result = "expr" }
 
   /**
    * The callable in which this expression occurs.
@@ -82,6 +82,9 @@ class Expr extends ExprParent, @expr {
 
   /** The basic block in which this expression occurs, if any. */
   BasicBlock getBasicBlock() { result.getANode() = this }
+
+  /** Gets the `ControlFlowNode` corresponding to this expression. */
+  ControlFlowNode getControlFlowNode() { result = this }
 
   /** This statement's Halstead ID (used to compute Halstead metrics). */
   string getHalsteadID() { result = this.toString() }
@@ -166,7 +169,7 @@ class CompileTimeConstantExpr extends Expr {
       )
     )
   }
-  
+
   /**
    * Get the string value of this expression, where possible.
    */
@@ -175,7 +178,7 @@ class CompileTimeConstantExpr extends Expr {
     or
     result = this.(ParExpr).getExpr().(CompileTimeConstantExpr).getStringValue()
     or
-    result = this.(AddExpr).getLeftOperand().(CompileTimeConstantExpr).getStringValue() 
+    result = this.(AddExpr).getLeftOperand().(CompileTimeConstantExpr).getStringValue()
            + this.(AddExpr).getRightOperand().(CompileTimeConstantExpr).getStringValue()
     or
     // Ternary conditional, with compile-time constant condition.
@@ -356,7 +359,7 @@ class ArrayAccess extends Expr,@arrayaccess {
   /** The index expression of this array access. */
   Expr getIndexExpr() { result.isNthChildOf(this, 1) }
 
-  string toString() { result = "...[...]" }
+  override string toString() { result = "...[...]" }
 }
 
 /**
@@ -394,7 +397,7 @@ class ArrayCreationExpr extends Expr,@arraycreationexpr {
   }
 
   /** A printable representation of this expression. */
-  string toString() { result = "new " + this.getType().toString() }
+  override string toString() { result = "new " + this.getType().toString() }
 }
 
 /** An array initializer occurs in an array creation expression. */
@@ -411,7 +414,7 @@ class ArrayInit extends Expr,@arrayinit {
   Expr getInit(int index) { result = this.getAnInit() and result.getIndex() = index }
 
   /** A printable representation of this expression. */
-  string toString() { result = "{...}" }
+  override string toString() { result = "{...}" }
 }
 
 /** A common super-class that represents all varieties of assignments. */
@@ -431,7 +434,7 @@ class Assignment extends Expr,@assignment {
   Expr getRhs() { result.isNthChildOf(this, 1) }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...=..." }
+  override string toString() { result = "...=..." }
 }
 
 /**
@@ -452,37 +455,37 @@ class AssignOp extends Assignment,@assignop {
    * A source of the compound assignment, which includes both the right-hand side
    * and the left-hand side of the assignment.
    */
-  Expr getSource() { result.getParent() = this }
+  override Expr getSource() { result.getParent() = this }
 
   /** A string representation of the assignment operator of this compound assignment. */
   /*abstract*/ string getOp() { result = "??=" }
 
   /** A printable representation of this expression. */
-  string toString() { result = "..." + this.getOp() + "..." }
+  override string toString() { result = "..." + this.getOp() + "..." }
 }
 
 /** A compound assignment expression using the `+=` operator. */
-class AssignAddExpr extends AssignOp,@assignaddexpr { string getOp() { result = "+=" } }
+class AssignAddExpr extends AssignOp,@assignaddexpr { override string getOp() { result = "+=" } }
 /** A compound assignment expression using the `-=` operator. */
-class AssignSubExpr extends AssignOp,@assignsubexpr { string getOp() { result = "-=" } }
+class AssignSubExpr extends AssignOp,@assignsubexpr { override string getOp() { result = "-=" } }
 /** A compound assignment expression using the `*=` operator. */
-class AssignMulExpr extends AssignOp,@assignmulexpr { string getOp() { result = "*=" } }
+class AssignMulExpr extends AssignOp,@assignmulexpr { override string getOp() { result = "*=" } }
 /** A compound assignment expression using the `/=` operator. */
-class AssignDivExpr extends AssignOp,@assigndivexpr { string getOp() { result = "/=" } }
+class AssignDivExpr extends AssignOp,@assigndivexpr { override string getOp() { result = "/=" } }
 /** A compound assignment expression using the `%=` operator. */
-class AssignRemExpr extends AssignOp,@assignremexpr { string getOp() { result = "%=" } }
+class AssignRemExpr extends AssignOp,@assignremexpr { override string getOp() { result = "%=" } }
 /** A compound assignment expression using the `&=` operator. */
-class AssignAndExpr extends AssignOp,@assignandexpr { string getOp() { result = "&=" } }
+class AssignAndExpr extends AssignOp,@assignandexpr { override string getOp() { result = "&=" } }
 /** A compound assignment expression using the `|=` operator. */
-class AssignOrExpr extends AssignOp,@assignorexpr   { string getOp() { result = "|=" } }
+class AssignOrExpr extends AssignOp,@assignorexpr   { override string getOp() { result = "|=" } }
 /** A compound assignment expression using the `^=` operator. */
-class AssignXorExpr extends AssignOp,@assignxorexpr { string getOp() { result = "^=" } }
+class AssignXorExpr extends AssignOp,@assignxorexpr { override string getOp() { result = "^=" } }
 /** A compound assignment expression using the `<<=` operator. */
-class AssignLShiftExpr extends AssignOp,@assignlshiftexpr  { string getOp() { result = "<<=" } }
+class AssignLShiftExpr extends AssignOp,@assignlshiftexpr  { override string getOp() { result = "<<=" } }
 /** A compound assignment expression using the `>>=` operator. */
-class AssignRShiftExpr extends AssignOp,@assignrshiftexpr  { string getOp() { result = ">>=" } }
+class AssignRShiftExpr extends AssignOp,@assignrshiftexpr  { override string getOp() { result = ">>=" } }
 /** A compound assignment expression using the `>>>=` operator. */
-class AssignURShiftExpr extends AssignOp,@assignurshiftexpr { string getOp() { result = ">>>=" } }
+class AssignURShiftExpr extends AssignOp,@assignurshiftexpr { override string getOp() { result = ">>>=" } }
 
 /** A common super-class to represent constant literals. */
 class Literal extends Expr,@literal {
@@ -493,10 +496,10 @@ class Literal extends Expr,@literal {
   string getValue() { namestrings(_,result,this) }
 
   /** A printable representation of this expression. */
-  string toString() { result = this.getLiteral() }
+  override string toString() { result = this.getLiteral() }
 
   /** Holds if this literal is a compile-time constant expression (as per JLS v8, section 15.28). */
-  predicate isCompileTimeConstant() {
+  override predicate isCompileTimeConstant() {
     this.getType() instanceof PrimitiveType or
     this.getType() instanceof TypeString
   }
@@ -546,8 +549,8 @@ class StringLiteral extends Literal,@stringliteral {
 
 /** The null literal, written `null`. */
 class NullLiteral extends Literal,@nullliteral {
-  string getLiteral() { result = "null" }
-  string getValue() { result = "null" }
+  override string getLiteral() { result = "null" }
+  override string getValue() { result = "null" }
 }
 
 
@@ -575,50 +578,50 @@ class BinaryExpr extends Expr,@binaryexpr {
   }
 
   /** A printable representation of this expression. */
-  string toString() { result = "..." + this.getOp() + "..." }
+  override string toString() { result = "..." + this.getOp() + "..." }
 
   /** A string representation of the operator of this binary expression. */
   /*abstract*/ string getOp() { result = " ?? " }
 }
 
 /** A binary expression using the `*` operator. */
-class MulExpr extends BinaryExpr,@mulexpr { string getOp() { result = " * " } }
+class MulExpr extends BinaryExpr,@mulexpr { override string getOp() { result = " * " } }
 /** A binary expression using the `/` operator. */
-class DivExpr extends BinaryExpr,@divexpr { string getOp() { result = " / " } }
+class DivExpr extends BinaryExpr,@divexpr { override string getOp() { result = " / " } }
 /** A binary expression using the `%` operator. */
-class RemExpr extends BinaryExpr,@remexpr { string getOp() { result = " % " } }
+class RemExpr extends BinaryExpr,@remexpr { override string getOp() { result = " % " } }
 /** A binary expression using the `+` operator. */
-class AddExpr extends BinaryExpr,@addexpr { string getOp() { result = " + " } }
+class AddExpr extends BinaryExpr,@addexpr { override string getOp() { result = " + " } }
 /** A binary expression using the `-` operator. */
-class SubExpr extends BinaryExpr,@subexpr { string getOp() { result = " - " } }
+class SubExpr extends BinaryExpr,@subexpr { override string getOp() { result = " - " } }
 /** A binary expression using the `<<` operator. */
-class LShiftExpr extends BinaryExpr,@lshiftexpr { string getOp() { result = " << " } }
+class LShiftExpr extends BinaryExpr,@lshiftexpr { override string getOp() { result = " << " } }
 /** A binary expression using the `>>` operator. */
-class RShiftExpr extends BinaryExpr,@rshiftexpr { string getOp() { result = " >> " } }
+class RShiftExpr extends BinaryExpr,@rshiftexpr { override string getOp() { result = " >> " } }
 /** A binary expression using the `>>>` operator. */
-class URShiftExpr extends BinaryExpr,@urshiftexpr { string getOp() { result = " >>> " } }
+class URShiftExpr extends BinaryExpr,@urshiftexpr { override string getOp() { result = " >>> " } }
 /** A binary expression using the `&` operator. */
-class AndBitwiseExpr extends BinaryExpr,@andbitexpr { string getOp() { result = " & " } }
+class AndBitwiseExpr extends BinaryExpr,@andbitexpr { override string getOp() { result = " & " } }
 /** A binary expression using the `|` operator. */
-class OrBitwiseExpr extends BinaryExpr,@orbitexpr { string getOp() { result = " | " } }
+class OrBitwiseExpr extends BinaryExpr,@orbitexpr { override string getOp() { result = " | " } }
 /** A binary expression using the `^` operator. */
-class XorBitwiseExpr extends BinaryExpr,@xorbitexpr { string getOp() { result = " ^ " } }
+class XorBitwiseExpr extends BinaryExpr,@xorbitexpr { override string getOp() { result = " ^ " } }
 /** A binary expression using the `&&` operator. */
-class AndLogicalExpr extends BinaryExpr,@andlogicalexpr { string getOp() { result = " && " } }
+class AndLogicalExpr extends BinaryExpr,@andlogicalexpr { override string getOp() { result = " && " } }
 /** A binary expression using the `||` operator. */
-class OrLogicalExpr extends BinaryExpr,@orlogicalexpr { string getOp() { result = " || " } }
+class OrLogicalExpr extends BinaryExpr,@orlogicalexpr { override string getOp() { result = " || " } }
 /** A binary expression using the `<` operator. */
-class LTExpr extends BinaryExpr,@ltexpr { string getOp() { result = " < " } }
+class LTExpr extends BinaryExpr,@ltexpr { override string getOp() { result = " < " } }
 /** A binary expression using the `>` operator. */
-class GTExpr extends BinaryExpr,@gtexpr { string getOp() { result = " > " } }
+class GTExpr extends BinaryExpr,@gtexpr { override string getOp() { result = " > " } }
 /** A binary expression using the `<=` operator. */
-class LEExpr extends BinaryExpr,@leexpr { string getOp() { result = " <= " } }
+class LEExpr extends BinaryExpr,@leexpr { override string getOp() { result = " <= " } }
 /** A binary expression using the `>=` operator. */
-class GEExpr extends BinaryExpr,@geexpr { string getOp() { result = " >= " } }
+class GEExpr extends BinaryExpr,@geexpr { override string getOp() { result = " >= " } }
 /** A binary expression using the `==` operator. */
-class EQExpr extends BinaryExpr,@eqexpr { string getOp() { result = " == " } }
+class EQExpr extends BinaryExpr,@eqexpr { override string getOp() { result = " == " } }
 /** A binary expression using the `!=` operator. */
-class NEExpr extends BinaryExpr,@neexpr { string getOp() { result = " != " } }
+class NEExpr extends BinaryExpr,@neexpr { override string getOp() { result = " != " } }
 
 /**
  * A bitwise expression.
@@ -711,12 +714,12 @@ class LessThanComparison extends ComparisonExpr {
   }
 
   /** The lesser operand of this comparison expression. */
-  Expr getLesserOperand() {
+  override Expr getLesserOperand() {
     result = this.getLeftOperand()
   }
 
   /** The greater operand of this comparison expression. */
-  Expr getGreaterOperand() {
+  override Expr getGreaterOperand() {
     result = this.getRightOperand()
   }
 }
@@ -728,12 +731,12 @@ class GreaterThanComparison extends ComparisonExpr {
   }
 
   /** The lesser operand of this comparison expression. */
-  Expr getLesserOperand() {
+  override Expr getLesserOperand() {
     result = this.getRightOperand()
   }
 
   /** The greater operand of this comparison expression. */
-  Expr getGreaterOperand() {
+  override Expr getGreaterOperand() {
     result = this.getLeftOperand()
   }
 }
@@ -747,7 +750,7 @@ class EqualityTest extends BinaryExpr {
     this instanceof EQExpr
     or this instanceof NEExpr
   }
-  
+
   boolean polarity() {
     result = true and this instanceof EQExpr
     or
@@ -769,21 +772,21 @@ class UnaryAssignExpr extends UnaryExpr,@unaryassignment {
 }
 
 /** A post-increment expression. For example, `i++`. */
-class PostIncExpr extends UnaryAssignExpr,@postincexpr { string toString() { result = "...++" } }
+class PostIncExpr extends UnaryAssignExpr,@postincexpr { override string toString() { result = "...++" } }
 /** A post-decrement expression. For example, `i--`. */
-class PostDecExpr extends UnaryAssignExpr,@postdecexpr { string toString() { result = "...--" } }
+class PostDecExpr extends UnaryAssignExpr,@postdecexpr { override string toString() { result = "...--" } }
 /** A pre-increment expression. For example, `++i`. */
-class PreIncExpr extends UnaryAssignExpr,@preincexpr { string toString() { result = "++..." } }
+class PreIncExpr extends UnaryAssignExpr,@preincexpr { override string toString() { result = "++..." } }
 /** A pre-decrement expression. For example, `--i`. */
-class PreDecExpr extends UnaryAssignExpr,@predecexpr { string toString() { result = "--..." } }
+class PreDecExpr extends UnaryAssignExpr,@predecexpr { override string toString() { result = "--..." } }
 /** A unary minus expression. For example, `-i`. */
-class MinusExpr extends UnaryExpr,@minusexpr { string toString() { result = "-..." } }
+class MinusExpr extends UnaryExpr,@minusexpr { override string toString() { result = "-..." } }
 /** A unary plus expression. For example, `+i`. */
-class PlusExpr extends UnaryExpr,@plusexpr { string toString() { result = "+..." } }
+class PlusExpr extends UnaryExpr,@plusexpr { override string toString() { result = "+..." } }
 /** A bit negation expression. For example, `~x`. */
-class BitNotExpr extends UnaryExpr,@bitnotexpr { string toString() { result = "~..." } }
+class BitNotExpr extends UnaryExpr,@bitnotexpr { override string toString() { result = "~..." } }
 /** A logical negation expression. For example, `!b`. */
-class LogNotExpr extends UnaryExpr,@lognotexpr { string toString() { result = "!..." } }
+class LogNotExpr extends UnaryExpr,@lognotexpr { override string toString() { result = "!..." } }
 
 /** A cast expression. */
 class CastExpr extends Expr,@castexpr {
@@ -794,13 +797,13 @@ class CastExpr extends Expr,@castexpr {
   Expr getExpr() { result.isNthChildOf(this, 1) }
 
   /** A printable representation of this expression. */
-  string toString() { result = "(...)..." }
+  override string toString() { result = "(...)..." }
 }
 
 /** A class instance creation expression. */
 class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   /** The number of arguments provided to the constructor of the class instance creation expression. */
-  int getNumArgument() { count(this.getAnArgument()) = result }
+  override int getNumArgument() { count(this.getAnArgument()) = result }
 
   /** An argument provided to the constructor of this class instance creation expression. */
   override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
@@ -837,11 +840,11 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   Expr getTypeName() { result.isNthChildOf(this, -3) }
 
   /** The constructor invoked by this class instance creation expression. */
-  Constructor getConstructor() { callableBinding(this,result) }
+  override Constructor getConstructor() { callableBinding(this,result) }
 
   /** The anonymous class created by this class instance creation expression, if any. */
   AnonymousClass getAnonymousClass() { isAnonymClass(result, this) }
-  
+
   /**
    * Holds if this class instance creation expression has an
    * empty type argument list of the form `<>`.
@@ -858,7 +861,7 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   override Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
 
   /** A printable representation of this expression. */
-  string toString() { result = "new " + this.getConstructor().getName() + "(...)" }
+  override string toString() { result = "new " + this.getConstructor().getName() + "(...)" }
 }
 
 /** A functional expression is either a lambda expression or a member reference expression. */
@@ -882,7 +885,7 @@ class LambdaExpr extends FunctionalExpr, @lambdaexpr {
    * The implicit method corresponding to this lambda expression.
    * The parameters of the lambda expression are the parameters of this method.
    */
-  Method asMethod() { result = getAnonymousClass().getAMethod() }
+  override Method asMethod() { result = getAnonymousClass().getAMethod() }
 
   /** Holds if the body of this lambda is an expression. */
   predicate hasExprBody() { lambdaKind(this,0) }
@@ -895,7 +898,7 @@ class LambdaExpr extends FunctionalExpr, @lambdaexpr {
   Stmt getStmtBody() { hasStmtBody() and result = asMethod().getBody() }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...->..." }
+  override string toString() { result = "...->..." }
 }
 
 /**
@@ -915,14 +918,14 @@ class MemberRefExpr extends FunctionalExpr, @memberref {
    * (if the reference is to a constructor) or an array creation expression (if the reference
    * is to an array constructor).
    */
-  Method asMethod() { result = getAnonymousClass().getAMethod() }
+  override Method asMethod() { result = getAnonymousClass().getAMethod() }
   /**
    * The method or constructor referenced by this member reference expression.
    */
   Callable getReferencedCallable() { memberRefBinding(this,result) }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...::..." }
+  override string toString() { result = "...::..." }
 }
 
 /**
@@ -947,7 +950,7 @@ class ConditionalExpr extends Expr,@conditionalexpr {
   Expr getFalseExpr() { result.isNthChildOf(this, 2) }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...?...:..." }
+  override string toString() { result = "...?...:..." }
 }
 
 /** A parenthesised expression. */
@@ -956,7 +959,7 @@ class ParExpr extends Expr,@parexpr {
   Expr getExpr() { result.getParent() = this }
 
   /** A printable representation of this expression. */
-  string toString() { result = "(...)" }
+  override string toString() { result = "(...)" }
 }
 
 /** An `instanceof` expression. */
@@ -968,7 +971,7 @@ class InstanceOfExpr extends Expr,@instanceofexpr {
   Expr getTypeName() { result.isNthChildOf(this, 1) }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...instanceof..." }
+  override string toString() { result = "...instanceof..." }
 }
 
 /**
@@ -983,7 +986,7 @@ class LocalVariableDeclExpr extends Expr,@localvariabledeclexpr {
 
   /** The local variable declared by this local variable declaration expression. */
   LocalVariableDecl getVariable() { localvars(result,_,_,this) }
-  
+
   /** The type access of this local variable declaration expression. */
   Expr getTypeAccess() {
     exists(LocalVariableDeclStmt lvds | lvds.getAVariable() = this | result.isNthChildOf(lvds, 0)) or
@@ -1005,7 +1008,7 @@ class LocalVariableDeclExpr extends Expr,@localvariabledeclexpr {
   }
 
   /** A printable representation of this expression. */
-  string toString() { result = this.getName() }
+  override string toString() { result = this.getName() }
 }
 
 /** An update of a variable or an initialization of the variable. */
@@ -1051,7 +1054,7 @@ class TypeLiteral extends Expr,@typeliteral {
   Expr getTypeName() { result.getParent() = this }
 
   /** A printable representation of this expression. */
-  string toString() { result = this.getTypeName().toString() + ".class" }
+  override string toString() { result = this.getTypeName().toString() + ".class" }
 }
 
 /**
@@ -1096,7 +1099,7 @@ abstract class InstanceAccess extends Expr {
 */
 class ThisAccess extends InstanceAccess,@thisaccess {
   /** A printable representation of this expression. */
-  string toString() {
+  override string toString() {
     if exists(this.getQualifier()) then (
       result = this.getQualifier() + ".this"
     ) else (
@@ -1113,7 +1116,7 @@ class ThisAccess extends InstanceAccess,@thisaccess {
  */
 class SuperAccess extends InstanceAccess,@superaccess {
   /** A printable representation of this expression. */
-  string toString() {
+  override string toString() {
     if exists(this.getQualifier()) then (
       result = this.getQualifier() + ".super"
     ) else (
@@ -1142,7 +1145,7 @@ class VarAccess extends Expr,@varaccess {
    * An l-value is a write access to a variable, which occurs as the destination of an assignment.
    */
   predicate isLValue() {
-       exists(Assignment a | a.getDest() = this) 
+       exists(Assignment a | a.getDest() = this)
     or exists(PreIncExpr e | e.getExpr() = this)
     or exists(PreDecExpr e | e.getExpr() = this)
     or exists(PostIncExpr e | e.getExpr() = this)
@@ -1162,7 +1165,7 @@ class VarAccess extends Expr,@varaccess {
   }
 
   /** A printable representation of this expression. */
-  string toString() {
+  override string toString() {
     result = this.getQualifier().toString() + "." + this.getVariable().getName() or
     (not this.hasQualifier() and result = this.getVariable().getName())
   }
@@ -1237,15 +1240,15 @@ class MethodAccess extends Expr, Call, @methodaccess {
 
   /** The method accessed by this method access. */
   Method getMethod() { callableBinding(this,result) }
-  
+
   /** The immediately enclosing callable that contains this method access. */
   override Callable getEnclosingCallable() { result = Expr.super.getEnclosingCallable() }
 
   /** The immediately enclosing statement that contains this method access. */
   override Stmt getEnclosingStmt() { result = Expr.super.getEnclosingStmt() }
-  
+
   /** A printable representation of this expression. */
-  string toString() { result = this.printAccess() }
+  override string toString() { result = this.printAccess() }
 
   /** A printable representation of this expression. */
   string printAccess() {
@@ -1300,10 +1303,10 @@ class TypeAccess extends Expr, Annotatable, @typeaccess {
   predicate hasTypeArgument() { exists(Expr e | e = this.getATypeArgument()) }
 
   /** The compilation unit in which this type access occurs. */
-  CompilationUnit getCompilationUnit() { result = Expr.super.getCompilationUnit() }
+  override CompilationUnit getCompilationUnit() { result = Expr.super.getCompilationUnit() }
 
   /** A printable representation of this expression. */
-  string toString() {
+  override string toString() {
     result = this.getQualifier().toString() + "." + this.getType().toString() or
     (not this.hasQualifier() and result = this.getType().toString())
   }
@@ -1321,7 +1324,7 @@ class ArrayTypeAccess extends Expr,@arraytypeaccess {
   Expr getComponentName() { result.getParent() = this }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...[]" }
+  override string toString() { result = "...[]" }
 }
 
 /**
@@ -1334,7 +1337,7 @@ class UnionTypeAccess extends Expr, @uniontypeaccess {
   Expr getAnAlternative() { result.getParent() = this }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...|..." }
+  override string toString() { result = "...|..." }
 }
 
 /**
@@ -1369,13 +1372,13 @@ class IntersectionTypeAccess extends Expr, @intersectiontypeaccess {
   Expr getBound(int index) { result.isNthChildOf(this, index) }
 
   /** A printable representation of this expression. */
-  string toString() { result = "...&..." }
+  override string toString() { result = "...&..." }
 }
 
 /** A package access. */
 class PackageAccess extends Expr,@packageaccess {
   /** A printable representation of this expression. */
-  string toString() { result = "package" }
+  override string toString() { result = "package" }
 }
 
 /** A wildcard type access, which may have either a lower or an upper bound. */
@@ -1390,7 +1393,7 @@ class WildcardTypeAccess extends Expr,@wildcardtypeaccess {
   predicate hasNoBound() { not exists(TypeAccess t | t.getParent() = this) }
 
   /** A printable representation of this expression. */
-  string toString() { result = "? ..." }
+  override string toString() { result = "? ..." }
 }
 
 /**
@@ -1410,12 +1413,12 @@ class Call extends Top, @caller {
   /*abstract*/ Expr getQualifier() { none() }
   /** The enclosing statement of this call. */
   /*abstract*/ Stmt getEnclosingStmt() { none() }
-  
+
   /** The number of arguments provided in this call. */
   int getNumArgument() { count(this.getAnArgument()) = result }
-  
+
   /** The callee is the target callable of this call. */
-  Callable getCallee() { 
+  Callable getCallee() {
     callableBinding(this,result)
   }
 
@@ -1426,7 +1429,7 @@ class Call extends Top, @caller {
 }
 
 /** A polymorphic call to an instance method. */
-class VirtualMethodAccess extends MethodAccess { 
+class VirtualMethodAccess extends MethodAccess {
   VirtualMethodAccess() {
     this.getMethod().isVirtual() and
     not this.getQualifier() instanceof SuperAccess
@@ -1452,7 +1455,7 @@ class SuperMethodAccess extends MethodAccess {
  * constructor, or as part of a class instance expression.
  */
 abstract class ConstructorCall extends Call {
-  
+
   /** The target constructor of the class being instantiated. */
   abstract Constructor getConstructor();
 
@@ -1573,7 +1576,7 @@ private module Qualifier {
   }
 
   /**
-   * Holds if `ma` is a member access to an instance field of `this`. That is,
+   * Holds if `ma` is a member access to an instance field or method of `this`. That is,
    * the qualifier is either an explicit or implicit unqualified `this` or `super`.
    */
   predicate ownMemberAccess(MemberAccess ma) {
@@ -1581,7 +1584,7 @@ private module Qualifier {
   }
 
   /**
-   * Holds if `ma` is a member access to an instance field of the enclosing
+   * Holds if `ma` is a member access to an instance field or method of the enclosing
    * class `t`. That is, the qualifier is either an explicit or implicit
    * `t`-qualified `this` or `super`.
    */

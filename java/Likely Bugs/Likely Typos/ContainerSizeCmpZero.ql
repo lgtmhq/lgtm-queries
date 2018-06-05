@@ -38,7 +38,7 @@ class ArrayLengthRead extends FieldRead, SizeOfContainer {
     this.getField() instanceof ArrayLengthField
   }
 
-  string getContainerKind() { result = "an array" }
+  override string getContainerKind() { result = "an array" }
 }
 
 /** An access to `String.length()`. */
@@ -47,7 +47,7 @@ class StringLengthRead extends MethodAccess, SizeOfContainer {
     this.getMethod() instanceof StringLengthMethod
   }
 
-  string getContainerKind() { result = "a string" }
+  override string getContainerKind() { result = "a string" }
 }
 
 /** An access to `Collection.size()`. */
@@ -56,7 +56,7 @@ class CollectionSizeCall extends MethodAccess, SizeOfContainer {
     this.getMethod() instanceof CollectionSizeMethod
   }
 
-  string getContainerKind() { result = "a collection" }
+  override string getContainerKind() { result = "a collection" }
 }
 
 /** An access to `Map.size()`. */
@@ -65,7 +65,7 @@ class MapSizeCall extends MethodAccess, SizeOfContainer {
     this.getMethod() instanceof MapSizeMethod
   }
 
-  string getContainerKind() { result = "a map" }
+  override string getContainerKind() { result = "a map" }
 }
 
 class IntegralZeroLiteral extends Literal {

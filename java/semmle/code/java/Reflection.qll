@@ -62,7 +62,7 @@ private abstract class ReflectiveClassIdentifier extends Expr {
 }
 
 private class ReflectiveClassIdentifierLiteral extends ReflectiveClassIdentifier, TypeLiteral {
-  RefType getReflectivelyIdentifiedClass() {
+  override RefType getReflectivelyIdentifiedClass() {
     result = getTypeName().getType().(RefType).getSourceDeclaration()
   }
 }
@@ -85,7 +85,7 @@ library class ReflectiveClassIdentifierMethodAccess extends ReflectiveClassIdent
     result = getArgument(0).(StringLiteral).getRepresentedString()
   }
 
-  RefType getReflectivelyIdentifiedClass() {
+  override RefType getReflectivelyIdentifiedClass() {
     // We only handle cases where the class is specified as a string literal to this call.
     result.getQualifiedName() = getTypeName()
   }
@@ -279,7 +279,7 @@ class NewInstance extends MethodAccess {
 
   /**
    * Return an inferred type for the constructed class.
-   * 
+   *
    * To infer the constructed type we infer a type `T` for `Class<T>` or `Constructor<T>`, by inspecting
    * points to results.
    */

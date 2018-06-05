@@ -13,12 +13,16 @@
 
 import semmle.code.cpp.Location
 private import semmle.code.cpp.Enclosing
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ element. This class is the base class for all C/C++
  * elements, such as functions, classes, expressions, and so on.
  */
 class Element extends @element {
+  Element() {
+    isClass(this) implies this = resolve(_)
+  }
 
   /** Gets a textual representation of this element. */
   string toString() { none() }

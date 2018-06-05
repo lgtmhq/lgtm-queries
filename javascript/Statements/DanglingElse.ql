@@ -27,6 +27,28 @@
 import javascript
 
 /**
+ * A token that is relevant for this query, that is, an `if`, `else` or `}` token.
+ */
+class RelevantToken extends Token {
+  RelevantToken() {
+    exists (string v | v = getValue() |
+      v = "if" or v = "else" or v = "}"
+    )
+  }
+}
+
+/**
+ * Holds if `prev` precedes `tk` on the same line, where `val` is the value of `tk`
+ * and `prevVal` is the value of `prev`.
+ */
+predicate prevTokenOnSameLine(RelevantToken tk, string val, Token prev, string prevVal) {
+  val = tk.getValue() and
+  prev = tk.getPreviousToken() and
+  prev.getLocation().getEndLine() = tk.getLocation().getStartLine() and
+  prevVal = prev.getValue()
+}
+
+/**
  * Gets the semantic indentation of token `tk`.
  *
  * The semantic indentation of a token `tk` is defined as follows:
@@ -41,17 +63,14 @@ import javascript
  * of the preceding `else` token, or even that of the `}` token preceding the `else`, but only
  * if these tokens are on the same line as the `if`.
  */
-int semanticIndent(Token tk) {
-  exists (Token prev | prev = tk.getPreviousToken() |
-    if prev.getLocation().getEndLine() != tk.getLocation().getStartLine() then
-      result = tk.getLocation().getStartColumn()
-    else
-      exists (string tkVal, string prevVal |
-        tkVal = tk.getValue() and prevVal = prev.getValue() |
-        (tkVal = "if" and prevVal = "else" or
-         tkVal = "else" and prevVal = "}") and
-        result = semanticIndent(prev)
-      )
+int semanticIndent(RelevantToken tk) {
+  not prevTokenOnSameLine(tk, _, _, _) and
+  result = tk.getLocation().getStartColumn()
+  or
+  exists (RelevantToken prev |
+    prevTokenOnSameLine(tk, "if", prev, "else") or
+    prevTokenOnSameLine(tk, "else", prev, "}") |
+    result = semanticIndent(prev)
   )
 }
 

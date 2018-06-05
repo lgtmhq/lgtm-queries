@@ -53,7 +53,7 @@ class PermissionsCheckMethodAccess extends MethodAccess, PermissionsConstruction
     )
   }
 
-  Expr getInput() {
+  override Expr getInput() {
     result = getArgument(0)
   }
 }
@@ -62,8 +62,8 @@ class WCPermissionConstruction extends ClassInstanceExpr, PermissionsConstructio
   WCPermissionConstruction() {
     this.getConstructor().getDeclaringType() instanceof TypeShiroWCPermission
   }
-  
-  Expr getInput() {
+
+  override Expr getInput() {
     result = getArgument(0)
   }
 }

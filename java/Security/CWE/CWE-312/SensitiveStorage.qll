@@ -22,7 +22,7 @@ import semmle.code.java.security.SensitiveActions
 /** Test code filter. */
 predicate testMethod(Method m) {
   (
-    m instanceof TestMethod 
+    m instanceof TestMethod
     or
     m.getDeclaringType() instanceof TestClass
   ) and
@@ -62,7 +62,7 @@ class SensitiveSource extends Expr {
   }
 }
 
-/** 
+/**
  *  Class representing entities that may be stored/written, with methods
  *  for finding values that are stored within them, and cases
  *  of the entity being stored.

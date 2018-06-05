@@ -24,8 +24,8 @@ import MetricCallable
 /** This class provides access to metrics information for packages. */
 class MetricPackage extends Package, MetricElement  {
   /** The percentage of lines in this package that consist of comments. */
-  float getPercentageOfComments() { 
-    exists(float n | 
+  override float getPercentageOfComments() {
+    exists(float n |
       n = this.getTotalNumberOfLines() and
       n > 0 and
       result = 100 * (this.getNumberOfCommentLines() / n)
@@ -33,22 +33,22 @@ class MetricPackage extends Package, MetricElement  {
   }
 
   /** The number of lines of code in this package. */
-  int getNumberOfLinesOfCode() {
+  override int getNumberOfLinesOfCode() {
     // Refer to `numlines(...)` directly to avoid invalid recursive aggregate.
     result = sum(CompilationUnit cu, int lines |
                  cu.getPackage() = this and numlines(cu, _, lines, _) |
                  lines)
   }
-    
+
   /** The number of lines of comments in this package. */
-  int getNumberOfCommentLines() {
+  override int getNumberOfCommentLines() {
     result = sum(CompilationUnit cu, int lines |
                  cu.getPackage() = this and numlines(cu, _, _, lines) |
                  lines)
   }
 
   /** The total number of lines in this package, including code, comments and whitespace-only lines. */
-  int getTotalNumberOfLines() {
+  override int getTotalNumberOfLines() {
     result = sum(CompilationUnit cu, int lines |
                  cu.getPackage() = this and numlines(cu, lines, _, _) |
                  lines)
@@ -134,10 +134,10 @@ class MetricPackage extends Package, MetricElement  {
    * other parts of a program is thus highly unlikely to affect `java.lang`.
    */
   float getInstability() {
-    exists(int ecoupling, int sumcoupling | 
-      ecoupling = this.getEfferentCoupling() and 
+    exists(int ecoupling, int sumcoupling |
+      ecoupling = this.getEfferentCoupling() and
       sumcoupling = ecoupling + this.getAfferentCoupling() and
-      sumcoupling > 0 and 
+      sumcoupling > 0 and
       result = ecoupling / ((float)sumcoupling)
     )
   }
@@ -225,7 +225,7 @@ class MetricPackage extends Package, MetricElement  {
   /**
    * A dependency of this element, for use with John Lakos's "level metric".
    */
-  MetricElement getADependency() {
+  override MetricElement getADependency() {
     exists(RefType s, RefType t |
       s.getPackage() = this and
       t.getPackage() = result and

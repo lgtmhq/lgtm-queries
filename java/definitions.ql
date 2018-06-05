@@ -31,7 +31,7 @@ import java
  * but it should suffice for the purpose of avoiding overlapping definitions.
  */
 class LocationOverridingMethodAccess extends MethodAccess {
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+  override predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
     exists(MemberRefExpr e | e.getReferencedCallable() = getMethod() |
       exists(int elRef, int ecRef |
         e.hasLocationInfo(path, _, _, elRef, ecRef) |
@@ -82,7 +82,7 @@ class LocationOverridingMethodAccess extends MethodAccess {
  * the type arguments and qualifier, if any.
  */
 class LocationOverridingTypeAccess extends TypeAccess {
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+  override predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
     exists(int slSuper, int scSuper, int elSuper, int ecSuper |
       super.hasLocationInfo(path, slSuper, scSuper, elSuper, ecSuper) |
       (
@@ -117,7 +117,7 @@ class LocationOverridingTypeAccess extends TypeAccess {
  * excluding its qualifier.
  */
 class LocationOverridingFieldAccess extends FieldAccess {
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+  override predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
     super.hasLocationInfo(path, _, _, el, ec) and
     sl = el and
     sc = ec-(getField().getName().length())+1
@@ -129,7 +129,7 @@ class LocationOverridingFieldAccess extends FieldAccess {
  * excluding the `import` keyword and the package name.
  */
 class LocationOverridingImportType extends ImportType {
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+  override predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
     exists(int slSuper, int scSuper, int elSuper, int ecSuper |
       super.hasLocationInfo(path, slSuper, scSuper, elSuper, ecSuper) |
       el = elSuper and
@@ -145,7 +145,7 @@ class LocationOverridingImportType extends ImportType {
  * excluding the `import` keyword and the package name.
  */
 class LocationOverridingImportStaticTypeMember extends ImportStaticTypeMember {
-  predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+  override predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
     exists(int slSuper, int scSuper, int elSuper, int ecSuper |
       super.hasLocationInfo(path, slSuper, scSuper, elSuper, ecSuper) |
       el = elSuper and

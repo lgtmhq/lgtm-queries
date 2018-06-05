@@ -99,6 +99,22 @@ class Block extends Stmt, @stmt_block {
    * the result is 3.
    */
   int getNumStmt() { result = count(this.getAStmt()) }
+  
+  /**
+   * Holds if the block has no statements.
+   * 
+   * For example, the block 
+   * ```
+   * { }
+   * ```
+   * is empty, as is the block 
+   * ```
+   * {
+   *   // a comment
+   * }
+   * ```
+   */
+  predicate isEmpty() { this.getNumStmt() = 0 }
 
   /**
    * Gets the index of the given statement within this block, indexed from 0.

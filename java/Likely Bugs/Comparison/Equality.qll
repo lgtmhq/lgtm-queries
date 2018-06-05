@@ -15,10 +15,10 @@ import java
 import semmle.code.java.comparison.Comparison
 
 /**
- * An `equals` method that implies the superclass `equals` method is a "finer" equality check. 
- * 
+ * An `equals` method that implies the superclass `equals` method is a "finer" equality check.
+ *
  * Importantly, in this case an inherited hash code is still valid, since
- * 
+ *
  *     subclass equals holds => superclass equals holds => hash codes match
  */
 class RefiningEquals extends EqualsMethod {
@@ -26,11 +26,11 @@ class RefiningEquals extends EqualsMethod {
     // For each return statement `ret` in this method, ...
     forall(ReturnStmt ret | ret.getEnclosingCallable() = this |
       // ... there is a `super` access that ...
-      exists(MethodAccess sup, SuperAccess qual | 
+      exists(MethodAccess sup, SuperAccess qual |
         // ... is of the form `super.something`, but not `A.super.something` ...
         qual = sup.getQualifier() and not exists(qual.getQualifier())
         // ... calls `super.equals` ...
-        and sup.getCallee() instanceof EqualsMethod 
+        and sup.getCallee() instanceof EqualsMethod
         // ... on the (only) parameter of this method ...
         and sup.getArgument(0).(VarAccess).getVariable() = this.getAParameter()
         // ... and its result is implied by the result of `ret`.

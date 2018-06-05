@@ -15,12 +15,16 @@ import semmle.code.cpp.Declaration
 import semmle.code.cpp.Type
 import semmle.code.cpp.Member
 import semmle.code.cpp.Function
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ user-defined type. Examples include `Class`, `Struct`, `Union`,
  * `Enum`, and `TypedefType`.
  */
 class UserType extends Type, Declaration, NameQualifyingElement, AccessHolder, @usertype {
+  UserType() {
+    isClass(this) implies this = resolve(_)
+  }
 
   /** the name of this type */
   override string getName() { usertypes(this,result,_) }
@@ -50,12 +54,12 @@ class UserType extends Type, Declaration, NameQualifyingElement, AccessHolder, @
     else
       result = this.getADeclarationLocation()
   }
-  
+
   TypeDeclarationEntry getADeclarationEntry() {
-    if type_decls(_, this, _) then
-      type_decls(result, this, _)
+    if type_decls(_, unresolve(this), _) then
+      type_decls(result, unresolve(this), _)
     else
-      exists(UserType t | class_instantiation(this, t) and type_decls(result, t, _))
+      exists(UserType t | class_instantiation(this, t) and result = t.getADeclarationEntry())
   }
 
   Location getADeclarationLocation() {
@@ -109,7 +113,7 @@ class TypeDeclarationEntry extends DeclarationEntry, @type_decl {
   /**
    * The type which is being declared or defined.
    */
-  Type getType() { type_decls(this,result,_) }
+  Type getType() { type_decls(this,unresolve(result),_) }
 
   Location getLocation() { type_decls(this,_,result) }
   predicate isDefinition() { type_def(this) }

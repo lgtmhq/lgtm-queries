@@ -24,9 +24,9 @@ import semmle.code.java.dataflow.DataFlow
 class JacksonJSONIgnoreAnnotation extends NonReflectiveAnnotation {
   JacksonJSONIgnoreAnnotation() {
     exists (AnnotationType anntp | anntp = this.getType() |
-      anntp.hasQualifiedName("com.fasterxml.jackson.annotation", "JsonIgnore") 
+      anntp.hasQualifiedName("com.fasterxml.jackson.annotation", "JsonIgnore")
     )
-  }  
+  }
 }
 
 abstract class JacksonSerializableType extends Type {

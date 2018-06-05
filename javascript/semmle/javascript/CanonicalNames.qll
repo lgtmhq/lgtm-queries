@@ -251,6 +251,26 @@ class TypeName extends CanonicalName {
   deprecated string getQualifiedName() {
     result = getRelativeName()
   }
+
+  /**
+   * Gets a type named in the `extends` or `implements` clause of this type.
+   */
+  TypeName getABaseTypeName() {
+    base_type_names(this, result)
+  }
+
+  /**
+   * Gets the "self type" that refers to this canonical name.
+   *
+   * For a generic class or interface, the type arguments on the self type
+   * all refer to the corresponding type parameters declared on that class or interface.
+   *
+   * For example, the "self type" of `Array` is `Array<T>`, where `T` refers to the
+   * type parameter declared on the `Array` type.
+   */
+  TypeReference getType() {
+    self_types(this, result)
+  }
 }
 
 /**
@@ -313,5 +333,29 @@ class Namespace extends CanonicalName {
    */
   StmtContainer getAnExportingContainer() {
     ast_node_symbol(result, this)
+  }
+}
+
+/**
+ * The canonical name for a function.
+ */
+class CanonicalFunctionName extends CanonicalName {
+  CanonicalFunctionName() {
+    exists (Function fun | ast_node_symbol(fun, this)) or
+    exists (InvokeExpr invoke | ast_node_symbol(invoke, this))
+  }
+
+  /**
+   * Gets a function with this canonical name.
+   */
+  Function getADefinition() {
+    ast_node_symbol(result, this)
+  }
+
+  /**
+   * Gets the implementation of this function, if it exists.
+   */
+  Function getImplementation() {
+    result = getADefinition() and result.hasBody()
   }
 }

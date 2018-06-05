@@ -593,13 +593,18 @@ library class ExprEvaluator extends int {
 }
 
 /**
- * Helper predicate for `getCompoundValue` and
- * `getCompoundValueNonSubExpr`. Some function calls have more than one
- * possible target. Such call need to be excluded from the analysis,
- * because they could lead to ambiguous results.
+ * Holds if the dynamic target of `call` cannot be determined statically even
+ * though there is a `call.getTarget()`. This can happen due to virtual
+ * dispatch or due to insufficient information about which object files should
+ * be linked together.
  */
 private predicate callWithMultipleTargets(FunctionCall call) {
+  // Some function calls have more than one possible target. Such call need to
+  // be excluded from the analysis, because they could lead to ambiguous
+  // results.
   call.getTarget() != call.getTarget()
+  or
+  call.isVirtual()
 }
 
 // Folded predicate for proper join-order

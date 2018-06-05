@@ -14,6 +14,7 @@
 import semmle.code.cpp.Element
 import semmle.code.cpp.Member
 import semmle.code.cpp.Function
+private import semmle.code.cpp.internal.Type
 
 /**
  * A C/C++ type.
@@ -110,7 +111,7 @@ class Type extends Locatable, @type {
    *
    * For example, starting with `const i64* const` in the context of `typedef long long i64;`, this predicate will return `long long*`.
    */
-  Type getUnspecifiedType() { unspecifiedtype(this, result) }
+  Type getUnspecifiedType() { unspecifiedtype(this, unresolve(result)) }
 
   /**
    * Gets the size of this type in bytes (on the machine where facts were extracted).
@@ -327,28 +328,48 @@ class UnknownType extends BuiltInType {
 
 }
 
+private predicate isArithmeticType(@builtintype type, int kind) {
+  builtintypes(type, _, kind, _, _) and
+  (kind >= 4) and
+  (kind != 34)  // Exclude decltype(nullptr)
+}
+
 /**
  * The C/C++ arithmetic types. See 4.1.1.
  */
 class ArithmeticType extends BuiltInType {
-
   ArithmeticType() {
-    exists(int kind | builtintypes(this,_,kind,_,_) and kind >= 4)
+    isArithmeticType(this, _)
   }
+}
 
+/**
+ * A C/C++ integral or enum type.
+ * The definition of "integral type" in the C++ Standard excludes enum types,
+ * but because an enum type holds a value of its underlying integral type,
+ * it is often useful to have a common category that includes both integral
+ * and enum types.
+ */
+class IntegralOrEnumType extends Type {
+  IntegralOrEnumType() {
+    // Integral type
+    exists(int kind |
+      isArithmeticType(this, kind) and
+      (kind < 24 or kind = 33 or (35 <= kind and kind <= 37) or
+        kind = 43 or kind = 44)
+    ) or
+    // Enum type
+    (
+      usertypes(this, _, 4) or
+      usertypes(this, _, 13)
+    )
+  }
 }
 
 /**
  * The C/C++ integral types. See 4.1.1.
  */
-class IntegralType extends ArithmeticType {
-
-  IntegralType() {
-    exists(int kind | builtintypes(this,_,kind,_,_) and
-      (kind < 24 or kind = 33 or (35 <= kind and kind <= 37) or
-       kind = 43 or kind = 44))
-  }
-
+class IntegralType extends ArithmeticType, IntegralOrEnumType {
   /** Holds if this integral type is signed. */
   predicate isSigned() {
     builtintypes(this,_,_,_,-1)
@@ -630,7 +651,7 @@ class DerivedType extends Type, @derivedtype {
    * This predicate strips off one level of decoration from a type. For example, it returns `char*` for the PointerType `char**`,
    * `const int` for the ReferenceType `const int&amp;`, and `long` for the SpecifiedType `volatile long`.
    */
-  Type getBaseType() { derivedtypes(this,_,_,result) }
+  Type getBaseType() { derivedtypes(this,_,_,unresolve(result)) }
 
   override predicate refersToDirectly(Type t) { t = this.getBaseType() }
 
@@ -683,7 +704,7 @@ class Decltype extends Type, @decltype {
    * The type immediately yielded by this decltype.
    */
   Type getBaseType() {
-    decltypes(this, _, result, _)
+    decltypes(this, _, unresolve(result), _)
   }
 
   /**
@@ -993,17 +1014,17 @@ class FunctionPointerIshType extends DerivedType {
 
   /** the return type of this function pointer type */
   Type getReturnType() {
-    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypes(t, result))
+    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypes(t, unresolve(result)))
   }
 
   /** the type of the ith argument of this function pointer type */
   Type getParameterType(int i) {
-    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypeargs(t, i, result))
+    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypeargs(t, i, unresolve(result)))
   }
 
   /** the type of an argument of this function pointer type */
   Type getAParameterType() {
-    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypeargs(t, _, result))
+    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypeargs(t, _, unresolve(result)))
   }
 
   /** the number of arguments of this function pointer type */
@@ -1030,10 +1051,10 @@ class PointerToMemberType extends Type, @ptrtomember {
   string getName() { result = "..:: *" }
 
   /** the base type of this pointer to member type */
-  Type getBaseType() { ptrtomembers(this,result,_) }
+  Type getBaseType() { ptrtomembers(this,unresolve(result),_) }
 
   /** the class referred by this pointer to member type */
-  Type getClass() { ptrtomembers(this,_,result) }
+  Type getClass() { ptrtomembers(this,_,unresolve(result)) }
 
   override predicate refersToDirectly(Type t) {
     t = this.getBaseType() or
@@ -1062,11 +1083,11 @@ class RoutineType extends Type, @routinetype {
 
   string getName() { result = "..()(..)" }
 
-  Type getParameterType(int n) { routinetypeargs(this,n,result) }
+  Type getParameterType(int n) { routinetypeargs(this,n,unresolve(result)) }
 
-  Type getAParameterType() { routinetypeargs(this,_,result) }
+  Type getAParameterType() { routinetypeargs(this,_,unresolve(result)) }
 
-  Type getReturnType() { routinetypes(this, result) }
+  Type getReturnType() { routinetypes(this, unresolve(result)) }
 
   override string explain() {
       result = "function returning {" + this.getReturnType().explain() +

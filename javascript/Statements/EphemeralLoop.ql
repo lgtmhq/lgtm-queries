@@ -19,7 +19,7 @@
  * @problem.severity recommendation
  * @id js/single-run-loop
  * @tags readability
- * @precision very-high
+ * @precision high
  */
 
 import javascript

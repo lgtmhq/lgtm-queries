@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Provides classes for working with React code.
+ * Provides classes for working with React and Preact code.
  */
 
 import javascript
@@ -34,7 +34,12 @@ deprecated predicate isReactRef(DataFlowNode nd) {
 }
 
 /**
- * A React component.
+ * An object that implements the React component interface.
+ *
+ * Instantiations include:
+ * - instances of `Component` from `react`, `preact` and `preact-compat`
+ * - instances from `React.createClass`
+ * - stateless functional components
  */
 abstract class ReactComponent extends ASTNode {
   /**
@@ -243,6 +248,16 @@ abstract class ReactComponent extends ASTNode {
 }
 
 /**
+ * Holds if `f` always returns a JSX element or fragment, or a React element.
+ */
+private predicate alwaysReturnsJSXOrReactElements(Function f) {
+  forex (Expr e | e.flow().(DataFlow::SourceNode).flowsToExpr(f.getAReturnedExpr()) |
+    e instanceof JSXNode or
+    e instanceof ReactElementDefinition
+  )
+}
+
+/**
  * A React component implemented as a plain function.
  */
 class FunctionalComponent extends ReactComponent, Function {
@@ -255,10 +270,7 @@ class FunctionalComponent extends ReactComponent, Function {
       p.(SimpleParameter).getName().regexpMatch("(?i).*props.*") or
       p instanceof ObjectPattern
     ) and
-    forex (Expr e | e.flow().(DataFlow::SourceNode).flowsToExpr(getAReturnedExpr()) |
-      e instanceof JSXNode or
-      e instanceof ReactElementDefinition
-    )
+    alwaysReturnsJSXOrReactElements(this)
   }
 
   override Function getInstanceMethod(string name) {
@@ -287,26 +299,12 @@ class FunctionalComponent extends ReactComponent, Function {
 }
 
 /**
- * A React component implemented as a class extending `React.Component`
- * or `React.PureComponent`.
+ * A React/Preact component implemented as a class.
  */
-class ES2015Component extends ReactComponent, ClassDefinition {
-  ES2015Component() {
-    exists (DataFlow::SourceNode sup | sup.flowsToExpr(getSuperClass()) |
-      exists (PropAccess access | access = sup.asExpr() |
-        access.getQualifiedName() = "React.Component" or
-        access.getQualifiedName() = "React.PureComponent") or
-      sup = DataFlow::moduleMember("react", "Component") or
-      sup = DataFlow::moduleMember("react", "PureComponent") or
-      sup.getAstNode() instanceof ReactComponent)
-  }
+private abstract class SharedReactPreactClassComponent extends ReactComponent, ClassDefinition {
 
   override Function getInstanceMethod(string name) {
-    exists (MemberDefinition mem | mem = this.getMember(name) |
-      result = mem.getInit() and
-      not mem.isStatic() and
-      not mem instanceof ConstructorDefinition
-    )
+    result = ClassDefinition.super.getInstanceMethod(name)
   }
 
   override DataFlow::SourceNode getADirectPropsAccess() {
@@ -332,6 +330,83 @@ class ES2015Component extends ReactComponent, ClassDefinition {
       result.flowsTo(props) and
       DataFlow::valueNode(this).(DataFlow::SourceNode).hasPropertyWrite("defaultProps", props)
     )
+  }
+
+}
+
+/**
+ * A React component implemented as a class
+ */
+abstract class ES2015Component extends SharedReactPreactClassComponent {
+
+}
+
+/**
+ * A React component implemented as a class extending `React.Component`
+ * or `React.PureComponent`.
+ */
+private class DefiniteES2015Component extends ES2015Component {
+
+  DefiniteES2015Component() {
+    exists (DataFlow::SourceNode sup | sup.flowsToExpr(getSuperClass()) |
+      exists (PropAccess access, string globalReactName |
+        (globalReactName = "react" or globalReactName = "React") and
+        access = sup.asExpr() |
+        access.getQualifiedName() = globalReactName + ".Component" or
+        access.getQualifiedName() = globalReactName + ".PureComponent") or
+        sup = DataFlow::moduleMember("react", "Component") or
+        sup = DataFlow::moduleMember("react", "PureComponent") or
+        sup.getAstNode() instanceof ES2015Component)
+  }
+
+}
+
+/**
+ * A Preact component.
+ */
+abstract class PreactComponent extends SharedReactPreactClassComponent {
+
+  override DataFlow::SourceNode getADirectPropsAccess() {
+    result = super.getADirectPropsAccess() or
+    result = DataFlow::parameterNode(getInstanceMethod("render").getParameter(0))
+  }
+
+  override DataFlow::SourceNode getADirectStateAccess() {
+    result = super.getADirectStateAccess() or
+    result = DataFlow::parameterNode(getInstanceMethod("render").getParameter(1))
+  }
+
+}
+
+/**
+ * A Preact component implemented as a class extending `Preact.Component`.
+ */
+private class DefinitePreactComponent extends PreactComponent {
+
+  DefinitePreactComponent() {
+    exists (DataFlow::SourceNode sup | sup.flowsToExpr(getSuperClass()) |
+      exists (PropAccess access, string globalPreactName |
+        (globalPreactName = "preact" or globalPreactName = "Preact") and
+        access = sup.asExpr() |
+        access.getQualifiedName() = globalPreactName + ".Component" or
+        sup = DataFlow::moduleMember("preact", "Component") or
+        sup.getAstNode() instanceof PreactComponent)
+    )
+  }
+
+}
+
+/**
+ * A React or Preact component implemented as a class which:
+ *
+ * - extends class called `Component`
+ * - has a `render` method that returns JSX or React elements.
+ */
+private class HeuristicReactPreactComponent extends ClassDefinition, PreactComponent, ES2015Component {
+
+  HeuristicReactPreactComponent() {
+    any(DataFlow::GlobalVarRefNode c | c.getName() = "Component").flowsToExpr(getSuperClass()) and
+    alwaysReturnsJSXOrReactElements(ClassDefinition.super.getInstanceMethod("render"))
   }
 
 }
@@ -438,7 +513,7 @@ private class FactoryDefinition extends ReactElementDefinition {
   }
 
   override string getName() {
-      factory.getArgument(0).mayHaveStringValue(result)
+    factory.getArgument(0).mayHaveStringValue(result)
   }
 
   override DataFlow::Node getProps() {

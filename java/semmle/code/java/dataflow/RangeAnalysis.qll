@@ -217,11 +217,11 @@ abstract class Reason extends TReason {
   abstract string toString();
 }
 class NoReason extends Reason, TNoReason {
-  string toString() { result = "NoReason" }
+  override string toString() { result = "NoReason" }
 }
 class CondReason extends Reason, TCondReason {
   Expr getCond() { this = TCondReason(result) }
-  string toString() { result = getCond().toString() }
+  override string toString() { result = getCond().toString() }
 }
 
 /**

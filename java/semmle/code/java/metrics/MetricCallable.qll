@@ -59,16 +59,16 @@ class MetricCallable extends Callable {
    * plus one.
    */
   int getCyclomaticComplexity() {
-    result = 
+    result =
       count(Stmt stmt | branchingStmt(stmt) and stmt.getEnclosingCallable() = this) +
-      count(Expr expr | branchingExpr(expr) and expr.getEnclosingCallable() = this) + 1 
+      count(Expr expr | branchingExpr(expr) and expr.getEnclosingCallable() = this) + 1
   }
 
   /**
    * The Halstead length of a callable is estimated as the sum of the number of statements
    * and expressions within the callable, plus one for the callable itself.
    */
-  int getHalsteadLength() { 
+  int getHalsteadLength() {
     result = count(Stmt s | s.getEnclosingCallable() = this) +
              count(Expr e | e.getEnclosingCallable() = this) + 1
   }
@@ -77,7 +77,7 @@ class MetricCallable extends Callable {
    * The Halstead vocabulary of a callable is estimated as the number of unique Halstead IDs
    * of all statements and expressions within the callable.
    */
-  int getHalsteadVocabulary() { 
+  int getHalsteadVocabulary() {
     result = count(string id | exists(Stmt s | s.getEnclosingCallable() = this and id = s.getHalsteadID()) or
                                exists(Expr e | e.getEnclosingCallable() = this and id = e.getHalsteadID()))
   }

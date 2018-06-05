@@ -12,19 +12,20 @@
 // permissions and limitations under the License.
 
 /**
- * @name TODO comment
- * @description A comment that contains 'TODO' or similar keywords may indicate code that is incomplete or
- *              broken, or it may highlight an ambiguity in the software's specification.
+ * @name Use of a broken or weak cryptographic algorithm
+ * @description Using broken or weak cryptographic algorithms can compromise security.
  * @kind problem
- * @problem.severity recommendation
- * @id js/todo-comment
- * @tags maintainability
- *       external/cwe/cwe-546
- * @precision very-high
+ * @problem.severity warning
+ * @precision medium
+ * @id py/weak-cryptographic-algorithm
+ * @tags security
+ *       external/cwe/cwe-327
  */
+import python
+import semmle.python.security.SensitiveData
+import semmle.python.security.Crypto
 
-import javascript
+from SensitiveDataSource src, WeakCryptoSink sink
+where src.flowsToSink(sink)
 
-from Comment c
-where c.getText().regexpMatch("(?s).*FIXME.*|.*TODO.*|.*(?<!=)\\s*XXX.*")
-select c, "TODO comments should be addressed."
+select sink, "Sensitive data from $@ is used in a broken or weak cryptographic algorithm.", src , src.toString()

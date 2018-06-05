@@ -37,17 +37,19 @@ predicate doesRethrow(Function f) {
 }
 
 predicate deletesException(Expr expr, Parameter exception) {
-  exists(FunctionCall fc | fc = expr |
-    // Calling a delete function on the exception will free it (MFC's CException has a Delete function).
-    (fc.getQualifier() = exception.getAnAccess() and fc.getTarget().getName().toLowerCase().matches("%delete%")) or
-    // Passing the exception to a function might free it.
-    (fc.getAnArgument() = exception.getAnAccess()) or
-    // Calling a function which rethrows the current exception might cause the exception to be freed.
-    doesRethrow(fc.getTarget())
-  ) or
-  // Calling operator delete on the exception will free it.
-  exists(DeleteExpr d | d = expr |
-    d.getExpr() = exception.getAnAccess()
+  expr.getEnclosingBlock().getParent*().(CatchBlock).getParameter() = exception and (
+    exists(FunctionCall fc | fc = expr |
+      // Calling a delete function on the exception will free it (MFC's CException has a Delete function).
+      (fc.getQualifier() = exception.getAnAccess() and fc.getTarget().getName().toLowerCase().matches("%delete%")) or
+      // Passing the exception to a function might free it.
+      (fc.getAnArgument() = exception.getAnAccess()) or
+      // Calling a function which rethrows the current exception might cause the exception to be freed.
+      doesRethrow(fc.getTarget())
+    ) or
+    // Calling operator delete on the exception will free it.
+    exists(DeleteExpr d | d = expr |
+      d.getExpr() = exception.getAnAccess()
+    )
   )
 }
 

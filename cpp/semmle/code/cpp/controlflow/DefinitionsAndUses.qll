@@ -13,6 +13,7 @@
 
 import cpp
 private import semmle.code.cpp.controlflow.LocalScopeVariableReachability
+private import semmle.code.cpp.dataflow.EscapesTree
 
 /**
  * Computed relation: A "definition-use-pair" for a particular variable.
@@ -287,13 +288,11 @@ predicate definitionBarrier(SemanticStackVariable v, ControlFlowNode barrier) {
 predicate definition(SemanticStackVariable v, Expr def) {
   def = v.getInitializer().getExpr()
   or
-  exists(Assignment assign |
-    def = assign and
-    assign.getLValue() = v.getAnAccess())
+  variableAccessedAsValue(
+    v.getAnAccess(), def.(Assignment).getLValue().getFullyConverted())
   or
-  exists(CrementOperation crem |
-    def = crem and
-    crem.getOperand() = v.getAnAccess())
+  variableAccessedAsValue(
+    v.getAnAccess(), def.(CrementOperation).getOperand().getFullyConverted())
   or
   exists(AsmStmt asmStmt |
     def = asmStmt.getAChild() and
@@ -392,7 +391,12 @@ predicate useOfVar(SemanticStackVariable v, VariableAccess use) {
  */
 predicate useOfVarActual(SemanticStackVariable v, VariableAccess use) {
   useOfVar(v, use) and
-  not use.isAddressOfAccess() and
+  exists(Expr e |
+    variableAccessedAsValue(use, e) and
+    not exists(AssignExpr assign |
+      e = assign.getLValue().getFullyConverted()
+    )
+  ) and
   // A call to a function that does not use the relevant parameter
   not exists(Call c, int i |
     c.getArgument(i) = use and

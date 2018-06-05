@@ -31,21 +31,21 @@ class BasicBlock extends ControlFlowNode {
     or strictcount(this.getAPredecessor()) > 1
     or exists(ControlFlowNode pred | pred = this.getAPredecessor() | strictcount(pred.getASuccessor()) > 1)
   }
-  
+
   /** An immediate successor of this basic block. */
   cached
   BasicBlock getABBSuccessor() {
     result = getLastNode().getASuccessor()
   }
-  
+
   /** An immediate predecessor of this basic block. */
   BasicBlock getABBPredecessor() {
     result.getABBSuccessor() = this
   }
-  
+
   /** A control-flow node contained in this basic block. */
   ControlFlowNode getANode() { result = getNode(_) }
-  
+
   /** The control-flow node at a specific (zero-indexed) position in this basic block. */
   cached
   ControlFlowNode getNode(int pos) {
@@ -57,17 +57,17 @@ class BasicBlock extends ControlFlowNode {
       not result instanceof BasicBlock
     )
   }
-  
+
   /** The first control-flow node in this basic block. */
   ControlFlowNode getFirstNode() { result = this }
-  
+
   /** The last control-flow node in this basic block. */
   ControlFlowNode getLastNode() { result = getNode(length()-1) }
-  
+
   /** The length of a basic block is the number of control-flow nodes contained in it. */
   cached
   int length() { result = strictcount(getANode()) }
-  
+
   /** Holds if this basic block strictly dominates `node`. */
   predicate bbStrictlyDominates(BasicBlock node) { bbStrictlyDominates(this, node) }
 

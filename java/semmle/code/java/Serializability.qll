@@ -24,14 +24,14 @@ private import frameworks.google.GoogleHttpClientApi
  * due to the use of serialization.
  */
 abstract class SerializableField extends Field {
-  
+
 }
 /**
  * A deserializable field may be written without code referencing it,
  * due to the use of serialization.
  */
 abstract class DeserializableField extends Field {
-  
+
 }
 
 /**

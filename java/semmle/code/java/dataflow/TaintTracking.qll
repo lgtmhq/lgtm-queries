@@ -225,6 +225,7 @@ module TaintTracking {
     qualifierToArgumentStep(src, sink) or
     argToMethodStep(src, sink) or
     argToArgStep(src, sink) or
+    argToQualifierStep(src, sink) or
     comparisonStep(src, sink) or
     stringBuilderStep(src, sink) or
     serializationStep(src, sink)
@@ -320,6 +321,9 @@ module TaintTracking {
   private predicate taintPreservingQualifierToArgument(Method m, int arg) {
     m instanceof CollectionMethod and
     m.hasName("toArray") and arg = 1
+    or
+    m.getDeclaringType().hasQualifiedName("java.io", "ByteArrayOutputStream") and
+    m.hasName("writeTo") and arg = 0
   }
 
   /** Access to a method that passes taint from the qualifier. */
@@ -382,6 +386,9 @@ module TaintTracking {
     or
     m instanceof CollectionMethod and
     m.hasName("toArray")
+    or
+    m.getDeclaringType().hasQualifiedName("java.nio", "ByteBuffer") and
+    m.hasName("get")
   }
 
   private class StringReplaceMethod extends Method {
@@ -500,6 +507,28 @@ module TaintTracking {
     or
     method.getDeclaringType().hasQualifiedName("java.lang", "System") and
     method.hasName("arraycopy") and input = 0 and output = 2
+  }
+
+  /**
+   * Holds if `tracked` is the argument of a method that transfers taint
+   * from the argument to the qualifier and `sink` is the qualifier.
+   */
+  private predicate argToQualifierStep(Expr tracked, Expr sink) {
+    exists(Method m, int i, MethodAccess ma |
+      taintPreservingArgumentToQualifier(m, i) and
+      ma.getMethod() = m and
+      tracked = ma.getArgument(i) and
+      sink = ma.getQualifier()
+    )
+  }
+
+  /**
+   * Holds if `method` is a method that transfers taint from argument to qualifier and
+   * `arg` is the index of the argument.
+   */
+  private predicate taintPreservingArgumentToQualifier(Method method, int arg) {
+    method.getDeclaringType().hasQualifiedName("java.io", "ByteArrayOutputStream") and
+    method.hasName("write") and arg = 0
   }
 
   /** A comparison or equality test with a constant. */

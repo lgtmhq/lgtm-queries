@@ -30,7 +30,7 @@ predicate loop_variable_ssa(For f, Variable v, SsaVariable s) {
     f.getTarget().getAFlowNode() = s.getDefinition() and v = s.getVariable()
 }
 
-predicate nestedForViolation(For inner, For outer, Variable v, Name n) {
+predicate variableUsedInNestedLoops(For inner, For outer, Variable v, Name n) {
     /* Ignore cases where there is no use of the variable or the only use is in the inner loop. */
     outer.contains(n)
     and not inner.contains(n)
@@ -44,6 +44,6 @@ predicate nestedForViolation(For inner, For outer, Variable v, Name n) {
 }
 
 from For inner, For outer, Variable v, Name n
-where nestedForViolation(inner, outer, v, n)
+where variableUsedInNestedLoops(inner, outer, v, n)
 select inner, "Nested for statement $@ loop variable '" + v.getId() + "' of enclosing $@.", n, "uses",
        outer, "for statement"

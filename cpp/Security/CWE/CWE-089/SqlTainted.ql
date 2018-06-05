@@ -33,7 +33,7 @@ class SQLLikeFunction extends FunctionWithWrappers {
     sqlArgument(this.getName(), _)
   }
 
-  predicate interestingArg(int arg) {
+  override predicate interestingArg(int arg) {
     sqlArgument(this.getName(), arg)
   }
 }
