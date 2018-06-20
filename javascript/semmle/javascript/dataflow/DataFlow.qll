@@ -225,7 +225,7 @@ module DataFlow {
     }
 
     override string toString() {
-      result = ssa.toString()
+      result = ssa.getSourceVariable().getName()
     }
 
     override ASTNode getAstNode() {

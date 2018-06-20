@@ -89,10 +89,7 @@ module ServerSideUrlRedirect {
    * A taint-tracking configuration for reasoning about unvalidated URL redirections.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "ServerSideUrlRedirect" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "ServerSideUrlRedirect" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source
@@ -110,6 +107,11 @@ module ServerSideUrlRedirect {
     override predicate isSanitizer(DataFlow::Node source, DataFlow::Node sink) {
       sanitizingPrefixEdge(source, sink)
     }
+
+    override predicate isSanitizerGuard(TaintTracking::SanitizerGuardNode guard) {
+      guard instanceof LocalUrlSanitizingGuard
+    }
+
   }
 
   /** A source of remote user input, considered as a flow source for URL redirects. */
@@ -140,15 +142,14 @@ module ServerSideUrlRedirect {
    * A call to a function called `isLocalUrl` or similar, which is
    * considered to sanitize a variable for purposes of URL redirection.
    */
-  class LocalUrlSanitizingGuard extends TaintTracking::SanitizingGuard, CallExpr {
+  class LocalUrlSanitizingGuard extends TaintTracking::SanitizerGuardNode, DataFlow::CallNode {
     LocalUrlSanitizingGuard() {
       this.getCalleeName().regexpMatch("(?i)(is_?)?local_?url")
     }
 
-    override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
-      cfg instanceof Configuration and
+    override predicate sanitizes(boolean outcome, Expr e) {
       // `isLocalUrl(e)` sanitizes `e` if it evaluates to `true`
-      this.getAnArgument() = e and
+      getAnArgument().asExpr() = e and
       outcome = true
     }
   }

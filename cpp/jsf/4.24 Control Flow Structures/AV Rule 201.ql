@@ -40,6 +40,7 @@ predicate stmtInForBody(Stmt stmt, ForStmt forStmt) {
 from ForStmt for, Variable loopVariable, VariableAccess acc
 where
   loopModification(for, loopVariable, acc) and
+  not loopVariable instanceof Field and
 
   // don't duplicate results from NestedLoopSameVar.ql
   not exists(ForStmt inner |

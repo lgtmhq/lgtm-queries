@@ -38,10 +38,7 @@ module XpathInjection {
    * A taint-tracking configuration for untrusted user input used in XPath expression.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "XpathInjection" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "XpathInjection" }
 
     override
     predicate isSource(DataFlow::Node source) {

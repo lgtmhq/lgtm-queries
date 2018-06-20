@@ -1059,6 +1059,19 @@ module PenultimatePointsTo {
             )
          }
 
+         /** Holds if call is to an object that always returns its first argument.
+          * Typically, this is for known decorators and the like.
+          * The current implementation only accounts for instances of `zope.interface.declarations.implementer`.
+          */
+         private predicate annotation_call(CallNode f, PenultimateContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+            exists(ClassObject implementer |
+                points_to(f.getArg(0), context, value, cls, origin) and
+                points_to(f.getFunction(), context, _, implementer, _) |
+                implementer.getName() = "implementer" and
+                implementer.getPyClass().getEnclosingModule().getName() = "zope.interface.declarations"
+            )
+         }
+
          private predicate call_to_isinstance(CallNode f, PenultimateContext context, Object value) {
               exists(ControlFlowNode clsNode, ControlFlowNode objNode, ClassObject objcls |
                 points_to(objNode, context, _, objcls, _) and
@@ -1181,6 +1194,8 @@ module PenultimatePointsTo {
              call_to_unknown(f, context, value, cls, origin)
              or
              type_test_call(f, context, value, cls, origin)
+             or
+             annotation_call(f, context, value, cls, origin)
          }
 
          /** INTERNAL -- Public for testing only.
@@ -2559,10 +2574,11 @@ module PenultimatePointsTo {
          predicate abstract_class(ClassObject cls) {
              Types::class_get_meta_class(cls) = theAbcMetaClassObject()
              or
-             exists(string name, FunctionObject unimplemented, Raise r |
-                 class_attribute_lookup(cls, name, unimplemented, _, _) and
+             exists(FunctionObject unimplemented, Raise r, Name ex |
+                 class_attribute_lookup(cls, _, unimplemented, _, _) and
                  r.getScope() = unimplemented.getFunction() and
-                 points_to(r.getException().getAFlowNode(), _, theNotImplementedErrorType(), _, _)
+                 (r.getException() = ex or r.getException().(Call).getFunc() = ex) and
+                 (ex.getId() = "NotImplementedError" or ex.getId() = "NotImplemented")
              )
          }
 

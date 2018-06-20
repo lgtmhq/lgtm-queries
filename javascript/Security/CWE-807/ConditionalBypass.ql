@@ -78,7 +78,7 @@ class SensitiveActionGuardComparisonOperand extends Sink {
  * If flow from `source` taints `sink`, then an attacker can
  * control if `action` should be executed or not.
  */
-predicate isTaintedGuardForSensitiveAction(Sink sink, Source source, SensitiveAction action) {
+predicate isTaintedGuardForSensitiveAction(Sink sink, DataFlow::Node source, SensitiveAction action) {
   action = sink.getAction() and
   // exclude the intermediary sink
   not sink instanceof SensitiveActionGuardComparisonOperand and
@@ -96,7 +96,7 @@ predicate isTaintedGuardForSensitiveAction(Sink sink, Source source, SensitiveAc
   )
 }
 
-from Source source, Sink sink, SensitiveAction action
+from DataFlow::Node source, DataFlow::Node sink, SensitiveAction action
 where isTaintedGuardForSensitiveAction(sink, source, action)
 select sink, "This condition guards a sensitive $@, but $@ controls it.",
     action, "action",

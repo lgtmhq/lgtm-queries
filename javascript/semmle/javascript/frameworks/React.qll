@@ -282,7 +282,7 @@ class FunctionalComponent extends ReactComponent, Function {
   }
 
   override AbstractValue getAbstractComponent() {
-    result = TAbstractInstance(TAbstractFunction(this))
+    result = AbstractInstance::of(this)
   }
 
   override DataFlow::SourceNode getComponentCreatorSource() {
@@ -313,7 +313,7 @@ private abstract class SharedReactPreactClassComponent extends ReactComponent, C
   }
 
   override AbstractValue getAbstractComponent() {
-    result = TAbstractInstance(TAbstractClass(this))
+    result = AbstractInstance::of(this)
   }
 
   override DataFlow::SourceNode getComponentCreatorSource() {

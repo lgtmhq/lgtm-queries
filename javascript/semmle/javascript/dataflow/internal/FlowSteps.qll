@@ -169,9 +169,22 @@ predicate globalFlowStep(DataFlow::Node pred, DataFlow::Node succ) {
  * Holds if there is a write to property `prop` of global variable `gv`
  * in file `f`, where the right-hand side of the write is `rhs`.
  */
+pragma[noinline]
 predicate globalPropertyWrite(GlobalVariable gv, File f, string prop, DataFlow::Node rhs) {
   exists (DataFlow::PropWrite pw |
     pw.writes(getAUseIn(gv, f), prop, rhs)
+  )
+}
+
+/**
+ * Holds if there is a read from property `prop` of `base`, which is
+ * an access to global variable `base` in file `f`.
+ */
+pragma[noinline]
+predicate globalPropertyRead(GlobalVariable gv, File f, string prop, DataFlow::Node base) {
+  exists (DataFlow::PropRead pr |
+    base = getAUseIn(gv, f) and
+    pr.accesses(base, prop)
   )
 }
 
@@ -198,7 +211,7 @@ predicate basicStoreStep(DataFlow::Node pred, DataFlow::Node succ, string prop) 
   or
   exists (GlobalVariable gv, File f |
     globalPropertyWrite(gv, f, prop, pred) and
-    succ = getAUseIn(gv, f)
+    globalPropertyRead(gv, f, prop, succ)
   )
 }
 

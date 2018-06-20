@@ -24,7 +24,7 @@
  */
 import java
 import semmle.code.java.Concurrency
-import semmle.code.java.dataflow.Guards
+import semmle.code.java.controlflow.Guards
 
 /**
  * Holds if `e1` and `e2` appear within a `synchronized` block on `monitor`.

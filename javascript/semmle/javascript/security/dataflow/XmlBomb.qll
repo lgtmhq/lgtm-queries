@@ -39,10 +39,7 @@ module XmlBomb {
    * A taint-tracking configuration for reasoning about XML-bomb vulnerabilities.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "XmlBomb" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "XmlBomb" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

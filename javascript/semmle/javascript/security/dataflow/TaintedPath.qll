@@ -38,10 +38,7 @@ module TaintedPath {
    * A taint-tracking configuration for reasoning about tainted-path vulnerabilities.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "TaintedPath" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "TaintedPath" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source
@@ -55,6 +52,11 @@ module TaintedPath {
       super.isSanitizer(node) or
       node instanceof Sanitizer
     }
+
+    override predicate isSanitizerGuard(TaintTracking::SanitizerGuardNode guard) {
+      guard instanceof StrongPathCheck
+    }
+
   }
 
   /**
@@ -142,21 +144,20 @@ module TaintedPath {
   /**
    * A conditional involving the path, that is not considered to be a weak check.
    */
-  class StrongPathCheck extends TaintTracking::SanitizingGuard {
+  class StrongPathCheck extends TaintTracking::SanitizerGuardNode {
     VarAccess path;
     boolean sanitizedOutcome;
 
     StrongPathCheck() {
-      exists (ConditionGuardNode cgg | this = cgg.getTest() |
-        this = path.getParentExpr*() and
+      exists (ConditionGuardNode cgg | asExpr() = cgg.getTest() |
+        asExpr() = path.getParentExpr*() and
         path = any(SsaVariable v).getAUse() and
         (sanitizedOutcome = true or sanitizedOutcome = false) and
-        not weakCheck(this, sanitizedOutcome, path)
+        not weakCheck(asExpr(), sanitizedOutcome, path)
       )
     }
 
-    override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
-      cfg instanceof Configuration and
+    override predicate sanitizes(boolean outcome, Expr e) {
       path = e and
       outcome = sanitizedOutcome
     }

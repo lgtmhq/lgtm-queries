@@ -35,6 +35,7 @@ where
     not missing_call_to_superclass_method(self.getASuperType(), missing, "__init__") and
     not missing.neverReturns() and
     not self.failedInference() and
-    not missing.isBuiltin()
+    not missing.isBuiltin() and
+    not self.isAbstract()
 select self, "Class " + self.getName() + " may not be initialized properly as $@ is not called from its $@.",
 missing, missing.descriptiveString(), initializer, "__init__ method"

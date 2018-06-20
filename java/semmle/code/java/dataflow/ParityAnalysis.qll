@@ -20,7 +20,7 @@
 import java
 private import SSA
 private import RangeUtils
-private import Guards
+private import semmle.code.java.controlflow.Guards
 private import SignAnalysis
 private import semmle.code.java.Reflection
 

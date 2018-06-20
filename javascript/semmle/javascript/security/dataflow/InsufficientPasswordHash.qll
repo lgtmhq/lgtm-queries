@@ -47,10 +47,7 @@ module InsufficientPasswordHash {
    * and amending the sources and sinks.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "InsufficientPasswordHash" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "InsufficientPasswordHash" }
 
     override
     predicate isSource(DataFlow::Node source) {

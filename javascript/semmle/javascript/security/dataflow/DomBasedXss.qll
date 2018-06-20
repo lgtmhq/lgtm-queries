@@ -31,13 +31,6 @@ module DomBasedXss {
    */
   abstract class Sink extends DataFlow::Node { }
 
-  class DefaultSink extends Sink {
-    DefaultSink() {
-      this instanceof DomSink or
-      this instanceof LibrarySink
-    }
-  }
-
   /**
    * A sanitizer for XSS vulnerabilities.
    */
@@ -47,10 +40,7 @@ module DomBasedXss {
    * A taint-tracking configuration for reasoning about XSS.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() { 
-      this = "DomBasedXss" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "DomBasedXss" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

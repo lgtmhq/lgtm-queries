@@ -605,7 +605,22 @@ class NewExpr extends Expr, @new_expr {
   }
 
   /**
-   * Gets the call to a non-default `operator new` which allocates storage, if any.
+   * Gets the `operator new` that allocates storage.
+   */
+  Function getAllocator() {
+    expr_allocator(this, result, _)
+  }
+
+  /**
+   * Holds if the allocation function is the version that expects an alignment
+   * argument of type `std::align_val_t`.
+   */
+  predicate hasAlignedAllocation() {
+    expr_allocator(this, _, 1)
+  }
+
+  /**
+   * Gets the call to a non-default `operator new` that allocates storage, if any.
    *
    * As a rule of thumb, there will be an allocator call precisely when the type
    * being allocated has a custom `operator new`, or when an argument list appears
@@ -617,7 +632,35 @@ class NewExpr extends Expr, @new_expr {
   FunctionCall getAllocatorCall() { result = this.getChild(0) }
 
   /**
-   * Gets the call or expression which initializes the first element of the array, if any.
+   * Gets the `operator delete` that deallocates storage if the initialization
+   * throws an exception, if any.
+   */
+  Function getDeallocator() {
+    expr_deallocator(this, result, _)
+  }
+
+  /**
+   * Holds if the deallocation function expects a size argument.
+   */
+  predicate hasSizedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(1) != 0  // Bit zero is the "size" bit
+    )
+  }
+
+  /**
+   * Holds if the deallocation function expects an alignment argument.
+   */
+  predicate hasAlignedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(2) != 0  // Bit one is the "alignment" bit
+    )
+  }
+
+  /**
+   * Gets the call or expression that initializes the allocated object, if any.
    *
    * As examples, for `new int(4)`, this will be `4`, and for `new std::vector(4)`, this will
    * be a call to the constructor `std::vector::vector(size_t)` with `4` as an argument.
@@ -643,14 +686,64 @@ class NewArrayExpr extends Expr, @new_array_expr {
   }
 
   /**
-   * Gets the call to a non-default `operator new[]` which allocates storage for the array, if any.
+   * Gets the element type of the array being allocated.
+   */
+  Type getAllocatedElementType() {
+    result = getType().getUnderlyingType().(PointerType).getBaseType()
+  }
+
+  /**
+   * Gets the `operator new[]` that allocates storage.
+   */
+  Function getAllocator() {
+    expr_allocator(this, result, _)
+  }
+
+  /**
+   * Holds if the allocation function is the version that expects an alignment
+   * argument of type `std::align_val_t`.
+   */
+  predicate hasAlignedAllocation() {
+    expr_allocator(this, _, 1)
+  }
+
+  /**
+   * Gets the call to a non-default `operator new[]` that allocates storage for the array, if any.
    *
    * If the default `operator new[]` is used, then there will be no call.
    */
   FunctionCall getAllocatorCall() { result = this.getChild(0) }
 
   /**
-   * Gets the call or expression which initializes the first element of the array, if any.
+   * Gets the `operator delete` that deallocates storage if the initialization
+   * throws an exception, if any.
+   */
+  Function getDeallocator() {
+    expr_deallocator(this, result, _)
+  }
+
+  /**
+   * Holds if the deallocation function expects a size argument.
+   */
+  predicate hasSizedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(1) != 0  // Bit zero is the "size" bit
+    )
+  }
+
+  /**
+   * Holds if the deallocation function expects an alignment argument.
+   */
+  predicate hasAlignedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(2) != 0  // Bit one is the "alignment" bit
+    )
+  }
+
+  /**
+   * Gets the call or expression that initializes the first element of the array, if any.
    *
    * This will either be a call to the default constructor for the array's element type (as
    * in `new std::string[10]`), or a literal zero for arrays of scalars which are zero-initialized
@@ -679,12 +772,54 @@ class DeleteExpr extends Expr, @delete_expr {
   override int getPrecedence() { result = 15 }
 
   /**
-   * Gets the call to a destructor which occurs prior to the object's memory being deallocated, if any.
+   * Gets the compile-time type of the object being deleted.
+   */
+  Type getDeletedObjectType() {
+    result = getExpr().getFullyConverted().getType().stripTopLevelSpecifiers().(PointerType).getBaseType()
+  }
+
+  /**
+   * Gets the call to a destructor that occurs prior to the object's memory being deallocated, if any.
    */
   DestructorCall getDestructorCall() { result = this.getChild(1) }
 
   /**
-   * Gets the call to a non-default `operator delete` which deallocates storage, if any.
+   * Gets the destructor to be called to destroy the object, if any.
+   */
+  Destructor getDestructor() { result = getDestructorCall().getTarget() }
+
+  /**
+   * Gets the `operator delete` that deallocates storage. Does not hold
+   * if the type being destroyed has a virtual destructor. In that case, the
+   * `operator delete` that will be called is determined at runtime based on the
+   * dynamic type of the object.
+   */
+  Function getDeallocator() {
+    expr_deallocator(this, result, _)
+  }
+
+  /**
+   * Holds if the deallocation function expects a size argument.
+   */
+  predicate hasSizedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(1) != 0  // Bit zero is the "size" bit
+    )
+  }
+
+  /**
+   * Holds if the deallocation function expects an alignment argument.
+   */
+  predicate hasAlignedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(2) != 0  // Bit one is the "alignment" bit
+    )
+  }
+
+/**
+   * Gets the call to a non-default `operator delete` that deallocates storage, if any.
    *
    * This will only be present when the type being deleted has a custom `operator delete`.
    */
@@ -705,7 +840,14 @@ class DeleteArrayExpr extends Expr, @delete_array_expr {
   override int getPrecedence() { result = 15 }
 
   /**
-   * Gets the call to a destructor which occurs prior to the array's memory being deallocated, if any.
+   * Gets the element type of the array being deleted.
+   */
+  Type getDeletedElementType() {
+    result = getExpr().getFullyConverted().getType().stripTopLevelSpecifiers().(PointerType).getBaseType()
+  }
+
+  /**
+   * Gets the call to a destructor that occurs prior to the array's memory being deallocated, if any.
    *
    * At runtime, the destructor will be called once for each element in the array, but the
    * destructor call only exists once in the AST.
@@ -713,7 +855,39 @@ class DeleteArrayExpr extends Expr, @delete_array_expr {
   DestructorCall getDestructorCall() { result = this.getChild(1) }
 
   /**
-   * Gets the call to a non-default `operator delete` which deallocates storage, if any.
+   * Gets the destructor to be called to destroy each element in the array, if any.
+   */
+  Destructor getDestructor() { result = getDestructorCall().getTarget() }
+
+  /**
+   * Gets the `operator delete[]` that deallocates storage.
+   */
+  Function getDeallocator() {
+    expr_deallocator(this, result, _)
+  }
+
+  /**
+   * Holds if the deallocation function expects a size argument.
+   */
+  predicate hasSizedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(1) != 0  // Bit zero is the "size" bit
+    )
+  }
+
+  /**
+   * Holds if the deallocation function expects an alignment argument.
+   */
+  predicate hasAlignedDeallocation() {
+    exists(int form |
+      expr_deallocator(this, _, form) and
+      form.bitAnd(2) != 0  // Bit one is the "alignment" bit
+    )
+  }
+
+  /**
+   * Gets the call to a non-default `operator delete` that deallocates storage, if any.
    *
    * This will only be present when the type being deleted has a custom `operator delete`.
    */

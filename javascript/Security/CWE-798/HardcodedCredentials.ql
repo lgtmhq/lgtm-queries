@@ -27,7 +27,7 @@
 import javascript
 private import semmle.javascript.security.dataflow.HardcodedCredentials::HardcodedCredentials
 
-from Configuration cfg, Source source, Sink sink, string value
+from Configuration cfg, DataFlow::Node source, Sink sink, string value
 where cfg.hasFlow(source, sink) and
       // use source value in message if it's available
       if source.asExpr() instanceof ConstantString then

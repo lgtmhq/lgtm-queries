@@ -22,8 +22,12 @@ import cpp
  * use the same loop variable `iteration`.  
  */
 predicate nestedForViolation(ForStmt inner, Variable iteration, ForStmt outer) {
+  // same variable
   iteration = inner.getAnIterationVariable() and
   iteration = outer.getAnIterationVariable() and
+  not iteration instanceof Field and
+
+  // ordinary nested loops
   exists(inner.getInitialization()) and
   inner.getParent+() = outer and
   inner.getASuccessor+() = outer.getCondition()

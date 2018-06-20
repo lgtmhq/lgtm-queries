@@ -13,8 +13,7 @@
 
 /**
  * @name Testing equality to None
- * @description Testing whether an object is 'None' using the == operator is inefficient, there are
- *              faster methods.
+ * @description Testing whether an object is 'None' using the == operator is inefficient and potentially incorrect.
  * @kind problem
  * @tags efficiency
  *       maintainability

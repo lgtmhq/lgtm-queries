@@ -39,10 +39,7 @@ module RegExpInjection {
    * A taint-tracking configuration for untrusted user input used to construct regular expressions.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "RegExpInjection" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "RegExpInjection" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

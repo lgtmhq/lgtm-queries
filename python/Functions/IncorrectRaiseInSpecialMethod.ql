@@ -59,16 +59,15 @@ private predicate cast_method(string name) {
     name = "__nonzero__" and major_version() = 2 or 
     name = "__bool__"  or
     name = "__int__" or name = "__float__" or
-    name = "__long__" or name = "__str__" or
-    name = "__trunc__" or name = "__repr__" or
+    name = "__long__" or
+    name = "__trunc__" or
     name = "__complex__"
 }
 
 predicate correct_raise(string name, ClassObject ex) {
-  
     ex.getAnImproperSuperType() = theTypeErrorType()
     and
-    (    
+    (
       name = "__copy__" or
       name = "__deepcopy__" or
       name = "__call__" or
@@ -122,7 +121,5 @@ always_raises(f, cls) and
         preferred_raise(f.getName(), preferred) |
         message = "raise " + preferred.getName() + " instead"
     )
-    or
-    cls.getName() = "NotImplementedError" and message = "the function should be declared abstract."
 )
 select f, "Function always raises $@; " + message, cls, cls.toString()

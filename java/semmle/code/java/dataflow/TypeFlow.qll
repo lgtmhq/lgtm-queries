@@ -23,7 +23,7 @@
 import java
 private import semmle.code.java.dispatch.VirtualDispatch
 private import semmle.code.java.dataflow.internal.BaseSSA
-private import semmle.code.java.dataflow.Guards
+private import semmle.code.java.controlflow.Guards
 
 private newtype TTypeFlowNode =
   TField(Field f) or

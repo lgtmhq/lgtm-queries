@@ -43,22 +43,22 @@ module SQL {
 }
 
 /**
- * Provides classes modelling the `mysql` package.
+ * Provides classes modelling the (API compatible) `mysql` and `mysql2` packages.
  */
 private module MySql {
-  /** Gets an import of the `mysql` package. */
-  DataFlow::ModuleImportNode mysql() {
-    result.getPath() = "mysql"
+  /** Gets the package name `mysql` or `mysql2`. */
+  string mysql() {
+    result = "mysql" or result = "mysql2"
   }
 
   /** Gets a call to `mysql.createConnection`. */
   DataFlow::SourceNode createConnection() {
-    result = mysql().getAMemberCall("createConnection")
+    result = DataFlow::moduleMember(mysql(), "createConnection").getACall()
   }
 
   /** Gets a call to `mysql.createPool`. */
   DataFlow::SourceNode createPool() {
-    result = mysql().getAMemberCall("createPool")
+    result = DataFlow::moduleMember(mysql(), "createPool").getACall()
   }
 
   /** Gets a data flow node that contains a freshly created MySQL connection instance. */
@@ -94,12 +94,15 @@ private module MySql {
   /** A call to the `escape` or `escapeId` method that performs SQL sanitization. */
   class EscapingSanitizer extends SQL::SqlSanitizer, @callexpr {
     EscapingSanitizer() {
-      exists (DataFlow::SourceNode base, MethodCallExpr mce, string esc |
-        base = mysql() or base = connection() or base = createPool() |
-        this = mce and mce = base.getAMethodCall(esc).asExpr() and
-        (esc = "escape" or esc = "escapeId") and
-        input = mce.getArgument(0) and
-        output = mce
+      exists (string esc | esc = "escape" or esc = "escapeId" |
+        exists (DataFlow::SourceNode escape, MethodCallExpr mce |
+          escape = DataFlow::moduleMember(mysql(), esc) or
+          escape = connection().getAPropertyRead(esc) or
+          escape = createPool().getAPropertyRead(esc) |
+          this = mce and mce = escape.getACall().asExpr() and
+          input = mce.getArgument(0) and
+          output = mce
+        )
       )
     }
   }

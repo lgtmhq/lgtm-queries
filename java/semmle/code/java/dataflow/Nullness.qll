@@ -48,7 +48,7 @@
 
 import java
 private import SSA
-private import Guards
+private import semmle.code.java.controlflow.Guards
 private import RangeUtils
 private import IntegerGuards
 private import NullGuards

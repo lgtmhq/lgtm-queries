@@ -38,10 +38,7 @@ module NosqlInjection {
    * A taint-tracking configuration for reasoning about SQL-injection vulnerabilities.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "NosqlInjection" and
-      exists(Sink s)
-    }
+    Configuration() { this = "NosqlInjection" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

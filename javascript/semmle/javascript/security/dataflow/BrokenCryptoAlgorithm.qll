@@ -47,10 +47,7 @@ module BrokenCryptoAlgorithm {
    * and amending the sources and sinks.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "BrokenCryptoAlgorithm" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "BrokenCryptoAlgorithm" }
 
     override
     predicate isSource(DataFlow::Node source) {

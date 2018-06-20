@@ -17,7 +17,7 @@
  */
 
 import java
-private import semmle.code.java.dataflow.Guards
+private import semmle.code.java.controlflow.Guards
 
 /**
  * Holds if the given `ComparisonExpr` is thought to be true when `VarAccess` is accessed.

@@ -59,6 +59,8 @@ class TypeConformingToProtocol extends DerivedType {
 
   /** Gets the size of this type. */
   override int getSize() { result = this.getBaseType().getSize() }
+
+  override int getAlignment() { result = this.getBaseType().getAlignment() }
 }
 
 /**

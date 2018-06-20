@@ -39,10 +39,7 @@ module CommandInjection {
    * A taint-tracking configuration for reasoning about command-injection vulnerabilities.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "CommandInjection" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "CommandInjection" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

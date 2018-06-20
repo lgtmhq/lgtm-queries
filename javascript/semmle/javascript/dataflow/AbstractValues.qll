@@ -401,6 +401,17 @@ class AbstractInstance extends DefiniteAbstractValue, TAbstractInstance {
   override string toString() { result = "instance of " + getConstructor() }
 }
 
+module AbstractInstance {
+  /**
+   * Gets the abstract value representing instances of `f`, which is a function
+   * or a class.
+   */
+  AbstractInstance of(AST::ValueNode f) {
+    result.getConstructor().getFunction() = f or
+    result.getConstructor() = TAbstractClass(f)
+  }
+}
+
 /**
  * An abstract value representing an object not covered by the other abstract
  * values.

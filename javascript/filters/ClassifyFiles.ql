@@ -86,7 +86,7 @@ predicate classify(File f, string category) {
   )
   or
   // Polymer templates
-  exists (HTMLElement elt | elt.getName() = "template" |
+  exists (HTML::Element elt | elt.getName() = "template" |
     f = elt.getFile() and category = "template"
   )
 }

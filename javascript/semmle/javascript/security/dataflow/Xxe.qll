@@ -39,10 +39,7 @@ module Xxe {
    * A taint-tracking configuration for reasoning about XXE vulnerabilities.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "Xxe" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "Xxe" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

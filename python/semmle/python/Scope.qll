@@ -14,8 +14,8 @@
 import python
 
 /** A Scope. A scope is the lexical extent over which all identifiers with the same name refer to the same variable.
-    Modules, Classes and Functions are all Scopes. There are no other scopes.
-    The scopes for expressions that create new scopes, lambdas and comprehensions, are handled by creating an anonymous Function. */
+ *  Modules, Classes and Functions are all Scopes. There are no other scopes.
+ *  The scopes for expressions that create new scopes, lambdas and comprehensions, are handled by creating an anonymous Function. */
 class Scope extends Scope_ {
 
     Module getEnclosingModule() {

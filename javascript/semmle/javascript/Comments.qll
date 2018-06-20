@@ -64,13 +64,22 @@ class Comment extends @comment, Locatable {
 class LineComment extends @linecomment, Comment {}
 
 /** An HTML comment start/end token interpreted as a line comment. */
-class HTMLComment extends @htmlcomment, LineComment {}
+class HtmlLineComment extends @htmlcomment, LineComment {}
 
 /** An HTML comment start token interpreted as a line comment. */
-class HTMLCommentStart extends @htmlcommentstart, HTMLComment {}
+class HtmlCommentStart extends @htmlcommentstart, HtmlLineComment {}
 
 /** An HTML comment end token interpreted as a line comment. */
-class HTMLCommentEnd extends @htmlcommentend, HTMLComment {}
+class HtmlCommentEnd extends @htmlcommentend, HtmlLineComment {}
+
+/** DERECATED: Use `HtmlLineComment` instead. */
+deprecated class HTMLComment = HtmlLineComment;
+
+/** DERECATED: Use `HtmlCommentStart` instead. */
+deprecated class HTMLCommentStart = HtmlCommentStart;
+
+/** DERECATED: Use `HtmlCommentEnd` instead. */
+deprecated class HTMLCommentEnd = HtmlCommentEnd;
 
 /** A `//` comment. */
 class SlashSlashComment extends @slashslashcomment, LineComment {}

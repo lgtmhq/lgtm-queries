@@ -228,11 +228,11 @@ abstract class TaintSource extends @py_flow_node {
     /**
      * Holds if `this` is a source of taint kind `kind`
      *
-     * This should be overridden by subclasses to specify sources of taint.
+     * This must be overridden by subclasses to specify sources of taint.
      *
      * The smaller this predicate is, the faster `Taint.flowsTo()` will converge.
      */
-    predicate isSourceOf(TaintKind kind) { none() }
+    abstract predicate isSourceOf(TaintKind kind);
 
     /**
      * Holds if `this` is a source of taint kind `kind` for the given context.
@@ -246,6 +246,10 @@ abstract class TaintSource extends @py_flow_node {
 
     Location getLocation() {
         result = this.(ControlFlowNode).getLocation()
+    }
+
+    predicate hasLocationInfo(string fp, int bl, int bc, int el, int ec) {
+        this.getLocation().hasLocationInfo(fp, bl, bc, el, ec)
     }
 
     /** Gets a TaintedNode for this taint source */
@@ -268,6 +272,10 @@ abstract class TaintSource extends @py_flow_node {
     /** Holds if taint can flow from this source to taint sink `sink` */
     final predicate flowsToSink(TaintSink sink) {
         this.flowsToSink(_, sink)
+        or
+        this instanceof ValidatingTaintSource and
+        sink instanceof ValidatingTaintSink and
+        exists(error())
     }
 
 }
@@ -287,7 +295,7 @@ abstract class TaintedDefinition extends EssaNodeDefinition {
      *
      * The smaller this predicate is, the faster `Taint.flowsTo()` will converge.
      */
-    predicate isSourceOf(TaintKind kind) { none() }
+    abstract predicate isSourceOf(TaintKind kind);
 
     /**
      * Holds if `this` is a source of taint kind `kind` for the given context.
@@ -317,12 +325,16 @@ abstract class TaintSink extends  @py_flow_node {
      * Holds if `this` "sinks" taint kind `kind`
      * Typically this means that `this` is vulnerable to taint kind `kind`.
      *
-     * This should be overridden by subclasses to specify vulnerabilities or other sinks of taint.
+     * This must be overridden by subclasses to specify vulnerabilities or other sinks of taint.
      */
     abstract predicate sinks(TaintKind taint);
 
     Location getLocation() {
         result = this.(ControlFlowNode).getLocation()
+    }
+
+    predicate hasLocationInfo(string fp, int bl, int bc, int el, int ec) {
+        this.getLocation().hasLocationInfo(fp, bl, bc, el, ec)
     }
 
 }
@@ -949,5 +961,76 @@ private predicate with_flow(With with, ControlFlowNode contextManager, ControlFl
     with.getContextExpr() = contextManager.getNode() and
     with.getOptionalVars() = var.getNode() and
     contextManager.strictlyDominates(var)
+}
+
+/* "Magic" sources and sinks which only have `toString()`s when
+ * no sources are defined or no sinks are defined or no kinds are present.
+ * In those cases, these classes make sure that an informative error
+ * message is presented to the user.
+ */
+
+library class ValidatingTaintSource extends TaintSource {
+
+    string toString() {
+        result = error()
+    }
+
+    ValidatingTaintSource() {
+        this = uniqueCfgNode()
+    }
+
+    predicate isSourceOf(TaintKind kind) { none() }
+
+    predicate hasLocationInfo(string fp, int bl, int bc, int el, int ec) {
+        fp = error() and bl = 0 and bc = 0 and el = 0 and ec = 0
+    }
+
+
+}
+
+library class ValidatingTaintSink extends TaintSink {
+
+    string toString() {
+        result = error()
+    }
+
+    ValidatingTaintSink() {
+        this = uniqueCfgNode()
+    }
+
+    predicate sinks(TaintKind kind) { none() }
+
+    predicate hasLocationInfo(string fp, int bl, int bc, int el, int ec) {
+        fp = error() and bl = 0 and bc = 0 and el = 0 and ec = 0
+    }
+
+}
+
+
+/* Helpers for Validating classes */
+
+private string locatable_module_name() {
+    exists(Module m |
+        exists(m.getLocation()) and
+        result = m.getName()
+    )
+}
+
+private ControlFlowNode uniqueCfgNode() {
+    exists(Module m |
+        result = m.getEntryNode() and
+        m.getName() = min(string name | name = locatable_module_name())
+    )
+}
+
+private string error() {
+    forall(TaintSource s | s instanceof ValidatingTaintSource) and
+    result = "No sources defined"
+    or
+    forall(TaintSink s | s instanceof ValidatingTaintSink) and
+    result = "No sinks defined"
+    or
+    not exists(TaintKind k) and
+    result = "No kinds defined"
 }
 

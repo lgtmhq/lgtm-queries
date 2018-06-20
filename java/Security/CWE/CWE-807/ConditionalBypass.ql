@@ -27,7 +27,7 @@ import java
 import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.security.SensitiveActions
 import semmle.code.java.controlflow.Dominance
-import semmle.code.java.dataflow.Guards
+import semmle.code.java.controlflow.Guards
 
 /**
  * Calls to a sensitive method that are controlled by a condition

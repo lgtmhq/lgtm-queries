@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 import java
-import semmle.code.java.dataflow.Guards
+import semmle.code.java.controlflow.Guards
 
 abstract class PathCreation extends Expr {
   abstract Expr getInput();

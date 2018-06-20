@@ -12,9 +12,9 @@
 // permissions and limitations under the License.
 
 /**
- * @name Wrong number of arguments to formatting function
- * @description Calling a printf-like function with too few arguments causes unpredictable
- *              behavior.
+ * @name Too few arguments to formatting function
+ * @description Calling a printf-like function with too few arguments can be
+ *              a source of security issues.
  * @kind problem
  * @problem.severity error
  * @precision high
@@ -29,6 +29,6 @@ from FormatLiteral fl, FormattingFunctionCall ffc, int expected, int given
 where ffc = fl.getUse()
   and expected = fl.getNumArgNeeded()
   and given = ffc.getNumFormatArgument()
-  and expected != given
+  and expected > given
   and fl.specsAreKnown()
 select ffc, "Format expects "+expected.toString()+" arguments but given "+given.toString()

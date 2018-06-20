@@ -370,7 +370,7 @@ abstract class CustomDirective extends DirectiveInstance {
   /**
    * Gets a template file for this directive, if any.
    */
-  HTMLFile getATemplateFile() {
+  HTML::HtmlFile getATemplateFile() {
     result.getAbsolutePath().regexpMatch(".*/\\Q" + getTemplateUrl() + "\\E")
   }
 
@@ -907,7 +907,7 @@ class LinkFunction extends Function {
  * An abstract representation of a set of AngularJS scope objects.
  */
 private newtype TAngularScope =
-  MkHtmlFileScope(HTMLFile file) {
+  MkHtmlFileScope(HTML::HtmlFile file) {
     any(DirectiveInstance d).getAMatchingElement().getFile() = file or
     any(CustomDirective d).getATemplateFile() = file
   } or
@@ -959,7 +959,7 @@ class AngularScope extends TAngularScope {
   predicate mayApplyTo(DOM::ElementDefinition elt) {
     this = MkIsolateScope(any(CustomDirective d | d.getAMatchingElement() = elt)) or
     this = MkElementScope(elt) or
-    this = MkHtmlFileScope(elt.getFile()) and elt instanceof HTMLElement
+    this = MkHtmlFileScope(elt.getFile()) and elt instanceof HTML::Element
   }
 }
 
@@ -968,7 +968,7 @@ class AngularScope extends TAngularScope {
  */
 class HtmlFileScope extends AngularScope, MkHtmlFileScope {
 
-  HTMLFile f;
+  HTML::HtmlFile f;
 
   HtmlFileScope() { this = MkHtmlFileScope(f) }
 
@@ -1153,7 +1153,7 @@ private class RouteInstantiatedController extends Controller {
   }
 
   override predicate boundTo(DOM::ElementDefinition elem) {
-    exists (string url, HTMLFile template |
+    exists (string url, HTML::HtmlFile template |
       setup.getRouteParam("templateUrl").asExpr().mayHaveStringValue(url) and
       template.getAbsolutePath().regexpMatch(".*\\Q" + url + "\\E") and
       elem.getFile() = template

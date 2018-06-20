@@ -27,11 +27,11 @@ import javascript
 import semmle.javascript.security.dataflow.SqlInjection
 import semmle.javascript.security.dataflow.NosqlInjection
 
-predicate sqlInjection(SqlInjection::Source source, SqlInjection::Sink sink) {
+predicate sqlInjection(DataFlow::Node source, DataFlow::Node sink) {
   any(SqlInjection::Configuration cfg).hasFlow(source, sink)
 }
 
-predicate nosqlInjection(NosqlInjection::Source source, NosqlInjection::Sink sink) {
+predicate nosqlInjection(DataFlow::Node source, DataFlow::Node sink) {
   any(NosqlInjection::Configuration cfg).hasFlow(source, sink)
 }
 

@@ -39,10 +39,7 @@ module HardcodedCredentials {
    * A data flow tracking configuration for hardcoded credentials.
    */
   class Configuration extends DataFlow::Configuration {
-    Configuration() {
-      this = "HardcodedCredentials" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "HardcodedCredentials" }
 
     override
     predicate isSource(DataFlow::Node source) {

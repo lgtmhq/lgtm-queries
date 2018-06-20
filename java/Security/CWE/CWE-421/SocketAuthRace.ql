@@ -25,7 +25,7 @@
 import java
 import semmle.code.java.security.SensitiveActions
 import semmle.code.java.controlflow.Dominance
-import semmle.code.java.dataflow.Guards
+import semmle.code.java.controlflow.Guards
 
 abstract class ConnectionMethod extends Method {}
 

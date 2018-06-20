@@ -14,7 +14,7 @@
 import java
 import semmle.code.java.arithmetic.Overflow
 import semmle.code.java.dataflow.SSA
-import semmle.code.java.dataflow.Guards
+import semmle.code.java.controlflow.Guards
 
 class NumericNarrowingCastExpr extends CastExpr {
   NumericNarrowingCastExpr() {

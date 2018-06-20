@@ -25,7 +25,7 @@
  */
 
 import java
-import semmle.code.java.dataflow.Guards
+import semmle.code.java.controlflow.Guards
 import semmle.code.java.dataflow.SSA
 
 predicate loopWhileTrue(LoopStmt loop) {

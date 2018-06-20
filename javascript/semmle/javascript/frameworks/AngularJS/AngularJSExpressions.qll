@@ -89,13 +89,13 @@ private string getInterpolatedExpressionPattern() {
 /**
  * AngularJS expression source from HTML text (e.g. `myExpr` of `<div>Some text {{myExpr}} some text</div>`).
  */
-private class HtmlTextAsNgSourceProvider extends NgSourceProvider, HtmlText {
+private class HtmlTextNodeAsNgSourceProvider extends NgSourceProvider, HTML::TextNode {
 
   string source;
 
   int offset;
 
-  HtmlTextAsNgSourceProvider() {
+  HtmlTextNodeAsNgSourceProvider() {
     source = getText().regexpFind(getInterpolatedExpressionPattern(), _, offset)
   }
 
@@ -113,7 +113,7 @@ private class HtmlTextAsNgSourceProvider extends NgSourceProvider, HtmlText {
 /**
  * AngularJS expression source from HTML attributes (e.g. `myId` of `<div id="{{myId}}"/>`).
  */
-private abstract class HtmlAttributeAsNgSourceProvider extends NgSourceProvider, HTMLAttribute {
+private abstract class HtmlAttributeAsNgSourceProvider extends NgSourceProvider, HTML::Attribute {
 
   override predicate providesSourceAt(string src, string path, int startLine, int startColumn, int endLine, int endColumn) {
     src = getSource() and

@@ -17,7 +17,7 @@
 
 import java
 private import SSA
-private import Guards
+private import semmle.code.java.controlflow.Guards
 
 /** An expression that always has the same integer value. */
 pragma[nomagic]

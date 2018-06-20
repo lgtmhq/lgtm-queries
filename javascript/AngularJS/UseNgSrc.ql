@@ -26,7 +26,7 @@
 
 import javascript
 
-from HTMLAttribute attr, string name
+from HTML::Attribute attr, string name
 where name = attr.getName() and
       // only flag URL-valued attributes...
       (name = "href" or name = "src" or name = "srcset") and

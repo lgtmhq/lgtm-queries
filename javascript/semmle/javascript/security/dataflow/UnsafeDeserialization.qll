@@ -38,10 +38,7 @@ module UnsafeDeserialization {
    * A taint-tracking configuration for reasoning about unsafe deserialization.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "UnsafeDeserialization" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "UnsafeDeserialization" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source
