@@ -23,7 +23,7 @@ private import cpp
  * template functions, these functions are essentially casts, so we treat them
  * as such.
  */
-predicate stdIdentityFunction(Function f) {
+private predicate stdIdentityFunction(Function f) {
   f.getNamespace().getParentNamespace() instanceof GlobalNamespace and
   f.getNamespace().getName() = "std" and
   ( f.getName() = "move"
@@ -232,81 +232,84 @@ predicate addressFromVariableAccess(VariableAccess va, Expr e) {
   )
 }
 
-/**
- * Holds if `e` is a fully-converted expression that evaluates to an address
- * derived from the address of `va` and is stored in a variable or passed
- * across functions. This means `e` is the `Expr.getFullyConverted`-form of:
- *
- * - The right-hand side of an assignment or initialization;
- * - A function argument or return value;
- * - The argument to `throw`.
- * - An entry in an `AggregateLiteral`, including the compiler-generated
- *   `ClassAggregateLiteral` that initializes a `LambdaExpression`; or
- * - An expression in an inline assembly statement.
- *
- * This predicate includes pointers or reference to `const` types. See
- * `variableAddressEscapesTreeNonConst` for a version of this predicate that
- * does not.
- *
- * If `va` has reference type, the escape analysis concerns the value pointed
- * to by the reference rather than the reference itself. The C++ language does
- * not allow taking the address of a reference in any way, so this predicate
- * would never produce any results for the reference itself. Callers that are
- * not interested in the value referred to by references should exclude
- * variable accesses to reference-typed values.
- */
-predicate variableAddressEscapesTree(VariableAccess va, Expr e) {
-  valueMayEscapeAt(e) and
-  addressFromVariableAccess(va, e)
-}
+import EscapesTree_Cached
+private cached module EscapesTree_Cached {
+  /**
+   * Holds if `e` is a fully-converted expression that evaluates to an address
+   * derived from the address of `va` and is stored in a variable or passed
+   * across functions. This means `e` is the `Expr.getFullyConverted`-form of:
+   *
+   * - The right-hand side of an assignment or initialization;
+   * - A function argument or return value;
+   * - The argument to `throw`.
+   * - An entry in an `AggregateLiteral`, including the compiler-generated
+   *   `ClassAggregateLiteral` that initializes a `LambdaExpression`; or
+   * - An expression in an inline assembly statement.
+   *
+   * This predicate includes pointers or reference to `const` types. See
+   * `variableAddressEscapesTreeNonConst` for a version of this predicate that
+   * does not.
+   *
+   * If `va` has reference type, the escape analysis concerns the value pointed
+   * to by the reference rather than the reference itself. The C++ language does
+   * not allow taking the address of a reference in any way, so this predicate
+   * would never produce any results for the reference itself. Callers that are
+   * not interested in the value referred to by references should exclude
+   * variable accesses to reference-typed values.
+   */
+  cached predicate variableAddressEscapesTree(VariableAccess va, Expr e) {
+    valueMayEscapeAt(e) and
+    addressFromVariableAccess(va, e)
+  }
 
-/**
- * Holds if `e` is a fully-converted expression that evaluates to a non-const
- * address derived from the address of `va` and is stored in a variable or
- * passed across functions. This means `e` is the `Expr.getFullyConverted`-form
- * of:
- *
- * - The right-hand side of an assignment or initialization;
- * - A function argument or return value;
- * - The argument to `throw`.
- * - An entry in an `AggregateLiteral`, including the compiler-generated
- *   `ClassAggregateLiteral` that initializes a `LambdaExpression`; or
- * - An expression in an inline assembly statement.
- *
- * This predicate omits pointers or reference to `const` types. See
- * `variableAddressEscapesTree` for a version of this predicate that includes
- * those.
- *
- * If `va` has reference type, the escape analysis concerns the value pointed
- * to by the reference rather than the reference itself. The C++ language
- * offers no way to take the address of a reference, so this predicate will
- * never produce any results for the reference itself. Callers that are not
- * interested in the value referred to by references should exclude variable
- * accesses to reference-typed values.
- */
-predicate variableAddressEscapesTreeNonConst(VariableAccess va, Expr e) {
-  valueMayEscapeMutablyAt(e) and
-  addressFromVariableAccess(va, e)
-}
+  /**
+   * Holds if `e` is a fully-converted expression that evaluates to a non-const
+   * address derived from the address of `va` and is stored in a variable or
+   * passed across functions. This means `e` is the `Expr.getFullyConverted`-form
+   * of:
+   *
+   * - The right-hand side of an assignment or initialization;
+   * - A function argument or return value;
+   * - The argument to `throw`.
+   * - An entry in an `AggregateLiteral`, including the compiler-generated
+   *   `ClassAggregateLiteral` that initializes a `LambdaExpression`; or
+   * - An expression in an inline assembly statement.
+   *
+   * This predicate omits pointers or reference to `const` types. See
+   * `variableAddressEscapesTree` for a version of this predicate that includes
+   * those.
+   *
+   * If `va` has reference type, the escape analysis concerns the value pointed
+   * to by the reference rather than the reference itself. The C++ language
+   * offers no way to take the address of a reference, so this predicate will
+   * never produce any results for the reference itself. Callers that are not
+   * interested in the value referred to by references should exclude variable
+   * accesses to reference-typed values.
+   */
+  cached predicate variableAddressEscapesTreeNonConst(VariableAccess va, Expr e) {
+    valueMayEscapeMutablyAt(e) and
+    addressFromVariableAccess(va, e)
+  }
 
-/**
- * Holds if `e` is a fully-converted expression that evaluates to an lvalue
- * derived from `va` and is used for reading from or assigning to. This is in
- * contrast with a variable access that is used for taking an address (`&x`)
- * or simply discarding its value (`x;`).
- *
- * This analysis does not propagate across assignments or calls. The analysis
- * is also not concerned with whether the lvalue `e` is converted to an rvalue
- * -- to examine that, use the relevant member predicates on `Expr`.
- *
- * If `va` has reference type, the analysis concerns the value pointed to by
- * the reference rather than the reference itself. The expression `e` may be a
- * `Conversion`.
- */
-predicate variableAccessedAsValue(VariableAccess va, Expr e) {
-  lvalueFromVariableAccess(va, e) and
-  not lvalueToLvalueStepPure(e, _) and
-  not lvalueToPointerStep(e, _) and
-  not lvalueToReferenceStep(e, _) and
-  not e = any(ExprInVoidContext eivc | e = eivc.getConversion*())
+  /**
+   * Holds if `e` is a fully-converted expression that evaluates to an lvalue
+   * derived from `va` and is used for reading from or assigning to. This is in
+   * contrast with a variable access that is used for taking an address (`&x`)
+   * or simply discarding its value (`x;`).
+   *
+   * This analysis does not propagate across assignments or calls. The analysis
+   * is also not concerned with whether the lvalue `e` is converted to an rvalue
+   * -- to examine that, use the relevant member predicates on `Expr`.
+   *
+   * If `va` has reference type, the analysis concerns the value pointed to by
+   * the reference rather than the reference itself. The expression `e` may be a
+   * `Conversion`.
+   */
+  cached predicate variableAccessedAsValue(VariableAccess va, Expr e) {
+    lvalueFromVariableAccess(va, e) and
+    not lvalueToLvalueStepPure(e, _) and
+    not lvalueToPointerStep(e, _) and
+    not lvalueToReferenceStep(e, _) and
+    not e = any(ExprInVoidContext eivc | e = eivc.getConversion*())
+  }
 }

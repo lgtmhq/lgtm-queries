@@ -47,7 +47,7 @@ class TornadoRequest extends TaintKind {
 class TornadoRequestSource extends TaintSource {
 
     TornadoRequestSource() {
-        this.(AttrNode).getObject("request").refersTo(_, aTornadoRequestHandlerClass(), _)
+        isTornadoRequestHandlerInstance(this.(AttrNode).getObject("request"))
     }
 
     string toString() {
@@ -69,7 +69,7 @@ class TornadoExternalInputSource extends TaintSource {
             name = "get_body_argument" or
             name = "decode_argument"
             |
-            getTornadoRequestHandlerMethod(name).getACall() = this
+            this = callToNamedTornadoRequestHandlerMethod(name)
         )
     }
 
@@ -91,7 +91,7 @@ class TornadoExternalInputListSource extends TaintSource {
             name = "get_query_arguments" or
             name = "get_body_arguments"
             |
-            getTornadoRequestHandlerMethod(name).getACall() = this
+            this = callToNamedTornadoRequestHandlerMethod(name)
         )
     }
 

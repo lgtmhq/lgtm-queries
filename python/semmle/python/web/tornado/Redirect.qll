@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /** Provides class representing the `tornado.redirect` function.
- * This module is intended to be imported into a traint-tracking query
+ * This module is intended to be imported into a taint-tracking query
  * to extend `TaintSink`.
  */
 import python
@@ -32,10 +32,10 @@ class TornadoRedirect extends TaintSink {
     }
 
     TornadoRedirect() {
-        exists(CallNode call, ControlFlowNode req |
-            call.getFunction().(AttrNode).getObject("redirect") = req and
-            this = call.getAnArg() and
-            req.refersTo(_, aTornadoRequestHandlerClass(), _)
+        exists(CallNode call, ControlFlowNode node |
+            node = call.getFunction().(AttrNode).getObject("redirect") and
+            isTornadoRequestHandlerInstance(node) and
+            this = call.getAnArg()
         )
     }
 

@@ -26,19 +26,19 @@ private cached predicate is_an_object(@py_object obj) {
 }
 
 /** Instances of this class represent objects in the Python program. However, since
-    the QL database is static and Python programs are dynamic, there are necessarily a
-    number of approximations. 
-
-    Each point in the control flow graph where a new object can be created is treated as
-    an object. Many builtin objects, such as integers, strings and builtin classes, are 
-    also treated as 'objects'. Hence each 'object', that is an instance of this class, 
-    represents a set of actual Python objects in the actual program. 
-
-    Ideally each set would contain only one member, but that is not possible in practice. 
-    Many instances of this class will represent many actual Python objects, especially 
-    if the point in the control flow graph to which they refer is in a loop. Others may not 
-    refer to any objects. However, for many important objects such as classes and functions, 
-    there is a one-to-one relation.
+ *  the QL database is static and Python programs are dynamic, there are necessarily a
+ *  number of approximations. 
+ *
+ *  Each point in the control flow graph where a new object can be created is treated as
+ *  an object. Many builtin objects, such as integers, strings and builtin classes, are 
+ *  also treated as 'objects'. Hence each 'object', that is an instance of this class, 
+ *  represents a set of actual Python objects in the actual program. 
+ *
+ *  Ideally each set would contain only one member, but that is not possible in practice. 
+ *  Many instances of this class will represent many actual Python objects, especially 
+ *  if the point in the control flow graph to which they refer is in a loop. Others may not 
+ *  refer to any objects. However, for many important objects such as classes and functions, 
+ *  there is a one-to-one relation.
  */
 class Object extends @py_object {
 

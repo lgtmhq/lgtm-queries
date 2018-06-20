@@ -107,6 +107,13 @@ module FlowVar_internal {
     // feature of this data flow library is to track where uninitialized data
     // ends up.
     not mayBeUsedUninitialized(v, _) and
+    // If `v` may be a variable that is always overwritten in a loop that
+    // always executes at least once, we give it special treatment in
+    // `BlockVar`, somewhat analogous to unrolling the first iteration of the
+    // loop.
+    not exists(AlwaysTrueUponEntryLoop loop |
+      loop.alwaysAssignsBeforeLeavingCondition(_, _, v)
+    ) and
     // The SSA library has a theoretically accurate treatment of reference types,
     // treating them as immutable, but for data flow it gives better results in
     // practice to make the variable synonymous with its contents.
@@ -252,6 +259,7 @@ module FlowVar_internal {
       exists(SubBasicBlock mid |
         mid = this.getAReachedSBB() and
         result = mid.getASuccessor() and
+        not skipLoop(mid, result, sbb, v) and
         not assignmentLikeOperation(result, v, _)
       )
     }
@@ -272,6 +280,109 @@ module FlowVar_internal {
     }
 
     override Location getLocation() { result = sbb.getStart().getLocation() }
+  }
+
+  /** Type-specialized version of `getEnclosingElement`. */
+  private ControlFlowNode getCFNParent(ControlFlowNode node) {
+    result = node.getEnclosingElement()
+  }
+
+  /**
+   * A for-loop or while-loop whose condition is always true upon entry but not
+   * always true after the first iteration.
+   */
+  class AlwaysTrueUponEntryLoop extends Stmt {
+    AlwaysTrueUponEntryLoop() {
+      this.(WhileStmt).conditionAlwaysTrueUponEntry() and
+      not this.(WhileStmt).conditionAlwaysTrue()
+      or
+      this.(ForStmt).conditionAlwaysTrueUponEntry() and
+      not this.(ForStmt).conditionAlwaysTrue()
+    }
+
+    /**
+     * Holds if this loop always assigns to `v` before leaving through an edge
+     * from `bbInside` in its condition to `bbOutside` outside the loop. Also,
+     * `v` must be used outside the loop.
+     */
+    predicate alwaysAssignsBeforeLeavingCondition(
+      BasicBlock bbInside, BasicBlock bbOutside, Variable v
+    ) {
+      v = this.getARelevantVariable() and
+      this.bbInLoopCondition(bbInside) and
+      not this.bbInLoop(bbOutside) and
+      bbOutside = bbInside.getASuccessor() and
+      not reachesWithoutAssignment(bbInside, v)
+    }
+
+    /**
+     * Gets a variable that is assigned in this loop and read outside the loop.
+     */
+    private Variable getARelevantVariable() {
+      exists(BasicBlock bbAssign |
+        assignmentLikeOperation(bbAssign.getANode(), result, _) and
+        this.bbInLoop(bbAssign)
+      ) and
+      exists(VariableAccess va |
+        va.getTarget() = result and
+        readAccess(va) and
+        bbNotInLoop(va.getBasicBlock())
+      )
+    }
+
+    private predicate bbInLoopCondition(BasicBlock bb) {
+      getCFNParent*(bb.getANode()) = this.(Loop).getCondition()
+    }
+
+    private predicate bbInLoop(BasicBlock bb) {
+      bbDominates(this.(Loop).getStmt(), bb)
+      or
+      bbInLoopCondition(bb)
+    }
+
+    predicate bbNotInLoop(BasicBlock bb) {
+      not this.bbInLoop(bb) and
+      bb.getEnclosingFunction() = this.getEnclosingFunction()
+    }
+
+    /**
+     * Holds if `bb` is a basic block inside this loop where `v` has not been
+     * overwritten at the end of `bb`.
+     */
+    private predicate reachesWithoutAssignment(BasicBlock bb, Variable v) {
+      (
+        // For the type of loop we are interested in, the body is always a
+        // basic block.
+        bb = this.(Loop).getStmt() and
+        v = this.getARelevantVariable()
+        or
+        reachesWithoutAssignment(bb.getAPredecessor(), v) and
+        this.bbInLoop(bb)
+      ) and
+      not assignmentLikeOperation(bb.getANode(), v, _)
+    }
+  }
+
+  /**
+   * Holds if some loop always assigns to `v` before leaving through an edge
+   * from `bbInside` in its condition to `bbOutside` outside the loop, where
+   * (`sbbDef`, `v`) is a `BlockVar` defined outside the loop. Also, `v` must
+   * be used outside the loop.
+   */
+  predicate skipLoop(
+    SubBasicBlock sbbInside, SubBasicBlock sbbOutside,
+    SubBasicBlock sbbDef, Variable v
+  ) {
+    exists(AlwaysTrueUponEntryLoop loop,
+           BasicBlock bbInside, BasicBlock bbOutside |
+      loop.alwaysAssignsBeforeLeavingCondition(bbInside, bbOutside, v) and
+      bbInside = sbbInside.getBasicBlock() and
+      bbOutside = sbbOutside.getBasicBlock() and
+      sbbInside.lastInBB() and
+      sbbOutside.firstInBB() and
+      loop.bbNotInLoop(sbbDef.getBasicBlock()) and
+      exists(TBlockVar(sbbDef, v))
+    )
   }
 
   /**

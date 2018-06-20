@@ -73,7 +73,7 @@ class NumType extends Type {
     this instanceof BoxedType
   }
 
-  /** The width-ordered primitive type corresponding to this type. */
+  /** Gets the width-ordered primitive type corresponding to this type. */
   OrdPrimitiveType getOrdPrimitiveType() {
     (this instanceof PrimitiveType and result = this)
     or
@@ -93,11 +93,13 @@ class NumType extends Type {
   }
 }
 
-class ArithExpr extends BinaryExpr {
+class ArithExpr extends Expr {
   ArithExpr() {
-    (this instanceof AddExpr or this instanceof MulExpr
+    (this instanceof UnaryAssignExpr
+    or this instanceof AddExpr or this instanceof MulExpr
     or this instanceof SubExpr or this instanceof DivExpr)
-    and forall(Expr e | e = this.getAnOperand() | e.getType() instanceof NumType)
+    and forall(Expr e | e = this.(BinaryExpr).getAnOperand() or e = this.(UnaryAssignExpr).getExpr() |
+          e.getType() instanceof NumType)
   }
 
   OrdPrimitiveType getOrdPrimitiveType() {
@@ -106,5 +108,27 @@ class ArithExpr extends BinaryExpr {
       t2 = this.getRightOperand().getType().(NumType).getOrdPrimitiveType() and
       result = t1.maxType(t2)
     )
+  }
+
+  /**
+   * Gets the left-hand operand of a binary expression
+   * or the operand of a unary assignment expression.
+   */
+  Expr getLeftOperand() {
+    result = this.(BinaryExpr).getLeftOperand() or
+    result = this.(UnaryAssignExpr).getExpr()
+  }
+
+  /**
+   * Gets the right-hand operand if this is a binary expression.
+   */
+  Expr getRightOperand() {
+    result = this.(BinaryExpr).getRightOperand()
+  }
+
+  /** Gets an operand of this arithmetic expression. */
+  Expr getAnOperand() {
+    result = this.(BinaryExpr).getAnOperand() or
+    result = this.(UnaryAssignExpr).getExpr()
   }
 }

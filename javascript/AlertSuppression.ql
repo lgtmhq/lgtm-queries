@@ -23,11 +23,28 @@ import javascript
 /**
  * An alert suppression comment.
  */
-class SuppressionComment extends LineComment {
+class SuppressionComment extends Locatable {
+  string text;
   string annotation;
 
   SuppressionComment() {
-    annotation = getText().regexpCapture("\\s*(lgtm\\s*(?:\\[[^\\]]*\\]|\\b(?!\\[))).*", 1)
+    (
+     text = this.(LineComment).getText() or
+     text = this.(HTML::CommentNode).getText()
+    )
+    and
+    (
+     // match `lgtm[...]` anywhere in the comment
+     annotation = text.regexpFind("(?i)\\blgtm\\s*\\[[^\\]]*\\]", _, _)
+     or
+     // match `lgtm` at the start of the comment and after semicolon
+     annotation = text.regexpFind("(?i)(?<=^|;)\\s*lgtm(?!\\B|\\s*\\[)", _, _).trim()
+    )
+  }
+
+  /** Gets the text of this suppression comment, not including delimiters. */
+  string getText() {
+    result = text
   }
 
   /** Gets the suppression annotation in this comment. */
@@ -53,7 +70,7 @@ class SuppressionComment extends LineComment {
 /**
  * The scope of an alert suppression comment.
  */
-class SuppressionScope extends @comment {
+class SuppressionScope extends @locatable {
   SuppressionScope() {
     this instanceof SuppressionComment
   }

@@ -213,24 +213,3 @@ private class PostMessageEventParameter extends RemoteFlowSource {
     result = "postMessage event"
   }
 }
-
-/**
- * An equality test on `e.origin` or `e.source` where `e` is a `postMessage` event object,
- * considered as a sanitizer for `e`.
- */
-private class PostMessageEventSanitizer extends TaintTracking::SanitizingGuard, EqualityTest {
-  VarAccess event;
-
-  PostMessageEventSanitizer() {
-    exists (string prop | prop = "origin" or prop = "source" |
-      getAnOperand().(PropAccess).accesses(event, prop) and
-      event.mayReferToParameter(any(PostMessageEventHandler h).getEventParameter())
-    )
-  }
-
-  override predicate sanitizes(TaintTracking::Configuration cfg, boolean outcome, Expr e) {
-    cfg = cfg and
-    outcome = getPolarity() and
-    e = event
-  }
-}

@@ -54,12 +54,6 @@ predicate typeVarSubtypeBound(RefType t, TypeVariable tv) {
 }
 
 private
-predicate parContainmentSubtype(ParameterizedType pt, ParameterizedType psub) {
-  pt != psub and
-  typeArgumentsContain(_, pt, psub, pt.getNumberOfTypeArguments()-1)
-}
-
-private
 predicate parSubtypeRaw(RefType t, ParameterizedType sub) {
   t = sub.getErasure().(GenericType).getRawType()
 }
@@ -69,9 +63,33 @@ predicate arraySubtype(Array sup, Array sub) {
   hasSubtype(sup.getComponentType(), sub.getComponentType())
 }
 
+/*
+ * `parContainmentSubtype(pt, psub)` is equivalent to:
+ * ```
+ * pt != psub and
+ * pt.getGenericType() = psub.getGenericType() and
+ * forex(int i | i in [0..pt.getNumberOfTypeArguments()-1] |
+ *   typeArgumentContains(_, pt.getTypeArgument(i), psub.getTypeArgument(i), _)
+ * )
+ * ```
+ * For performance several transformations are made. First, the `forex` is
+ * written as a loop where `typeArgumentsContain(_, pt, psub, n)` encode that
+ * the `forex` holds for `i in [0..n]`. Second, the relation is split into two
+ * cases depending on whether `pt.getNumberOfTypeArguments()` is 1 or 2+, as
+ * this allows us to unroll the loop and collapse the first two iterations. The
+ * base case for `typeArgumentsContain` is therefore `n=1` and this allows an
+ * improved join order implemented by `contains01`.
+ */
+private
+predicate parContainmentSubtype(ParameterizedType pt, ParameterizedType psub) {
+  pt != psub and
+  typeArgumentsContain(_, pt, psub, pt.getNumberOfTypeArguments()-1)
+  or
+  typeArgumentsContain0(_, pt, psub)
+}
+
 /**
- * Auxiliary index: The `result` is the `index`-th type parameter of `t`, which
- * is a parameterization of `g`.
+ * Gets the `index`-th type parameter of `t`, which is a parameterization of `g`.
  */
 private
 RefType parameterisationTypeArgument(GenericType g, ParameterizedType t, int index) {
@@ -83,20 +101,79 @@ private predicate varianceCandidate(ParameterizedType pt) {
   pt.getATypeArgument() instanceof Wildcard
 }
 
-/**
- * Holds if every type argument of `s` (up to `n`) contains the corresponding type argument of `t`.
- * Both `s` and `t` are constrained to being parameterizations of `g`.
- */
-private
-predicate typeArgumentsContain(GenericType g, ParameterizedType s, ParameterizedType t, int n) {
-  varianceCandidate(s) and
-  contains(g, s, t, n) and
-  (n = 0 or typeArgumentsContain(g, s, t, n-1))
+pragma[noinline]
+private RefType parameterisationTypeArgumentVarianceCand(GenericType g, ParameterizedType t, int index) {
+  result = parameterisationTypeArgument(g, t, index) and
+  varianceCandidate(t)
 }
 
 /**
- * Does the `n`-th type argument of `sParm` contain the `n`-th type argument of `tParm`,
- * where both `sParm` and `tParm` are parameterizations of the same generic type `g`?
+ * Holds if every type argument of `s` (up to `n` with `n >= 1`) contains the
+ * corresponding type argument of `t`. Both `s` and `t` are constrained to
+ * being parameterizations of `g`.
+ */
+pragma[nomagic]
+private
+predicate typeArgumentsContain(GenericType g, ParameterizedType s, ParameterizedType t, int n) {
+  contains01(g, s, t) and n = 1
+  or
+  contains(g, s, t, n) and
+  typeArgumentsContain(g, s, t, n-1)
+}
+
+private predicate typeArgumentsContain0(GenericType g, ParameterizedType sParm, ParameterizedType tParm) {
+  exists (RefType s, RefType t |
+    containsAux0(g, tParm, s, t) and
+    s = parameterisationTypeArgument(g, sParm, 0) and
+    s != t
+  )
+}
+
+/**
+ * Holds if the `n`-th type argument of `sParm` contain the `n`-th type
+ * argument of `tParm` for both `n = 0` and `n = 1`, where both `sParm` and
+ * `tParm` are parameterizations of the same generic type `g`.
+ *
+ * This is equivalent to
+ * ```
+ * contains(g, sParm, tParm, 0) and
+ * contains(g, sParm, tParm, 1)
+ * ```
+ * except `contains` is restricted to only include `n >= 2`.
+ */
+private predicate contains01(GenericType g, ParameterizedType sParm, ParameterizedType tParm) {
+  exists (RefType s0, RefType t0, RefType s1, RefType t1 |
+    contains01Aux0(g, tParm, s0, t0, t1) and
+    contains01Aux1(g, sParm, s0, s1, t1)
+  )
+}
+
+pragma[nomagic]
+private predicate contains01Aux0(GenericType g, ParameterizedType tParm, RefType s0, RefType t0, RefType t1) {
+  typeArgumentContains(g, s0, t0, 0) and
+  t0 = parameterisationTypeArgument(g, tParm, 0) and
+  t1 = parameterisationTypeArgument(g, tParm, 1)
+}
+
+pragma[nomagic]
+private predicate contains01Aux1(GenericType g, ParameterizedType sParm, RefType s0, RefType s1, RefType t1) {
+  typeArgumentContains(g, s1, t1, 1) and
+  s0 = parameterisationTypeArgumentVarianceCand(g, sParm, 0) and
+  s1 = parameterisationTypeArgumentVarianceCand(g, sParm, 1)
+}
+
+pragma[nomagic]
+private predicate containsAux0(GenericType g, ParameterizedType tParm, RefType s, RefType t) {
+  typeArgumentContains(g, s, t, 0) and
+  t = parameterisationTypeArgument(g, tParm, 0) and
+  g.getNumberOfTypeParameters() = 1
+}
+
+/**
+ * Holds if the `n`-th type argument of `sParm` contain the `n`-th type
+ * argument of `tParm`, where both `sParm` and `tParm` are parameterizations of
+ * the same generic type `g`. The index `n` is restricted to `n >= 2`, the
+ * cases `n < 2` are handled by `contains01`.
  *
  * See JLS 4.5.1, Type Arguments of Parameterized Types.
  */
@@ -104,23 +181,46 @@ private
 predicate contains(GenericType g, ParameterizedType sParm, ParameterizedType tParm, int n) {
   exists (RefType s, RefType t |
     containsAux(g, tParm, n, s, t) and
-    s = parameterisationTypeArgument(g, sParm, n)
+    s = parameterisationTypeArgumentVarianceCand(g, sParm, n)
   )
 }
 
 pragma[nomagic]
 private predicate containsAux(GenericType g, ParameterizedType tParm, int n, RefType s, RefType t) {
-  typeArgumentContains(s,t) and
-  t = parameterisationTypeArgument(g, tParm, n)
+  typeArgumentContains(g, s, t, n) and
+  t = parameterisationTypeArgument(g, tParm, n) and
+  n >= 2
 }
 
 /**
- * Holds if the type argument `s` contains the type argument `t`.
+ * Holds if the type argument `s` contains the type argument `t`, where both
+ * type arguments occur as index `n` in an instantiation of `g`.
+ */
+pragma[noinline]
+private predicate typeArgumentContains(GenericType g, RefType s, RefType t, int n) {
+  typeArgumentContainsAux2(g, s, t, n) and
+  s = parameterisationTypeArgumentVarianceCand(g, _, n)
+}
+
+pragma[nomagic]
+private predicate typeArgumentContainsAux2(GenericType g, RefType s, RefType t, int n) {
+  typeArgumentContainsAux1(s, t, n) and
+  t = parameterisationTypeArgument(g, _, n)
+}
+
+/**
+ * Holds if the type argument `s` contains the type argument `t`, where both
+ * type arguments occur as index `n` in some parameterized types.
  *
  * See JLS 4.5.1, Type Arguments of Parameterized Types.
  */
 private
-predicate typeArgumentContains(RefType s, RefType t) {
+predicate typeArgumentContainsAux1(RefType s, RefType t, int n) {
+  exists(int i |
+    s = parameterisationTypeArgumentVarianceCand(_, _, i) and
+    t = parameterisationTypeArgument(_, _, n) and
+    i <= n and n <= i
+    |
     exists (RefType tUpperBound | tUpperBound = t.(Wildcard).getUpperBound().getType() |
       // ? extends T <= ? extends S if T <: S
       hasSubtypeStar(s.(Wildcard).getUpperBound().getType(), tUpperBound) or
@@ -133,7 +233,7 @@ predicate typeArgumentContains(RefType s, RefType t) {
       // ? super T <= ?
       s.(Wildcard).isUnconstrained() or
       // ? super T <= ? extends Object
-      s.(Wildcard).getUpperBound().getType() instanceof TypeObject
+      wildcardExtendsObject(s)
     ) or
     // T <= T
     s = t or
@@ -141,6 +241,12 @@ predicate typeArgumentContains(RefType s, RefType t) {
     hasSubtypeStar(s.(Wildcard).getUpperBound().getType(), t) or
     // T <= ? super T
     hasSubtypeStar(t, s.(Wildcard).getLowerBound().getType())
+  )
+}
+
+pragma[noinline]
+private predicate wildcardExtendsObject(Wildcard wc) {
+  wc.getUpperBound().getType() instanceof TypeObject
 }
 
 predicate hasSubtypeStar(RefType t, RefType sub) {

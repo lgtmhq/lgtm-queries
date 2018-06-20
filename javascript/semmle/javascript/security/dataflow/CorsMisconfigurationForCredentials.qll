@@ -44,8 +44,7 @@ module CorsMisconfigurationForCredentials {
    */
   class Configuration extends TaintTracking::Configuration {
     Configuration() {
-      this = "CorsMisconfigurationForCredentials" and
-      exists(Source s) and exists(Sink s)
+      this = "CorsMisconfigurationForCredentials"
     }
 
     override

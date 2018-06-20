@@ -60,7 +60,7 @@ AbstractValue getAnInitialPropertyValue(DefiniteAbstractValue baseVal, string pr
     if m.isStatic() then
       baseVal = TAbstractClass(c)
     else
-      baseVal = TAbstractInstance(TAbstractClass(c))
+      baseVal = AbstractInstance::of(c)
   )
   or
   // object properties

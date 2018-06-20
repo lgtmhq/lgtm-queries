@@ -40,10 +40,7 @@ module ReflectedXss {
    * A taint-tracking configuration for reasoning about XSS.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "ReflectedXss" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "ReflectedXss" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

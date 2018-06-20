@@ -25,7 +25,7 @@
  *       external/cwe/cwe-570
  *       external/cwe/cwe-571
  */
-import semmle.code.java.dataflow.Guards
+import semmle.code.java.controlflow.Guards
 import semmle.code.java.dataflow.SSA
 import semmle.code.java.dataflow.SignAnalysis
 import semmle.code.java.dataflow.RangeAnalysis

@@ -21,7 +21,7 @@
 import java
 private import SSA
 private import RangeUtils
-private import Guards
+private import semmle.code.java.controlflow.Guards
 private import semmle.code.java.Reflection
 private import semmle.code.java.Collections
 private import semmle.code.java.Maps

@@ -28,6 +28,6 @@
 import javascript
 import semmle.javascript.security.dataflow.RegExpInjection::RegExpInjection
 
-from Configuration c, Source source, Sink sink
+from Configuration c, DataFlow::Node source, DataFlow::Node sink
 where c.hasFlow(source, sink)
 select sink, "This regular expression is constructed from a $@.", source, "user-provided value"

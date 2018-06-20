@@ -38,10 +38,7 @@ module SqlInjection {
    * A taint-tracking configuration for reasoning about SQL-injection vulnerabilities.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "SqlInjection" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "SqlInjection" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

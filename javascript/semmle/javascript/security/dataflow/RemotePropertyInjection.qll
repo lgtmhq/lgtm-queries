@@ -46,10 +46,7 @@ module RemotePropertyInjection {
    * A taint-tracking configuration for reasoning about remote property injection.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "RemotePropertyInjection" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "RemotePropertyInjection" }
 
     override predicate isSource(DataFlow::Node source) {
       source instanceof Source

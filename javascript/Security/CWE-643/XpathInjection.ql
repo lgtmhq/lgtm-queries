@@ -26,6 +26,6 @@
 import javascript
 import semmle.javascript.security.dataflow.XpathInjection::XpathInjection
 
-from Configuration c, Source source, Sink sink
+from Configuration c, DataFlow::Node source, DataFlow::Node sink
 where c.hasFlow(source, sink)
 select sink, "$@ flows here and is used in an XPath expression.", source, "User-provided value"

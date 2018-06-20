@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /** Provides class representing the `flask.redirect` function.
- * This module is intended to be imported into a traint-tracking query
+ * This module is intended to be imported into a taint-tracking query
  * to extend `TaintSink`.
  */
 import python

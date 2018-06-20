@@ -14,7 +14,7 @@
 import java
 import semmle.code.java.dataflow.TypeFlow
 private import semmle.code.java.dataflow.internal.BaseSSA
-private import semmle.code.java.dataflow.Guards
+private import semmle.code.java.controlflow.Guards
 
 /**
  * A conservative analysis that returns a single method - if we can establish

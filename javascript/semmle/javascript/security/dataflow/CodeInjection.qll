@@ -30,12 +30,12 @@ module CodeInjection {
   abstract class Sink extends DataFlow::Node { }
 
   /**
-   * A sanitizer for CodeInjection vulnerabilities.
+   * A sanitizer for code injection vulnerabilities.
    */
   abstract class Sanitizer extends DataFlow::Node { }
 
   /**
-   * A taint-tracking configuration for reasoning about CodeInjection.
+   * A taint-tracking configuration for reasoning about code injection vulnerabilities.
    */
   class Configuration extends TaintTracking::Configuration {
     Configuration() { this = "CodeInjection" }

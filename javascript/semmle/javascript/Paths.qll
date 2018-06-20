@@ -123,7 +123,7 @@ abstract class PathString extends string {
 
   /** Gets the number of components of this path. */
   int getNumComponent() {
-    result = count(this.indexOf("/")) + 1
+    result = count(int i | exists(getComponent(i)))
   }
 
   /** Gets the base name of the folder or file this path refers to. */

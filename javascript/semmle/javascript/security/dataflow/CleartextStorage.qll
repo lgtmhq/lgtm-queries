@@ -46,10 +46,7 @@ module CleartextStorage {
    * and amending the sources and sinks.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "ClearTextStorage" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "ClearTextStorage" }
 
     override
     predicate isSource(DataFlow::Node source) {

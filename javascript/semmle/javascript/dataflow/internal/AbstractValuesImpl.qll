@@ -84,7 +84,11 @@ cached newtype TAbstractValue =
   TAbstractInstance(AbstractCallable ac) {
     ac instanceof AbstractClass
     or
-    exists (Function f | ac = TAbstractFunction(f) | not f.isNonConstructible(_))
+    exists (Function f | ac = TAbstractFunction(f) |
+      not f.isNonConstructible(_) and
+      // constructors are covered by the first disjunct
+      not f instanceof Constructor
+    )
   }
   or
   /** An abstract representation of an object not covered by the other abstract values. */

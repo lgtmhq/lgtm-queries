@@ -99,16 +99,12 @@ abstract class Configuration extends string {
   Configuration() { any() }
 
   /**
-   * Holds if `source` is a relevant data flow source.
-   *
-   * The smaller this predicate is, the faster `flowsFrom()` will converge.
+   * Holds if `source` is a relevant data flow source for this configuration.
    */
   abstract predicate isSource(DataFlow::Node source);
 
   /**
-   * Holds if `sink` is a relevant data flow sink.
-   *
-   * The smaller this predicate is, the faster `flowsFrom()` will converge.
+   * Holds if `sink` is a relevant data flow sink for this configuration.
    */
   abstract predicate isSink(DataFlow::Node sink);
 
@@ -134,7 +130,10 @@ abstract class Configuration extends string {
    * Holds if the intermediate flow node `node` is prohibited.
    */
   predicate isBarrier(DataFlow::Node node) {
-    blockedByGuard(this, node)
+    exists (BarrierGuardNode guard |
+      isBarrierGuard(guard) and
+      guard.blocks(node)
+    )
   }
 
   /**
@@ -143,9 +142,20 @@ abstract class Configuration extends string {
   predicate isBarrier(DataFlow::Node src, DataFlow::Node trg) { none() }
 
   /**
+   * Holds if data flow node `guard` can act as a barrier when appearing
+   * in a condition.
+   *
+   * For example, if `guard` is the comparison expression in
+   * `if(x == 'some-constant'){ ... x ... }`, it could block flow of
+   * `x` into the "then" branch.
+   */
+  predicate isBarrierGuard(BarrierGuardNode guard) { none() }
+
+  /**
    * Holds if data may flow from `source` to `sink` for this configuration.
    */
   predicate hasFlow(DataFlow::Node source, DataFlow::Node sink) {
+    isSource(_, this) and isSink(_, this) and
     exists (SourcePathNode flowsource, SinkPathNode flowsink |
       hasPathFlow(flowsource, flowsink) and
       source = flowsource.getNode() and
@@ -180,37 +190,56 @@ abstract class Configuration extends string {
 }
 
 /**
- * Holds if data flow node `nd` acts as a barrier for the purposes of tracking
- * configuration `cfg`. Barriers can be added by subclassing `BarrierGuard`.
+ * A node that can act as a barrier when appearing in a condition.
+ *
+ * To use this barrier in `Configuration` `cfg`, add this barrier to the
+ * extent of `cfg.isBarrierGuard`.
  */
-private predicate blockedByGuard(Configuration cfg, DataFlow::Node nd) {
-  // 1) `nd` is a use of a refinement node that blocks its input variable
-  exists (SsaRefinementNode ref |
-    nd = DataFlow::ssaDefinitionNode(ref) and
-    forex (SsaVariable input | input = ref.getAnInput() |
-      guardBlocks(cfg, ref.getGuard(), input)
+abstract class BarrierGuardNode extends DataFlow::Node {
+
+  /**
+   * Holds if data flow node `nd` acts as a barrier for data flow.
+   *
+   * INTERNAL: this predicate should only be used from within `blocks(boolean, Expr)`.
+   */
+  predicate blocks(DataFlow::Node nd) {
+    // 1) `nd` is a use of a refinement node that blocks its input variable
+    exists (SsaRefinementNode ref |
+      nd = DataFlow::ssaDefinitionNode(ref) and
+      forex (SsaVariable input | input = ref.getAnInput() |
+        asExpr() = ref.getGuard().getTest() and
+        blocks(ref.getGuard().(ConditionGuardNode).getOutcome(), input.getAUse())
+      )
     )
-  )
-  or
-  // 2) `nd` is a use of an SSA variable `ssa`, and dominated by a barrier for `ssa`
-  exists (SsaVariable ssa, BasicBlock bb |
-    nd = DataFlow::valueNode(ssa.getAUseIn(bb)) and
-    exists (ConditionGuardNode guard |
-      guardBlocks(cfg, guard, ssa) and
-      guard.dominates(bb)
+    or
+    // 2) `nd` is a use of an SSA variable `ssa`, and dominated by a barrier for `ssa`
+    exists (SsaVariable ssa, BasicBlock bb |
+      nd = DataFlow::valueNode(ssa.getAUseIn(bb)) and
+      exists (ConditionGuardNode cond |
+        asExpr() = cond.getTest() and
+        blocks(cond.getOutcome(), ssa.getAUse()) and
+        cond.dominates(bb)
+      )
     )
-  )
-  or
-  // 3) `nd` is a property access `ssa.p.q` on an SSA variable `ssa`, and dominated by
-  // a barrier for `ssa.p.q`
-  exists (SsaVariable ssa, string props, BasicBlock bb |
-    nd = DataFlow::valueNode(nestedPropAccessOnSsaVar(ssa, props)) and
-    bb = nd.getBasicBlock() |
-    exists (ConditionGuardNode guard |
-      guard.getTest().(BarrierGuard).blocks(cfg, guard.getOutcome(), nestedPropAccessOnSsaVar(ssa, props)) and
-      guard.dominates(bb)
+    or
+    // 3) `nd` is a property access `ssa.p.q` on an SSA variable `ssa`, and dominated by
+    // a barrier for `ssa.p.q`
+    exists (SsaVariable ssa, string props, BasicBlock bb |
+      nd = DataFlow::valueNode(nestedPropAccessOnSsaVar(ssa, props)) and
+      bb = nd.getBasicBlock() |
+      exists (ConditionGuardNode cond |
+        asExpr() = cond.getTest() and
+        blocks(cond.getOutcome(), nestedPropAccessOnSsaVar(ssa, props)) and
+        cond.dominates(bb)
+      )
     )
-  )
+  }
+
+  /**
+   * Holds if this node blocks expression `e` provided it evaluates to `outcome`.
+   */
+  abstract predicate blocks(boolean outcome, Expr e);
+
 }
 
 /**
@@ -229,28 +258,6 @@ private DotExpr nestedPropAccessOnSsaVar(SsaVariable v, string props) {
 }
 
 /**
- * Holds if `guard` blocks `v` for the purposes of tracking configuration `cfg`.
- */
-private predicate guardBlocks(Configuration cfg, ConditionGuardNode guard, SsaVariable v) {
-  exists (BarrierGuard barrier | barrier = guard.getTest() |
-    barrier.blocks(cfg, guard.getOutcome(), v.getAUse())
-  )
-}
-
-/**
- * An expression that can act as a barrier for a variable when appearing
- * in a condition.
- */
-abstract class BarrierGuard extends Expr {
-  /**
-   * Holds if this expression blocks expression `e` for the purposes of tracking
-   * configuration `cfg`, provided it evaluates to `outcome`.
-   */
-  abstract predicate blocks(Configuration cfg, boolean outcome, Expr e);
-}
-
-
-/**
  * A data flow edge that should be added to all data flow configurations in
  * addition to standard data flow edges.
  *
@@ -263,6 +270,30 @@ abstract class AdditionalFlowStep extends DataFlow::Node {
    * Holds if `pred` &rarr; `succ` should be considered a data flow edge.
    */
   abstract cached predicate step(DataFlow::Node pred, DataFlow::Node succ);
+}
+
+/**
+ * A data flow node that should be considered a source for some specific configuration,
+ * in addition to any other sources that configuration may recognize.
+ */
+abstract class AdditionalSource extends DataFlow::Node {
+  /**
+   * Holds if this data flow node should be considered a source node for
+   * configuration `cfg`.
+   */
+  abstract predicate isSourceFor(Configuration cfg);
+}
+
+/**
+ * A data flow node that should be considered a sink for some specific configuration,
+ * in addition to any other sinks that configuration may recognize.
+ */
+abstract class AdditionalSink extends DataFlow::Node {
+  /**
+   * Holds if this data flow node should be considered a sink node for
+   * configuration `cfg`.
+   */
+  abstract predicate isSinkFor(Configuration cfg);
 }
 
 /**
@@ -330,12 +361,26 @@ private predicate exploratoryFlowStep(DataFlow::Node pred, DataFlow::Node succ,
 }
 
 /**
+ * Holds if `nd` is a source node for configuration `cfg`.
+ */
+private predicate isSource(DataFlow::Node nd, DataFlow::Configuration cfg) {
+  cfg.isSource(nd) or nd.(AdditionalSource).isSourceFor(cfg)
+}
+
+/**
+ * Holds if `nd` is a sink node for configuration `cfg`.
+ */
+private predicate isSink(DataFlow::Node nd, DataFlow::Configuration cfg) {
+  cfg.isSink(nd) or nd.(AdditionalSink).isSinkFor(cfg)
+}
+
+/**
  * Holds if `nd` may be reachable from a source under `cfg`.
  *
  * No call/return matching is done, so this is a relatively coarse over-approximation.
  */
 private predicate isRelevantForward(DataFlow::Node nd, DataFlow::Configuration cfg) {
-  cfg.isSource(nd)
+  isSource(nd, cfg)
   or
   exists (DataFlow::Node mid |
     isRelevantForward(mid, cfg) and exploratoryFlowStep(mid, nd, cfg)
@@ -349,7 +394,7 @@ private predicate isRelevantForward(DataFlow::Node nd, DataFlow::Configuration c
  */
 private predicate isRelevant(DataFlow::Node nd, DataFlow::Configuration cfg) {
   isRelevantForward(nd, cfg) and
-  cfg.isSink(nd)
+  isSink(nd, cfg)
   or
   exists (DataFlow::Node mid |
     isRelevant(mid, cfg) and
@@ -510,7 +555,7 @@ private predicate flowsTo(PathNode flowsource, DataFlow::Node source,
  */
 private predicate reachableFromSource(DataFlow::Node nd, DataFlow::Configuration cfg,
                                       PathSummary summary) {
-  cfg.isSource(nd) and
+  isSource(nd, cfg) and
   not cfg.isBarrier(nd) and
   summary = PathSummary::empty()
   or
@@ -529,7 +574,7 @@ private predicate reachableFromSource(DataFlow::Node nd, DataFlow::Configuration
 private predicate onPath(DataFlow::Node nd, DataFlow::Configuration cfg,
                          PathSummary summary1, PathSummary summary2) {
   reachableFromSource(nd, cfg, summary1) and
-  cfg.isSink(nd) and
+  isSink(nd, cfg) and
   not cfg.isBarrier(nd) and
   summary2 = PathSummary::empty()
   or
@@ -615,7 +660,7 @@ class PathNode extends TPathNode {
  */
 class SourcePathNode extends PathNode {
   SourcePathNode() {
-    cfg.isSource(nd)
+    isSource(nd, cfg)
   }
 }
 
@@ -624,7 +669,7 @@ class SourcePathNode extends PathNode {
  */
 class SinkPathNode extends PathNode {
   SinkPathNode() {
-    cfg.isSink(nd)
+    isSink(nd, cfg)
   }
 }
 

@@ -216,7 +216,7 @@ abstract class ScriptDependency extends Dependency {
   abstract Expr getAnApiUse();
 
   override Locatable getAUse(string kind) {
-    kind = "import" and (HTMLFile)result = this.getFile()
+    kind = "import" and (HTML::HtmlFile)result = this.getFile()
     or
     kind = "use" and result = getAnApiUse()
   }

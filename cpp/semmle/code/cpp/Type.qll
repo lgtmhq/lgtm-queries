@@ -114,12 +114,28 @@ class Type extends Locatable, @type {
   Type getUnspecifiedType() { unspecifiedtype(this, unresolve(result)) }
 
   /**
-   * Gets the size of this type in bytes (on the machine where facts were extracted).
+   * Gets this type after any top-level specifiers and typedefs have been stripped.
+   *
+   * For example, starting with `const i64* const`, this predicate will return `const i64*`.
+   */
+  Type stripTopLevelSpecifiers() { result = this }
+
+  /**
+   * Gets the size of this type in bytes.
    */
   int getSize() {
-       builtintypes(this,_,_,result,_)
-    or pointerishsize(this, result)
-    or usertypesize(this,result,_)
+       builtintypes(this, _, _, result, _, _)
+    or pointerishsize(this, result, _)
+    or usertypesize(this, result, _)
+  }
+
+  /**
+   * Gets the alignment of this type in bytes.
+   */
+  int getAlignment() {
+       builtintypes(this, _, _, _, _, result)
+    or pointerishsize(this, _, result)
+    or usertypesize(this, _, result)
   }
 
   /**
@@ -303,7 +319,7 @@ class Type extends Locatable, @type {
 class BuiltInType extends Type, @builtintype {
   override string toString() { result = this.getName() }
 
-  override string getName() { builtintypes(this,result,_,_,_) }
+  override string getName() { builtintypes(this,result,_,_,_,_) }
 
   override string explain() { result = this.getName() }
 
@@ -315,7 +331,7 @@ class BuiltInType extends Type, @builtintype {
  */
 class ErroneousType extends BuiltInType {
 
-  ErroneousType() { builtintypes(this,_,1,_,_) }
+  ErroneousType() { builtintypes(this,_,1,_,_,_) }
 
 }
 
@@ -324,12 +340,12 @@ class ErroneousType extends BuiltInType {
  */
 class UnknownType extends BuiltInType {
 
-  UnknownType() { builtintypes(this,_,2,_,_) }
+  UnknownType() { builtintypes(this,_,2,_,_,_) }
 
 }
 
 private predicate isArithmeticType(@builtintype type, int kind) {
-  builtintypes(type, _, kind, _, _) and
+  builtintypes(type, _, kind, _, _, _) and
   (kind >= 4) and
   (kind != 34)  // Exclude decltype(nullptr)
 }
@@ -372,33 +388,33 @@ class IntegralOrEnumType extends Type {
 class IntegralType extends ArithmeticType, IntegralOrEnumType {
   /** Holds if this integral type is signed. */
   predicate isSigned() {
-    builtintypes(this,_,_,_,-1)
+    builtintypes(this,_,_,_,-1,_)
   }
 
   /** Holds if this integral type is unsigned. */
   predicate isUnsigned() {
-    builtintypes(this,_,_,_,1)
+    builtintypes(this,_,_,_,1,_)
   }
 
   /** Holds if this integral type is explicitly signed. */
   predicate isExplicitlySigned() {
-    builtintypes(this,_,7,_,_) or builtintypes(this,_,10,_,_) or builtintypes(this,_,13,_,_) or
-    builtintypes(this,_,16,_,_) or builtintypes(this,_,19,_,_) or
-    builtintypes(this,_,37,_,_)
+    builtintypes(this,_,7,_,_,_) or builtintypes(this,_,10,_,_,_) or builtintypes(this,_,13,_,_,_) or
+    builtintypes(this,_,16,_,_,_) or builtintypes(this,_,19,_,_,_) or
+    builtintypes(this,_,37,_,_,_)
   }
 
   /** Holds if this integral type is explicitly unsigned. */
   predicate isExplicitlyUnsigned() {
-    builtintypes(this,_,6,_,_) or builtintypes(this,_,9,_,_) or builtintypes(this,_,12,_,_) or
-    builtintypes(this,_,15,_,_) or builtintypes(this,_,18,_,_) or
-    builtintypes(this,_,36,_,_)
+    builtintypes(this,_,6,_,_,_) or builtintypes(this,_,9,_,_,_) or builtintypes(this,_,12,_,_,_) or
+    builtintypes(this,_,15,_,_,_) or builtintypes(this,_,18,_,_,_) or
+    builtintypes(this,_,36,_,_,_)
   }
 
   /** Holds if this integral type is implicitly signed. */
   predicate isImplicitlySigned() {
-    builtintypes(this,_,5,_,-1) or builtintypes(this,_,8,_,-1) or builtintypes(this,_,11,_,-1) or
-    builtintypes(this,_,14,_,-1) or builtintypes(this,_,17,_,-1) or
-    builtintypes(this,_,35,_,-1)
+    builtintypes(this,_,5,_,-1,_) or builtintypes(this,_,8,_,-1,_) or builtintypes(this,_,11,_,-1,_) or
+    builtintypes(this,_,14,_,-1,_) or builtintypes(this,_,17,_,-1,_) or
+    builtintypes(this,_,35,_,-1,_)
   }
 
   /**
@@ -406,12 +422,12 @@ class IntegralType extends ArithmeticType, IntegralOrEnumType {
    * example on a `short`, this would give the type `unsigned short`.
    */
   IntegralType getUnsigned() {
-       (builtintypes(this,_, 5,_,_) or builtintypes(this,_, 6,_,_) or builtintypes(this,_, 7,_,_)) and builtintypes(result,_, 6,_,_)
-    or (builtintypes(this,_, 8,_,_) or builtintypes(this,_, 9,_,_) or builtintypes(this,_,10,_,_)) and builtintypes(result,_, 9,_,_)
-    or (builtintypes(this,_,11,_,_) or builtintypes(this,_,12,_,_) or builtintypes(this,_,13,_,_)) and builtintypes(result,_,12,_,_)
-    or (builtintypes(this,_,14,_,_) or builtintypes(this,_,15,_,_) or builtintypes(this,_,16,_,_)) and builtintypes(result,_,15,_,_)
-    or (builtintypes(this,_,17,_,_) or builtintypes(this,_,18,_,_) or builtintypes(this,_,19,_,_)) and builtintypes(result,_,18,_,_)
-    or (builtintypes(this,_,35,_,_) or builtintypes(this,_,36,_,_) or builtintypes(this,_,37,_,_)) and builtintypes(result,_,36,_,_)
+       (builtintypes(this,_, 5,_,_,_) or builtintypes(this,_, 6,_,_,_) or builtintypes(this,_, 7,_,_,_)) and builtintypes(result,_, 6,_,_,_)
+    or (builtintypes(this,_, 8,_,_,_) or builtintypes(this,_, 9,_,_,_) or builtintypes(this,_,10,_,_,_)) and builtintypes(result,_, 9,_,_,_)
+    or (builtintypes(this,_,11,_,_,_) or builtintypes(this,_,12,_,_,_) or builtintypes(this,_,13,_,_,_)) and builtintypes(result,_,12,_,_,_)
+    or (builtintypes(this,_,14,_,_,_) or builtintypes(this,_,15,_,_,_) or builtintypes(this,_,16,_,_,_)) and builtintypes(result,_,15,_,_,_)
+    or (builtintypes(this,_,17,_,_,_) or builtintypes(this,_,18,_,_,_) or builtintypes(this,_,19,_,_,_)) and builtintypes(result,_,18,_,_,_)
+    or (builtintypes(this,_,35,_,_,_) or builtintypes(this,_,36,_,_,_) or builtintypes(this,_,37,_,_,_)) and builtintypes(result,_,36,_,_,_)
   }
 }
 
@@ -420,7 +436,7 @@ class IntegralType extends ArithmeticType, IntegralOrEnumType {
  */
 class BoolType extends IntegralType {
 
-  BoolType() { builtintypes(this,_,4,_,_) }
+  BoolType() { builtintypes(this,_,4,_,_,_) }
 
 }
 
@@ -434,7 +450,7 @@ abstract class CharType extends IntegralType { }
  */
 class PlainCharType extends CharType {
   PlainCharType() {
-    builtintypes(this,_,5,_,_)
+    builtintypes(this,_,5,_,_,_)
   }
 }
 
@@ -443,7 +459,7 @@ class PlainCharType extends CharType {
  */
 class UnsignedCharType extends CharType {
   UnsignedCharType() {
-    builtintypes(this,_,6,_,_)
+    builtintypes(this,_,6,_,_,_)
   }
 }
 
@@ -452,7 +468,7 @@ class UnsignedCharType extends CharType {
  */
 class SignedCharType extends CharType {
   SignedCharType() {
-    builtintypes(this,_,7,_,_)
+    builtintypes(this,_,7,_,_,_)
   }
 }
 
@@ -462,7 +478,7 @@ class SignedCharType extends CharType {
 class ShortType extends IntegralType {
 
   ShortType() {
-    builtintypes(this,_,8,_,_) or builtintypes(this,_,9,_,_) or builtintypes(this,_,10,_,_)
+    builtintypes(this,_,8,_,_,_) or builtintypes(this,_,9,_,_,_) or builtintypes(this,_,10,_,_,_)
   }
 
 }
@@ -473,7 +489,7 @@ class ShortType extends IntegralType {
 class IntType extends IntegralType {
 
   IntType() {
-    builtintypes(this,_,11,_,_) or builtintypes(this,_,12,_,_) or builtintypes(this,_,13,_,_)
+    builtintypes(this,_,11,_,_,_) or builtintypes(this,_,12,_,_,_) or builtintypes(this,_,13,_,_,_)
   }
 
 }
@@ -484,7 +500,7 @@ class IntType extends IntegralType {
 class LongType extends IntegralType {
 
   LongType() {
-    builtintypes(this,_,14,_,_) or builtintypes(this,_,15,_,_) or builtintypes(this,_,16,_,_)
+    builtintypes(this,_,14,_,_,_) or builtintypes(this,_,15,_,_,_) or builtintypes(this,_,16,_,_,_)
   }
 
 }
@@ -495,7 +511,7 @@ class LongType extends IntegralType {
 class LongLongType extends IntegralType {
 
   LongLongType() {
-    builtintypes(this,_,17,_,_) or builtintypes(this,_,18,_,_) or builtintypes(this,_,19,_,_)
+    builtintypes(this,_,17,_,_,_) or builtintypes(this,_,18,_,_,_) or builtintypes(this,_,19,_,_,_)
   }
 
 }
@@ -506,7 +522,7 @@ class LongLongType extends IntegralType {
 class Int128Type extends IntegralType {
 
   Int128Type() {
-    builtintypes(this,_,35,_,_) or builtintypes(this,_,36,_,_) or builtintypes(this,_,37,_,_)
+    builtintypes(this,_,35,_,_,_) or builtintypes(this,_,36,_,_,_) or builtintypes(this,_,37,_,_,_)
   }
 
 }
@@ -517,7 +533,7 @@ class Int128Type extends IntegralType {
 class FloatingPointType extends ArithmeticType {
 
   FloatingPointType() {
-    exists(int kind | builtintypes(this,_,kind,_,_) and ((kind >= 24 and kind <= 32) or (kind = 38)))
+    exists(int kind | builtintypes(this,_,kind,_,_,_) and ((kind >= 24 and kind <= 32) or (kind = 38)))
   }
 
 }
@@ -527,7 +543,7 @@ class FloatingPointType extends ArithmeticType {
  */
 class FloatType extends FloatingPointType {
 
-  FloatType() { builtintypes(this,_,24,_,_) }
+  FloatType() { builtintypes(this,_,24,_,_,_) }
 
 }
 
@@ -536,7 +552,7 @@ class FloatType extends FloatingPointType {
  */
 class DoubleType extends FloatingPointType {
 
-  DoubleType() { builtintypes(this,_,25,_,_) }
+  DoubleType() { builtintypes(this,_,25,_,_,_) }
 
 }
 
@@ -545,7 +561,7 @@ class DoubleType extends FloatingPointType {
  */
 class LongDoubleType extends FloatingPointType {
 
-  LongDoubleType() { builtintypes(this,_,26,_,_) }
+  LongDoubleType() { builtintypes(this,_,26,_,_,_) }
 
 }
 
@@ -554,7 +570,7 @@ class LongDoubleType extends FloatingPointType {
  */
 class Float128Type extends FloatingPointType {
 
-  Float128Type() { builtintypes(this,_,38,_,_) }
+  Float128Type() { builtintypes(this,_,38,_,_,_) }
 
 }
 
@@ -563,7 +579,7 @@ class Float128Type extends FloatingPointType {
  */
 class Decimal32Type extends FloatingPointType {
 
-  Decimal32Type() { builtintypes(this,_,40,_,_) }
+  Decimal32Type() { builtintypes(this,_,40,_,_,_) }
 
 }
 
@@ -572,7 +588,7 @@ class Decimal32Type extends FloatingPointType {
  */
 class Decimal64Type extends FloatingPointType {
 
-  Decimal64Type() { builtintypes(this,_,41,_,_) }
+  Decimal64Type() { builtintypes(this,_,41,_,_,_) }
 
 }
 
@@ -581,7 +597,7 @@ class Decimal64Type extends FloatingPointType {
  */
 class Decimal128Type extends FloatingPointType {
 
-  Decimal128Type() { builtintypes(this,_,42,_,_) }
+  Decimal128Type() { builtintypes(this,_,42,_,_,_) }
 
 }
 
@@ -590,7 +606,7 @@ class Decimal128Type extends FloatingPointType {
  */
 class VoidType extends BuiltInType {
 
-  VoidType() { builtintypes(this,_,3,_,_) }
+  VoidType() { builtintypes(this,_,3,_,_,_) }
 
 }
 
@@ -599,7 +615,7 @@ class VoidType extends BuiltInType {
  */
 class WideCharType extends IntegralType {
 
-  WideCharType() { builtintypes(this,_,33,_,_) }
+  WideCharType() { builtintypes(this,_,33,_,_,_) }
 
 }
 
@@ -608,7 +624,7 @@ class WideCharType extends IntegralType {
  */
 class Char16Type extends IntegralType {
 
-  Char16Type() { builtintypes(this,_,43,_,_) }
+  Char16Type() { builtintypes(this,_,43,_,_,_) }
 
 }
 
@@ -617,7 +633,7 @@ class Char16Type extends IntegralType {
  */
 class Char32Type extends IntegralType {
 
-  Char32Type() { builtintypes(this,_,44,_,_) }
+  Char32Type() { builtintypes(this,_,44,_,_,_) }
 
 }
 
@@ -631,7 +647,7 @@ class Char32Type extends IntegralType {
  * Instead, this is the unspeakable type given by `decltype(nullptr)`.
  */
 class NullPointerType extends BuiltInType {
-  NullPointerType() { builtintypes(this,_,34,_,_) }
+  NullPointerType() { builtintypes(this,_,34,_,_,_) }
 }
 
 /**
@@ -725,6 +741,10 @@ class Decltype extends Type, @decltype {
     result = getBaseType().getUnderlyingType()
   }
 
+  override Type stripTopLevelSpecifiers() {
+    result = getBaseType().stripTopLevelSpecifiers()
+  }
+
   override Type stripType() {
     result = getBaseType().stripType()
   }
@@ -747,6 +767,10 @@ class Decltype extends Type, @decltype {
 
   override int getSize() {
     result = getBaseType().getSize()
+  }
+
+  override int getAlignment() {
+    result = getBaseType().getAlignment()
   }
 
   override int getPointerIndirectionLevel() {
@@ -852,6 +876,8 @@ class SpecifiedType extends DerivedType {
 
   override int getSize() { result = this.getBaseType().getSize() }
 
+  override int getAlignment() { result = this.getBaseType().getAlignment() }
+
   override int getPointerIndirectionLevel() {
     result = this.getBaseType().getPointerIndirectionLevel()
   }
@@ -877,6 +903,10 @@ class SpecifiedType extends DerivedType {
     result.(SpecifiedType).getBaseType() = getBaseType().resolveTypedefs()
     and result.getASpecifier() = getASpecifier()
   }
+
+  override Type stripTopLevelSpecifiers() {
+    result = getBaseType().stripTopLevelSpecifiers()
+  }
 }
 
 /**
@@ -891,7 +921,7 @@ class ArrayType extends DerivedType {
 
   int getByteSize() { arraysizes(this,_,result,_) }
 
-  int getAlignment() { arraysizes(this,_,_,result) }
+  override int getAlignment() { arraysizes(this, _, _, result) }
 
   /**
    * Gets the size of this array (only valid for arrays declared to be of a constant
@@ -947,6 +977,8 @@ class GNUVectorType extends DerivedType {
    * byte size of a single element.
    */
   override int getSize() { arraysizes(this,_,result,_) }
+
+  override int getAlignment() { arraysizes(this, _, _, result) }
 
   override string explain() { result = "GNU " + getNumElements() + " element vector of {" + this.getBaseType().explain() + "}" }
 

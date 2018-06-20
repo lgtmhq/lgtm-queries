@@ -28,7 +28,13 @@ class SuppressionComment extends Javadoc {
 
   SuppressionComment() {
     isEolComment(this) and
-    annotation = getChild(0).getText().regexpCapture("\\s*(lgtm\\s*(?:\\[[^\\]]*\\]|\\b(?!\\[))).*", 1)
+    exists (string text | text = getChild(0).getText() |
+      // match `lgtm[...]` anywhere in the comment
+      annotation = text.regexpFind("(?i)\\blgtm\\s*\\[[^\\]]*\\]", _, _)
+      or
+      // match `lgtm` at the start of the comment and after semicolon
+      annotation = text.regexpFind("(?i)(?<=^|;)\\s*lgtm(?!\\B|\\s*\\[)", _, _).trim()
+    )
   }
 
   /**

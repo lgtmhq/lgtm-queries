@@ -212,10 +212,13 @@ class FormattingFunctionCall extends Expr {
 /**
  * A class to represent format strings that occur as arguments to invocations of formatting functions.
  */
-class FormatLiteral extends Expr {
+class FormatLiteral extends Literal {
   FormatLiteral() {
     exists(FormattingFunctionCall ffc | ffc.getFormat() = this) and
-    this.isConstant()
+    ( this instanceof StringLiteral
+      or
+      this instanceof ObjCLiteralString
+    )
   }
 
   /**

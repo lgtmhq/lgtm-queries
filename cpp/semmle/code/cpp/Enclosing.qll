@@ -16,7 +16,7 @@ import cpp
 /**
  * Gets the enclosing element of statement `s`.
  */
-Element stmtEnclosingElement(Stmt s) {
+cached Element stmtEnclosingElement(Stmt s) {
   result.(Function).getEntryPoint() = s or
   result = stmtEnclosingElement(s.getParent()) or
   result = exprEnclosingElement(s.getParent())
@@ -25,7 +25,7 @@ Element stmtEnclosingElement(Stmt s) {
 /**
  * Gets the enclosing element of expression `e`.
  */
-Element exprEnclosingElement(Expr e) {
+cached Element exprEnclosingElement(Expr e) {
   result = exprEnclosingElement(e.getParent()) or
   result = stmtEnclosingElement(e.getParent()) or
   result.(Function) = e.getParent() or

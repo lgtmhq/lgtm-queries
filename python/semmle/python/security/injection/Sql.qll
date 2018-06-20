@@ -14,7 +14,7 @@
 /** Provides class and predicates to track external data that
  * may represent malicious SQL queries or parts of queries.
  *
- * This module is intended to be imported into a traint-tracking query
+ * This module is intended to be imported into a taint-tracking query
  * to extend `TaintKind` and `TaintSink`.
  *
  */

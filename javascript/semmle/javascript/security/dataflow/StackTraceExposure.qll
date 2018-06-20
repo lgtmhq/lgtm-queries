@@ -30,10 +30,7 @@ module StackTraceExposure {
   abstract class Sink extends DataFlow::Node { }
 
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "StackTraceExposure" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "StackTraceExposure" }
 
     override predicate isSource(DataFlow::Node src) {
       src instanceof Source

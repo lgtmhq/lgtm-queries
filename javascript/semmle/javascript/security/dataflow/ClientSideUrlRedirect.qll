@@ -41,8 +41,7 @@ module ClientSideUrlRedirect {
    */
   class Configuration extends TaintTracking::Configuration {
     Configuration() {
-      this = "ClientSideUrlRedirect" and
-      exists(Sink s)
+      this = "ClientSideUrlRedirect"
     }
 
     override predicate isSource(DataFlow::Node source) {

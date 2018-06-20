@@ -83,16 +83,16 @@ module DOM {
    * An HTML element, viewed as an `ElementDefinition`.
    */
   private class HtmlElementDefinition extends ElementDefinition, @xmlelement {
-    HtmlElementDefinition() { this instanceof HTMLElement }
+    HtmlElementDefinition() { this instanceof HTML::Element }
 
-    override string getName() { result = this.(HTMLElement).getName() }
+    override string getName() { result = this.(HTML::Element).getName() }
 
     override AttributeDefinition getAttribute(int i) {
-      result = this.(HTMLElement).getAttribute(i)
+      result = this.(HTML::Element).getAttribute(i)
     }
 
     override ElementDefinition getParent() {
-      result = this.(HTMLElement).getParent()
+      result = this.(HTML::Element).getParent()
     }
   }
 
@@ -165,10 +165,10 @@ module DOM {
    * An HTML attribute, viewed as an `AttributeDefinition`.
    */
   private class HtmlAttributeDefinition extends AttributeDefinition, @xmlattribute {
-    HtmlAttributeDefinition() { this instanceof HTMLAttribute }
-    override string getName() { result = this.(HTMLAttribute).getName() }
-    override string getStringValue() { result = this.(HTMLAttribute).getValue() }
-    override ElementDefinition getElement() { result = this.(HTMLAttribute).getElement() }
+    HtmlAttributeDefinition() { this instanceof HTML::Attribute }
+    override string getName() { result = this.(HTML::Attribute).getName() }
+    override string getStringValue() { result = this.(HTML::Attribute).getValue() }
+    override ElementDefinition getElement() { result = this.(HTML::Attribute).getElement() }
   }
 
   /**

@@ -36,18 +36,18 @@ library class ObjectOrCfg extends @py_object {
 }
 
 /** A class whose instances represents Python classes.
-    Instances of this class represent either builtin classes 
-    such as `list` or `str`, or program-defined Python classes 
-    present in the source code.
-
-    Generally there is a one-to-one mapping between classes in 
-    the Python program and instances of this class in the database. 
-    However, that is not always the case. For example, dynamically 
-    generated classes may share a single QL class instance.
-    Also the existence of a class definition in the source code 
-    does not guarantee that such a class will ever exist in the 
-    running program.
-*/
+ *  Instances of this class represent either builtin classes 
+ *  such as `list` or `str`, or program-defined Python classes 
+ *  present in the source code.
+ *  
+ *  Generally there is a one-to-one mapping between classes in 
+ *  the Python program and instances of this class in the database. 
+ *  However, that is not always the case. For example, dynamically 
+ *  generated classes may share a single QL class instance.
+ *  Also the existence of a class definition in the source code 
+ *  does not guarantee that such a class will ever exist in the 
+ *  running program.
+ */
 class ClassObject extends Object {
 
     ClassObject() {

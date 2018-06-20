@@ -26,6 +26,6 @@
 import javascript
 import semmle.javascript.security.dataflow.InsecureRandomness::InsecureRandomness
 
-from Configuration cfg, Source source, Sink sink
+from Configuration cfg, DataFlow::Node source, DataFlow::Node sink
 where cfg.hasFlow(source, sink)
 select sink, "Cryptographically insecure $@ in a security context.", source, "random value"

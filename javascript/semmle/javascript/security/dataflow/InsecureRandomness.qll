@@ -37,10 +37,7 @@ module InsecureRandomness {
    * A taint tracking configuration for random values that are not cryptographically secure.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "InsecureRandomness" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "InsecureRandomness" }
 
     override
     predicate isSource(DataFlow::Node source) {

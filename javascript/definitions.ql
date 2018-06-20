@@ -134,10 +134,40 @@ predicate propertyLookup(Expr prop, ASTNode write, string kind) {
   )
 }
 
+/**
+ * Holds if `ref` is an identifier that refers to a type or namespace declared at `decl`.
+ */
+predicate typeLookup(ASTNode ref, ASTNode decl, string kind) {
+  exists (TypeAccess typeAccess |
+    ref = typeAccess.getIdentifier() and
+    decl = typeAccess.getTypeName().getADefinition() and
+    kind = "T")
+  or
+  exists (NamespaceAccess namespaceAccess |
+    ref = namespaceAccess.getIdentifier() and
+    decl = namespaceAccess.getNamespace().getADefinition() and
+    kind = "T")
+}
+
+/**
+ * Holds if `ref` is the callee name of an invocation of `decl`.
+ */
+predicate typedInvokeLookup(ASTNode ref, ASTNode decl, string kind) {
+  not variableDefLookup(ref, decl, _) and
+  not propertyLookup(ref, decl, _) and
+  exists (InvokeExpr invoke, Expr callee | 
+    callee = invoke.getCallee().stripParens() and
+    (ref = callee.(Identifier) or ref = callee.(DotExpr).getPropertyNameExpr()) and
+    decl = invoke.getResolvedCallee() and
+    kind = "M")
+}
+
 from ASTNode ref, ASTNode decl, string kind
 where variableDefLookup(ref, decl, kind) or
       // prefer definitions over declarations
       not variableDefLookup(ref, _, _) and variableDeclLookup(ref, decl, kind) or
       importLookup(ref, decl, kind) or
-      propertyLookup(ref, decl, kind)
+      propertyLookup(ref, decl, kind) or
+      typeLookup(ref, decl, kind) or
+      typedInvokeLookup(ref, decl, kind)
 select ref, decl, kind

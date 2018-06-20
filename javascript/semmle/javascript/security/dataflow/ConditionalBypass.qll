@@ -43,10 +43,7 @@ module ConditionalBypass {
    * A taint tracking configuration for bypass of sensitive action guards.
    */
   class Configuration extends TaintTracking::Configuration {
-    Configuration() {
-      this = "ConditionalBypass" and
-      exists(Source s) and exists(Sink s)
-    }
+    Configuration() { this = "ConditionalBypass" }
 
     override
     predicate isSource(DataFlow::Node source) {

@@ -27,7 +27,7 @@
 import javascript
 import semmle.javascript.security.dataflow.CorsMisconfigurationForCredentials::CorsMisconfigurationForCredentials
 
-from Configuration cfg, Source source, Sink sink
+from Configuration cfg, DataFlow::Node source, Sink sink
 where cfg.hasFlow(source, sink)
 select sink, "$@ leak vulnerability due to $@.",
        sink.getCredentialsHeader(), "Credential",

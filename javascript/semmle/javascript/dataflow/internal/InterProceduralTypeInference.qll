@@ -137,7 +137,7 @@ private class AnalyzedThisInConstructorFunction extends AnalyzedThisExpr {
   AbstractValue value;
 
   AnalyzedThisInConstructorFunction() {
-    value = TAbstractInstance(TAbstractFunction(binder.getFunction()))
+    value = AbstractInstance::of(binder.getFunction())
   }
 
   override AbstractValue getALocalValue() {
@@ -165,7 +165,7 @@ private class AnalyzedThisInInstanceMember extends AnalyzedThisExpr {
   }
 
   override AbstractValue getALocalValue() {
-    result = TAbstractInstance(TAbstractClass(c)) or
+    result = AbstractInstance::of(c) or
     result = AnalyzedThisExpr.super.getALocalValue()
   }
 }

@@ -30,7 +30,7 @@ class TornadoConnection extends TaintKind {
 class TornadoConnectionSource extends TaintSource {
 
     TornadoConnectionSource() {
-        this.(AttrNode).getObject("connection").refersTo(_, aTornadoRequestHandlerClass(), _)
+        isTornadoRequestHandlerInstance(this.(AttrNode).getObject("connection"))
     }
 
     string toString() {
@@ -51,11 +51,11 @@ class TornadoConnectionWrite extends TaintSink {
 
     TornadoConnectionWrite() {
         exists(CallNode call, ControlFlowNode conn |
-            call.getFunction().(AttrNode).getObject("write") = conn and
+            conn = call.getFunction().(AttrNode).getObject("write") and
             this = call.getAnArg() |
             exists(TornadoConnection tc | tc.taints(conn))
             or
-            conn.refersTo(_, aTornadoRequestHandlerClass(), _)
+            isTornadoRequestHandlerInstance(conn)
         )
     }
 
@@ -72,10 +72,10 @@ class TornadoHttpRequestHandlerWrite extends TaintSink {
     }
 
     TornadoHttpRequestHandlerWrite() {
-        exists(CallNode call, ControlFlowNode req |
-            call.getFunction().(AttrNode).getObject("write") = req and
-            this = call.getAnArg() and
-            req.refersTo(_, aTornadoRequestHandlerClass(), _)
+        exists(CallNode call, ControlFlowNode node |
+            node = call.getFunction().(AttrNode).getObject("write") and
+            isTornadoRequestHandlerInstance(node) and
+            this = call.getAnArg()
         )
     }
 
@@ -92,10 +92,10 @@ class TornadoHttpRequestHandlerRedirect extends TaintSink {
     }
 
     TornadoHttpRequestHandlerRedirect() {
-        exists(CallNode call, ControlFlowNode req |
-            call.getFunction().(AttrNode).getObject("redirect") = req and
-            this = call.getArg(0) and
-            req.refersTo(_, aTornadoRequestHandlerClass(), _)
+        exists(CallNode call, ControlFlowNode node |
+            node = call.getFunction().(AttrNode).getObject("redirect") and
+            isTornadoRequestHandlerInstance(node) and
+            this = call.getArg(0)
         )
     }
 

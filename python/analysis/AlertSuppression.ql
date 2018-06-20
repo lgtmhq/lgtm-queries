@@ -44,6 +44,13 @@ abstract class SuppressionComment extends Comment {
  */
 abstract class LineSuppressionComment extends SuppressionComment {
 
+    LineSuppressionComment() {
+        exists(string filepath, int l |
+            this.getLocation().hasLocationInfo(filepath, l, _, _, _) and
+            any(AstNode a).getLocation().hasLocationInfo(filepath, l, _, _, _)
+        )
+    }
+
     /** Gets the scope of this suppression. */
     override SuppressionScope getScope() {
         result = this
@@ -64,7 +71,15 @@ class LgtmSuppressionComment extends LineSuppressionComment {
     string annotation;
 
     LgtmSuppressionComment() {
-        annotation = this.getContents().regexpCapture("\\s*(lgtm\\s*(?:\\[[^\\]]*\\]|\\b(?!\\[))).*", 1)
+        exists(string all |
+            all = this.getContents()
+            |
+            // match `lgtm[...]` anywhere in the comment
+            annotation = all.regexpFind("(?i)\\blgtm\\s*\\[[^\\]]*\\]", _, _)
+            or
+            // match `lgtm` at the start of the comment and after semicolon
+            annotation = all.regexpFind("(?i)(?<=^|;)\\s*lgtm(?!\\B|\\s*\\[)", _, _).trim()
+        )
     }
 
     /** Gets the suppression annotation in this comment. */

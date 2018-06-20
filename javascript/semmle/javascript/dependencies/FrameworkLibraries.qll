@@ -87,9 +87,9 @@ abstract class FrameworkLibraryInstance extends Script {
  * An abstract representation of a reference to a framework library
  * via the `src` attribute of a `<script>` element.
  */
-abstract class FrameworkLibraryReference extends HTMLAttribute {
+abstract class FrameworkLibraryReference extends HTML::Attribute {
   FrameworkLibraryReference() {
-    getName() = "src" and getElement() instanceof HtmlScriptElement
+    getName() = "src" and getElement() instanceof HTML::ScriptElement
   }
 
   /**
@@ -223,8 +223,8 @@ class FrameworkLibraryReferenceWithURL extends FrameworkLibraryReference {
  * Holds if the value of `src` attribute `attr` matches the URL pattern of library
  * `fl` at `version`.
  */
-private predicate matchURL(HTMLAttribute attr, FrameworkLibraryWithURLRegex fl, string version) {
-  attr.getName() = "src" and attr.getElement() instanceof HtmlScriptElement and
+private predicate matchURL(HTML::Attribute attr, FrameworkLibraryWithURLRegex fl, string version) {
+  attr.getName() = "src" and attr.getElement() instanceof HTML::ScriptElement and
   version = attr.getValue().regexpCapture(fl.getAURLRegex(), 1)
 }
 
@@ -838,7 +838,7 @@ private class FrameworkLibraryReferenceToInstance extends FrameworkLibraryRefere
   FrameworkLibraryInstance fli;
 
   FrameworkLibraryReferenceToInstance() {
-    fli = getElement().(HtmlScriptElement).resolveSource()
+    fli = getElement().(HTML::ScriptElement).resolveSource()
   }
 
   override predicate info(FrameworkLibrary fl, string v) {

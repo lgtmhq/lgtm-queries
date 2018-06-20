@@ -29,7 +29,13 @@ class SuppressionComment extends CppStyleComment {
 
   SuppressionComment() {
     text = getContents().suffix(2) and
-    annotation = text.regexpCapture("\\s*(lgtm\\s*(?:\\[[^\\]]*\\]|\\b(?!\\[))).*", 1)
+    ( // match `lgtm[...]` anywhere in the comment
+      annotation = text.regexpFind("(?i)\\blgtm\\s*\\[[^\\]]*\\]", _, _)
+      or
+      // match `lgtm` at the start of the comment and after semicolon
+      annotation = text.regexpFind("(?i)(?<=^|;)\\s*lgtm(?!\\B|\\s*\\[)", _, _)
+                       .trim()
+    )
   }
 
 
