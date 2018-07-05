@@ -144,14 +144,14 @@ class JacksonAddMixinCall extends MethodAccess {
   }
 
   /**
-   * Get a possible type for the target of the mixing, if any can be deduced.
+   * Gets a possible type for the target of the mixing, if any can be deduced.
    */
   RefType getATarget() {
     result = inferClassParameterType(getArgument(0))
   }
 
   /**
-   * Get a possible type that will be mixed in, if any can be deduced.
+   * Gets a possible type that will be mixed in, if any can be deduced.
    */
   RefType getAMixedInType() {
     result = inferClassParameterType(getArgument(1))
@@ -178,7 +178,7 @@ class JacksonMixinType extends ClassOrInterface {
   }
 
   /**
-   * Get a type that this type is mixed into.
+   * Gets a type that this type is mixed into.
    */
   RefType getATargetType() {
     exists(JacksonAddMixinCall mixinCall |
@@ -187,7 +187,7 @@ class JacksonMixinType extends ClassOrInterface {
   }
 
   /**
-   * Get a callable from this type which is mixed in by Jackson.
+   * Gets a callable from this type that is mixed in by Jackson.
    */
   Callable getAMixedInCallable() {
     result = getACallable() and
@@ -199,7 +199,7 @@ class JacksonMixinType extends ClassOrInterface {
   }
 
   /**
-   * Get a field that is mixed in by Jackson.
+   * Gets a field that is mixed in by Jackson.
    */
   Field getAMixedInField() {
     result = getAField() and
@@ -215,7 +215,7 @@ class JacksonMixedInCallable extends Callable {
   }
 
   /**
-   * Get a candidate target type that this callable can be mixed into.
+   * Gets a candidate target type that this callable can be mixed into.
    */
   RefType getATargetType() {
     exists(JacksonMixinType mixinType |
@@ -225,7 +225,7 @@ class JacksonMixedInCallable extends Callable {
   }
 
   /**
-   * Get a callable on a possible target that this is mixed into.
+   * Gets a callable on a possible target that this is mixed into.
    */
   Callable getATargetCallable() {
     exists(RefType targetType |

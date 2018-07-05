@@ -23,7 +23,7 @@ class GwtUiTemplateXmlFile extends XMLFile {
     this.getBaseName().matches("%.ui.xml")
   }
 
-  /** The top-level UiBinder element. */
+  /** Gets the top-level UiBinder element. */
   GwtUiBinderTemplateElement getUiBinderElement() {
     result = this.getAChild()
   }
@@ -50,7 +50,7 @@ class GwtComponentTemplateElement extends XMLElement {
   }
 
   /**
-   * The class represented by this element.
+   * Gets the class represented by this element.
    */
   Class getClass() {
     exists(string namespace |

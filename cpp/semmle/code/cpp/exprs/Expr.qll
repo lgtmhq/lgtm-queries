@@ -393,7 +393,7 @@ class Expr extends StmtParent, @expr {
   predicate isParenthesised() { this.getConversion() instanceof ParenthesisExpr }
 
   /** Gets the function containing this control-flow node. */
-  Function getControlFlowScope() {
+  override Function getControlFlowScope() {
     result = this.getEnclosingFunction()
   }
 }

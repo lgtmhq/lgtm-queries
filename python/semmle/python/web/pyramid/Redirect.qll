@@ -20,7 +20,6 @@ import python
 import semmle.python.security.TaintTracking
 import semmle.python.security.strings.Basic
 
-
 private ClassObject redirectClass() {
     exists(ModuleObject ex |
         ex.getName() = "pyramid.httpexceptions" |

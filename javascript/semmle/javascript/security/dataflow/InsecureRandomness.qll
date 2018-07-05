@@ -121,6 +121,15 @@ module InsecureRandomness {
   class SensitiveWriteSink extends Sink {
     SensitiveWriteSink() { this instanceof SensitiveWrite }
   }
+
+  /**
+   * A cryptographic key, considered as a sink for random values that are not cryptographically
+   * secure.
+   */
+  class CryptoKeySink extends Sink {
+    CryptoKeySink() { this instanceof CryptographicKey }
+  }
+
 }
 
 /** DEPRECATED: Use `InsecureRandomness::Source` instead. */

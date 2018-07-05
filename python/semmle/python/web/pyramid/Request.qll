@@ -25,10 +25,7 @@ class PyramidRequest extends BaseWebobRequest {
     }
 
     override ClassObject getClass() {
-        exists(ModuleObject req |
-            req.getName() = "pyramid.request" and
-            result = req.getAttribute("Request")
-        )
+        result = any(ModuleObject m | m.getName() = "pyramid.request").getAttribute("Request")
     }
 
 }
@@ -38,7 +35,7 @@ class PyramidViewArgument extends TaintSource {
 
     PyramidViewArgument() {
         exists(Function view_func |
-            is_view_function(view_func) and
+            is_pyramid_view_function(view_func) and
             this.(ControlFlowNode).getNode() = view_func.getArg(0)
         )
     }

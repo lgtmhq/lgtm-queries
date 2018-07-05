@@ -40,7 +40,7 @@ class MetricElement extends Element {
     result = this
   }
 
-  /** A dependency of this element that is from source. */
+  /** Gets a dependency of this element that is from source. */
   MetricElement getADependencySrc() {
     result = this.getADependency() and result.fromSource()
   }
@@ -76,13 +76,13 @@ class MetricElement extends Element {
     result = max(int d | d = this.getALevel())
   }
 
-  /** The Halstead length of this element. This default implementation must be overridden in subclasses. */
+  /** Gets the Halstead length of this element. This default implementation must be overridden in subclasses. */
   int getHalsteadLength() { result = 0 and none() }
-  /** The Halstead vocabulary of this element. This default implementation must be overridden in subclasses. */
+  /** Gets the Halstead vocabulary of this element. This default implementation must be overridden in subclasses. */
   int getHalsteadVocabulary() { result = 0 and none() }
-  /** The cyclomatic complexity of this element. This default implementation must be overridden in subclasses. */
+  /** Gets the cyclomatic complexity of this element. This default implementation must be overridden in subclasses. */
   int getCyclomaticComplexity() { result = 0 and none() }
-  /** The percentage of comments in this element. This default implementation must be overridden in subclasses. */
+  /** Gets the percentage of comments in this element. This default implementation must be overridden in subclasses. */
   float getPercentageOfComments() { result = 0 and none() }
 
   /**
@@ -93,14 +93,14 @@ class MetricElement extends Element {
     result = this.getHalsteadLength() * this.getHalsteadVocabulary().maximum(2.0).log2()
   }
 
-  /** The maintainability index without comment weight. */
+  /** Gets the maintainability index without comment weight. */
   float getMaintainabilityIndexWithoutComments() {
     result = 171 - 5.2 * this.getHalsteadVolume().log()
                  - 0.23 * this.getCyclomaticComplexity()
                  - 16.2 * this.getNumberOfLinesOfCode().log()
   }
 
-  /** The maintainability index comment weight. */
+  /** Gets the maintainability index comment weight. */
   float getMaintainabilityIndexCommentWeight() {
    result = 50 * (2.4 * this.getPercentageOfComments()).sqrt().sin()
   }

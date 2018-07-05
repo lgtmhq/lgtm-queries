@@ -67,7 +67,7 @@ module ConnectExpressShared {
           // heuristic: not a class method (the server invokes this with a function call)
           astNode = any(MethodDefinition def).getBody() or
           // heuristic: does not return anything (the server will not use the return value)
-          exists(getFunction().getAReturnedExpr()) or
+          exists(astNode.getAReturnStmt().getExpr()) or
           // heuristic: is not invoked (the server invokes this at a call site we can not reason precisely about)
           exists(CallSite cs | cs.getACallee() = astNode)
         )

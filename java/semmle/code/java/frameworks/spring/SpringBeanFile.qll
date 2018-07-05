@@ -38,7 +38,7 @@ class SpringBeanFile extends XMLFile {
     exists(SpringBean b | b.getFile() = this and result = b)
   }
 
-  /** The `<beans>` element of the file. */
+  /** Gets the `<beans>` element of the file. */
   XMLElement getBeansElement() {
     result = this.getAChild() and
     result.getName() = "beans"
@@ -53,26 +53,26 @@ class SpringBeanFile extends XMLFile {
     result.length() != 0
   }
 
-  /** The `default-autowire` value for this file. */
+  /** Gets the `default-autowire` value for this file. */
   string getDefaultAutowire() {
     if this.getBeansElement().hasAttribute("default-autowire")
     then result = this.getBeansElement().getAttributeValue("default-autowire")
     else result = "no"
   }
 
-  /** The `default-autowire-candidates` value for this file. */
+  /** Gets the `default-autowire-candidates` value for this file. */
   string getDefaultAutowireCandidatesPattern() {
     result = this.getBeansElement().getAttributeValue("default-autowire-candidates")
   }
 
-  /** The `default-dependency-check` value for this file. */
+  /** Gets the `default-dependency-check` value for this file. */
   string getDefaultDependencyCheck() {
     if exists(XMLAttribute a | this.getBeansElement().getAttribute("default-dependency-check") = a)
     then result = this.getBeansElement().getAttributeValue("default-dependency-check")
     else result = "none"
   }
 
-  /** The `default-destroy-method` value for this file. */
+  /** Gets the `default-destroy-method` value for this file. */
   string getDefaultDestroyMethod() {
     result = this.getBeansElement().getAttributeValue("default-destroy-method")
   }
@@ -82,7 +82,7 @@ class SpringBeanFile extends XMLFile {
     exists(XMLAttribute a | this.getBeansElement().getAttribute("default-destroy-method") = a)
   }
 
-  /** The `default-init-method` value for this file. */
+  /** Gets the `default-init-method` value for this file. */
   string getDefaultInitMethod() {
     result = this.getBeansElement().getAttributeValue("default-init-method")
   }

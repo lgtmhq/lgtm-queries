@@ -31,7 +31,7 @@ class SystemFunction extends FunctionWithWrappers {
     or hasQualifiedName("_wsystem")
   }
 
-  predicate interestingArg(int arg) {
+  override predicate interestingArg(int arg) {
     arg = 0
   }
 }

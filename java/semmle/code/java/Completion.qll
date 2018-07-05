@@ -93,7 +93,7 @@ BreakCompletion labelledBreakCompletion(Label l) {
   result = BreakCompletion(JustLabel(l))
 }
 
-/** The completion `booleanCompletion(value, value)`. */
+/** Gets the completion `booleanCompletion(value, value)`. */
 Completion basicBooleanCompletion(boolean value) {
   result = BooleanCompletion(value, value)
 }

@@ -53,6 +53,7 @@ class Location extends @location {
   }
 
   /** Holds if this location starts before location `that`. */
+  pragma[inline]
   predicate startsBefore(Location that) {
     exists (File f, int sl1, int sc1, int sl2, int sc2 |
       locations_default(this, f, sl1, sc1, _, _) and
@@ -64,6 +65,7 @@ class Location extends @location {
   }
 
   /** Holds if this location ends after location `that`. */
+  pragma[inline]
   predicate endsAfter(Location that) {
     exists (File f, int el1, int ec1, int el2, int ec2 |
       locations_default(this, f, _, _, el1, ec1) and

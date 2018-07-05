@@ -182,6 +182,11 @@ class Function extends Function_, Scope, AstNode {
         Scope.super.containsInScope(inner)
     }
 
+    override
+    predicate contains(AstNode inner) {
+        Scope.super.contains(inner)
+    }
+
 }
 
 /** A def statement. Note that FunctionDef extends Assign as a function definition binds the newly created function */

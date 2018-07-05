@@ -88,7 +88,7 @@ private predicate ssa_use(LocalScopeVariable v, VariableAccess node, BasicBlock 
     useOfVar(v, node) and b.getNode(index) = node
 }
 
-cached private predicate live_at_start_of_bb(LocalScopeVariable v, BasicBlock b) {
+private predicate live_at_start_of_bb(LocalScopeVariable v, BasicBlock b) {
     exists (int i | ssa_use(v, _, b, i) |
       not exists (int j | variableUpdate(v, _, b, j) | j < i))
     or
@@ -101,15 +101,15 @@ private predicate live_at_exit_of_bb(LocalScopeVariable v, BasicBlock b) {
 }
 
 /** Common SSA logic for standard SSA and range-analysis SSA. */
-library class SSAHelper extends int {
+cached library class SSAHelper extends int {
     /* 0 = StandardSSA, 1 = RangeSSA */
-    SSAHelper() { this in [0 .. 1] }
+    cached SSAHelper() { this in [0 .. 1] }
 
     /**
      * Override to insert a custom phi node for variable `v` at the start of
      * basic block `b`.
      */
-    predicate custom_phi_node(LocalScopeVariable v, BasicBlock b) { none() }
+    cached predicate custom_phi_node(LocalScopeVariable v, BasicBlock b) { none() }
 
     /**
      * Remove any custom phi nodes that are invalid.
@@ -146,7 +146,7 @@ library class SSAHelper extends int {
      * Holds if `v` is defined, for the purpose of SSA, at `node`, which is at
      * position `index` in block `b`. This includes definitions from phi nodes.
      */
-    predicate ssa_defn(LocalScopeVariable v, ControlFlowNode node, BasicBlock b, int index) {
+    cached predicate ssa_defn(LocalScopeVariable v, ControlFlowNode node, BasicBlock b, int index) {
         phi_node(v, b) and b.getStart() = node and index = -1
         or
         variableUpdate(v, node, b, index)
@@ -214,7 +214,7 @@ library class SSAHelper extends int {
     }
 
     /** Holds if SSA variable `(v, def)` reaches the end of block `b`. */
-    predicate ssaDefinitionReachesEndOfBB(LocalScopeVariable v, ControlFlowNode def, BasicBlock b) {
+    cached predicate ssaDefinitionReachesEndOfBB(LocalScopeVariable v, ControlFlowNode def, BasicBlock b) {
       (live_at_exit_of_bb(v, b) and ssaDefReachesRank(v, def, b, lastRank(v, b)))
       or
       exists (BasicBlock idom |
@@ -263,7 +263,7 @@ library class SSAHelper extends int {
      * Gets a string representation of the SSA variable represented by the pair
      * `(node, v)`.
      */
-    string toString(ControlFlowNode node, LocalScopeVariable v) {
+    cached string toString(ControlFlowNode node, LocalScopeVariable v) {
         if phi_node(v, (BasicBlock)node) then
             result = "SSA phi(" + v.getName() + ")"
         else

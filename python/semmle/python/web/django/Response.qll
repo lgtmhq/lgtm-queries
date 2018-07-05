@@ -29,13 +29,9 @@ class DjangoResponse extends TaintKind {
 
 }
 
-private ClassObject djangoHttpResponseClass() {
-    exists(ModuleObject m |
-        m.getName() = "django.http.response" and
-        result = m.getAttribute("HttpResponse")
-    )
-    and
-    not result = djangoHttpRedirectClass()
+private ClassObject theDjangoHttpResponseClass() {
+    result = any(ModuleObject m | m.getName() = "django.http.response").getAttribute("HttpResponse") and
+    not result = theDjangoHttpRedirectClass()
 }
 
 /** Instantiation of a django response. */
@@ -43,7 +39,7 @@ class DjangoResponseSource extends TaintSource {
 
     DjangoResponseSource() {
         exists(ClassObject cls |
-            cls.getAnImproperSuperType() = djangoHttpResponseClass() and
+            cls.getAnImproperSuperType() = theDjangoHttpResponseClass() and
             cls.getACall() = this
         )
     }
@@ -81,7 +77,7 @@ class DjangoResponseContent extends TaintSink {
 
     DjangoResponseContent() {
         exists(CallNode call, ClassObject cls |
-            cls.getAnImproperSuperType() = djangoHttpResponseClass() and
+            cls.getAnImproperSuperType() = theDjangoHttpResponseClass() and
             call.getFunction().refersTo(cls) |
             call.getArg(0) = this
             or

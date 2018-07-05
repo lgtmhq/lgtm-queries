@@ -26,17 +26,17 @@ class GwtXmlFile extends XMLFile {
     this.getBaseName().matches("%.gwt.xml")
   }
 
-  /** The top-level module element of a GWT module XML file. */
+  /** Gets the top-level module element of a GWT module XML file. */
   GwtModuleElement getModuleElement() {
     result = this.getAChild()
   }
 
-  /** The name of an inherited GWT module, for example `com.google.gwt.user.User`. */
+  /** Gets the name of an inherited GWT module, for example `com.google.gwt.user.User`. */
   string getAnInheritedModuleName() {
     result = getModuleElement().getAnInheritsElement().getAnInheritedName()
   }
 
-  /** A GWT module XML file (from source) inherited from this module. */
+  /** Gets a GWT module XML file (from source) inherited from this module. */
   GwtXmlFile getAnInheritedXmlFile() {
     exists(GwtXmlFile f, string name |
       name = getAnInheritedModuleName() and
@@ -45,12 +45,12 @@ class GwtXmlFile extends XMLFile {
     )
   }
 
-  /** The relative path of the folder containing this GWT module XML file. */
+  /** Gets the relative path of the folder containing this GWT module XML file. */
   string getRelativeRootFolderPath() {
     result = getParentContainer().getRelativePath()
   }
 
-  /** A GWT-translatable source sub-folder explicitly defined in a `<source>` element. */
+  /** Gets a GWT-translatable source sub-folder explicitly defined in a `<source>` element. */
   string getAnExplicitSourceSubPath() {
     result = getModuleElement().getASourceElement().getASourcePath()
   }
@@ -81,17 +81,17 @@ class GwtModuleElement extends XMLElement {
     this.getName() = "module"
   }
 
-  /** An element of the form `<inherits>`, which specifies a GWT module to inherit. */
+  /** Gets an element of the form `<inherits>`, which specifies a GWT module to inherit. */
   GwtInheritsElement getAnInheritsElement() {
     result = this.getAChild()
   }
 
-  /** An element of the form `<entry-point>`, which specifies a GWT entry-point class name. */
+  /** Gets an element of the form `<entry-point>`, which specifies a GWT entry-point class name. */
   GwtEntryPointElement getAnEntryPointElement() {
     result = this.getAChild()
   }
 
-  /** An element of the form `<source>`, which specifies a GWT-translatable source path. */
+  /** Gets an element of the form `<source>`, which specifies a GWT-translatable source path. */
   GwtSourceElement getASourceElement() {
     result = this.getAChild()
   }
@@ -104,7 +104,7 @@ class GwtInheritsElement extends XMLElement {
     this.getName() = "inherits"
   }
 
-  /** The name of an inherited GWT module, for example `com.google.gwt.user.User`. */
+  /** Gets the name of an inherited GWT module, for example `com.google.gwt.user.User`. */
   string getAnInheritedName() {
     result = getAttribute("name").getValue()
   }
@@ -117,7 +117,7 @@ class GwtEntryPointElement extends XMLElement {
     this.getName() = "entry-point"
   }
 
-  /** The name of a class that serves as a GWT entry-point. */
+  /** Gets the name of a class that serves as a GWT entry-point. */
   string getClassName() {
     result = getAttribute("class").getValue().trim()
   }
@@ -130,7 +130,7 @@ class GwtSourceElement extends XMLElement {
     this.getName() = "source"
   }
 
-  /** A path specified to be GWT translatable source code. */
+  /** Gets a path specified to be GWT translatable source code. */
   string getASourcePath() {
     result = getAttribute("path").getValue() and
     // Conservative approximation, ignoring Ant-style `FileSet` semantics.
@@ -147,7 +147,7 @@ class GwtServletElement extends XMLElement {
     this.getName() = "servlet"
   }
 
-  /** The name of a class that is used as a servlet. */
+  /** Gets the name of a class that is used as a servlet. */
   string getClassName() {
     result = getAttribute("class").getValue().trim()
   }

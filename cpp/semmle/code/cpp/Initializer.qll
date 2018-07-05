@@ -20,7 +20,7 @@ class Initializer extends @initialiser, ControlFlowNode {
   override Location getLocation() { initialisers(this,_,_,result) }
 
   /** Holds if this initializer is explicit in the source. */
-  predicate fromSource() {
+  override predicate fromSource() {
     not (this.getLocation() instanceof UnknownLocation)
   }
 
@@ -39,7 +39,7 @@ class Initializer extends @initialiser, ControlFlowNode {
   Expr getExpr() { initialisers(this,_,result,_) }
 
   /** Gets the function containing this control-flow node. */
-  Function getControlFlowScope() {
+  override Function getControlFlowScope() {
     result = this.getExpr().getEnclosingFunction()
   }
 

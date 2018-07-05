@@ -17,10 +17,11 @@
  *              to gain unauthorized access.
  * @kind problem
  * @problem.severity warning
- * @precision very-high
+ * @precision high
  * @id js/hardcoded-credentials
  * @tags security
  *       external/cwe/cwe-259
+ *       external/cwe/cwe-321
  *       external/cwe/cwe-798
  */
 

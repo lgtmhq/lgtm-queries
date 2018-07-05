@@ -24,7 +24,7 @@ class Element extends @element, Top {
   /** Holds if this element has the specified `name`. */
   predicate hasName(string name) { hasName(this,name) }
 
-  /** The name of this element. */
+  /** Gets the name of this element. */
   string getName() { this.hasName(result) }
 
   /**
@@ -51,7 +51,7 @@ class Element extends @element, Top {
     getCompilationUnit().getExtension() = "java"
   }
 
-  /** The compilation unit that this element belongs to. */
+  /** Gets the compilation unit that this element belongs to. */
   CompilationUnit getCompilationUnit() { result = getFile() }
 
   /** Cast this element to a `Documentable`. */

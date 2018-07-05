@@ -27,13 +27,13 @@ import Type
  * `class T extends Exception { }`.
  */
 class Exception extends Element, @exception {
-  /** The type of this exception. */
+  /** Gets the type of this exception. */
   RefType getType() { exceptions(this,result,_) }
 
-  /** The callable whose `throws` clause contains this exception. */
+  /** Gets the callable whose `throws` clause contains this exception. */
   Callable getCallable() { exceptions(this,_,result) }
 
-  /** The name of this exception is the name of its type. */
+  /** Gets the name of this exception, that is, the name of its type. */
   override string getName() { result = this.getType().getName() }
 
   /** Holds if this exception has the specified `name`. */

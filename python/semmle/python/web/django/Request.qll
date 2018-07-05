@@ -96,10 +96,7 @@ private class DjangoFunctionBasedViewRequestArgument extends DjangoRequestSource
 private class DjangoView extends ClassObject {
 
     DjangoView() {
-        exists(ModuleObject generics_base |
-            generics_base.getName() = "django.views.generic" and
-            generics_base.getAttribute("View") = this.getAnImproperSuperType()
-        )
+        any(ModuleObject m | m.getName() = "django.views.generic").getAttribute("View") = this.getAnImproperSuperType()
     }
 }
 
@@ -126,10 +123,7 @@ class DjangoClassBasedViewRequestArgument extends DjangoRequestSource {
 /* Function based views */
 predicate url_dispatch(CallNode call, ControlFlowNode regex, FunctionObject view) {
     exists(FunctionObject url |
-        exists(ModuleObject urls |
-            urls.getName() = "django.conf.urls" and
-            urls.getAttribute("url") = url
-        ) and
+        any(ModuleObject m | m.getName() = "django.conf.urls").getAttribute("url") = url and
         url.getArgumentForCall(call, 0) = regex and
         url.getArgumentForCall(call, 1).refersTo(view)
     )

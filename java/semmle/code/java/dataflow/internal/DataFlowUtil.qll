@@ -34,7 +34,7 @@ import semmle.code.java.dataflow.InstanceAccess
     /** Gets a textual representation of this element. */
     string toString() { none() }
 
-    /** The source location for this element. */
+    /** Gets the source location for this element. */
     Location getLocation() { none() }
 
     /** Gets the expression corresponding to this node, if any. */

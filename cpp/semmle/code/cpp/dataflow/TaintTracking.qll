@@ -45,6 +45,7 @@ module TaintTracking {
    *   MyAnalysisConfiguration() { this = "MyAnalysisConfiguration" }
    *   // Override `isSource` and `isSink`.
    *   // Optionally override `isSanitizer`.
+   *   // Optionally override `isSanitizerEdge`.
    *   // Optionally override `isAdditionalTaintStep`.
    * }
    * ```
@@ -79,6 +80,11 @@ module TaintTracking {
      */
     predicate isSanitizer(DataFlow::Node node) { none() }
 
+    /** Holds if data flow from `node1` to `node2` is prohibited. */
+    predicate isSanitizerEdge(DataFlow::Node node1, DataFlow::Node node2) {
+      none()
+    }
+
     /**
      * Holds if the additional taint propagation step
      * from `source` to `target` must be taken into account in the analysis.
@@ -91,6 +97,12 @@ module TaintTracking {
 
     final override
     predicate isBarrier(DataFlow::Node node) { isSanitizer(node) }
+
+    /** DEPRECATED: use `isSanitizerEdge` instead. */
+    override deprecated
+    predicate isBarrierEdge(DataFlow::Node node1, DataFlow::Node node2) {
+      this.isSanitizerEdge(node1, node2)
+    }
 
     final override
     predicate isAdditionalFlowStep(DataFlow::Node source, DataFlow::Node target) {
@@ -124,6 +136,11 @@ module TaintTracking {
      */
     predicate isSanitizer(DataFlow::Node node) { none() }
 
+    /** Holds if data flow from `node1` to `node2` is prohibited. */
+    predicate isSanitizerEdge(DataFlow::Node node1, DataFlow::Node node2) {
+      none()
+    }
+
     /**
      * Holds if the additional taint propagation step
      * from `source` to `target` must be taken into account in the analysis.
@@ -136,6 +153,12 @@ module TaintTracking {
 
     final override
     predicate isBarrier(DataFlow::Node node) { isSanitizer(node) }
+
+    /** DEPRECATED: use `isSanitizerEdge` instead. */
+    override deprecated
+    predicate isBarrierEdge(DataFlow::Node node1, DataFlow::Node node2) {
+      this.isSanitizerEdge(node1, node2)
+    }
 
     final override
     predicate isAdditionalFlowStep(DataFlow::Node source, DataFlow::Node target) {

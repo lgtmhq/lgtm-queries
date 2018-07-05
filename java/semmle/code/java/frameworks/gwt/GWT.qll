@@ -28,14 +28,14 @@ class GwtEntryPointClass extends Class {
     this.getAnAncestor() instanceof GwtEntryPointInterface
   }
 
-  /** The method serving as a GWT entry-point. */
+  /** Gets the method serving as a GWT entry-point. */
   Method getOnModuleLoadMethod() {
     result = this.getACallable() and
     result.hasName("onModuleLoad") and
     result.hasNoParameters()
   }
 
-  /** A GWT module XML file that specifies this class as an entry-point. */
+  /** Gets a GWT module XML file that specifies this class as an entry-point. */
   GwtXmlFile getAGwtXmlFile() {
     exists(GwtXmlFile f |
       result = f and
@@ -107,7 +107,7 @@ class JSNIComment extends Javadoc {
     jsniComment(this, _)
   }
 
-  /** The method implemented by this comment. */
+  /** Gets the method implemented by this comment. */
   Method getImplementedMethod() {
     jsniComment(this, result)
   }
@@ -121,7 +121,7 @@ class JSNIMethod extends Method {
     jsniComment(_, this)
   }
 
-  /** The comment containing the JavaScript code for this method. */
+  /** Gets the comment containing the JavaScript code for this method. */
   JSNIComment getImplementation() {
     jsniComment(result, this)
   }

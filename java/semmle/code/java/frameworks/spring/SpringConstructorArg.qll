@@ -28,7 +28,7 @@ class SpringConstructorArg extends SpringXMLElement {
     this.hasAttribute("index")
   }
 
-  /** The value of the `index` attribute. */
+  /** Gets the value of the `index` attribute. */
   string getArgIndex() {
     result = this.getAttributeValue("index")
   }
@@ -38,13 +38,13 @@ class SpringConstructorArg extends SpringXMLElement {
     this.hasAttribute("ref")
   }
 
-  /** The value of the `ref` attribute. */
+  /** Gets the value of the `ref` attribute. */
   string getArgRefString() {
     result = this.getAttributeValue("ref")
   }
 
   /**
-   * The bean pointed to by the `ref` attribute or a child `<ref>` or `<idref>` element.
+   * Gets the bean pointed to by the `ref` attribute or a child `<ref>` or `<idref>` element.
    */
   SpringBean getArgRefBean() {
     if this.hasArgRefString()
@@ -57,12 +57,12 @@ class SpringConstructorArg extends SpringXMLElement {
     this.hasAttribute("type")
   }
 
-  /** The value of the `type` attribute. */
+  /** Gets the value of the `type` attribute. */
   string getArgTypeName() {
     result = this.getAttributeValue("type")
   }
 
-  /** The Java `RefType` (class or interface) that the `type` attribute refers to. */
+  /** Gets the Java `RefType` (class or interface) that the `type` attribute refers to. */
   RefType getArgType() {
     result.getQualifiedName() = this.getArgTypeName()
   }

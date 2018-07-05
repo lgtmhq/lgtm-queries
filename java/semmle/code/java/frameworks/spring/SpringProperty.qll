@@ -28,7 +28,7 @@ class SpringProperty extends SpringXMLElement {
     result =  this.getPropertyName()
   }
 
-  /** The value of the `name` attribute. */
+  /** Gets the value of the `name` attribute. */
   string getPropertyName() {
     result = this.getAttributeValue("name")
   }
@@ -38,12 +38,12 @@ class SpringProperty extends SpringXMLElement {
     this.hasAttribute("ref")
   }
 
-  /** The value of the `ref` attribute. */
+  /** Gets the value of the `ref` attribute. */
   string getPropertyRefString() {
     result = this.getAttributeValue("ref")
   }
 
-  /** The bean referred to by the `ref` attribute or a nested `<ref>` element. */
+  /** Gets the bean referred to by the `ref` attribute or a nested `<ref>` element. */
   SpringBean getPropertyRefBean() {
     if this.hasPropertyRefString()
     then result.getBeanIdentifier() = this.getPropertyRefString()
@@ -58,7 +58,7 @@ class SpringProperty extends SpringXMLElement {
     this.hasAttribute("value")
   }
 
-  /** The value of the `value` attribute. */
+  /** Gets the value of the `value` attribute. */
   string getPropertyValueString() {
     result = this.getAttributeValue("value")
   }

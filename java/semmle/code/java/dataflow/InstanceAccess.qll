@@ -156,7 +156,7 @@ class InstanceAccessExt extends TInstanceAccessExt {
     result = ppBase() + ppKind()
   }
 
-  /** The source location for this element. */
+  /** Gets the source location for this element. */
   Location getLocation() { result = getAssociatedExprOrStmt().getLocation() }
 
   private ExprParent getAssociatedExprOrStmt() {

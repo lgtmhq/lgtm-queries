@@ -123,10 +123,10 @@ class Scope extends Scope_ {
         )
     }
 
-    predicate contains(Stmt s) {
-        this.getBody().contains(s)
+    predicate contains(AstNode a) {
+        this.getBody().contains(a)
         or
-        exists(Scope inner | inner.getEnclosingScope() = this | inner.contains(s))
+        exists(Scope inner | inner.getEnclosingScope() = this | inner.contains(a))
     }
 
     /** Holds if this scope can be expected to execute before `other`.

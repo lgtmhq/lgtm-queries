@@ -22,7 +22,7 @@ class FacesManagedBeanAnnotation extends Annotation {
   }
 
   /**
-   * Get the `Class` of the managed bean.
+   * Gets the `Class` of the managed bean.
    */
   Class getManagedBeanClass() {
     result = getAnnotatedElement()
@@ -40,7 +40,7 @@ class FacesComponentAnnotation extends Annotation {
   }
 
   /**
-   * Get the `Class` of the FacesComponent, if this annotation is valid.
+   * Gets the `Class` of the FacesComponent, if this annotation is valid.
    */
   Class getFacesComponentClass() {
     result = getAnnotatedElement()

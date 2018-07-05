@@ -21,12 +21,12 @@ class SpringXMLElement extends XMLElement {
     this.getFile() instanceof SpringBeanFile
   }
 
-  /** A child of this Spring XML element. */
+  /** Gets a child of this Spring XML element. */
   SpringXMLElement getASpringChild() {
     result = this.getAChild()
   }
 
-  /** The bean file of this XML element. */
+  /** Gets the bean file of this XML element. */
   SpringBeanFile getSpringBeanFile() {
     result = this.getFile()
   }
@@ -42,7 +42,7 @@ class SpringXMLElement extends XMLElement {
       else result = "default"
   }
 
-  /** The closest enclosing `<bean>` element. */
+  /** Gets the closest enclosing `<bean>` element. */
   SpringBean getEnclosingBean() {
     if this instanceof SpringBean
     then result = this

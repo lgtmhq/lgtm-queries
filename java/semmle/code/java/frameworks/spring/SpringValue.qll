@@ -20,12 +20,12 @@ class SpringValue extends SpringXMLElement {
     this.getName() = "value"
   }
 
-  /** The value of the `type` attribute. */
+  /** Gets the value of the `type` attribute. */
   string getTypeName() {
     result = this.getAttributeValue("type")
   }
 
-  /** The Java `RefType` (class or interface) referred to by the `type` attribute. */
+  /** Gets the Java `RefType` (class or interface) referred to by the `type` attribute. */
   RefType getType() {
     result.getQualifiedName() = this.getTypeName()
   }

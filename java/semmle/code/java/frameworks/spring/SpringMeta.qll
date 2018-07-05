@@ -20,12 +20,12 @@ class SpringMeta extends SpringXMLElement {
     this.getName() = "meta"
   }
 
-  /** The value of the `key` attribute. */
+  /** Gets the value of the `key` attribute. */
   string getMetaKey() {
     result = this.getAttributeValue("key")
   }
 
-  /** The value of the `value` attribute. */
+  /** Gets the value of the `value` attribute. */
   string getMetaValue() {
     result = this.getAttributeValue("value")
   }

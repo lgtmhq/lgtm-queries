@@ -21,17 +21,17 @@ class SpringReplacedMethod extends SpringXMLElement {
     this.getName() = "replaced-method"
   }
 
-  /** The value of the `name` attribute. */
+  /** Gets the value of the `name` attribute. */
   string getMethodName() {
     result = this.getAttributeValue("name")
   }
 
-  /** The value of the `replacer` attribute. */
+  /** Gets the value of the `replacer` attribute. */
   string getReplacerBeanName() {
     result = this.getAttributeValue("replacer")
   }
 
-  /** The bean referred to by the `replacer` attribute. */
+  /** Gets the bean referred to by the `replacer` attribute. */
   SpringBean getReplacerBean() {
     result.getBeanIdentifier() = this.getReplacerBeanName()
   }

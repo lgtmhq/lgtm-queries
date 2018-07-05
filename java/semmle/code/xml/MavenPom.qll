@@ -31,15 +31,15 @@ private string normalize(string path) {
  * and "versionID", typically contained in Maven POM XML files.
  */
 class ProtoPom extends XMLElement {
-  /** A child XML element named "groupId". */
+  /** Gets a child XML element named "groupId". */
   Group getGroup() { result = this.getAChild() }
-  /** A child XML element named "artifactId". */
+  /** Gets a child XML element named "artifactId". */
   Artifact getArtifact() { result = this.getAChild() }
-  /** A child XML element named "version". */
+  /** Gets a child XML element named "version". */
   Version getVersion() { result=this.getAChild() }
 
   /**
-   * Return a string representing the version, or an empty string if no version
+   * Gets a string representing the version, or an empty string if no version
    * tag was provided.
    */
   string getVersionString() {
@@ -48,7 +48,7 @@ class ProtoPom extends XMLElement {
     else
       result = ""
   }
-  /** A Maven coordinate of the form `groupId:artifactId`. */
+  /** Gets a Maven coordinate of the form `groupId:artifactId`. */
   string getShortCoordinate() {
       result = this.getGroup().getValue() + ":" + this.getArtifact().getValue()
   }
@@ -80,34 +80,34 @@ class Pom extends ProtoPom {
       result = super.getGroup()
   }
 
-  /** A Maven coordinate of the form `groupId:artifactId:version`. */
+  /** Gets a Maven coordinate of the form `groupId:artifactId:version`. */
   string getCoordinate() {
       result = this.getGroup().getValue() + ":" +
                this.getArtifact().getValue() + ":" +
                this.getVersion().getValue()
   }
 
-  /** A child XML element named "name". */
+  /** Gets a child XML element named "name". */
   Named getNamed() { result= this.getAChild() }
 
-  /** A child XML element named "dependencies". */
+  /** Gets a child XML element named "dependencies". */
   Dependencies getDependencies() { result=this.getAChild() }
 
-  /** A child XML element named `dependencyManagement`. */
+  /** Gets a child XML element named `dependencyManagement`. */
   DependencyManagement getDependencyManagement() { result = getAChild() }
 
-  /** A Dependency element for this POM. */
+  /** Gets a Dependency element for this POM. */
   Dependency getADependency() { result = getAChild().(Dependencies).getADependency() }
 
   /**
-   * Get a property defined in the `<properties>` section of this POM.
+   * Gets a property defined in the `<properties>` section of this POM.
    */
   PomProperty getALocalProperty() {
     result = getAChild().(PomProperties).getAProperty()
   }
 
   /**
-   * Get a property value defined for this project, either in a local `<properties>` section, or
+   * Gets a property value defined for this project, either in a local `<properties>` section, or
    * in the `<properties>` section of an ancestor POM.
    */
   PomProperty getAProperty() {
@@ -119,7 +119,7 @@ class Pom extends ProtoPom {
   }
 
   /**
-   * Get a property value defined for this project with the given name.
+   * Gets a property value defined for this project with the given name.
    */
   PomProperty getProperty(string name) {
     result.getName() = name and
@@ -127,7 +127,7 @@ class Pom extends ProtoPom {
   }
 
   /**
-   * Get a "project property" - for example, the groupId, name or packaging.
+   * Gets a "project property" - for example, the groupId, name or packaging.
    */
   PomElement getProjectProperty() {
     (
@@ -159,7 +159,7 @@ class Pom extends ProtoPom {
   }
 
   /**
-   * Return all the dependencies that are exported by this pom. An exported dependency is one that
+   * Gets all the dependencies that are exported by this pom. An exported dependency is one that
    * is transitively available, i.e. one with scope compile.
    */
   Dependency getAnExportedDependency() {
@@ -167,7 +167,7 @@ class Pom extends ProtoPom {
   }
 
   /**
-   * Return a pom dependency that is exported by this pom. An exported dependency is one that
+   * Gets a pom dependency that is exported by this pom. An exported dependency is one that
    * is transitively available, i.e. one with scope compile.
    */
   Pom getAnExportedPom() {
@@ -175,21 +175,21 @@ class Pom extends ProtoPom {
   }
 
   /**
-   * Get the `<parent>` element of this pom, if any.
+   * Gets the `<parent>` element of this pom, if any.
    */
   Parent getParentElement() {
     result = getAChild()
   }
 
   /**
-   * Get the pom referred to by the `<parent>` element of this pom, if any.
+   * Gets the pom referred to by the `<parent>` element of this pom, if any.
    */
   Pom getParentPom() {
     result = getParentElement().getPom()
   }
 
   /**
-   * Get the version specified for dependency `dep` in a `dependencyManagement`
+   * Gets the version specified for dependency `dep` in a `dependencyManagement`
    * section if this pom or one of its ancestors.
    */
   string getVersionStringForDependency(Dependency dep) {
@@ -202,7 +202,7 @@ class Pom extends ProtoPom {
   }
 
   /**
-   * Get the folder considered to be the source directory for this POM, if present in the analyzed
+   * Gets the folder considered to be the source directory for this POM, if present in the analyzed
    * snapshot.
    *
    * If the `<sourceDirectory>` property is set, the value will be used relative to the directory
@@ -222,7 +222,7 @@ class Pom extends ProtoPom {
   }
 
   /**
-   * Get a `RefType` contained in the source directory.
+   * Gets a `RefType` contained in the source directory.
    */
   RefType getASourceRefType() {
     result.getFile().getParentContainer*() = getSourceDirectory()
@@ -247,7 +247,7 @@ class Dependency extends ProtoPom {
   }
 
   /**
-   * The jar file that we think maven resolved this dependency to (if any).
+   * Gets the jar file that we think maven resolved this dependency to (if any).
    */
   File getJar() {
     exists(MavenRepo mr |
@@ -256,7 +256,7 @@ class Dependency extends ProtoPom {
   }
 
   /**
-   * Returns the scope of this dependency. If the scope tag is present, this will
+   * Gets the scope of this dependency. If the scope tag is present, this will
    * be the string contents of that tag, otherwise it defaults to "compile".
    */
   string getScope() {
@@ -312,7 +312,7 @@ class PomDependency extends Dependency {
  */
 class PomElement extends XMLElement {
   /**
-   * The value associated with this element. If the value contains a placeholder only, it will be resolved.
+   * Gets the value associated with this element. If the value contains a placeholder only, it will be resolved.
    */
   string getValue() {
     exists(string s |
@@ -373,7 +373,7 @@ class DependencyManagement extends PomElement {
   Dependency getADependency() { result = getDependencies().getADependency() }
 
   /**
-   * Get a dependency declared in this `dependencyManagement` element that has
+   * Gets a dependency declared in this `dependencyManagement` element that has
    * the same (short) coordinates as `dep`.
    */
   Dependency getDependency(Dependency dep) {
@@ -410,14 +410,14 @@ class MavenRepo extends Folder {
   }
 
   /**
-   * Return a Jar file contained within this repository.
+   * Gets a Jar file contained within this repository.
    */
   File getAJarFile() {
     result = getAChildContainer*().(File) and result.getExtension() = "jar"
   }
 
   /**
-   * Return any jar artifacts in this repository that match the pom project definition. This is an
+   * Gets any jar artifacts in this repository that match the pom project definition. This is an
    * over approximation. For soft qualifiers (e.g. 1.0) we return precise matches in preference to
    * artefact only matches. For hard qualifiers (e.g. [1.0]) we return only precise matches. For
    * all other qualifiers, we return all matches regardless of version.

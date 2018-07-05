@@ -55,7 +55,7 @@ private import NullGuards
 private import semmle.code.java.Collections
 private import semmle.code.java.frameworks.Assertions
 
-/** An expression that may be `null`. */
+/** Gets an expression that may be `null`. */
 Expr nullExpr() {
   result instanceof NullLiteral or
   result.(ParExpr).getExpr() = nullExpr() or
@@ -188,7 +188,7 @@ private predicate varMaybeNull(SsaVariable v, string msg, Expr reason) {
   )
 }
 
-/** An array or collection that contains at least one element. */
+/** Gets an array or collection that contains at least one element. */
 private Expr nonEmptyExpr() {
   // An array creation with a known positive size is trivially non-empty.
   result.(ArrayCreationExpr).getFirstDimensionSize() > 0 or
@@ -510,7 +510,7 @@ private predicate trackingVar(SsaSourceVariable npecand, SsaExplicitUpdate track
   )
 }
 
-/** An expression that tests the value of a given tracking variable. */
+/** Gets an expression that tests the value of a given tracking variable. */
 private Expr trackingVarGuard(SsaVariable trackssa, SsaSourceVariable trackvar, TrackVarKind kind, boolean branch, boolean isA) {
   exists(Expr init | trackingVar(_, trackssa, trackvar, kind, init) |
     result = basicNullGuard(trackvar.getAnAccess(), branch, isA) and kind = TrackVarKindNull() or
@@ -686,7 +686,7 @@ predicate alwaysNullDeref(SsaSourceVariable v, VarAccess va) {
   )
 }
 
-/** A `null` test on a variable that is not `null`. */
+/** Gets a `null` test on a variable that is not `null`. */
 Expr superfluousNullGuard(SsaVariable v) {
   guardSuggestsVarMaybeNull(result, v) and
   (result instanceof EqualityTest or result instanceof MethodAccess) and

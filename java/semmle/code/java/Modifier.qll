@@ -19,7 +19,7 @@ import Element
 
 /** A modifier such as `private`, `static` or `abstract`. */
 class Modifier extends Element, @modifier {
-  /** The element to which this modifier applies. */
+  /** Gets the element to which this modifier applies. */
   Element getElement() { hasModifier(result,this) }
 }
 
@@ -41,7 +41,7 @@ abstract class Modifiable extends Element {
   /** Holds if this element has no modifier. */
   predicate hasNoModifier() { not hasModifier(this,_) }
 
-  /** A modifier of this element. */
+  /** Gets a modifier of this element. */
   Modifier getAModifier() { this = result.getElement() }
 
   /** Holds if this element has an `abstract` modifier or is implicitly abstract. */

@@ -275,7 +275,7 @@ predicate declaresMember(Type t, @member m) {
  */
 class Type extends Element, @type {
   /**
-   * The JVM descriptor for this type, as used in bytecode.
+   * Gets the JVM descriptor for this type, as used in bytecode.
    */
   string getTypeDescriptor() { none() }
 
@@ -312,7 +312,7 @@ class Array extends RefType, @array {
   int getDimension() { arrays(this, _, _, result, _) }
 
   /**
-   * The JVM descriptor for this type, as used in bytecode.
+   * Gets the JVM descriptor for this type, as used in bytecode.
    */
   override string getTypeDescriptor() {
     result = "[" + this.getComponentType().getTypeDescriptor()
@@ -324,18 +324,18 @@ class Array extends RefType, @array {
  * including classes, interfaces, type parameters and arrays.
  */
 class RefType extends Type, Annotatable, Modifiable, @reftype {
-  /** The package in which this type is declared. */
+  /** Gets the package in which this type is declared. */
   Package getPackage() {
     classes(this,_,result,_) or
     interfaces(this,_,result,_)
   }
 
-  /** The type in which this reference type is enclosed, if any. */
+  /** Gets the type in which this reference type is enclosed, if any. */
   RefType getEnclosingType() {
     enclInReftype(this, result)
   }
 
-  /** The compilation unit in which this type is declared. */
+  /** Gets the compilation unit in which this type is declared. */
   override CompilationUnit getCompilationUnit() { result = this.getFile() }
 
   /** Holds if `t` is an immediate supertype of this type. */
@@ -344,13 +344,13 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /** Holds if `t` is an immediate subtype of this type. */
   predicate hasSubtype(RefType t) { hasSubtype(this,t) }
 
-  /** A direct subtype of this type. */
+  /** Gets a direct subtype of this type. */
   RefType getASubtype() { hasSubtype(this,result) }
 
-  /** A direct supertype of this type. */
+  /** Gets a direct supertype of this type. */
   RefType getASupertype() { hasSubtype(result,this) }
 
-  /** A direct or indirect supertype of this type, including itself. */
+  /** Gets a direct or indirect supertype of this type, including itself. */
   RefType getAnAncestor() { hasSubtypeStar(result, this) }
 
   /**
@@ -380,19 +380,19 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /** Holds if this type declares any members. */
   predicate hasMember() { exists(getAMember()) }
 
-  /** A member declared in this type. */
+  /** Gets a member declared in this type. */
   Member getAMember() { this = result.getDeclaringType() }
 
-  /** A method declared in this type. */
+  /** Gets a method declared in this type. */
   Method getAMethod() { this = result.getDeclaringType() }
 
-  /** A constructor declared in this type. */
+  /** Gets a constructor declared in this type. */
   Constructor getAConstructor() { this = result.getDeclaringType() }
 
-  /** A method or constructor declared in this type. */
+  /** Gets a method or constructor declared in this type. */
   Callable getACallable() { this = result.getDeclaringType() }
 
-  /** A field declared in this type. */
+  /** Gets a field declared in this type. */
   Field getAField() { this = result.getDeclaringType() }
 
   /** Holds if this type declares a method with the specified name. */
@@ -409,7 +409,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   /** Holds if this type declares a field with the specified name. */
   predicate declaresField(string name) { this.getAField().getName() = name }
 
-  /** The number of methods declared in this type. */
+  /** Gets the number of methods declared in this type. */
   int getNumberOfMethods() { result = count(Method m | m.getDeclaringType() = this) }
 
   /**
@@ -520,7 +520,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   }
 
   /**
-   * The JVM descriptor for this type, as used in bytecode.
+   * Gets the JVM descriptor for this type, as used in bytecode.
    */
   override string getTypeDescriptor() {
     result = "L" + this.getPackage().getName().replaceAll(".", "/") + "/" +
@@ -528,7 +528,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   }
 
   /**
-   * The qualified name of this type.
+   * Gets the qualified name of this type.
    */
   string getQualifiedName() {
     exists (string pkgName | pkgName = getPackage().getName() |
@@ -539,7 +539,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
     )
   }
 
-  /** The nested name of this type. */
+  /** Gets the nested name of this type. */
   string nestedName() {
      not (this instanceof NestedType) and result = this.getName()
      or
@@ -644,7 +644,7 @@ class AnonymousClass extends NestedClass {
     )
   }
 
-  /** The class instance expression where this anonymous class occurs. */
+  /** Gets the class instance expression where this anonymous class occurs. */
   ClassInstanceExpr getClassInstanceExpr() { isAnonymClass(this, result) }
 
   override string toString() { result = "new " + this.getClassInstanceExpr().getTypeName() + "(...) { ... }" }
@@ -662,7 +662,7 @@ class AnonymousClass extends NestedClass {
 class LocalClass extends NestedClass {
   LocalClass() { this.isLocal() }
 
-  /** The statement that declares this local class. */
+  /** Gets the statement that declares this local class. */
   LocalClassDeclStmt getLocalClassDeclStmt() { isLocalClass(this, result) }
 }
 
@@ -684,12 +684,12 @@ class NestedType extends RefType {
     enclInReftype(this,_)
   }
 
-  /** The type enclosing this nested type. */
+  /** Gets the type enclosing this nested type. */
   override RefType getEnclosingType() {
     enclInReftype(this,result)
   }
 
-  /** The nesting depth of this nested type. Top-level types have nesting depth 0. */
+  /** Gets the nesting depth of this nested type. Top-level types have nesting depth 0. */
   int getNestingDepth() {
     if getEnclosingType() instanceof NestedType then
       result = getEnclosingType().(NestedType).getNestingDepth() + 1
@@ -793,13 +793,13 @@ class PrimitiveType extends Type, @primitive {
     this.getName().regexpMatch("float|double|int|boolean|short|byte|char|long")
   }
 
-  /** The boxed type corresponding to this primitive type. */
+  /** Gets the boxed type corresponding to this primitive type. */
   BoxedType getBoxedType() {
     result.getPrimitiveType() = this
   }
 
   /**
-   * The JVM descriptor for this type, as used in bytecode.
+   * Gets the JVM descriptor for this type, as used in bytecode.
    */
   override string getTypeDescriptor() {
        (this.hasName("float") and result = "F")
@@ -838,7 +838,7 @@ class VoidType extends Type, @primitive {
   VoidType() { this.hasName("void") }
 
   /**
-   * The JVM descriptor for this type, as used in bytecode.
+   * Gets the JVM descriptor for this type, as used in bytecode.
    */
   override string getTypeDescriptor() {
     result = "V"
@@ -864,7 +864,7 @@ class BoxedType extends RefType {
     this.hasQualifiedName("java.lang", "Long")
   }
 
-  /** The primitive type corresponding to this boxed type. */
+  /** Gets the primitive type corresponding to this boxed type. */
   PrimitiveType getPrimitiveType() {
        (this.hasName("Float") and result.hasName("float"))
     or (this.hasName("Double") and result.hasName("double"))
@@ -895,12 +895,12 @@ class BoxedType extends RefType {
 class EnumType extends Class {
   EnumType() { isEnumType(this) }
 
-  /** The enum constant with the specified name. */
+  /** Gets the enum constant with the specified name. */
   EnumConstant getEnumConstant(string name)  {
     fields(result,_,_,this,_) and result.hasName(name)
   }
 
-  /** An enum constant declared in this enum type. */
+  /** Gets an enum constant declared in this enum type. */
   EnumConstant getAnEnumConstant() {
     fields(result,_,_,this,_)
   }

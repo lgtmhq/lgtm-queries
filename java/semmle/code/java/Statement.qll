@@ -22,7 +22,7 @@ import metrics.MetricStmt
 class Stmt extends StmtParent, ExprParent, @stmt {
   /*abstract*/ override string toString() { result = "stmt" }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   string pp() { result = "stmt" }
 
   /**
@@ -31,10 +31,10 @@ class Stmt extends StmtParent, ExprParent, @stmt {
    */
   Callable getEnclosingCallable() { stmts(this,_,_,_,result) }
 
-  /** The index of this statement as a child of its parent. */
+  /** Gets the index of this statement as a child of its parent. */
   int getIndex() { stmts(this,_,_,result,_) }
 
-  /** The parent of this statement. */
+  /** Gets the parent of this statement. */
   StmtParent getParent() { stmts(this,_,result,_,_) }
 
   /** Holds if this statement is the child of the specified parent at the specified (zero-based) position. */
@@ -42,13 +42,13 @@ class Stmt extends StmtParent, ExprParent, @stmt {
     this.getParent() = parent and this.getIndex() = index
   }
 
-  /** The compilation unit in which this statement occurs. */
+  /** Gets the compilation unit in which this statement occurs. */
   CompilationUnit getCompilationUnit() { result = this.getFile() }
 
-  /** A child of this statement, if any. */
+  /** Gets a child of this statement, if any. */
   Stmt getAChild() { result.getParent() = this }
 
-  /** The basic block in which this statement occurs. */
+  /** Gets the basic block in which this statement occurs. */
   BasicBlock getBasicBlock() { result.getANode() = this }
 
   /** Gets the `ControlFlowNode` corresponding to this statement. */
@@ -67,19 +67,19 @@ class StmtParent extends @stmtparent, Top {
 
 /** A block of statements. */
 class Block extends Stmt,@block {
-  /** A statement that is an immediate child of this block. */
+  /** Gets a statement that is an immediate child of this block. */
   Stmt getAStmt() { result.getParent() = this }
 
-  /** The immediate child statement of this block that occurs at the specified (zero-based) position. */
+  /** Gets the immediate child statement of this block that occurs at the specified (zero-based) position. */
   Stmt getStmt(int index) { result.getIndex() = index and result.getParent() = this }
 
-  /** The number of immediate child statements in this block. */
+  /** Gets the number of immediate child statements in this block. */
   int getNumStmt() { result = count(this.getAStmt()) }
 
-  /** The last statement in this block. */
+  /** Gets the last statement in this block. */
   Stmt getLastStmt() { result = getStmt(getNumStmt()-1) }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() { result = "{ ... }" }
 
   /** This statement's Halstead ID (used to compute Halstead metrics). */
@@ -90,7 +90,7 @@ class Block extends Stmt,@block {
 class SingletonBlock extends Block {
   SingletonBlock() { this.getNumStmt() = 1 }
 
-  /** The single statement in this block. */
+  /** Gets the single statement in this block. */
   Stmt getStmt() { result = getStmt(0) }
 }
 
@@ -99,7 +99,7 @@ class SingletonBlock extends Block {
  * `while` and `dowhile` statements.
  */
 abstract class ConditionalStmt extends Stmt {
-  /** The boolean condition of this conditional statement. */
+  /** Gets the boolean condition of this conditional statement. */
   abstract Expr getCondition();
 
   /**
@@ -113,10 +113,10 @@ abstract class ConditionalStmt extends Stmt {
 
 /** An `if` statement. */
 class IfStmt extends ConditionalStmt,@ifstmt {
-  /** The boolean condition of this `if` statement. */
+  /** Gets the boolean condition of this `if` statement. */
   override Expr getCondition() { result.isNthChildOf(this, 0) }
 
-  /** The `then` branch of this `if` statement. */
+  /** Gets the `then` branch of this `if` statement. */
   Stmt getThen() { result.isNthChildOf(this, 1) }
 
   /**
@@ -125,10 +125,10 @@ class IfStmt extends ConditionalStmt,@ifstmt {
    */
   override Stmt getTrueSuccessor() { result = getThen() }
 
-  /** The `else` branch of this `if` statement. */
+  /** Gets the `else` branch of this `if` statement. */
   Stmt getElse() { result.isNthChildOf(this, 2) }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "if (...) " + this.getThen().pp() + " else " + this.getElse().pp()
     or
@@ -151,27 +151,27 @@ class ForStmt extends ConditionalStmt,@forstmt {
     exists(int index | result.isNthChildOf(this, index) | index <= -1)
   }
 
-  /** The initializer expression of the loop at the specified (zero-based) position. */
+  /** Gets the initializer expression of the loop at the specified (zero-based) position. */
   Expr getInit(int index) {
     result = getAnInit() and
     index = -1 - result.getIndex()
   }
 
-  /** The boolean condition of this `for` loop. */
+  /** Gets the boolean condition of this `for` loop. */
   override Expr getCondition() { result.isNthChildOf(this, 1) }
 
-  /** An update expression of this `for` loop. */
+  /** Gets an update expression of this `for` loop. */
   Expr getAnUpdate() {
     exists(int index | result.isNthChildOf(this, index) | index >= 3)
   }
 
-  /** The update expression of this loop at the specified (zero-based) position. */
+  /** Gets the update expression of this loop at the specified (zero-based) position. */
   Expr getUpdate(int index) {
     result = getAnUpdate() and
     index = result.getIndex() - 3
   }
 
-  /** The body of this `for` loop. */
+  /** Gets the body of this `for` loop. */
   Stmt getStmt() { result.getParent() = this and result.getIndex() = 2 }
 
   /**
@@ -201,7 +201,7 @@ class ForStmt extends ConditionalStmt,@forstmt {
     getCondition().getAChildExpr*() = result.getAnAccess()
   }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "for (...;...;...) " + this.getStmt().pp()
   }
@@ -212,16 +212,16 @@ class ForStmt extends ConditionalStmt,@forstmt {
 
 /** An enhanced `for` loop. (Introduced in Java 5.) */
 class EnhancedForStmt extends Stmt,@enhancedforstmt {
-  /** The local variable declaration expression of this enhanced `for` loop. */
+  /** Gets the local variable declaration expression of this enhanced `for` loop. */
   LocalVariableDeclExpr getVariable() { result.getParent() = this }
 
-  /** The expression over which this enhanced `for` loop iterates. */
+  /** Gets the expression over which this enhanced `for` loop iterates. */
   Expr getExpr() { result.isNthChildOf(this, 1) }
 
-  /** The body of this enhanced `for` loop. */
+  /** Gets the body of this enhanced `for` loop. */
   Stmt getStmt() { result.getParent() = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "for (...) " + this.getStmt().pp()
   }
@@ -232,10 +232,10 @@ class EnhancedForStmt extends Stmt,@enhancedforstmt {
 
 /** A `while` loop. */
 class WhileStmt extends ConditionalStmt,@whilestmt {
-  /** The boolean condition of this `while` loop. */
+  /** Gets the boolean condition of this `while` loop. */
   override Expr getCondition() { result.getParent() = this }
 
-  /** The body of this `while` loop. */
+  /** Gets the body of this `while` loop. */
   Stmt getStmt() { result.getParent() = this }
 
   /**
@@ -244,7 +244,7 @@ class WhileStmt extends ConditionalStmt,@whilestmt {
    */
   override Stmt getTrueSuccessor() { result = getStmt() }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "while (...) " + this.getStmt().pp()
   }
@@ -255,10 +255,10 @@ class WhileStmt extends ConditionalStmt,@whilestmt {
 
 /** A `do` loop. */
 class DoStmt extends ConditionalStmt,@dostmt {
-  /** The condition of this `do` loop. */
+  /** Gets the condition of this `do` loop. */
   override Expr getCondition() { result.getParent() = this }
 
-  /** The body of this `do` loop. */
+  /** Gets the body of this `do` loop. */
   Stmt getStmt() { result.getParent() = this }
 
   /**
@@ -267,7 +267,7 @@ class DoStmt extends ConditionalStmt,@dostmt {
    */
   override Stmt getTrueSuccessor() { result = getStmt() }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "do " + this.getStmt().pp() + " while (...)"
   }
@@ -288,7 +288,7 @@ class LoopStmt extends Stmt {
      or this instanceof DoStmt
    }
 
-  /** The body of this loop statement. */
+  /** Gets the body of this loop statement. */
   Stmt getBody() {
     result = this.(ForStmt).getStmt() or
     result = this.(EnhancedForStmt).getStmt() or
@@ -296,7 +296,7 @@ class LoopStmt extends Stmt {
     result = this.(DoStmt).getStmt()
   }
 
-  /** The boolean condition of this loop statement. */
+  /** Gets the boolean condition of this loop statement. */
   Expr getCondition() {
     result = this.(ForStmt).getCondition() or
     result = this.(WhileStmt).getCondition() or
@@ -306,10 +306,10 @@ class LoopStmt extends Stmt {
 
 /** A `try` statement. */
 class TryStmt extends Stmt,@trystmt {
-  /** The block of the `try` statement. */
+  /** Gets the block of the `try` statement. */
   Stmt getBlock() { result.isNthChildOf(this, -1) }
 
-  /** A `catch` clause of this `try` statement. */
+  /** Gets a `catch` clause of this `try` statement. */
   CatchClause getACatchClause() { result.getParent() = this }
 
   /**
@@ -321,15 +321,15 @@ class TryStmt extends Stmt,@trystmt {
     result.getIndex() = index
   }
 
-  /** The `finally` block, if any. */
+  /** Gets the `finally` block, if any. */
   Block getFinally() { result.isNthChildOf(this, -2) }
 
-  /** A resource variable declaration, if any. */
+  /** Gets a resource variable declaration, if any. */
   LocalVariableDeclStmt getAResourceDecl() {
     result.getParent() = this and result.getIndex() <= -3
   }
 
-  /** The resource variable declaration at the specified position in this `try` statement. */
+  /** Gets the resource variable declaration at the specified position in this `try` statement. */
   LocalVariableDeclStmt getResourceDecl(int index) {
     result = this.getAResourceDecl() and
     index = -3 - result.getIndex()
@@ -362,7 +362,7 @@ class TryStmt extends Stmt,@trystmt {
     result = getAResourceExpr().getVariable()
   }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "try " + this.getBlock().pp() + " catch (...)"
   }
@@ -373,13 +373,13 @@ class TryStmt extends Stmt,@trystmt {
 
 /** A `catch` clause in a `try` statement. */
 class CatchClause extends Stmt,@catchclause {
-  /** The block of this `catch` clause. */
+  /** Gets the block of this `catch` clause. */
   Block getBlock() { result.getParent() = this }
 
-  /** The `try` statement in which this `catch` clause occurs. */
+  /** Gets the `try` statement in which this `catch` clause occurs. */
   TryStmt getTry() { this = result.getACatchClause() }
 
-  /** The parameter of this `catch` clause. */
+  /** Gets the parameter of this `catch` clause. */
   LocalVariableDeclExpr getVariable() { result.getParent() = this }
 
   /** Holds if this `catch` clause is a _multi_-`catch` clause. */
@@ -387,7 +387,7 @@ class CatchClause extends Stmt,@catchclause {
     this.getVariable().getTypeAccess() instanceof UnionTypeAccess
   }
 
-  /** A type caught by this `catch` clause. */
+  /** Gets a type caught by this `catch` clause. */
   RefType getACaughtType() {
     exists (Expr ta | ta = getVariable().getTypeAccess() |
       result = ta.(TypeAccess).getType() or
@@ -395,7 +395,7 @@ class CatchClause extends Stmt,@catchclause {
     )
   }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "catch (...) " + this.getBlock().pp()
   }
@@ -406,7 +406,7 @@ class CatchClause extends Stmt,@catchclause {
 
 /** A `switch` statement. */
 class SwitchStmt extends Stmt,@switchstmt {
-  /** An immediate child statement of this `switch` statement. */
+  /** Gets an immediate child statement of this `switch` statement. */
   Stmt getAStmt() { result.getParent() = this }
 
   /**
@@ -421,16 +421,16 @@ class SwitchStmt extends Stmt,@switchstmt {
    */
   Stmt getACase() { result = getAConstCase() or result = getDefaultCase() }
 
-  /** A (non-default) `case` of this `switch` statement. */
+  /** Gets a (non-default) `case` of this `switch` statement. */
   ConstCase getAConstCase() { result.getParent() = this }
 
-  /** The `default` case of this switch statement, if any. */
+  /** Gets the `default` case of this switch statement, if any. */
   DefaultCase getDefaultCase() { result.getParent() = this }
 
-  /** The expression of this `switch` statement. */
+  /** Gets the expression of this `switch` statement. */
   Expr getExpr() { result.getParent() = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "switch (...)"
   }
@@ -451,10 +451,10 @@ abstract class SwitchCase extends Stmt {
 class ConstCase extends SwitchCase, @case {
   ConstCase() { exists(Expr e | e.getParent() = this) }
 
-  /** The expression of this `case`. */
+  /** Gets the expression of this `case`. */
   Expr getValue() { result.getParent() = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "case ...:"
   }
@@ -467,7 +467,7 @@ class ConstCase extends SwitchCase, @case {
 class DefaultCase extends SwitchCase, @case {
   DefaultCase() { not exists(Expr e | e.getParent() = this) }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "default"
   }
@@ -478,13 +478,13 @@ class DefaultCase extends SwitchCase, @case {
 
 /** A `synchronized` statement. */
 class SynchronizedStmt extends Stmt,@synchronizedstmt {
-  /** The expression on which this `synchronized` statement synchronizes. */
+  /** Gets the expression on which this `synchronized` statement synchronizes. */
   Expr getExpr() { result.getParent() = this }
 
-  /** The block of this `synchronized` statement. */
+  /** Gets the block of this `synchronized` statement. */
   Stmt getBlock() { result.getParent() = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "synchronized (...) " + this.getBlock().pp()
   }
@@ -495,10 +495,10 @@ class SynchronizedStmt extends Stmt,@synchronizedstmt {
 
 /** A `return` statement. */
 class ReturnStmt extends Stmt,@returnstmt {
-  /** The expression returned by this `return` statement, if any. */
+  /** Gets the expression returned by this `return` statement, if any. */
   Expr getResult() { result.getParent() = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "return ..."
   }
@@ -509,10 +509,10 @@ class ReturnStmt extends Stmt,@returnstmt {
 
 /** A `throw` statement. */
 class ThrowStmt extends Stmt,@throwstmt {
-  /** The expression thrown by this `throw` statement. */
+  /** Gets the expression thrown by this `throw` statement. */
   Expr getExpr() { result.getParent() = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "throw ..."
   }
@@ -520,7 +520,7 @@ class ThrowStmt extends Stmt,@throwstmt {
   /** This statement's Halstead ID (used to compute Halstead metrics). */
   override string getHalsteadID() { result = "ThrowStmt" }
 
-  /** The type of the expression thrown by this `throw` statement. */
+  /** Gets the type of the expression thrown by this `throw` statement. */
   RefType getThrownExceptionType() { result = getExpr().getType() }
 
   /**
@@ -582,7 +582,7 @@ class JumpStmt extends Stmt {
   }
 
   /**
-   * The statement that this `break` or `continue` jumps to.
+   * Gets the statement that this `break` or `continue` jumps to.
    */
   Stmt getTarget() {
     result = getLabelTarget() or
@@ -592,13 +592,13 @@ class JumpStmt extends Stmt {
 
 /** A `break` statement. */
 class BreakStmt extends Stmt,@breakstmt {
-  /** The label targeted by this `break` statement, if any. */
+  /** Gets the label targeted by this `break` statement, if any. */
   string getLabel() { namestrings(result,_,this) }
 
   /** Holds if this `break` statement has an explicit label. */
   predicate hasLabel() { exists(string s | s = this.getLabel()) }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     if this.hasLabel() then
       result = "break " + this.getLabel()
@@ -612,13 +612,13 @@ class BreakStmt extends Stmt,@breakstmt {
 
 /** A `continue` statement. */
 class ContinueStmt extends Stmt,@continuestmt {
-  /** The label targeted by this `continue` statement, if any. */
+  /** Gets the label targeted by this `continue` statement, if any. */
   string getLabel() { namestrings(result,_,this) }
 
   /** Holds if this `continue` statement has an explicit label. */
   predicate hasLabel() { exists(string s | s = this.getLabel()) }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     if this.hasLabel() then
       result = "continue " + this.getLabel()
@@ -632,7 +632,7 @@ class ContinueStmt extends Stmt,@continuestmt {
 
 /** The empty statement. */
 class EmptyStmt extends Stmt,@emptystmt {
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = ";"
   }
@@ -647,10 +647,10 @@ class EmptyStmt extends Stmt,@emptystmt {
  * Certain kinds of expressions may be used as statements by appending a semicolon.
  */
 class ExprStmt extends Stmt,@exprstmt {
-  /** The expression of this expression statement. */
+  /** Gets the expression of this expression statement. */
   Expr getExpr() { result.getParent() = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "...;"
   }
@@ -672,13 +672,13 @@ class ExprStmt extends Stmt,@exprstmt {
 
 /** A labeled statement. */
 class LabeledStmt extends Stmt,@labeledstmt {
-  /** The statement of this labeled statement. */
+  /** Gets the statement of this labeled statement. */
   Stmt getStmt() { result.getParent() = this }
 
-  /** The label of this labeled statement. */
+  /** Gets the label of this labeled statement. */
   string getLabel() { namestrings(result,_,this) }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = this.getLabel() + ": " + this.getStmt().pp()
   }
@@ -689,13 +689,13 @@ class LabeledStmt extends Stmt,@labeledstmt {
 
 /** An `assert` statement. */
 class AssertStmt extends Stmt,@assertstmt {
-  /** The boolean expression of this `assert` statement. */
+  /** Gets the boolean expression of this `assert` statement. */
   Expr getExpr() { exprs(result,_,_,this,_) and result.getIndex() = 0 }
 
-  /** The assertion message expression, if any. */
+  /** Gets the assertion message expression, if any. */
   Expr getMessage() { exprs(result,_,_,this,_) and result.getIndex() = 1 }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     if exists(this.getMessage()) then
       result = "assert ... : ..."
@@ -709,21 +709,21 @@ class AssertStmt extends Stmt,@assertstmt {
 
 /** A statement that declares one or more local variables. */
 class LocalVariableDeclStmt extends Stmt,@localvariabledeclstmt {
-  /** A declared variable. */
+  /** Gets a declared variable. */
   LocalVariableDeclExpr getAVariable() { result.getParent() = this }
 
-  /** The variable declared at the specified (one-based) position in this local variable declaration statement. */
+  /** Gets the variable declared at the specified (one-based) position in this local variable declaration statement. */
   LocalVariableDeclExpr getVariable(int index) {
     result = this.getAVariable() and
     result.getIndex() = index
   }
 
-  /** An index of a variable declared in this local variable declaration statement. */
+  /** Gets an index of a variable declared in this local variable declaration statement. */
   int getAVariableIndex() {
     exists(getVariable(result))
   }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "local variable declaration"
   }
@@ -734,10 +734,10 @@ class LocalVariableDeclStmt extends Stmt,@localvariabledeclstmt {
 
 /** A statement that declares a local class. */
 class LocalClassDeclStmt extends Stmt,@localclassdeclstmt {
-  /** The local class declared by this statement. */
+  /** Gets the local class declared by this statement. */
   LocalClass getLocalClass() { isLocalClass(result,this) }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "local class declaration: " + this.getLocalClass().toString()
   }
@@ -748,41 +748,41 @@ class LocalClassDeclStmt extends Stmt,@localclassdeclstmt {
 
 /** An explicit `this(...)` constructor invocation. */
 class ThisConstructorInvocationStmt extends Stmt, ConstructorCall, @constructorinvocationstmt {
-  /** An argument of this constructor invocation. */
+  /** Gets an argument of this constructor invocation. */
   override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
 
-  /** The argument at the specified (zero-based) position in this constructor invocation. */
+  /** Gets the argument at the specified (zero-based) position in this constructor invocation. */
   override Expr getArgument(int index) {
     result = this.getAnArgument() and
     result.getIndex() = index
   }
 
-  /** A type argument of this constructor invocation. */
+  /** Gets a type argument of this constructor invocation. */
   Expr getATypeArgument() { result.getIndex() <= -2 and result.getParent() = this }
 
-  /** The type argument at the specified (zero-based) position in this constructor invocation. */
+  /** Gets the type argument at the specified (zero-based) position in this constructor invocation. */
   Expr getTypeArgument(int index) {
     result = this.getATypeArgument() and
     (-2 - result.getIndex()) = index
   }
 
-  /** The constructor invoked by this constructor invocation. */
+  /** Gets the constructor invoked by this constructor invocation. */
   override Constructor getConstructor() { callableBinding(this,result) }
 
   override Expr getQualifier() { none() }
 
-  /** The immediately enclosing callable of this constructor invocation. */
+  /** Gets the immediately enclosing callable of this constructor invocation. */
   override Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
 
-  /** The immediately enclosing statement of this constructor invocation. */
+  /** Gets the immediately enclosing statement of this constructor invocation. */
   override Stmt getEnclosingStmt() { result = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "this(...)"
   }
 
-  /** A printable representation of this statement. */
+  /** Gets a printable representation of this statement. */
   override string toString() { result = pp() }
 
   /** This statement's Halstead ID (used to compute Halstead metrics). */
@@ -791,42 +791,42 @@ class ThisConstructorInvocationStmt extends Stmt, ConstructorCall, @constructori
 
 /** An explicit `super(...)` constructor invocation. */
 class SuperConstructorInvocationStmt extends Stmt, ConstructorCall, @superconstructorinvocationstmt {
-  /** An argument of this constructor invocation. */
+  /** Gets an argument of this constructor invocation. */
   override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
 
-  /** The argument at the specified (zero-based) position in this constructor invocation. */
+  /** Gets the argument at the specified (zero-based) position in this constructor invocation. */
   override Expr getArgument(int index) {
     result = this.getAnArgument() and
     result.getIndex() = index
   }
 
-  /** A type argument of this constructor invocation. */
+  /** Gets a type argument of this constructor invocation. */
   Expr getATypeArgument() { result.getIndex() <= -2 and result.getParent() = this }
 
-  /** The type argument at the specified (zero-based) position in this constructor invocation. */
+  /** Gets the type argument at the specified (zero-based) position in this constructor invocation. */
   Expr getTypeArgument(int index) {
     result = this.getATypeArgument() and
     (-2 - result.getIndex()) = index
   }
 
-  /** The constructor invoked by this constructor invocation. */
+  /** Gets the constructor invoked by this constructor invocation. */
   override Constructor getConstructor() { callableBinding(this,result) }
 
-  /** The qualifier expression of this `super(...)` constructor invocation, if any. */
+  /** Gets the qualifier expression of this `super(...)` constructor invocation, if any. */
   override Expr getQualifier() { result.isNthChildOf(this, -1) }
 
-  /** The immediately enclosing callable of this constructor invocation. */
+  /** Gets the immediately enclosing callable of this constructor invocation. */
   override Callable getEnclosingCallable() { result = Stmt.super.getEnclosingCallable() }
 
-  /** The immediately enclosing statement of this constructor invocation. */
+  /** Gets the immediately enclosing statement of this constructor invocation. */
   override Stmt getEnclosingStmt() { result = this }
 
-  /** A printable representation of this statement. May include more detail than `toString()`. */
+  /** Gets a printable representation of this statement. May include more detail than `toString()`. */
   override string pp() {
     result = "super(...)"
   }
 
-  /** A printable representation of this statement. */
+  /** Gets a printable representation of this statement. */
   override string toString() { result = pp() }
 
   /** This statement's Halstead ID (used to compute Halstead metrics). */

@@ -27,7 +27,7 @@ library class Struts2ConventionDependency extends Dependency {
 }
 
 /**
- * Get the folder containing the root package folder for the `compilationUnit`.
+ * Gets the folder containing the root package folder for the `compilationUnit`.
  *
  * This gets the first ancestor of the `compilationUnit` that does not represent a package. We can
  * assume that compilation units that share the same source folder are compiled and run against the
@@ -71,7 +71,7 @@ private predicate isStrutsConventionPluginUsed(RefType refType) {
 }
 
 /**
- * Get the "root" `struts.xml` file that we believe applies to this `refType`.
+ * Gets the "root" `struts.xml` file that we believe applies to this `refType`.
  *
  * We guess by identifying the "nearest" `struts.xml` configuration file, i.e. the Struts
  * configuration file with the lowest common ancestor to this file.
@@ -84,7 +84,7 @@ StrutsXMLFile getRootXMLFile(RefType refType) {
 }
 
 /**
- * Get the suffix used for automatically identifying actions when using the convention plugin.
+ * Gets the suffix used for automatically identifying actions when using the convention plugin.
  *
  * If no configuration is supplied, or identified, the default is "Action".
  */
@@ -122,7 +122,7 @@ class Struts2ConventionActionClass extends Class {
   }
 
   /**
-   * Get an Action method
+   * Gets an Action method.
    */
   Method getAnActionMethod() {
     this.inherits(result) and

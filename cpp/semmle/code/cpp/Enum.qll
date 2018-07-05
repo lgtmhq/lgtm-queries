@@ -109,7 +109,7 @@ class EnumConstant extends @enumconstant, Declaration {
   /**
    * Gets the name of this enumerator.
    */
-  string getName() { enumconstants(this,_,_,_,result,_) }
+  override string getName() { enumconstants(this,_,_,_,result,_) }
 
   /**
    * Gets the value that this enumerator is initialized to, as a
@@ -122,10 +122,10 @@ class EnumConstant extends @enumconstant, Declaration {
   Type getType() { enumconstants(this,_,_,unresolve(result),_,_) }
 
   /** Gets the location of a declaration of this enumerator. */
-  Location getADeclarationLocation() { result = this.getDefinitionLocation() }
+  override Location getADeclarationLocation() { result = this.getDefinitionLocation() }
 
   /** Gets the location of the definition of this enumerator. */
-  Location getDefinitionLocation() { enumconstants(this,_,_,_,_,result) }
+  override Location getDefinitionLocation() { enumconstants(this,_,_,_,_,result) }
 
   /** Gets the location of the definition of this enumerator. */
   override Location getLocation() { result = this.getDefinitionLocation() }
@@ -137,7 +137,7 @@ class EnumConstant extends @enumconstant, Declaration {
   EnumConstantAccess getAnAccess() { result.getTarget() = this }
 
   /** Gets a specifier of this enumerator. */
-  Specifier getASpecifier() { varspecifiers(this,result) }
+  override Specifier getASpecifier() { varspecifiers(this,result) }
 
   /**
    * An attribute of this enumerator.

@@ -130,4 +130,117 @@ module ExpressLibraries {
 
   }
 
+  /**
+   * Provides classes for working with the `express-session` package (https://github.com/expressjs/session);
+   */
+  module ExpressSession {
+
+    private DataFlow::SourceNode expressSession() {
+      result = DataFlow::moduleImport("express-session")
+    }
+
+    /**
+     * A call that creates an `express-session` middleware instance.
+     */
+    class MiddlewareInstance extends DataFlow::InvokeNode, HTTP::CookieMiddlewareInstance {
+
+      MiddlewareInstance() {
+        this = expressSession().getACall()
+      }
+
+      /**
+       * Gets the expression for property `name` of the options object of this call.
+       */
+      DataFlow::Node getOption(string name) {
+        result = getOptionArgument(0, name)
+      }
+
+      override DataFlow::Node getASecretKey() {
+        exists (DataFlow::Node secret | secret = getOption("secret") |
+          if exists(DataFlow::ArrayLiteralNode arr | arr.flowsTo(secret)) then
+            result = any (DataFlow::ArrayLiteralNode arr | arr.flowsTo(secret)).getAnElement()
+          else
+            result = secret
+        )
+      }
+
+    }
+
+  }
+
+  /**
+   * Provides classes for working with the `cookie-parser` package (https://github.com/expressjs/cookie-parser);
+   */
+  module CookieParser {
+
+    private DataFlow::SourceNode cookieParser() {
+      result = DataFlow::moduleImport("cookie-parser")
+    }
+
+    /**
+     * A call that creates a `cookie-parser` middleware instance.
+     */
+    class MiddlewareInstance extends DataFlow::InvokeNode, HTTP::CookieMiddlewareInstance {
+
+      MiddlewareInstance() {
+        this = cookieParser().getACall()
+      }
+
+      /**
+       * Gets the expression for property `name` of the options object of this call.
+       */
+      DataFlow::Node getOption(string name) {
+        result = getOptionArgument(1, name)
+      }
+
+      override DataFlow::Node getASecretKey() {
+        exists (DataFlow::Node arg0 | arg0 = getArgument(0) |
+          if exists(DataFlow::ArrayLiteralNode arr | arr.flowsTo(arg0)) then
+            result = any (DataFlow::ArrayLiteralNode arr | arr.flowsTo(arg0)).getAnElement()
+          else
+            result = arg0
+        )
+      }
+
+    }
+
+  }
+
+  /**
+   * Provides classes for working with the `cookie-session` package (https://github.com/expressjs/cookie-session);
+   */
+  module CookieSession {
+
+    private DataFlow::SourceNode cookieSession() {
+      result = DataFlow::moduleImport("cookie-session")
+    }
+
+    /**
+     * A call that creates a `cookie-session` middleware instance.
+     */
+    class MiddlewareInstance extends DataFlow::InvokeNode, HTTP::CookieMiddlewareInstance {
+
+      MiddlewareInstance() {
+        this = cookieSession().getACall()
+      }
+
+      /**
+       * Gets the expression for property `name` of the options object of this call.
+       */
+      DataFlow::Node getOption(string name) {
+        result = getOptionArgument(0, name)
+      }
+
+      override DataFlow::Node getASecretKey() {
+        result = getOption("secret") or
+        exists (DataFlow::ArrayLiteralNode keys |
+          keys.flowsTo(getOption("keys")) and
+          result = keys.getAnElement()
+        )
+      }
+
+    }
+
+  }
+
 }

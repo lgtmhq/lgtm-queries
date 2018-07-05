@@ -422,4 +422,26 @@ module HTTP {
   abstract class RouteHandlerCandidate extends DataFlow::FunctionNode {
   }
 
+  /**
+   * An expression that creates a route handler that parses cookies
+   */
+  abstract class CookieMiddlewareInstance extends DataFlow::SourceNode {
+
+    /**
+     * Gets a secret key used for signed cookies.
+     */
+    abstract DataFlow::Node getASecretKey();
+
+  }
+
+  /**
+   * A key used for signed cookies, viewed as a `CryptographicKey`.
+   */
+  class CookieCryptographicKey extends CryptographicKey {
+
+    CookieCryptographicKey() {
+      this = any(CookieMiddlewareInstance instance).getASecretKey()
+    }
+
+  }
 }

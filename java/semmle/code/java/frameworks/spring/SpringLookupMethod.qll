@@ -21,17 +21,17 @@ class SpringLookupMethod extends SpringXMLElement {
     this.getName() = "lookup-method"
   }
 
-  /** The value of the `bean` attribute. */
+  /** Gets the value of the `bean` attribute. */
   string getBeanName() {
     result = this.getAttributeValue("bean")
   }
 
-  /** The bean referred to by the `bean` attribute. */
+  /** Gets the bean referred to by the `bean` attribute. */
   SpringBean getBean() {
     result.getBeanIdentifier() = this.getBeanName()
   }
 
-  /** The value of the `name` attribute. */
+  /** Gets the value of the `name` attribute. */
   string getMethodName() {
     result = this.getAttributeValue("name")
   }

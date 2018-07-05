@@ -24,7 +24,7 @@ import metrics.MetricPackage
  * regardless of which compilation unit they are defined in.
  */
 class Package extends Element, Annotatable, @package {
-  /** A top level type in this package. */
+  /** Gets a top level type in this package. */
   TopLevelType getATopLevelType() { result.getPackage() = this }
 
   /** Holds if at least one reference type in this package originates from source code. */

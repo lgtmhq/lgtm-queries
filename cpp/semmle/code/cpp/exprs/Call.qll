@@ -251,7 +251,7 @@ class FunctionCall extends Call, @funbindexpr {
    * In the case of virtual function calls, the result is the most-specific function in the override tree (as
    * determined by the compiler) such that the target at runtime will be one of result.getAnOverridingFunction*().
    */
-  Function getTarget() { funbind(this,result) }
+  override Function getTarget() { funbind(this,result) }
  
   /**
    * Gets the type of this expression, that is, the return type of the function being called.
@@ -391,7 +391,7 @@ class ConstructorCall extends FunctionCall {
   ConstructorCall() { super.getTarget() instanceof Constructor }
  
   /** Gets the constructor being called. */
-  Constructor getTarget() { result = super.getTarget() }
+  override Constructor getTarget() { result = super.getTarget() }
 }
 
 /**
@@ -425,7 +425,7 @@ class DestructorCall extends FunctionCall {
   DestructorCall() { super.getTarget() instanceof Destructor }
  
   /** Gets the destructor being called. */
-  Destructor getTarget() { result = super.getTarget() }
+  override Destructor getTarget() { result = super.getTarget() }
 }
 
 /**

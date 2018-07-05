@@ -21,7 +21,7 @@ import XML
 class AntTarget extends XMLElement {
   AntTarget() { super.getName() = "target" }
 
-  /** The name of this Ant target. */
+  /** Gets the name of this Ant target. */
   override string getName() { result = this.getAttributeValue("name") }
 
   /**
@@ -42,7 +42,7 @@ class AntTarget extends XMLElement {
     this.getDependsString().matches("%,"+that.getName()+",%")
   }
 
-  /** An Ant target on which this Ant target depends. */
+  /** Gets an Ant target on which this Ant target depends. */
   AntTarget getADependency() {
     this.dependsOn(result)
   }

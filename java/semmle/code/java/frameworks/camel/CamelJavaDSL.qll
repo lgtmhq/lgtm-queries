@@ -50,7 +50,7 @@ class CamelJavaDSLToDecl extends ProcessorDefinitionElement {
   }
 
   /**
-   * Get the URI specified by this to declaration.
+   * Gets the URI specified by this `to` declaration.
    */
   string getURI() {
     result = getArgument(0).(CompileTimeConstantExpr).getStringValue()
@@ -69,7 +69,7 @@ class CamelJavaDSLBeanDecl extends ProcessorDefinitionElement {
   }
 
   /**
-   * Get a bean class that may be registered as a target by this `bean()` declaration.
+   * Gets a bean class that may be registered as a target by this `bean()` declaration.
    */
   RefType getABeanClass() {
     if getArgument(0).getType() instanceof TypeClass then
@@ -97,14 +97,14 @@ class CamelJavaDSLBeanRefDecl extends ProcessorDefinitionElement {
   }
 
   /**
-   * Get the string describing the bean referred to.
+   * Gets the string describing the bean referred to.
    */
   string getBeanRefString() {
     result = getArgument(0).(CompileTimeConstantExpr).getStringValue()
   }
 
   /**
-   * Get a class that may be referred to by this bean reference.
+   * Gets a class that may be referred to by this bean reference.
    */
   RefType getABeanClass() {
     exists(SpringBean bean | bean.getBeanIdentifier() = getBeanRefString() | result = bean.getClass()) or
@@ -124,7 +124,7 @@ class CamelJavaDSLMethodDecl extends MethodAccess {
   }
 
   /**
-   * Get a possible bean that this "method" expression represents.
+   * Gets a possible bean that this "method" expression represents.
    */
   RefType getABean() {
     if getArgument(0).getType() instanceof TypeString then

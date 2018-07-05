@@ -26,7 +26,7 @@ class Module extends @module {
   }
 
   /**
-   * The name of this module.
+   * Gets the name of this module.
    */
   string getName() { modules(this, result) }
 

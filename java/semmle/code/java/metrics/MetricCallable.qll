@@ -99,7 +99,7 @@ predicate defaultFallThrough(ConstCase sc) {
   defaultFallThrough(sc.(ControlFlowNode).getAPredecessor())
 }
 
-/** A branching statement used for the computation of cyclomatic complexity. */
+/** Holds if `stmt` is a branching statement used for the computation of cyclomatic complexity. */
 private
 predicate branchingStmt(Stmt stmt) {
   stmt instanceof IfStmt or
@@ -111,7 +111,7 @@ predicate branchingStmt(Stmt stmt) {
   stmt instanceof CatchClause
 }
 
-/** A branching expression used for the computation of cyclomatic complexity. */
+/** Holds if `expr` is a branching expression used for the computation of cyclomatic complexity. */
 private
 predicate branchingExpr(Expr expr) {
   expr instanceof ConditionalExpr or

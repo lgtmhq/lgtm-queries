@@ -235,7 +235,7 @@ module FlowVar_internal {
 
     override VariableAccess getAnAccess() {
       result.getTarget() = v and
-      result = this.getAReachedSBB().getANode() and
+      result = getAReachedBlockVarSBB(this).getANode() and
       not overwrite(result, _)
     }
 
@@ -250,18 +250,6 @@ module FlowVar_internal {
       or
       initializer(node, v, e) and
       node = sbb.getANode()
-    }
-
-    pragma[nomagic]
-    private SubBasicBlock getAReachedSBB() {
-      result = sbb
-      or
-      exists(SubBasicBlock mid |
-        mid = this.getAReachedSBB() and
-        result = mid.getASuccessor() and
-        not skipLoop(mid, result, sbb, v) and
-        not assignmentLikeOperation(result, v, _)
-      )
     }
 
     override string toString() {
@@ -382,6 +370,19 @@ module FlowVar_internal {
       sbbOutside.firstInBB() and
       loop.bbNotInLoop(sbbDef.getBasicBlock()) and
       exists(TBlockVar(sbbDef, v))
+    )
+  }
+
+  pragma[nomagic]
+  private SubBasicBlock getAReachedBlockVarSBB(TBlockVar start) {
+    start = TBlockVar(result, _)
+    or
+    exists(SubBasicBlock mid, SubBasicBlock sbbDef, Variable v |
+      start = TBlockVar(sbbDef, v) and
+      mid = getAReachedBlockVarSBB(start) and
+      result = mid.getASuccessor() and
+      not skipLoop(mid, result, sbbDef, v) and
+      not assignmentLikeOperation(result, v, _)
     )
   }
 

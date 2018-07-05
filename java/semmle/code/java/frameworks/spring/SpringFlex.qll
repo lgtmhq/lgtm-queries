@@ -28,7 +28,7 @@ class SpringRemotingDestination extends SpringXMLElement {
   }
 
   /**
-   * The bean that this remoting destination refers to.
+   * Gets the bean that this remoting destination refers to.
    */
   SpringBean getSpringBean() {
     result = getParent() or
@@ -69,7 +69,7 @@ class SpringRemotingDestinationClass extends Class {
   }
 
   /**
-   * Return the XML configuration of the remoting destination, if it was configured in XML.
+   * Gets the XML configuration of the remoting destination, if it was configured in XML.
    */
   SpringRemotingDestination getRemotingDestinationXML() {
     this = result.getSpringBean().getClass()
@@ -89,7 +89,7 @@ class SpringRemotingDestinationClass extends Class {
   }
 
   /**
-   * The methods which are exposed through this remoting destination.
+   * Gets the methods that are exposed through this remoting destination.
    */
   Method getARemotingMethod() {
     result = this.getAMethod() and

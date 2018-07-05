@@ -20,18 +20,18 @@ import semmle.code.java.Statement
 /** This class provides access to metrics information for statements. */
 class MetricStmt extends Stmt {
 
-  /** A nesting depth of this statement. */
+  /** Gets a nesting depth of this statement. */
   int getANestingDepth() {
     not exists(Stmt s | s.getParent() = this) and result = 0
     or result = this.getAChild().(MetricStmt).getANestingDepth() + 1
   }
 
-  /** The maximum nesting depth of this statement. */
+  /** Gets the maximum nesting depth of this statement. */
   int getNestingDepth() {
     result = max(this.getANestingDepth())
   }
 
-  /** The nested depth of this statement. */
+  /** Gets the nested depth of this statement. */
   int getNestedDepth() {
     not exists(Stmt s | s = this.getParent()) and result = 0
     or exists(MetricStmt s | s = this.getParent() and result = s.getNestedDepth() + 1)

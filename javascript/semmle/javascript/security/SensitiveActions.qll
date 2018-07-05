@@ -154,8 +154,9 @@ class AuthorizationCall extends SensitiveAction, DataFlow::CallNode {
 
   AuthorizationCall() {
     exists(string s | s = astNode.getCalleeName() |
-      // name contains `login` or `auth` (but not as part of `loginfo` or `unauth`)
-      s.regexpMatch("(?i).*(login(?!fo)|(?<!un)auth).*") and
+      // name contains `login` or `auth`, but not as part of `loginfo` or `unauth`;
+      // also exclude `author`
+      s.regexpMatch("(?i).*(login(?!fo)|(?<!un)auth(?!or\\b)).*") and
       // but it does not start with `get` or `set`
       not s.regexpMatch("(?i)(get|set).*")
     )

@@ -16,7 +16,7 @@
  * @description All functions that are not void should return a value on every exit path.
  * @kind problem
  * @problem.severity error
- * @precision very-high
+ * @precision medium
  * @id cpp/missing-return
  * @tags reliability
  *       readability
@@ -41,6 +41,8 @@ predicate functionsMissingReturnStmt(Function f, ControlFlowNode blame) {
    wasn't perfectly extracted. */
 predicate functionImperfectlyExtracted(Function f) {
   exists(CompilerError e | f.getBlock().getLocation().subsumes(e.getLocation()))
+  or
+  exists(ErrorExpr ee | ee.getEnclosingFunction() = f)
 }
 
 from Stmt stmt, string msg

@@ -108,7 +108,7 @@ private string algorithmRegex(string algorithmString) {
   "((^|.*[A-Z]{2}|.*[^a-zA-Z])(" + algorithmString.toLowerCase() + ")([^a-z].*|$))"
 }
 
-/** A blacklist of algorithms that are known to be insecure. */
+/** Gets a blacklist of algorithms that are known to be insecure. */
 private string algorithmBlacklist() {
   result = "DES" or
   result = "RC2" or
@@ -135,12 +135,12 @@ private string algorithmBlacklistString(int i) {
   result = rankedAlgorithmBlacklist(i) + "|" + algorithmBlacklistString(i-1)
 }
 
-/** A regex for matching strings that look like they contain a blacklisted algorithm. */
+/** Gets a regex for matching strings that look like they contain a blacklisted algorithm. */
 string algorithmBlacklistRegex() {
   result = algorithmRegex(algorithmBlacklistString(max(int i | exists(rankedAlgorithmBlacklist(i)))))
 }
 
-/** A whitelist of algorithms that are known to be secure. */
+/** Gets a whitelist of algorithms that are known to be secure. */
 private string algorithmWhitelist() {
   result = "RSA" or
   result = "SHA256" or
@@ -161,7 +161,7 @@ private string algorithmWhitelistString(int i) {
   result = rankedAlgorithmWhitelist(i) + "|" + algorithmWhitelistString(i-1)
 }
 
-/** A regex for matching strings that look like they contain a whitelisted algorithm. */
+/** Gets a regex for matching strings that look like they contain a whitelisted algorithm. */
 string algorithmWhitelistRegex() {
   result = algorithmRegex(algorithmWhitelistString(max(int i | exists(rankedAlgorithmWhitelist(i)))))
 }

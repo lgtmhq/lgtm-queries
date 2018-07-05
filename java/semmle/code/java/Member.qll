@@ -31,10 +31,10 @@ class Member extends Element, Annotatable, Modifiable, @member {
     declaresMember(_,this)
   }
 
-  /** The type in which this member is declared. */
+  /** Gets the type in which this member is declared. */
   RefType getDeclaringType() { declaresMember(result, this) }
 
-  /** The qualified name of this member. */
+  /** Gets the qualified name of this member. */
   string getQualifiedName() {
     result = getDeclaringType().getName() + "." + getName()
   }
@@ -59,11 +59,11 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * A callee that may be called from this callable.
+   * Gets a callee that may be called from this callable.
    */
   Callable getACallee() { this.calls(result) }
 
-  /** The call site of a call from this callable to a callee. */
+  /** Gets the call site of a call from this callable to a callee. */
   Call getACallSite(Callable callee) {
     result.getCaller() = this and
     result.getCallee() = callee
@@ -159,28 +159,28 @@ class Callable extends StmtParent, Member, @callable {
   predicate accesses(Field f) { this.writes(f) or this.reads(f) }
 
   /**
-   * A field accessed in this callable.
+   * Gets a field accessed in this callable.
    */
   Field getAnAccessedField() { this.accesses(result) }
 
-  /** The type of a formal parameter of this callable. */
+  /** Gets the type of a formal parameter of this callable. */
   Type getAParamType() { result = getParameterType(_) }
 
   /** Holds if this callable does not have any formal parameters. */
   predicate hasNoParameters() { not exists(getAParameter()) }
 
-  /** The number of formal parameters of this callable. */
+  /** Gets the number of formal parameters of this callable. */
   int getNumberOfParameters() {
     result = count(getAParameter())
   }
 
-  /** A formal parameter of this callable. */
+  /** Gets a formal parameter of this callable. */
   Parameter getAParameter() { result.getCallable() = this }
 
-  /** The formal parameter at the specified (zero-based) position. */
+  /** Gets the formal parameter at the specified (zero-based) position. */
   Parameter getParameter(int n) { params(result, _, n, this, _) }
 
-  /** The type of the formal parameter at the specified (zero-based) position. */
+  /** Gets the type of the formal parameter at the specified (zero-based) position. */
   Type getParameterType(int n) { params(_, result, n, this, _) }
 
   /**
@@ -193,7 +193,8 @@ class Callable extends StmtParent, Member, @callable {
     result = this.getName() + this.paramsString()
   }
 
-  /** A parenthesized string containing all parameter types of this callable, separated by a comma. */
+  /** Gets a parenthesized string containing all parameter types of this callable, separated by a comma. */
+  pragma[nomagic]
   string paramsString() {
     exists(int n | n = getNumberOfParameters() |
       n = 0 and result = "()"
@@ -217,18 +218,18 @@ class Callable extends StmtParent, Member, @callable {
     sig = this.getStringSignature()
   }
 
-  /** An exception that occurs in the `throws` clause of this callable. */
+  /** Gets an exception that occurs in the `throws` clause of this callable. */
   Exception getAnException() { exceptions(result,_,this) }
 
-  /** An exception type that occurs in the `throws` clause of this callable. */
+  /** Gets an exception type that occurs in the `throws` clause of this callable. */
   RefType getAThrownExceptionType() { result = getAnException().getType() }
 
-  /** A call site that references this callable. */
+  /** Gets a call site that references this callable. */
   Call getAReference() {
     result.getCallee() = this
   }
 
-  /** The body of this callable, if any. */
+  /** Gets the body of this callable, if any. */
   Block getBody() { result.getParent() = this }
 
   /**
@@ -329,7 +330,7 @@ class Method extends Callable, @method {
     this.getSourceDeclaration() = m and this != m
   }
 
-  /** A method (directly or transitively) overridden by this method. */
+  /** Gets a method (directly or transitively) overridden by this method. */
   Method getAnOverride() {
     this.overrides+(result)
   }
@@ -445,7 +446,7 @@ class SetterMethod extends Method {
     )
   }
 
-  /** The field assigned by this setter method. */
+  /** Gets the field assigned by this setter method. */
   Field getField() {
     exists(Assignment a | a.getEnclosingCallable() = this |
       a.getDest() = result.getAnAccess()
@@ -468,7 +469,7 @@ class GetterMethod extends Method {
     )
   }
 
-  /** The field whose value is returned by this getter method. */
+  /** Gets the field whose value is returned by this getter method. */
   Field getField() {
     exists(ReturnStmt r | r.getEnclosingCallable() = this |
       r.getResult() = result.getAnAccess()
@@ -527,16 +528,16 @@ class InstanceInitializer extends InitializerMethod {
 
 /** A field declaration that declares one or more class or instance fields. */
 class FieldDeclaration extends ExprParent, @fielddecl, Annotatable {
-  /** The access to the type of the field(s) in this declaration. */
+  /** Gets the access to the type of the field(s) in this declaration. */
   Expr getTypeAccess() { result.getParent() = this }
 
-  /** A field declared in this declaration. */
+  /** Gets a field declared in this declaration. */
   Field getAField() { fieldDeclaredIn(result, this, _) }
 
-  /** The field declared at the specified (zero-based) position in this declaration */
+  /** Gets the field declared at the specified (zero-based) position in this declaration */
   Field getField(int idx) { fieldDeclaredIn(result, this, idx) }
 
-  /** The number of fields declared in this declaration. */
+  /** Gets the number of fields declared in this declaration. */
   int getNumField() { result = max(int idx | fieldDeclaredIn(_, this, idx) | idx) + 1 }
 
   override string toString() {
@@ -549,10 +550,10 @@ class FieldDeclaration extends ExprParent, @fielddecl, Annotatable {
 
 /** A class or instance field. */
 class Field extends Member, ExprParent, @field, Variable {
-  /** The declared type of this field. */
+  /** Gets the declared type of this field. */
   override Type getType() { fields(this, _, result, _, _) }
 
-  /** The type in which this field is declared. */
+  /** Gets the type in which this field is declared. */
   override RefType getDeclaringType() { fields(this, _, _, result, _) }
 
   /**
@@ -562,7 +563,7 @@ class Field extends Member, ExprParent, @field, Variable {
    */
   FieldDeclaration getDeclaration() { result.getAField() = this }
 
-  /** The initializer expression of this field, if any. */
+  /** Gets the initializer expression of this field, if any. */
   override Expr getInitializer() {
     exists(AssignExpr e, InitializerMethod im |
       e.getDest() = this.getAnAccess() and

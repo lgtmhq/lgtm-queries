@@ -27,8 +27,9 @@
 import javascript
 import Definitions
 
-from DefiningIdentifier id, string name
-where not id.inExternsFile() and
-      name = id.getName() and
-      (name = "eval" or name = "arguments")
-select id, "Redefinition of " + name + "."
+from VarRef d
+where d.getVariable().(LocalVariable).getName() = "arguments" and
+      (d instanceof LValue or d instanceof VarDecl) and
+      not d.isAmbient() and
+      not d.inExternsFile()
+select d, "Redefinition of arguments."

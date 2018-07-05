@@ -14,15 +14,9 @@
 import python
 
 FunctionObject redirect() {
-    exists(ModuleObject shortcuts |
-        shortcuts.getName() = "django.shortcuts" and
-        result = shortcuts.getAttribute("redirect")
-    )
+    result = any(ModuleObject m | m.getName() = "django.shortcuts").getAttribute("redirect")
 }
 
-ClassObject djangoHttpRedirectClass() {
-    exists(ModuleObject m |
-        m.getName() = "django.http.response" |
-        result = m.getAttribute("HttpResponseRedirectBase")
-    )
+ClassObject theDjangoHttpRedirectClass() {
+    result = any(ModuleObject m | m.getName() = "django.http.response").getAttribute("HttpResponseRedirectBase")
 }

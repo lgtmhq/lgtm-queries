@@ -19,25 +19,25 @@ import Element
 
 /** A variable is a field, a local variable or a parameter. */
 class Variable extends @variable, Annotatable, Element, Modifiable {
-  /** The type of this variable. */
+  /** Gets the type of this variable. */
   /*abstract*/ Type getType() { none() }
 
-  /** An access to this variable. */
+  /** Gets an access to this variable. */
   VarAccess getAnAccess() { variableBinding(result,this) }
 
-  /** An expression on the right-hand side of an assignment to this variable. */
+  /** Gets an expression on the right-hand side of an assignment to this variable. */
   Expr getAnAssignedValue() {
     exists(LocalVariableDeclExpr e | e.getVariable() = this and result = e.getInit())
     or
     exists(AssignExpr e | e.getDest().getProperExpr() = this.getAnAccess() and result = e.getSource())
   }
 
-  /** The initializer expression of this variable. */
+  /** Gets the initializer expression of this variable. */
   Expr getInitializer() {
     none()
   }
 
-  /** A printable representation of this variable together with its type. */
+  /** Gets a printable representation of this variable together with its type. */
   string pp() {
     result = this.getType().getName() + " " + this.getName()
   }
@@ -51,24 +51,24 @@ class LocalScopeVariable extends Variable, @localscopevariable {
 
 /** A local variable declaration */
 class LocalVariableDecl extends @localvar, LocalScopeVariable {
-  /** The type of this local variable. */
+  /** Gets the type of this local variable. */
   override Type getType() { localvars(this,_,result,_) }
 
-  /** The expression declaring this variable. */
+  /** Gets the expression declaring this variable. */
   LocalVariableDeclExpr getDeclExpr() { localvars(this, _, _, result) }
 
-  /** The parent of this declaration. */
+  /** Gets the parent of this declaration. */
   Expr getParent() { localvars(this,_,_,result) }
 
-  /** The callable in which this declaration occurs. */
+  /** Gets the callable in which this declaration occurs. */
   override Callable getCallable() { result = this.getParent().getEnclosingCallable() }
 
-  /** The callable in which this declaration occurs. */
+  /** Gets the callable in which this declaration occurs. */
   Callable getEnclosingCallable() { result = getCallable() }
 
   override string toString() { result = this.getType().getName() + " " + this.getName() }
 
-  /** The initializer expression of this local variable declaration. */
+  /** Gets the initializer expression of this local variable declaration. */
   override Expr getInitializer() {
     result = getDeclExpr().getInit()
   }
@@ -76,19 +76,19 @@ class LocalVariableDecl extends @localvar, LocalScopeVariable {
 
 /** A formal parameter of a callable. */
 class Parameter extends Element, @param, LocalScopeVariable {
-  /** The type of this formal parameter. */
+  /** Gets the type of this formal parameter. */
   override Type getType() { params(this,result,_,_,_) }
 
   /** Holds if the parameter is never assigned a value in the body of the callable. */
   predicate isEffectivelyFinal() { not exists(getAnAssignedValue()) }
 
-  /** The (zero-based) index of this formal parameter. */
+  /** Gets the (zero-based) index of this formal parameter. */
   int getPosition() { params(this,_,result,_,_) }
 
-  /** The callable that declares this formal parameter. */
+  /** Gets the callable that declares this formal parameter. */
   override Callable getCallable() { params(this,_,_,result,_) }
 
-  /** The source declaration of this formal parameter. */
+  /** Gets the source declaration of this formal parameter. */
   Parameter getSourceDeclaration() { params(this,_,_,_,result) }
 
   /** Holds if this formal parameter is the same as its source declaration. */

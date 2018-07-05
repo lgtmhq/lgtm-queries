@@ -135,6 +135,7 @@ private predicate isIntegralOrEnum(Type type) {
 
 private predicate isPointerOrNullPointer(Type type) {
   type instanceof PointerType or
+  type instanceof FunctionPointerType or
   type instanceof NullPointerType
 }
 

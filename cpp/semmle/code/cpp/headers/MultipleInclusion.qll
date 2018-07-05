@@ -185,5 +185,5 @@ predicate ifndefDirective(PreprocessorDirective ppd, string macro) {
 class PragmaOnceIncludeGuard extends BadIncludeGuard {
   PragmaOnceIncludeGuard() { exists(PreprocessorPragma p | p.getFile() = this and p.getHead() = "once") }
 
-  Element blame() { exists(PreprocessorPragma p | p.getFile() = this and p = result and p.getHead() = "once") }
+  override Element blame() { exists(PreprocessorPragma p | p.getFile() = this and p = result and p.getHead() = "once") }
 }

@@ -13,7 +13,7 @@
 
 import semmle.code.java.Expr
 
-/** The method `method` validates its `arg`-th argument in some way. */
+/** Holds if the method `method` validates its `arg`-th argument in some way. */
 predicate validationMethod(Method method, int arg) {
   // The method examines the contents of the string argument.
   exists(Parameter param, VarAccess paramRef, MethodAccess call |

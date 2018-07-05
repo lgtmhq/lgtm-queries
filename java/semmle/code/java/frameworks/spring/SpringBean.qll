@@ -48,7 +48,7 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("id")
   }
 
-  /** The value of the `id` attribute. */
+  /** Gets the value of the `id` attribute. */
   string getBeanId() {
     result = this.getAttribute("id").getValue()
   }
@@ -58,7 +58,7 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("name")
   }
 
-  /** The value of the `name` attribute. */
+  /** Gets the value of the `name` attribute. */
   string getBeanName() {
     result = this.getAttribute("name").getValue()
   }
@@ -70,7 +70,7 @@ class SpringBean extends SpringXMLElement {
     this.hasBeanId()
   }
 
-  /** The bean `id` or `name`, whichever is present, giving priority to `id`. */
+  /** Gets the bean `id` or `name`, whichever is present, giving priority to `id`. */
   string getBeanIdentifier() {
   	// Aliasing is currently not supported.
     if this.hasBeanId()
@@ -89,7 +89,7 @@ class SpringBean extends SpringXMLElement {
     not exists(this.getClass())
   }
 
-  /** The raw value of the `autowire` attribute. */
+  /** Gets the raw value of the `autowire` attribute. */
   string getAutowireRaw() {
     result = this.getAttributeValueWithDefault("autowire")
   }
@@ -104,7 +104,7 @@ class SpringBean extends SpringXMLElement {
     else result = this.getSpringBeanFile().getDefaultAutowire()
   }
 
-  /** The value for the `autowire-candidate` attribute. */
+  /** Gets the value for the `autowire-candidate` attribute. */
   string getAutowireCandidate() {
     result = this.getAttributeValueWithDefault("autowire-candidate")
   }
@@ -114,7 +114,7 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("class")
   }
 
-  /** The value of the bean's `class` attribute, if any. */
+  /** Gets the value of the bean's `class` attribute, if any. */
   string getClassNameRaw() {
     result = this.getAttribute("class").getValue()
   }
@@ -125,19 +125,19 @@ class SpringBean extends SpringXMLElement {
     this.getBeanParent().hasClassName()
   }
 
-  /** The name of the bean's class, taking parent inheritance into account. */
+  /** Gets the name of the bean's class, taking parent inheritance into account. */
   string getClassName() {
     if this.hasClassNameRaw()
     then result = this.getClassNameRaw()
     else result = this.getBeanParent().getClassName()
   }
 
-  /** The Java class referred to by the bean's class name. */
+  /** Gets the Java class referred to by the bean's class name. */
   RefType getClass() {
     result.getQualifiedName() = this.getClassName()
   }
 
-  /** The value of the `dependency-check` attribute, if any. */
+  /** Gets the value of the `dependency-check` attribute, if any. */
   string getDependencyCheckRaw() {
     result = this.getAttributeValueWithDefault("dependency-check")
   }
@@ -152,7 +152,7 @@ class SpringBean extends SpringXMLElement {
     else result = this.getSpringBeanFile().getDefaultDependencyCheck()
   }
 
-  /** The value of the `depends-on` attribute. */
+  /** Gets the value of the `depends-on` attribute. */
   string getDependsOnString() {
     result = this.getAttributeValue("depends-on")
   }
@@ -162,7 +162,7 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("destroy-method")
   }
 
-  /** The value of the bean's `destroy-method` attribute. */
+  /** Gets the value of the bean's `destroy-method` attribute. */
   string getDestroyMethodNameRaw() {
     result = this.getAttributeValue("destroy-method")
   }
@@ -191,7 +191,7 @@ class SpringBean extends SpringXMLElement {
     )
   }
 
-  /** The Java method that corresponds to the bean's `destroy-method`. */
+  /** Gets the Java method that corresponds to the bean's `destroy-method`. */
   Method getDestroyMethod() {
     exists (RefType superType |
       this.getClass().hasMethod(result, superType) and
@@ -205,12 +205,12 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("factory-bean")
   }
 
-  /** The value of the `factory-bean` attribute. */
+  /** Gets the value of the `factory-bean` attribute. */
   string getFactoryBeanNameRaw() {
     result = this.getAttributeValue("factory-bean")
   }
 
-  /** The name of the bean's `factory-bean`, taking bean inheritance into account. */
+  /** Gets the name of the bean's `factory-bean`, taking bean inheritance into account. */
   string getFactoryBeanName() {
     if this.hasFactoryBeanNameRaw()
     then result = this.getFactoryBeanNameRaw()
@@ -222,12 +222,12 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("factory-method")
   }
 
-  /** The value of the `factory-method` attribute. */
+  /** Gets the value of the `factory-method` attribute. */
   string getFactoryMethodNameRaw() {
     result = this.getAttributeValue("factory-method")
   }
 
-  /** The name of the bean's `factory-method`, taking bean inheritance into account. */
+  /** Gets the name of the bean's `factory-method`, taking bean inheritance into account. */
   string getFactoryMethodName() {
     if this.hasFactoryMethodNameRaw()
     then result = this.getFactoryMethodNameRaw()
@@ -239,7 +239,7 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("init-method")
   }
 
-  /** The value of the bean's `init-method` attribute. */
+  /** Gets the value of the bean's `init-method` attribute. */
   string getInitMethodNameRaw() {
     result = this.getAttributeValue("init-method")
   }
@@ -268,7 +268,7 @@ class SpringBean extends SpringXMLElement {
     )
   }
 
-  /** The Java method that the `init-method` corresponds to. */
+  /** Gets the Java method that the `init-method` corresponds to. */
   Method getInitMethod() {
     exists (RefType superType |
       this.getClass().hasMethod(result, superType) and
@@ -277,7 +277,7 @@ class SpringBean extends SpringXMLElement {
     )
   }
 
-  /** The name of the bean's parent bean. */
+  /** Gets the name of the bean's parent bean. */
   string getBeanParentName() {
     result = this.getAttributeValue("parent")
   }
@@ -287,7 +287,7 @@ class SpringBean extends SpringXMLElement {
     this.hasAttribute("parent")
   }
 
-  /** The `SpringBean` parent of this bean. */
+  /** Gets the `SpringBean` parent of this bean. */
   SpringBean getBeanParent() {
     result.getBeanIdentifier() = this.getBeanParentName()
   }
@@ -302,7 +302,7 @@ class SpringBean extends SpringXMLElement {
     this.getBeanParent().hasBeanAncestor(ancestor)
   }
 
-  /** The value of the bean's `lazy-init` attribute. */
+  /** Gets the value of the bean's `lazy-init` attribute. */
   string getLazyInitRaw() {
     result = this.getAttributeValueWithDefault("lazy-init")
   }
@@ -322,7 +322,7 @@ class SpringBean extends SpringXMLElement {
     exists(XMLAttribute a | a = this.getAttribute("primary") and a.getValue() = "true")
   }
 
-  /** The scope of the bean. */
+  /** Gets the scope of the bean. */
   string getScope() {
     if this.hasAttribute("scope")
     then result = this.getAttributeValue("scope")
@@ -337,7 +337,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * A `<property>` element declared in this bean (not inherited from parent beans).
+   * Gets a `<property>` element declared in this bean (not inherited from parent beans).
    */
   SpringProperty getADeclaredProperty() {
     result = this.getASpringChild()
@@ -363,12 +363,12 @@ class SpringBean extends SpringXMLElement {
     result = this.getAnInheritedProperty()
   }
 
-  /** A `<constructor-arg>` element declared in this bean. */
+  /** Gets a `<constructor-arg>` element declared in this bean. */
   SpringConstructorArg getADeclaredConstructorArg() {
     result = this.getASpringChild()
   }
 
-  /** A `<constructor-arg>` element inherited from the parent bean. */
+  /** Gets a `<constructor-arg>` element inherited from the parent bean. */
   SpringConstructorArg getAnInheritedConstructorArg() {
     (not exists(SpringConstructorArg thisArg |
       thisArg = this.getADeclaredConstructorArg() and
@@ -388,12 +388,12 @@ class SpringBean extends SpringXMLElement {
     result = this.getAnInheritedConstructorArg()
   }
 
-  /** A `<lookup-method>` element declared in this bean. */
+  /** Gets a `<lookup-method>` element declared in this bean. */
   SpringLookupMethod getADeclaredLookupMethod() {
     result = this.getASpringChild()
   }
 
-  /** A `<lookup-method>` element inherited from the parent bean. */
+  /** Gets a `<lookup-method>` element inherited from the parent bean. */
   SpringLookupMethod getAnInheritedLookupMethod() {
     (not exists(SpringLookupMethod thisMethod |
       thisMethod = this.getADeclaredLookupMethod() and
@@ -413,12 +413,12 @@ class SpringBean extends SpringXMLElement {
     result = this.getAnInheritedLookupMethod()
   }
 
-  /** A `<replaced-method>` element declared in this bean. */
+  /** Gets a `<replaced-method>` element declared in this bean. */
   SpringReplacedMethod getADeclaredReplacedMethod() {
     result = this.getASpringChild()
   }
 
-  /** A `<replaced-method>` element inherited from the parent bean. */
+  /** Gets a `<replaced-method>` element inherited from the parent bean. */
   SpringReplacedMethod getAnInheritedReplacedMethod() {
     (not exists(SpringReplacedMethod thisMethod |
       thisMethod = this.getADeclaredReplacedMethod() and
@@ -439,14 +439,14 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * The `SpringBean` specified by reference as the factory bean.
+   * Gets the `SpringBean` specified by reference as the factory bean.
    */
   SpringBean getFactoryBean() {
     result.getBeanIdentifier() = this.getFactoryBeanName()
   }
 
   /**
-   * The factory method that the Java method corresponds to.
+   * Gets the factory method that the Java method corresponds to.
    */
   Method getFactoryMethod() {
     exists(string factoryMethod |
@@ -479,7 +479,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * The qualifier for this bean.
+   * Gets the qualifier for this bean.
    */
   SpringQualifier getQualifier() {
     result = this.getASpringChild()

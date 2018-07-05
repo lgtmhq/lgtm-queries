@@ -168,32 +168,32 @@ class StrCopyBW extends BufferWriteCall
     ))
   }
 
-  Type getBufferType()
+  override Type getBufferType()
   {
     result = this.getTarget().getParameter(getParamSrc()).getType().getUnspecifiedType()
   }
 
-  Expr getASource()
+  override Expr getASource()
   {
     result = getArgument(getParamSrc())
   }
 
-  Expr getDest()
+  override Expr getDest()
   {
     result = getArgument(0)
   }
 
-  predicate hasExplicitLimit()
+  override predicate hasExplicitLimit()
   {
     exists(getParamSize())
   }
 
-  int getExplicitLimit()
+  override int getExplicitLimit()
   {
     result = getArgument(getParamSize()).getValue().toInt() * getCharSize()
   }
 
-  int getMaxData()
+  override int getMaxData()
   {
     result = getArgument(getParamSrc()).(AnalysedString).getMaxLength() * getCharSize()
   }
@@ -223,32 +223,32 @@ class StrCatBW extends BufferWriteCall
     result = 1
   }
 
-  Type getBufferType()
+  override Type getBufferType()
   {
     result = this.getTarget().getParameter(getParamSrc()).getType().getUnspecifiedType()
   }
 
-  Expr getASource()
+  override Expr getASource()
   {
     result = getArgument(getParamSrc())
   }
 
-  Expr getDest()
+  override Expr getDest()
   {
     result = getArgument(0)
   }
 
-  predicate hasExplicitLimit()
+  override predicate hasExplicitLimit()
   {
     exists(getParamSize())
   }
 
-  int getExplicitLimit()
+  override int getExplicitLimit()
   {
     result = getArgument(getParamSize()).getValue().toInt() * getCharSize()
   }
 
-  int getMaxData()
+  override int getMaxData()
   {
     result = getArgument(getParamSrc()).(AnalysedString).getMaxLength() * getCharSize()
   }
@@ -276,7 +276,7 @@ class SprintfBW extends BufferWriteCall
     ))
   }
 
-  Type getBufferType()
+  override Type getBufferType()
   {
     exists(FormattingFunction f |
       f = this.getTarget() and
@@ -284,19 +284,19 @@ class SprintfBW extends BufferWriteCall
     )
   }
 
-  Expr getASource()
+  override Expr getASource()
   {
     (result = this.(FormattingFunctionCall).getFormat())
     or
     (result = this.(FormattingFunctionCall).getFormatArgument(_))
   }
 
-  Expr getDest()
+  override Expr getDest()
   {
     result = getArgument(0)
   }
 
-  int getMaxData()
+  override int getMaxData()
   {
     exists(FormatLiteral fl |
       (fl = this.(FormattingFunctionCall).getFormat())
@@ -304,7 +304,7 @@ class SprintfBW extends BufferWriteCall
     ) 
   }
 
-  int getMaxDataLimited()
+  override int getMaxDataLimited()
   {
     exists(FormatLiteral fl |
       (fl = this.(FormattingFunctionCall).getFormat())
@@ -364,7 +364,7 @@ class SnprintfBW extends BufferWriteCall
     result = 1
   }
 
-  Type getBufferType()
+  override Type getBufferType()
   {
     exists(FormattingFunction f |
       f = this.getTarget() and
@@ -372,29 +372,29 @@ class SnprintfBW extends BufferWriteCall
     )
   }
 
-  Expr getASource()
+  override Expr getASource()
   {
     (result = this.(FormattingFunctionCall).getFormat())
     or
     (result = this.(FormattingFunctionCall).getFormatArgument(_))
   }
 
-  Expr getDest()
+  override Expr getDest()
   {
     result = getArgument(0)
   }
 
-  predicate hasExplicitLimit()
+  override predicate hasExplicitLimit()
   {
     exists(getParamSize())
   }
 
-  int getExplicitLimit()
+  override int getExplicitLimit()
   {
     result = getArgument(getParamSize()).getValue().toInt() * getCharSize()
   }
 
-  int getMaxData()
+  override int getMaxData()
   {
     exists(FormatLiteral fl |
       (fl = this.(FormattingFunctionCall).getFormat())
@@ -402,7 +402,7 @@ class SnprintfBW extends BufferWriteCall
     )
   }
 
-  int getMaxDataLimited()
+  override int getMaxDataLimited()
   {
     exists(FormatLiteral fl |
       (fl = this.(FormattingFunctionCall).getFormat())
@@ -434,12 +434,12 @@ class GetsBW extends BufferWriteCall
     )
   }
 
-  Type getBufferType()
+  override Type getBufferType()
   {
     result = this.getTarget().getParameter(0).getType().getUnspecifiedType()
   }
 
-  Expr getASource()
+  override Expr getASource()
   {
     if exists(getArgument(2)) then (
       result = getArgument(2)
@@ -448,17 +448,17 @@ class GetsBW extends BufferWriteCall
     )
   }
 
-  Expr getDest()
+  override Expr getDest()
   {
     result = getArgument(0)
   }
 
-  predicate hasExplicitLimit()
+  override predicate hasExplicitLimit()
   {
     exists(getParamSize())
   }
 
-  int getExplicitLimit()
+  override int getExplicitLimit()
   {
     result = getArgument(getParamSize()).getValue().toInt() * getCharSize()
   }
@@ -487,7 +487,7 @@ class ScanfBW extends BufferWrite
     )
   }
 
-  Type getBufferType()
+  override Type getBufferType()
   {
     exists(ScanfFunction f, ScanfFunctionCall fc |
       this = fc.getArgument(_) and
@@ -496,7 +496,7 @@ class ScanfBW extends BufferWrite
     )
   }
 
-  Expr getASource()
+  override Expr getASource()
   {
     exists(ScanfFunctionCall fc |
       (this = fc.getArgument(_)) and (
@@ -508,12 +508,12 @@ class ScanfBW extends BufferWrite
     )
   }
 
-  Expr getDest()
+  override Expr getDest()
   {
     result = this
   }
 
-  int getMaxData()
+  override int getMaxData()
   {
     exists(ScanfFunctionCall fc, ScanfFormatLiteral fl, int arg |
       (this = fc.getArgument(arg))
@@ -522,7 +522,7 @@ class ScanfBW extends BufferWrite
     )
   }
 
-  string getBWDesc()
+  override string getBWDesc()
   {
     exists(FunctionCall fc | (this = fc.getArgument(_))
       and (result = fc.getTarget().getName() + " string argument")
@@ -548,15 +548,15 @@ class RealpathBW extends BufferWriteCall {
     getTarget().getQualifiedName() = "realpath" // realpath(path, resolved_path);
   }
 
-  Type getBufferType()
+  override Type getBufferType()
   {
     result = this.getTarget().getParameter(0).getType().getUnspecifiedType()
   }
   
-  Expr getDest() { result = getArgument(1) }
-  Expr getASource() { result = getArgument(0) }
+  override Expr getDest() { result = getArgument(1) }
+  override Expr getASource() { result = getArgument(0) }
   
-  int getMaxData() {
+  override int getMaxData() {
     result = path_max()
     and this = this // Suppress a compiler warning
   }

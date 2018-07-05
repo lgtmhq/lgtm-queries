@@ -20,7 +20,7 @@ class SpringArgType extends SpringXMLElement {
     this.getName() = "arg-type"
   }
 
-  /** The value of the `match` attribute. */
+  /** Gets the value of the `match` attribute. */
   string getMatchPattern() {
     result = this.getAttributeValue("match")
   }

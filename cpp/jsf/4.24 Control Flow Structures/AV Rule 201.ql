@@ -40,7 +40,15 @@ predicate stmtInForBody(Stmt stmt, ForStmt forStmt) {
 from ForStmt for, Variable loopVariable, VariableAccess acc
 where
   loopModification(for, loopVariable, acc) and
-  not loopVariable instanceof Field and
+
+  // field accesses must have the same object
+  (
+    loopVariable instanceof Field implies
+    exists(Variable obj |
+      simpleFieldAccess(obj, loopVariable, acc) and
+      simpleFieldAccess(obj, loopVariable, for.getCondition().getAChild*())
+    )
+  ) and
 
   // don't duplicate results from NestedLoopSameVar.ql
   not exists(ForStmt inner |

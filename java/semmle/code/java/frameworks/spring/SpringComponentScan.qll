@@ -32,7 +32,7 @@ class SpringXMLComponentScan extends SpringXMLElement {
   }
 
   /**
-   * Return a profile expression for which this `component-scan` is enabled, or nothing if it is
+   * Gets a profile expression for which this `component-scan` is enabled, or nothing if it is
    * applicable to any profile.
    */
   string getAProfileExpr() {
@@ -50,7 +50,7 @@ class SpringComponentScan extends Annotation {
   }
 
   /**
-   * The base packages represented by this component scan.
+   * Gets the base packages represented by this component scan.
    */
   string getBasePackages() {
     // "value" and "basePackages" are synonymous, and are simple strings
@@ -139,14 +139,14 @@ class SpringComponent extends RefType {
   }
 
   /**
-   * A qualifier used to distinguish when this class should be autowired into other classes.
+   * Gets a qualifier used to distinguish when this class should be autowired into other classes.
    */
   SpringQualifierDefinitionAnnotation getQualifier() {
     result = getAnAnnotation()
   }
 
   /**
-   * Get the `@Component` or equivalent annotation.
+   * Gets the `@Component` or equivalent annotation.
    */
   Annotation getComponentAnnotation() {
     result = getAnAnnotation() and
@@ -154,7 +154,7 @@ class SpringComponent extends RefType {
   }
 
   /**
-   * Get the bean identifier for this component.
+   * Gets the bean identifier for this component.
    */
   string getBeanIdentifier() {
     if exists(getComponentAnnotation().getValue("value")) then
@@ -169,7 +169,7 @@ class SpringComponent extends RefType {
   }
 
   /**
-   * Get the qualifier value for this class, used to distinguish when to use this class for
+   * Gets the qualifier value for this class, used to distinguish when to use this class for
    * resolving autowiring on other classes.
    */
   string getQualifierValue() {

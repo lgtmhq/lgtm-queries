@@ -20,7 +20,7 @@ class SpringQualifier extends SpringXMLElement {
     this.getName() = "qualifier"
   }
 
-  /** The name of the Java class of this qualifier. */
+  /** Gets the name of the Java class of this qualifier. */
   string getQualifierTypeName() {
     if this.hasAttribute("type")
     then result = this.getAttributeValue("type")
@@ -32,7 +32,7 @@ class SpringQualifier extends SpringXMLElement {
     this.hasAttribute("value")
   }
 
-  /** The value of the `value` attribute. */
+  /** Gets the value of the `value` attribute. */
   string getQualifierValue() {
     result = this.getAttributeValue("value")
   }

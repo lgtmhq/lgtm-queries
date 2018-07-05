@@ -21,7 +21,7 @@ import semmle.code.java.Expr
 import semmle.code.java.security.Validation
 
 /**
- * A `toString()` method on a boxed type. These never return special characters.
+ * Holds if `method` is a `toString()` method on a boxed type. These never return special characters.
  */
 private predicate boxedToString(Method method) {
   method.getDeclaringType() instanceof BoxedType

@@ -23,7 +23,7 @@ class SpringBeanRefType extends RefType {
     exists (SpringBean b | b.getClass() = this)
   }
 
-  /** The `<bean>` element that refers to this `RefType`. */
+  /** Gets the `<bean>` element that refers to this `RefType`. */
   SpringBean getSpringBean() {
     result.getClass() = this
   }

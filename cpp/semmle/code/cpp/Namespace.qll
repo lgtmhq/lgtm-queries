@@ -80,14 +80,14 @@ class Namespace extends NameQualifyingElement, @namedscope, @namespace {
   Namespace getAChildNamespace() { namespacembrs(this,result) }
 
   /** Holds if this namespace may be from source. */
-  predicate fromSource() { this.getADeclaration().fromSource() }
+  override predicate fromSource() { this.getADeclaration().fromSource() }
 
   /**
    * Holds if this namespace is in a library.
    *
    * DEPRECATED: never holds.
    */
-  deprecated
+  deprecated override
   predicate fromLibrary() { not this.fromSource() }
 
   /** Gets the metric namespace. */

@@ -205,7 +205,7 @@ class Container extends @container, Top {
   /**
    * DEPRECATED: use `getAbsolutePath()` instead.
    *
-   * The full name of this container, including its path and extension (if any).
+   * Gets the full name of this container, including its path and extension (if any).
    */
   deprecated
   string getFullName() {

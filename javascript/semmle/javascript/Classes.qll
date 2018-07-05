@@ -127,6 +127,11 @@ class ClassOrInterface extends @classorinterface, TypeParameterized {
  * class expression.
  */
 class ClassDefinition extends @classdefinition, ClassOrInterface, AST::ValueNode {
+  /** Gets the variable holding this class. */
+  Variable getVariable() {
+    result = getIdentifier().getVariable()
+  }
+
   /** Gets the identifier naming the defined class, if any. */
   override VarDecl getIdentifier() {
     result = getChildExpr(0)

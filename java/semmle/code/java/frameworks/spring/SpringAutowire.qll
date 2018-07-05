@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A library which identifies methods and constructors which will be called by Spring injection.
+ * Provides classes and predicates for identifying methods and constructors called by Spring injection.
  */
 import java
 import SpringComponentScan
@@ -87,7 +87,7 @@ class SpringBeanXMLAutowiredSetterMethod extends Method {
   }
 
   /**
-   * Get the injected bean, if any.
+   * Gets the injected bean, if any.
    *
    * If there is no injected bean, this setter method is never called.
    */
@@ -149,35 +149,35 @@ class SpringBeanAutowiredCallable extends Callable {
   }
 
   /**
-   * Get the qualifier annotation for parameter at `pos`, if any.
+   * Gets the qualifier annotation for parameter at `pos`, if any.
    */
   SpringQualifierAnnotation getQualifier(int pos) {
     result = getParameter(pos).getAnAnnotation()
   }
 
   /**
-   * Get the qualifier annotation for this method, if any.
+   * Gets the qualifier annotation for this method, if any.
    */
   SpringQualifierAnnotation getQualifier() {
     result = getAnAnnotation()
   }
 
   /**
-   * Get the resource annotation for this method, if any.
+   * Gets the resource annotation for this method, if any.
    */
   SpringResourceAnnotation getResource() {
     result = getAnAnnotation()
   }
 
   /**
-   * Get a bean that will be injected into this callable.
+   * Gets a bean that will be injected into this callable.
    */
   SpringBean getAnInjectedBean() {
     result = getInjectedBean(_)
   }
 
   /**
-   * Get the `SpringBean`, if any, that will be injected for the parameter at position `pos`,
+   * Gets the `SpringBean`, if any, that will be injected for the parameter at position `pos`,
    * considering any `@Qualifier` annotations, and falling back to autowiring by type.
    */
   SpringBean getInjectedBean(int pos) {
@@ -205,7 +205,7 @@ class SpringBeanAutowiredCallable extends Callable {
   }
 
   /**
-   * Get the SpringComponent, if any, that will be injected for the parameter at position `pos`,
+   * Gets the SpringComponent, if any, that will be injected for the parameter at position `pos`,
    * considering any `@Qualifier` annotations, and falling back to autowiring by type.
    */
   SpringComponent getInjectedComponent(int pos) {
@@ -257,21 +257,21 @@ class SpringBeanAutowiredField extends Field {
   }
 
   /**
-   * Get the qualifier annotation for this method, if any.
+   * Gets the qualifier annotation for this method, if any.
    */
   SpringQualifierAnnotation getQualifier() {
     result = getAnAnnotation()
   }
 
   /**
-   * Get the resource annotation for this method, if any.
+   * Gets the resource annotation for this method, if any.
    */
   SpringResourceAnnotation getResource() {
     result = getAnAnnotation()
   }
 
   /**
-   * Get the `SpringBean`, if any, that will be injected for this field, considering any `@Qualifier`
+   * Gets the `SpringBean`, if any, that will be injected for this field, considering any `@Qualifier`
    * annotations, and falling back to autowiring by type.
    */
   SpringBean getInjectedBean() {
@@ -290,7 +290,7 @@ class SpringBeanAutowiredField extends Field {
   }
 
   /**
-   * Get the `SpringComponent`, if any, that will be injected for this field, considering any
+   * Gets the `SpringComponent`, if any, that will be injected for this field, considering any
    * `@Qualifier` annotations, and falling back to autowiring by type.
    */
   SpringComponent getInjectedComponent() {
@@ -331,7 +331,7 @@ class SpringQualifierDefinitionAnnotation extends Annotation {
   }
 
   /**
-   * The value of the qualifier field for this qualifier.
+   * Gets the value of the qualifier field for this qualifier.
    */
   string getQualifierValue() {
     result = getValue("value").(CompileTimeConstantExpr).getStringValue()
@@ -348,21 +348,21 @@ class SpringQualifierAnnotation extends Annotation {
   }
 
   /**
-   * The value of the qualifier field for this qualifier.
+   * Gets the value of the qualifier field for this qualifier.
    */
   string getQualifierValue() {
     result = getValue("value").(CompileTimeConstantExpr).getStringValue()
   }
 
   /**
-   * Get the bean definition in an XML file that this qualifier resolves to, if any.
+   * Gets the bean definition in an XML file that this qualifier resolves to, if any.
    */
   SpringBean getSpringBean() {
     result.getQualifierValue() = getQualifierValue()
   }
 
   /**
-   * Get the Spring component that this qualifier resolves to, if any.
+   * Gets the Spring component that this qualifier resolves to, if any.
    */
   SpringComponent getSpringComponent() {
     result.getQualifierValue() = getQualifierValue()
@@ -379,21 +379,21 @@ class SpringResourceAnnotation extends Annotation {
   }
 
   /**
-   * Get the specified name value, if any.
+   * Gets the specified name value, if any.
    */
   string getNameValue() {
     result = getValue("name").(CompileTimeConstantExpr).getStringValue()
   }
 
   /**
-   * Get the bean definition in an XML file that the resource resolves to, if any.
+   * Gets the bean definition in an XML file that the resource resolves to, if any.
    */
   SpringBean getSpringBean() {
     result.getQualifierValue() = getNameValue()
   }
 
   /**
-   * Get the Spring component that this qualifier resolves to, if any.
+   * Gets the Spring component that this qualifier resolves to, if any.
    */
   SpringComponent getSpringComponent() {
     result.getQualifierValue() = getNameValue()

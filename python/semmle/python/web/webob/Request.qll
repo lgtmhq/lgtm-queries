@@ -58,10 +58,7 @@ class WebobRequest extends BaseWebobRequest {
     }
 
     ClassObject getClass() {
-        exists(ModuleObject req |
-            req.getName() = "webob.request" and
-            result = req.getAttribute("Request")
-        )
+        result = any(ModuleObject m | m.getName() = "webob.request").getAttribute("Request")
     }
 
 }

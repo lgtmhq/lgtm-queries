@@ -34,45 +34,45 @@ class UserType extends Type, Declaration, NameQualifyingElement, AccessHolder, @
     result = getName().regexpReplaceAll("<.*", "")
   }
 
-  predicate hasName(string name) {
+  override predicate hasName(string name) {
     usertypes(this,name,_)
   }
   predicate isAnonymous() {
     getName().matches("(unnamed%")
   }
 
-  predicate hasSpecifier(string s) {
+  override predicate hasSpecifier(string s) {
     Type.super.hasSpecifier(s)
   }
-  Specifier getASpecifier() {
+  override Specifier getASpecifier() {
     result = Type.super.getASpecifier()
   }
 
-  Location getLocation() {
+  override Location getLocation() {
     if isDefined() then
       result = this.getDefinitionLocation()
     else
       result = this.getADeclarationLocation()
   }
 
-  TypeDeclarationEntry getADeclarationEntry() {
+  override TypeDeclarationEntry getADeclarationEntry() {
     if type_decls(_, unresolve(this), _) then
       type_decls(result, unresolve(this), _)
     else
       exists(UserType t | class_instantiation(this, t) and result = t.getADeclarationEntry())
   }
 
-  Location getADeclarationLocation() {
+  override Location getADeclarationLocation() {
     result = getADeclarationEntry().getLocation()
   }
 
-  TypeDeclarationEntry getDefinition() {
+  override TypeDeclarationEntry getDefinition() {
     result = getADeclarationEntry() and
     result.isDefinition()
   }
 
   /** the location of the definition */
-  Location getDefinitionLocation() {
+  override Location getDefinitionLocation() {
     if exists(getDefinition()) then
       result = getDefinition().getLocation()
     else
@@ -107,17 +107,17 @@ class UserType extends Type, Declaration, NameQualifyingElement, AccessHolder, @
  * A particular definition or forward declaration of a C/C++ user-defined type.
  */
 class TypeDeclarationEntry extends DeclarationEntry, @type_decl {
-  UserType getDeclaration() { result = getType() }
-  string getName() { result = getType().getName() }
+  override UserType getDeclaration() { result = getType() }
+  override string getName() { result = getType().getName() }
 
   /**
    * The type which is being declared or defined.
    */
-  Type getType() { type_decls(this,unresolve(result),_) }
+  override Type getType() { type_decls(this,unresolve(result),_) }
 
-  Location getLocation() { type_decls(this,_,result) }
-  predicate isDefinition() { type_def(this) }
-  string getASpecifier() { none() }
+  override Location getLocation() { type_decls(this,_,result) }
+  override predicate isDefinition() { type_def(this) }
+  override string getASpecifier() { none() }
 
   /**
    * A top level type declaration entry is not declared within a function, function declaration,

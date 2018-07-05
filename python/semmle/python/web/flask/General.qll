@@ -14,27 +14,23 @@
 import python
 import semmle.python.web.Http
 
+/** The flask module */
+ModuleObject theFlaskModule() {
+    result = any(ModuleObject m | m.getName() = "flask")
+}
+
 /** The flask app class */
-ClassObject flaskClass() {
-    exists(ModuleObject flask |
-        flask.getName() = "flask" and
-        result = flask.getAttribute("Flask")
-    )
+ClassObject theFlaskClass() {
+    result = theFlaskModule().getAttribute("Flask")
 }
 
 /** The flask MethodView class */
-ClassObject theMethodViewClass() {
-    exists(ModuleObject views |
-        views.getName() = "flask.views" and
-        result = views.getAttribute("MethodView")
-    )
+ClassObject theFlaskMethodViewClass() {
+    result = any(ModuleObject m | m.getName() = "flask.views").getAttribute("MethodView")
 }
 
-ClassObject theReponseClass() {
-    exists(ModuleObject flask |
-        flask.getName() = "flask" and
-        result = flask.getAttribute("Response")
-    )
+ClassObject theFlaskReponseClass() {
+    result = theFlaskModule().getAttribute("Response")
 }
 
 /** Holds if `route` is routed to `func`
@@ -42,7 +38,7 @@ ClassObject theReponseClass() {
  */
 predicate app_route(ControlFlowNode route, Function func) {
     exists(CallNode route_call, CallNode decorator_call |
-        route_call.getFunction().(AttrNode).getObject("route").refersTo(_, flaskClass(), _) and
+        route_call.getFunction().(AttrNode).getObject("route").refersTo(_, theFlaskClass(), _) and
         decorator_call.getFunction() = route_call and
         route_call.getArg(0) = route and
         decorator_call.getArg(0).getNode().(FunctionExpr).getInnerScope() = func
@@ -52,7 +48,7 @@ predicate app_route(ControlFlowNode route, Function func) {
 /* Helper for add_url_rule */
 private predicate add_url_rule_call(ControlFlowNode regex, ControlFlowNode callable) {
     exists(CallNode call |
-        call.getFunction().(AttrNode).getObject("add_url_rule").refersTo(_, flaskClass(), _) and
+        call.getFunction().(AttrNode).getObject("add_url_rule").refersTo(_, theFlaskClass(), _) and
         regex = call.getArg(0) |
         callable = call.getArg(2) or
         callable = call.getArgByName("view_func")
@@ -88,7 +84,7 @@ predicate flask_routing(ControlFlowNode regex, Function func) {
 private class MethodViewClass extends ClassObject {
 
     MethodViewClass() {
-        this.getAnImproperSuperType() = theMethodViewClass()
+        this.getAnImproperSuperType() = theFlaskMethodViewClass()
     }
 
     /* As we are restricted to strings for taint kinds, we need to map these classes to strings. */
@@ -114,7 +110,7 @@ private class AsView extends TaintSource {
 
     AsView() {
         exists(ClassObject view_class |
-            view_class.getAnImproperSuperType() = theMethodViewClass() and
+            view_class.getAnImproperSuperType() = theFlaskMethodViewClass() and
             this.(CallNode).getFunction().(AttrNode).getObject("as_view").refersTo(view_class)
         )
     }

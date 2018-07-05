@@ -18,7 +18,7 @@
  * @tags efficiency
  *       maintainability
  * @problem.severity recommendation
- * @sub-severity low
+ * @sub-severity high
  * @precision very-high
  * @id py/test-equals-none
  */

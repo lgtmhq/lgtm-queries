@@ -851,7 +851,7 @@ class ForStmt extends Loop, @stmt_for {
    * ```
    * there are no results.
    */
-  Declaration getADeclaration() {
+  override Declaration getADeclaration() {
     result = this.getInitialization().(DeclStmt).getADeclaration()
   }
 

@@ -32,14 +32,14 @@ abstract class StrutsXMLFile extends XMLFile {
   }
 
   /**
-   * Get a "root" struts configuration file that includes this file.
+   * Gets a "root" struts configuration file that includes this file.
    */
   StrutsRootXMLFile getARoot() {
     result.getAnIncludedFile() = this
   }
 
   /**
-   * Get a directly included file.
+   * Gets a directly included file.
    */
   StrutsXMLFile getADirectlyIncludedFile() {
     exists(StrutsXMLInclude include |
@@ -49,21 +49,21 @@ abstract class StrutsXMLFile extends XMLFile {
   }
 
   /**
-   * Get a transitively included file.
+   * Gets a transitively included file.
    */
   StrutsXMLFile getAnIncludedFile() {
     result = getADirectlyIncludedFile*()
   }
 
   /**
-   * Get a `<constant>` defined in this file, or an included file.
+   * Gets a `<constant>` defined in this file, or an included file.
    */
   StrutsXMLConstant getAConstant() {
     result.getFile() = getAnIncludedFile()
   }
 
   /**
-   * Get the value of the constant with the given `name`.
+   * Gets the value of the constant with the given `name`.
    */
   string getConstantValue(string name) {
     exists(StrutsXMLConstant constant |
@@ -117,7 +117,7 @@ class StrutsFolder extends Folder {
   }
 
   /**
-   * Get a struts root configuration that applies to this folder.
+   * Gets a struts root configuration that applies to this folder.
    */
   StrutsRootXMLFile getAStrutsRootFile() {
     result = getAChildContainer() or
@@ -134,7 +134,7 @@ class StrutsXMLElement extends XMLElement {
   }
 
   /**
-   * Return the value for this element, with leading and trailing whitespace trimmed.
+   * Gets the value for this element, with leading and trailing whitespace trimmed.
    */
   string getValue() {
     result = allCharactersString().trim()
@@ -198,7 +198,7 @@ class StrutsXMLAction extends StrutsXMLElement {
   }
 
   /**
-   * The `Class` which is referenced by this Struts action.
+   * Gets the `Class` that is referenced by this Struts action.
    */
   Class getActionClass() {
     strutsWildcardMatching(result.getQualifiedName(), getAttribute("class").getValue())

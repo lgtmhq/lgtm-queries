@@ -720,7 +720,7 @@ private predicate returnStmt(Function f, Expr value) {
 library class ConditionEvaluator extends ExprEvaluator {
   ConditionEvaluator() { this = 0 }
 
-  predicate interesting(Expr e) {
+  override predicate interesting(Expr e) {
     falsecond(e, _)
     or
     truecond(e, _)
@@ -731,7 +731,7 @@ library class ConditionEvaluator extends ExprEvaluator {
 library class SwitchEvaluator extends ExprEvaluator {
   SwitchEvaluator() { this = 1 }
 
-  predicate interesting(Expr e) {
+  override predicate interesting(Expr e) {
     e = getASwitchExpr(_, _)
   }
 }
@@ -744,7 +744,7 @@ private int getSwitchValue(Expr e) {
 library class LoopEntryConditionEvaluator extends ExprEvaluator {
   LoopEntryConditionEvaluator() { this in [2 .. 3] }
 
-  abstract predicate interesting(Expr e);
+  abstract override predicate interesting(Expr e);
 
   /** Holds if `cfn` is the entry point of the loop for which `e` is the condition. */
   abstract predicate isLoopEntry(Expr e, ControlFlowNode cfn);
@@ -873,7 +873,7 @@ library class LoopEntryConditionEvaluator extends ExprEvaluator {
    * }
    * ```
    */
-  predicate ignoreNonAnalyzableVariableDefinition(Expr e, Variable v, StmtParent def) {
+  override predicate ignoreNonAnalyzableVariableDefinition(Expr e, Variable v, StmtParent def) {
     maybeInterestingVariable(e, v) and
     nonAnalyzableVariableDefinition(v, def) and
     isLoopBodyDescendant(e, def) and
@@ -909,7 +909,7 @@ library class LoopEntryConditionEvaluator extends ExprEvaluator {
    * }
    * ```
    */
-  predicate ignoreVariableAssignment(Expr e, Variable v, Expr value) {
+  override predicate ignoreVariableAssignment(Expr e, Variable v, Expr value) {
     maybeInterestingVariable(e, v) and
     value = v.getAnAssignedValue() and
     isLoopBodyDescendant(e, value) and
@@ -921,15 +921,15 @@ library class LoopEntryConditionEvaluator extends ExprEvaluator {
 library class WhileLoopEntryConditionEvaluator extends LoopEntryConditionEvaluator {
   WhileLoopEntryConditionEvaluator() { this = 2 }
 
-  predicate interesting(Expr e) {
+  override predicate interesting(Expr e) {
     exists(WhileStmt while | e = while.getCondition())
   }
 
-  predicate isLoopEntry(Expr e, ControlFlowNode cfn) {
+  override predicate isLoopEntry(Expr e, ControlFlowNode cfn) {
     cfn.(WhileStmt).getCondition() = e
   }
 
-  predicate isLoopBody(Expr e, StmtParent s) {
+  override predicate isLoopBody(Expr e, StmtParent s) {
     exists(WhileStmt while |
       e = while.getCondition() |
       s = while.getStmt()
@@ -941,15 +941,15 @@ library class WhileLoopEntryConditionEvaluator extends LoopEntryConditionEvaluat
 library class ForLoopEntryConditionEvaluator extends LoopEntryConditionEvaluator {
   ForLoopEntryConditionEvaluator() { this = 3 }
 
-  predicate interesting(Expr e) {
+  override predicate interesting(Expr e) {
     exists(ForStmt for | e = for.getCondition())
   }
 
-  predicate isLoopEntry(Expr e, ControlFlowNode cfn) {
+  override predicate isLoopEntry(Expr e, ControlFlowNode cfn) {
     cfn.(ForStmt).getCondition() = e
   }
 
-  predicate isLoopBody(Expr e, StmtParent s) {
+  override predicate isLoopBody(Expr e, StmtParent s) {
     exists(ForStmt for |
       e = for.getCondition() |
       s = for.getUpdate() or
@@ -957,7 +957,7 @@ library class ForLoopEntryConditionEvaluator extends LoopEntryConditionEvaluator
     )
   }
 
-  predicate ignoreNonAnalyzableVariableDefinition(Expr e, Variable v, StmtParent def) {
+  override predicate ignoreNonAnalyzableVariableDefinition(Expr e, Variable v, StmtParent def) {
     LoopEntryConditionEvaluator.super.ignoreNonAnalyzableVariableDefinition(e, v, def)
     or
     // If the for loop initializes variable `v` we know its exact value so all
@@ -969,7 +969,7 @@ library class ForLoopEntryConditionEvaluator extends LoopEntryConditionEvaluator
     )
   }
 
-  predicate ignoreVariableAssignment(Expr e, Variable v, Expr value) {
+  override predicate ignoreVariableAssignment(Expr e, Variable v, Expr value) {
     LoopEntryConditionEvaluator.super.ignoreVariableAssignment(e, v, value)
     or
     // If the for loop initializes variable `v` we know its exact value so all
@@ -982,7 +982,7 @@ library class ForLoopEntryConditionEvaluator extends LoopEntryConditionEvaluator
     )
   }
 
-  predicate allowVariableWithoutInitializer(Expr e, Variable v) {
+  override predicate allowVariableWithoutInitializer(Expr e, Variable v) {
     // If the for loop initializes variable `v` we know its exact value
     // regardless of a lacking initializer
     exists(ForStmt for |

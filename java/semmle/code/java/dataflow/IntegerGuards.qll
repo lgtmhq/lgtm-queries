@@ -20,7 +20,7 @@ private import SSA
 private import RangeUtils
 private import RangeAnalysis
 
-/** An expression that might have the value `i`. */
+/** Gets an expression that might have the value `i`. */
 private Expr exprWithIntValue(int i) {
   result.(ConstantIntegerExpr).getIntValue() = i or
   result.(ParExpr).getExpr() = exprWithIntValue(i) or
@@ -37,7 +37,7 @@ class IntComparableExpr extends Expr {
     this instanceof RValue or this instanceof MethodAccess
   }
 
-  /** An integer that is directly assigned to the expression in case of a variable; or zero. */
+  /** Gets an integer that is directly assigned to the expression in case of a variable; or zero. */
   int relevantInt() {
     exists(SsaExplicitUpdate ssa, SsaSourceVariable v |
       this = v.getAnAccess() and
