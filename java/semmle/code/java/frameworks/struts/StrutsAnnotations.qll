@@ -48,7 +48,7 @@ class StrutsActionsAnnotation extends StrutsAnnotation {
   }
 
   /**
-   * Get an Action annotation contained in this Actions annotation.
+   * Gets an Action annotation contained in this Actions annotation.
    */
   StrutsActionAnnotation getAnAction() {
     result = this.getAValue("value")

@@ -459,25 +459,27 @@ module Express {
     string kind;
 
     RequestInputAccess() {
-      exists (Expr request | request = rh.getARequestExpr() |
+      exists (DataFlow::Node request | request = DataFlow::valueNode(rh.getARequestExpr()) |
         kind = "parameter" and
         (
-          this.asExpr().(MethodCallExpr).calls(request, "param") or
-          exists (PropAccess base, string propName |
+          this.(DataFlow::MethodCallNode).calls(request, "param")
+          or
+          exists (DataFlow::PropRead base, string propName |
             // `req.params.name` or `req.query.name`
             base.accesses(request, propName) and
-            this.asExpr().(PropAccess).accesses(base, _) |
+            this = base.getAPropertyReference(_) |
             propName = "params" or
             propName = "query"
           )
-        ) or
+        )
+        or
         kind = "body" and
         this.asExpr() = rh.getARequestBodyAccess()
         or
         exists (string propName |
           // `req.url` or `req.originalUrl`
           kind = "url" and
-          this.asExpr().(PropAccess).accesses(request, propName) |
+          this.(DataFlow::PropRef).accesses(request, propName) |
           propName = "url" or
           propName = "originalUrl"
         )
@@ -485,14 +487,14 @@ module Express {
         exists (string methodName |
           // `req.get(...)` or `req.header(...)`
           kind = "header" and
-          this.asExpr().(MethodCallExpr).calls(request, methodName) |
+          this.(DataFlow::MethodCallNode).calls(request, methodName) |
           methodName = "get" or
           methodName = "header"
         )
         or
         // `req.cookies`
         kind = "cookie" and
-        this.asExpr().(PropAccess).accesses(request, "cookies")
+        this.(DataFlow::PropRef).accesses(request, "cookies")
       )
     }
 

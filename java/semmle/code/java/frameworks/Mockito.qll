@@ -220,14 +220,14 @@ class MockitoInjectedField extends MockitoAnnotatedField {
   }
 
   /**
-   * Return the class that will be injected, if this field is valid.
+   * Gets the class that will be injected, if this field is valid.
    */
   MockitoMockInjectedClass getMockInjectedClass() {
     result = super.getType()
   }
 
   /**
-   * Return a callable invoked when injecting mocks into this field.
+   * Gets a callable invoked when injecting mocks into this field.
    */
   Callable getAnInvokedCallable() {
     exists(MockitoMockInjectedClass mockInjectedClass |
@@ -269,7 +269,7 @@ class MockitoInjectedField extends MockitoAnnotatedField {
   }
 
   /**
-   * Return a field that will be set when injecting mocks.
+   * Gets a field that will be set when injecting mocks.
    *
    * Field injection only occurs if property injection and not constructor injection is used.
    */
@@ -344,14 +344,14 @@ library class MockitoMockInjectedClass extends Class {
   }
 
   /**
-   * Get the no-args constructor for this class, if one exists.
+   * Gets the no-args constructor for this class, if one exists.
    */
   Constructor getNoArgsConstructor() {
     result = this.getAConstructor() and result.getNumberOfParameters() = 0
   }
 
   /**
-   * Get a property setter method usable by Mockito.
+   * Gets a property setter method usable by Mockito.
    *
    * It must have a single parameter, begin with "set", and there must be an equivalent field that
    * it sets.
@@ -364,7 +364,7 @@ library class MockitoMockInjectedClass extends Class {
   }
 
   /**
-   * Return a field that is set by Mockito.
+   * Gets a field that is set by Mockito.
    *
    * A settable field is one that is neither static, nor final, and does not have an equivalent
    * setter method.
@@ -389,7 +389,7 @@ class MockitoSettableField extends Field {
   }
 
   /**
-   * Returns the setter method for this field, if one exists.
+   * Gets the setter method for this field, if one exists.
    */
   Method getSetterMethod() {
     result.getDeclaringType() = this.getDeclaringType() and

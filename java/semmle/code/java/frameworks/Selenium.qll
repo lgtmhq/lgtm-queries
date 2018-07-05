@@ -38,7 +38,7 @@ class SeleniumInitElementsAccess extends MethodAccess {
   }
 
   /**
-   * Get the class that is initialized by this call..
+   * Gets the class that is initialized by this call..
    */
   Class getInitClass() {
     result = inferClassParameterType(getArgument(1))

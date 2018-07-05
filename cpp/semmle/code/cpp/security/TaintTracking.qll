@@ -570,13 +570,13 @@ library abstract class DataSensitiveCallExpr extends @expr {
 
 /** Call through a function pointer. */
 library class DataSensitiveExprCall extends DataSensitiveCallExpr, ExprCall {
-  Expr getSrc() { result = getExpr() }
+  override Expr getSrc() { result = getExpr() }
 
-  Function resolve() {
+  override Function resolve() {
     exists(FunctionAccess fa | flowsFrom(fa, true) | result = fa.getTarget())
   }
 
-  string toString() { result = ExprCall.super.toString() }
+  override string toString() { result = ExprCall.super.toString() }
 }
 
 /** Call to a virtual function. */
@@ -585,9 +585,9 @@ library class DataSensitiveOverriddenFunctionCall extends DataSensitiveCallExpr,
     exists(getTarget().(VirtualFunction).getAnOverridingFunction())
   }
 
-  Expr getSrc() { result = getQualifier() }
+  override Expr getSrc() { result = getQualifier() }
 
-  MemberFunction resolve() {
+  override MemberFunction resolve() {
     exists(NewExpr new |
       flowsFrom(new, true)
       and
@@ -597,7 +597,7 @@ library class DataSensitiveOverriddenFunctionCall extends DataSensitiveCallExpr,
     )
   }
 
-  string toString() { result = FunctionCall.super.toString() }
+  override string toString() { result = FunctionCall.super.toString() }
 }
 
 private predicate memberFunctionFromNewExpr(NewExpr new, MemberFunction f) {

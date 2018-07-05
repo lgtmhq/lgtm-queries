@@ -42,7 +42,7 @@ class EnumConstantAccess extends Access, @varaccess {
   }
 
   /** Gets the accessed enum constant. */
-  EnumConstant getTarget() { varbind(this, result) }
+  override EnumConstant getTarget() { varbind(this, result) }
 
   /** Gets a textual representation of this enum constant access. */
   override string toString() { result = this.getTarget().getName() }
@@ -57,7 +57,7 @@ class VariableAccess extends Access, @varaccess {
   }
 
   /** Gets the accessed variable. */
-  Variable getTarget() { varbind(this, result) }
+  override Variable getTarget() { varbind(this, result) }
 
   /**
    * Holds if this variable access is providing an LValue in a meaningful way.
@@ -149,7 +149,7 @@ class FieldAccess extends VariableAccess {
   FieldAccess() { exists(Field f | varbind(this, f)) }
 
   /** Gets the accessed field. */
-  Field getTarget() { result = super.getTarget() }
+  override Field getTarget() { result = super.getTarget() }
 }
 
 /**
@@ -245,7 +245,7 @@ class FunctionAccess extends Access, @routineexpr {
   FunctionAccess() { not iscall(this,_) }
 
   /** Gets the accessed function. */
-  Function getTarget() { funbind(this, result) }
+  override Function getTarget() { funbind(this, result) }
 
   /** Gets a textual representation of this function access. */
   override string toString() {

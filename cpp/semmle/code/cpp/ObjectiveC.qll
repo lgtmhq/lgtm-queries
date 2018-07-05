@@ -112,7 +112,7 @@ class ForInStmt extends Loop, @stmt_objc_for_in {
   Expr getCollection() { objc_for_in(this, result, _, _) }
 
   /** Gets the body of the loop. */
-  Stmt getStmt() { objc_for_in(this, _, _, result) }
+  override Stmt getStmt() { objc_for_in(this, _, _, result) }
 
   override string toString() { result = "for(... in ...) ..." }
 }

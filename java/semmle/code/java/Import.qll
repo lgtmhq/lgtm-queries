@@ -20,7 +20,7 @@ import CompilationUnit
 
 /** A common super-class for all kinds of Java import declarations. */
 class Import extends Element, @import {
-  /** The compilation unit in which this import declaration occurs. */
+  /** Gets the compilation unit in which this import declaration occurs. */
   override CompilationUnit getCompilationUnit() { result = this.getFile() }
 
   /** Holds if this import declaration occurs in source code. */
@@ -37,7 +37,7 @@ class Import extends Element, @import {
 class ImportType extends Import {
   ImportType() { imports(this,_,_,1) }
 
-  /** The imported type. */
+  /** Gets the imported type. */
   RefType getImportedType() { imports(this,result,_,_) }
 
   override string toString() { result = "import " + this.getImportedType().toString() }
@@ -54,10 +54,10 @@ class ImportType extends Import {
 class ImportOnDemandFromType extends Import {
   ImportOnDemandFromType() { imports(this,_,_,2) }
 
-  /** The type from which accessible nested types are imported. */
+  /** Gets the type from which accessible nested types are imported. */
   RefType getTypeHoldingImport() { imports(this,result,_,_) }
 
-  /** An imported type. */
+  /** Gets an imported type. */
   NestedType getAnImport() { result.getEnclosingType() = this.getTypeHoldingImport() }
 
   override string toString() {
@@ -74,13 +74,13 @@ class ImportOnDemandFromType extends Import {
 class ImportOnDemandFromPackage extends Import {
   ImportOnDemandFromPackage() { imports(this,_,_,3) }
 
-  /** The package from which accessible types are imported. */
+  /** Gets the package from which accessible types are imported. */
   Package getPackageHoldingImport() { imports(this,result,_,_) }
 
-  /** An imported type. */
+  /** Gets an imported type. */
   RefType getAnImport() { result.getPackage() = this.getPackageHoldingImport() }
 
-  /** A printable representation of this import declaration. */
+  /** Gets a printable representation of this import declaration. */
   override string toString() {
     result = "import " + this.getPackageHoldingImport().toString() + ".*"
   }
@@ -95,19 +95,19 @@ class ImportOnDemandFromPackage extends Import {
 class ImportStaticOnDemand extends Import {
   ImportStaticOnDemand() { imports(this,_,_,4) }
 
-  /** The type from which accessible static members are imported. */
+  /** Gets the type from which accessible static members are imported. */
   RefType getTypeHoldingImport() { imports(this,result,_,_) }
 
-  /** An imported type. */
+  /** Gets an imported type. */
   NestedType getATypeImport() { result.getEnclosingType() = this.getTypeHoldingImport() }
 
-  /** An imported method. */
+  /** Gets an imported method. */
   Method getAMethodImport() { result.getDeclaringType() = this.getTypeHoldingImport() }
 
-  /** An imported field. */
+  /** Gets an imported field. */
   Field getAFieldImport() { result.getDeclaringType() = this.getTypeHoldingImport() }
 
-  /** A printable representation of this import declaration. */
+  /** Gets a printable representation of this import declaration. */
   override string toString() {
     result = "import static " + this.getTypeHoldingImport().toString() + ".*"
   }
@@ -124,28 +124,28 @@ class ImportStaticOnDemand extends Import {
 class ImportStaticTypeMember extends Import {
   ImportStaticTypeMember() { imports(this,_,_,5) }
 
-  /** The type from which static members with a given name are imported. */
+  /** Gets the type from which static members with a given name are imported. */
   RefType getTypeHoldingImport() { imports(this,result,_,_) }
 
-  /** The name of the imported member(s). */
+  /** Gets the name of the imported member(s). */
   override string getName() { imports(this,_,result,_) }
 
-  /** An imported member. */
+  /** Gets an imported member. */
   Member getAMemberImport() {
     this.getTypeHoldingImport().getAMember() = result
     and result.getName() = this.getName() and result.isStatic()
   }
 
-  /** An imported type. */
+  /** Gets an imported type. */
   NestedType getATypeImport() { result = this.getAMemberImport() }
 
-  /** An imported method. */
+  /** Gets an imported method. */
   Method getAMethodImport() { result = this.getAMemberImport() }
 
-  /** An imported field. */
+  /** Gets an imported field. */
   Field getAFieldImport() { result = this.getAMemberImport() }
 
-  /** A printable representation of this import declaration. */
+  /** Gets a printable representation of this import declaration. */
   override string toString() {
     result = "import static " + this.getTypeHoldingImport().toString()
              + "." + this.getName()

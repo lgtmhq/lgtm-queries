@@ -236,7 +236,7 @@ class TestNGListenersAnnotation extends TestNGAnnotation {
   }
 
   /**
-   * Get a listener defined in this annotation.
+   * Gets a listener defined in this annotation.
    */
   TestNGListenerImpl getAListener() {
     result = getAValue("value").(TypeLiteral).getTypeName().getType()
@@ -265,7 +265,7 @@ class TestNGDataProviderMethod extends Method {
   }
 
   /**
-   * The name associated with this data provider.
+   * Gets the name associated with this data provider.
    */
   string getDataProviderName() {
     result = getAnAnnotation().(TestNGDataProviderAnnotation).getValue("name").(StringLiteral).getRepresentedString()

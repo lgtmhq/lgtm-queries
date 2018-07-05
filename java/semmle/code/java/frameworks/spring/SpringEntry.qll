@@ -29,7 +29,7 @@ class SpringEntry extends SpringXMLElement {
     this.hasAttribute("key")
   }
 
-  /** The value of the `key` attribute. */
+  /** Gets the value of the `key` attribute. */
   string getKeyString() {
     result = this.getAttributeValue("key")
   }
@@ -39,7 +39,7 @@ class SpringEntry extends SpringXMLElement {
     this.hasAttribute("key-ref")
   }
 
-  /** The value of `key-ref` attribute. */
+  /** Gets the value of `key-ref` attribute. */
   string getKeyRefString() {
     result = this.getAttributeValue("key-ref")
   }
@@ -63,7 +63,7 @@ class SpringEntry extends SpringXMLElement {
     this.hasAttribute("value")
   }
 
-  /** The value of the `value` attribute. */
+  /** Gets the value of the `value` attribute. */
   string getValueStringRaw() {
     result = this.getAttributeValue("value")
   }
@@ -86,7 +86,7 @@ class SpringEntry extends SpringXMLElement {
     this.hasAttribute("value-ref")
   }
 
-  /** The value of the `value-ref` attribute. */
+  /** Gets the value of the `value-ref` attribute. */
   string getValueRefString() {
     result = this.getAttributeValue("value-ref")
   }

@@ -512,6 +512,16 @@ module DataFlow {
   private class PropPatternAsPropRead extends PropRead, PropNode {
     override PropertyPattern prop;
 
+    /** Gets the object pattern to which this property pattern belongs. */
+    ObjectPattern getObjectPattern() {
+      result = prop.getObjectPattern()
+    }
+
+    /** Gets the value pattern of this property pattern. */
+    Expr getValuePattern() {
+      result = prop.getValuePattern()
+    }
+
     override Node getBase() {
       exists (VarDef d |
         d.getTarget() = prop.getObjectPattern() and
@@ -598,11 +608,12 @@ module DataFlow {
   }
 
   /**
-   * Holds if some call passes `arg` as the value of `parm, and this
+   * Holds if some call passes `arg` as the value of `parm`, which refers to `v`, and this
    * call should be tracked by local data flow.
    */
-  private predicate localArgumentPassing(Expr arg, Parameter parm) {
-    any(ImmediatelyInvokedFunctionExpr iife).argumentPassing(parm, arg)
+  private predicate localArgumentPassing(Expr arg, SimpleParameter parm, SsaSourceVariable v) {
+    any(ImmediatelyInvokedFunctionExpr iife).argumentPassing(parm, arg) and
+    parm.getVariable() = v
   }
 
   /**
@@ -613,7 +624,9 @@ module DataFlow {
     // flow into local variables
     exists (SsaDefinition ssa | succ = TSsaDefNode(ssa) |
       // from the rhs of an explicit definition into the variable
-      pred = defSourceNode(ssa.(SsaExplicitDefinition).getDef())
+      exists (SsaExplicitDefinition def | def = ssa |
+        pred = defSourceNode(def.getDef(), def.getSourceVariable())
+      )
       or
       // from any explicit definition or implicit init of a captured variable into
       // the capturing definition
@@ -661,17 +674,23 @@ module DataFlow {
   }
 
   /**
-   * Gets the data flow node representing the source of variable definition `def`,
+   * Gets the data flow node representing the source of the definition of `v` at `def`,
    * if any.
    */
-  private Node defSourceNode(VarDef def) {
-    // follow one step of the def-use chain, but only for definitions where
-    // the lhs is a simple variable reference (as opposed to a destructuring
-    // pattern)
+  private Node defSourceNode(VarDef def, SsaSourceVariable v) {
+    // follow one step of the def-use chain if the lhs is a simple variable reference
     result = TValueNode(def.getSource()) and
-    def.getTarget() instanceof VarRef
+    def.getTarget() = v.getAReference()
     or
-    localArgumentPassing(result.asExpr(), def)
+    // handle simple destructuring assignments
+    exists (PropPatternAsPropRead pp |
+      pp.getObjectPattern() = def.getTarget() and
+      pp.getValuePattern() = v.getAReference() and
+      result = pp
+    )
+    or
+    // handle IIFE argument passing
+    localArgumentPassing(result.asExpr(), def, v)
   }
 
   /**
@@ -734,7 +753,7 @@ module DataFlow {
    */
   private predicate defIsIncomplete(VarDef def, Incompleteness cause) {
     def instanceof Parameter and
-    not localArgumentPassing(_, def) and
+    not localArgumentPassing(_, def, _) and
     cause = "call"
     or
     def instanceof ImportSpecifier and

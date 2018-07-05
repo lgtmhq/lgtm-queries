@@ -20,8 +20,8 @@ import semmle.code.cpp.Element
  * For example: `#ifdef`, `#line`, or `#pragma`.
  */
 class PreprocessorDirective extends Locatable, @preprocdirect {
-  string toString() { result = "Preprocessor directive" }
-  Location getLocation() { preprocdirects(this,_,result) }
+  override string toString() { result = "Preprocessor directive" }
+  override Location getLocation() { preprocdirects(this,_,result) }
   string getHead() { preproctext(this,result,_) }
 
   /**
@@ -151,7 +151,7 @@ class PreprocessorBranch extends PreprocessorBranchDirective, @ppd_branch {
  * `PreprocessorBranch`.
  */
 class PreprocessorIf extends PreprocessorBranch, @ppd_if {
-  string toString() { result = "#if " + this.getHead() }
+  override string toString() { result = "#if " + this.getHead() }
 }
 
 /**
@@ -160,7 +160,7 @@ class PreprocessorIf extends PreprocessorBranch, @ppd_if {
  * The syntax `#ifdef X` is shorthand for `#if defined(X)`.
  */
 class PreprocessorIfdef extends PreprocessorBranch, @ppd_ifdef {
-  string toString() { result = "#ifdef " + this.getHead() }
+  override string toString() { result = "#ifdef " + this.getHead() }
 }
 
 /**
@@ -169,49 +169,49 @@ class PreprocessorIfdef extends PreprocessorBranch, @ppd_ifdef {
  * The syntax `#ifndef X` is shorthand for `#if !defined(X)`.
  */
 class PreprocessorIfndef extends PreprocessorBranch, @ppd_ifndef {
-  string toString() { result = "#ifndef " + this.getHead() }
+  override string toString() { result = "#ifndef " + this.getHead() }
 }
 
 /**
  * A C/C++ preprocessor `#else` directive.
  */
 class PreprocessorElse extends PreprocessorBranchDirective, @ppd_else {
-  string toString() { result = "#else" }
+  override string toString() { result = "#else" }
 }
 
 /**
  * A C/C++ preprocessor `#elif` directive.
  */
 class PreprocessorElif extends PreprocessorBranch, @ppd_elif {
-  string toString() { result = "#elif " + this.getHead() }
+  override string toString() { result = "#elif " + this.getHead() }
 }
 
 /**
  * A C/C++ preprocessor `#endif` directive.
  */
 class PreprocessorEndif extends PreprocessorBranchDirective, @ppd_endif {
-  string toString() { result = "#endif" }
+  override string toString() { result = "#endif" }
 }
 
 /**
  * A C/C++ preprocessor `#warning` directive.
  */
 class PreprocessorWarning extends PreprocessorDirective, @ppd_warning {
-  string toString() { result = "#warning " + this.getHead() }
+  override string toString() { result = "#warning " + this.getHead() }
 }
 
 /**
  * A C/C++ preprocessor `#error` directive.
  */
 class PreprocessorError extends PreprocessorDirective, @ppd_error {
-  string toString() { result = "#error " + this.getHead() }
+  override string toString() { result = "#error " + this.getHead() }
 }
 
 /**
  * A C/C++ preprocessor `#undef` directive.
  */
 class PreprocessorUndef extends PreprocessorDirective, @ppd_undef {
-  string toString() { result = "#undef " + this.getHead() }
+  override string toString() { result = "#undef " + this.getHead() }
 
   /**
    * Gets the name of the macro that is undefined.
@@ -225,12 +225,12 @@ class PreprocessorUndef extends PreprocessorDirective, @ppd_undef {
  * A C/C++ preprocessor `#pragma` directive.
  */
 class PreprocessorPragma extends PreprocessorDirective, @ppd_pragma {
-  string toString() { result = "#pragma " + this.getHead() }
+  override string toString() { result = "#pragma " + this.getHead() }
 }
 
 /**
  * A C/C++ preprocessor `#line` directive.
  */
 class PreprocessorLine extends PreprocessorDirective, @ppd_line {
-  string toString() { result = "#line " + this.getHead() }
+  override string toString() { result = "#line " + this.getHead() }
 }

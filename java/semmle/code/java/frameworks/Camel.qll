@@ -46,7 +46,7 @@ class CamelToBeanURI extends CamelToURI {
   }
 
   /**
-   * Get the identifier of the Spring Bean that is the target of this URI.
+   * Gets the identifier of the Spring Bean that is the target of this URI.
    *
    * The URI is of the form: `bean:BeanName?method", where the "bean:" scheme and "?methodname"
    * parameter parts are optional.
@@ -65,7 +65,7 @@ class CamelToBeanURI extends CamelToURI {
   }
 
   /**
-   * Get the bean referenced by this URI.
+   * Gets the bean referenced by this URI.
    */
   SpringBean getRefBean() {
     result.getBeanIdentifier() = getBeanIdentifier()
@@ -104,7 +104,7 @@ class CamelTargetClass extends Class {
   }
 
   /**
-   * Get a method that may be called by Apache Camel.
+   * Gets a method that may be called by Apache Camel.
    *
    * Any public method inherited by this class is assumed to be callable by Apache Camel.
    */

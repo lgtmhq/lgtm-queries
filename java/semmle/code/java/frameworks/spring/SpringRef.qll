@@ -25,12 +25,12 @@ class SpringRef extends SpringAbstractRef {
     this.hasAttribute("parent")
   }
 
-  /** The value of the `parent` attribute. */
+  /** Gets the value of the `parent` attribute. */
   string getBeanNameInParent() {
     result = this.getAttributeValue("parent")
   }
 
-  /** The bean referred to by the `ref` element. */
+  /** Gets the bean referred to by the `ref` element. */
   override SpringBean getBean() {
     if this.hasBeanLocalName()
     then result.getBeanId() = this.getBeanLocalName()

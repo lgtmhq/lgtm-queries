@@ -26,7 +26,7 @@ class NameQualifier extends NameQualifiableElement, @namequalifier {
   }
 
   /** Gets a location for this name qualifier. */
-  Location getLocation() {
+  override Location getLocation() {
     namequalifiers(this,_,_,result)
   }
 

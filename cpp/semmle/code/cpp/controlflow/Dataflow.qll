@@ -93,9 +93,9 @@ abstract class DataflowAnnotation extends string {
 class NullnessAnnotation extends DataflowAnnotation {
   NullnessAnnotation() { this = "pointer-null" or this = "pointer-valid" }
 
-  predicate isDefault() { this = "pointer-valid" }
+  override predicate isDefault() { this = "pointer-valid" }
 
-  predicate generatedOn(Expr e) {
+  override predicate generatedOn(Expr e) {
     exists(Variable v |
       v.getAnAccess() = e and
       (v instanceof GlobalVariable or v instanceof Field) and
@@ -106,7 +106,7 @@ class NullnessAnnotation extends DataflowAnnotation {
     (nullValue(e) and this = "pointer-null")
   }
 
-  predicate killedBy(LocalScopeVariable v, ControlFlowNode src, ControlFlowNode dest) {
+  override predicate killedBy(LocalScopeVariable v, ControlFlowNode src, ControlFlowNode dest) {
     src.(AnalysedExpr).getNullSuccessor(v) = dest and this = "pointer-valid"
     or
     src.(AnalysedExpr).getNonNullSuccessor(v) = dest and this = "pointer-null"
@@ -116,7 +116,7 @@ class NullnessAnnotation extends DataflowAnnotation {
     dest = src.getASuccessor() and deref(v, src) and this = "pointer-null"
   }
 
-  predicate generatedBy(LocalScopeVariable v, ControlFlowNode src, ControlFlowNode dest) {
+  override predicate generatedBy(LocalScopeVariable v, ControlFlowNode src, ControlFlowNode dest) {
     dest = src.getASuccessor() and
     callByReference(src, v) and
     this.isDefault()

@@ -168,7 +168,7 @@ class PrintfLikeFunction extends FunctionWithWrappers {
     printfLikeFunction(this, _)
   }
 
-  predicate interestingArg(int arg) {
+  override predicate interestingArg(int arg) {
     printfLikeFunction(this, arg)
   }
 }

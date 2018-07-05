@@ -21,14 +21,14 @@ private import semmle.code.java.controlflow.Guards
 private import RangeUtils
 private import IntegerGuards
 
-/** An expression that is always `null`. */
+/** Gets an expression that is always `null`. */
 Expr alwaysNullExpr() {
   result instanceof NullLiteral or
   result.(ParExpr).getExpr() = alwaysNullExpr() or
   result.(CastExpr).getExpr() = alwaysNullExpr()
 }
 
-/** An equality test between an expression `e` and an enum constant `c`. */
+/** Gets an equality test between an expression `e` and an enum constant `c`. */
 Expr enumConstEquality(Expr e, boolean polarity, EnumConstant c) {
   exists(EqualityTest eqtest |
     eqtest = result and
@@ -37,7 +37,7 @@ Expr enumConstEquality(Expr e, boolean polarity, EnumConstant c) {
   )
 }
 
-/** An expression that is provably not `null`. */
+/** Gets an expression that is provably not `null`. */
 Expr clearlyNotNullExpr() {
   result instanceof ClassInstanceExpr or
   result instanceof ArrayCreationExpr or

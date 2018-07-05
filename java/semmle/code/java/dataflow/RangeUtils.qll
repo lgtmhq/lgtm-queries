@@ -36,7 +36,7 @@ class ConstantIntegerExpr extends Expr {
     constantIntegerExpr(this, _)
   }
 
-  /** Get the integer value of this expression. */
+  /** Gets the integer value of this expression. */
   int getIntValue() {
     constantIntegerExpr(this, result)
   }

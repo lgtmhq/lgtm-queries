@@ -62,6 +62,7 @@ import semmle.javascript.frameworks.AngularJS
 import semmle.javascript.frameworks.AWS
 import semmle.javascript.frameworks.Azure
 import semmle.javascript.frameworks.Credentials
+import semmle.javascript.frameworks.CryptoLibraries
 import semmle.javascript.frameworks.DigitalOcean
 import semmle.javascript.frameworks.jQuery
 import semmle.javascript.frameworks.LodashUnderscore

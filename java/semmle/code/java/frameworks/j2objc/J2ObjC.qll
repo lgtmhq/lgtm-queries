@@ -43,7 +43,7 @@ class OCNIMethodComment extends OCNIComment {
     ocniComment(this, _)
   }
 
-  /** Get the method implemented by this comment. */
+  /** Gets the method implemented by this comment. */
   Method getImplementedMethod() {
     ocniComment(this, result)
   }

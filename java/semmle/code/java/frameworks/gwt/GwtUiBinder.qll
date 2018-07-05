@@ -83,14 +83,14 @@ class GwtUiHandler extends Method {
   }
 
   /**
-   * The name of the field for which this handler is registered.
+   * Gets the name of the field for which this handler is registered.
    */
   string getFieldName() {
     result = getAnAnnotation().(GwtUiHandlerAnnotation).getValue("value").(CompileTimeConstantExpr).getStringValue()
   }
 
   /**
-   * The field for which this handler is registered, if the UiField is represented in this class.
+   * Gets the field for which this handler is registered, if the UiField is represented in this class.
    */
   GwtUiField getField() {
     result = this.getDeclaringType().getAField() and

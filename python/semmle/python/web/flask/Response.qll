@@ -45,7 +45,7 @@ class FlaskResponseArgument extends TaintSink {
 
     FlaskResponseArgument() {
         exists(CallNode call |
-            call.getFunction().refersTo(theReponseClass()) and
+            call.getFunction().refersTo(theFlaskReponseClass()) and
             call.getArg(0) = this
         )
     }

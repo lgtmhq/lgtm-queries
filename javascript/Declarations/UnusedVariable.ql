@@ -32,6 +32,7 @@ class UnusedLocal extends LocalVariable {
     not exists(getAnAccess()) and
     not exists(Parameter p | this = p.getAVariable()) and
     not exists(FunctionExpr fe | this = fe.getVariable()) and
+    not exists(ClassExpr ce | this = ce.getVariable()) and
     not exists(ExportDeclaration ed | ed.exportsAs(this, _)) and
     not exists(LocalVarTypeAccess type | type.getVariable() = this)
   }
@@ -134,5 +135,7 @@ where v = vd.getVariable() and
       // exclude decorated functions and classes
       not isDecorated(vd) and
       // exclude names of enum members; they also define property names
-      not isEnumMember(vd)
+      not isEnumMember(vd) and
+      // ignore ambient declarations - too noisy
+      not vd.isAmbient()
 select vd, "Unused " + describe(vd) + "."

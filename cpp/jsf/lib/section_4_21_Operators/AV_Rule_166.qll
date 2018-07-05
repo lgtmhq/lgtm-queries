@@ -14,7 +14,7 @@
 import cpp
 
 class IgnoreAllVolatileSpecifiersEverywhere extends Specifier {
-    string getName() { result = super.getName() and result != "volatile" }
+    override string getName() { result = super.getName() and result != "volatile" }
 }
 
 class SizeofImpureExprOperator extends SizeofExprOperator {

@@ -75,7 +75,7 @@ class CollectionType extends RefType {
     )
   }
 
-  /** The type of elements stored in this collection. */
+  /** Gets the type of elements stored in this collection. */
   RefType getElementType() {
     exists (GenericInterface coll | coll.hasQualifiedName("java.util", "Collection") |
       indirectlyInstantiates(this, coll, 0, result)
@@ -89,7 +89,7 @@ class CollectionMethod extends Method {
     this.getDeclaringType() instanceof CollectionType
   }
 
-  /** The type of elements of the collection to which this method belongs. */
+  /** Gets the type of elements of the collection to which this method belongs. */
   RefType getReceiverElementType() {
     result = this.getDeclaringType().(CollectionType).getElementType()
   }

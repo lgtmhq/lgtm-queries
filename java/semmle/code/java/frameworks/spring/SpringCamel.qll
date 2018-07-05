@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Spring integration for the Apache Camel messaging framework.
+ * Provides classes and predicates for identifying Spring integration for the Apache Camel messaging framework.
  */
 
 import java
@@ -93,14 +93,14 @@ class SpringCamelXMLBeanRef extends SpringCamelXMLRouteElement {
   }
 
   /**
-   * Get the Spring bean that is referenced by this route bean definition, if any.
+   * Gets the Spring bean that is referenced by this route bean definition, if any.
    */
   SpringBean getRefBean() {
     result.getBeanIdentifier() = getAttribute("ref").getValue()
   }
 
   /**
-   * Get the RefType referred to by `beanType` attribute, if any.
+   * Gets the RefType referred to by `beanType` attribute, if any.
    *
    * This defines the bean that should be created by Apache Camel as a target of this route. In
    * this case, no pre-existing bean is required.
@@ -123,7 +123,7 @@ class SpringCamelXMLToElement extends SpringCamelXMLRouteElement {
   }
 
   /**
-   * Get the URI attribute for this `<to>` element.
+   * Gets the URI attribute for this `<to>` element.
    */
   string getURI() {
      result = getAttribute("uri").getValue()
@@ -144,7 +144,7 @@ class SpringCamelXMLMethodElement extends SpringCamelXMLElement {
   }
 
   /**
-   * Get the `SpringBean` that this method expression refers to.
+   * Gets the `SpringBean` that this method expression refers to.
    */
   SpringBean getRefBean() {
     result.getBeanIdentifier() = getAttribute("ref").getValue() or
@@ -152,7 +152,7 @@ class SpringCamelXMLMethodElement extends SpringCamelXMLElement {
   }
 
   /**
-   * Get the class based on the `beanType` attribute.
+   * Gets the class based on the `beanType` attribute.
    */
   RefType getBeanType() {
     result.getQualifiedName() = getAttribute("beanType").getValue()

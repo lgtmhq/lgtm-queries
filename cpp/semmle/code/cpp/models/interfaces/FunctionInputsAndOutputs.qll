@@ -56,7 +56,7 @@ class InParameter extends FunctionInput, TInParameter {
     this = TInParameter(index)
   }
   
-  string toString() {
+  override string toString() {
     result = "InParameter " + index.toString()
   }
   
@@ -76,7 +76,7 @@ class InParameterPointer extends FunctionInput, TInParameterPointer {
     this = TInParameterPointer(index)
   }
   
-  string toString() {
+  override string toString() {
     result = "InParameterPointer " + index.toString()
   }
   
@@ -90,7 +90,7 @@ class InParameterPointer extends FunctionInput, TInParameterPointer {
 }
 
 class InQualifier extends FunctionInput, TInQualifier {
-  string toString() {
+  override string toString() {
     result = "InQualifier"
   }
   
@@ -136,7 +136,7 @@ class OutParameterPointer extends FunctionOutput, TOutParameterPointer {
     this = TOutParameterPointer(index)
   }
   
-  string toString() {
+  override string toString() {
     result = "OutParameterPointer " + index.toString()
   }
   
@@ -150,7 +150,7 @@ class OutParameterPointer extends FunctionOutput, TOutParameterPointer {
 }
 
 class OutQualifier extends FunctionOutput, TOutQualifier {
-  string toString() {
+  override string toString() {
     result = "OutQualifier"
   }
   
@@ -160,7 +160,7 @@ class OutQualifier extends FunctionOutput, TOutQualifier {
 }
 
 class OutReturnValue extends FunctionOutput, TOutReturnValue {
-  string toString() {
+  override string toString() {
     result = "OutReturnValue"
   }
   
@@ -170,7 +170,7 @@ class OutReturnValue extends FunctionOutput, TOutReturnValue {
 }
 
 class OutReturnPointer extends FunctionOutput, TOutReturnPointer {
-  string toString() {
+  override string toString() {
     result = "OutReturnPointer"
   }
   

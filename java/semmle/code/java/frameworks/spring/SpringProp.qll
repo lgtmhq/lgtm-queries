@@ -20,7 +20,7 @@ class SpringProp extends SpringXMLElement {
     this.getName() = "prop"
   }
 
-  /** The value of the `key` attribute. */
+  /** Gets the value of the `key` attribute. */
   string getKeyString() {
     result = this.getAttributeValue("key")
   }

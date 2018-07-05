@@ -54,85 +54,88 @@ private import internal.ConstantExprs
  * `s1`-`s3`, however, the result would be counter-intuitive.
  */
 
-/**
- * Any node that is the entry point of a primitive basic block is
- * also the entry point of a basic block. In addition, all nodes
- * with a primitive successor, where the predecessor has been pruned
- * (that is, `getAPredecessor()` does not exist while a predecessor
- * using the primitive `successors_extended` relation does exist), is also
- * considered a basic block entry node.
- */
-cached
-private predicate basic_block_entry_node(ControlFlowNode node) {
-  primitive_basic_block_entry_node(node) or
-  non_primitive_basic_block_entry_node(node)
+private import Cached
+private cached module Cached {
+  /**
+   * Any node that is the entry point of a primitive basic block is
+   * also the entry point of a basic block. In addition, all nodes
+   * with a primitive successor, where the predecessor has been pruned
+   * (that is, `getAPredecessor()` does not exist while a predecessor
+   * using the primitive `successors_extended` relation does exist), is also
+   * considered a basic block entry node.
+   */
+  cached
+  predicate basic_block_entry_node(ControlFlowNode node) {
+    primitive_basic_block_entry_node(node) or
+    non_primitive_basic_block_entry_node(node)
+  }
+
+  private predicate non_primitive_basic_block_entry_node(ControlFlowNode node) {
+    not primitive_basic_block_entry_node(node) and
+    not exists(node.getAPredecessor()) and
+    successors_extended(node, _)
+  }
+
+  /**
+   * Holds if basic block `bb` equals a primitive basic block.
+   *
+   * There are two situations in which this is *not* the case:
+   *
+   * - Either the entry node of `bb` does not correspond to an
+   *   entry node of a primitive basic block, or
+   * - The primitive basic block with the same entry node contains
+   *   a (non-entry) node which is the entry node of a non-primitive
+   *   basic block (that is, the primitive basic block has been split
+   *   up).
+   *
+   * This predicate is used for performance optimization only:
+   * Whenever a `BasicBlock` equals a `PrimitiveBasicBlock`, we can
+   * reuse predicates already computed for `PrimitiveBasicBlocks`.
+   */
+  private predicate equalsPrimitiveBasicBlock(BasicBlock bb) {
+    primitive_basic_block_entry_node(bb)
+    and
+    not exists(int i |
+      i > 0 and
+      non_primitive_basic_block_entry_node(bb.(PrimitiveBasicBlock).getNode(i))
+    )
+  }
+
+  /** Holds if `node` is the `pos`th control-flow node in basic block `bb`. */
+  cached predicate basic_block_member(ControlFlowNode node, BasicBlock bb, int pos) {
+    equalsPrimitiveBasicBlock(bb) and primitive_basic_block_member(node, bb, pos) // reuse already computed relation
+    or
+    non_primitive_basic_block_member(node, bb, pos)
+  }
+
+  private predicate non_primitive_basic_block_member(ControlFlowNode node, BasicBlock bb, int pos) {
+    (not equalsPrimitiveBasicBlock(bb) and node = bb and pos = 0)
+    or
+    (not (node instanceof BasicBlock) and
+     exists (ControlFlowNode pred
+     | successors_extended(pred,node)
+     | non_primitive_basic_block_member(pred, bb, pos - 1)))
+  }
+
+  /** Gets the number of control-flow nodes in the basic block `bb`. */
+  cached int bb_length(BasicBlock bb) {
+    if equalsPrimitiveBasicBlock(bb) then
+      result = bb.(PrimitiveBasicBlock).length() // reuse already computed relation
+    else
+      result = strictcount(ControlFlowNode node | basic_block_member(node, bb, _))
+  }
+
+  /** Successor relation for basic blocks. */
+  cached
+  predicate bb_successor_cached(BasicBlock pred, BasicBlock succ) {
+    exists(ControlFlowNode last |
+      basic_block_member(last, pred, bb_length(pred)-1) and
+      last.getASuccessor() = succ
+    )
+  }
 }
 
-private predicate non_primitive_basic_block_entry_node(ControlFlowNode node) {
-  not primitive_basic_block_entry_node(node) and
-  not exists(node.getAPredecessor()) and
-  successors_extended(node, _)
-}
-
-/**
- * Holds if basic block `bb` equals a primitive basic block.
- *
- * There are two situations in which this is *not* the case:
- *
- * - Either the entry node of `bb` does not correspond to an
- *   entry node of a primitive basic block, or
- * - The primitive basic block with the same entry node contains
- *   a (non-entry) node which is the entry node of a non-primitive
- *   basic block (that is, the primitive basic block has been split
- *   up).
- *
- * This predicate is used for performance optimization only:
- * Whenever a `BasicBlock` equals a `PrimitiveBasicBlock`, we can
- * reuse predicates already computed for `PrimitiveBasicBlocks`.
- */
-private predicate equalsPrimitiveBasicBlock(BasicBlock bb) {
-  primitive_basic_block_entry_node(bb)
-  and
-  not exists(int i |
-    i > 0 and
-    non_primitive_basic_block_entry_node(bb.(PrimitiveBasicBlock).getNode(i))
-  )
-}
-
-/** Holds if `node` is the `pos`th control-flow node in basic block `bb`. */
-cached
-private predicate basic_block_member(ControlFlowNode node, BasicBlock bb, int pos) {
-  equalsPrimitiveBasicBlock(bb) and primitive_basic_block_member(node, bb, pos) // reuse already computed relation
-  or
-  non_primitive_basic_block_member(node, bb, pos)
-}
-
-private predicate non_primitive_basic_block_member(ControlFlowNode node, BasicBlock bb, int pos) {
-  (not equalsPrimitiveBasicBlock(bb) and node = bb and pos = 0)
-  or
-  (not (node instanceof BasicBlock) and
-   exists (ControlFlowNode pred
-   | successors_extended(pred,node)
-   | non_primitive_basic_block_member(pred, bb, pos - 1)))
-}
-
-/** Gets the number of control-flow nodes in the basic block `bb`. */
-cached
-private int bb_length(BasicBlock bb) {
-  if equalsPrimitiveBasicBlock(bb) then
-    result = bb.(PrimitiveBasicBlock).length() // reuse already computed relation
-  else
-    result = strictcount(ControlFlowNode node | basic_block_member(node, bb, _))
-}
-
-/** Successor relation for basic blocks. */
-cached
-predicate bb_successor(BasicBlock pred, BasicBlock succ) {
-  exists(ControlFlowNode last |
-    basic_block_member(last, pred, bb_length(pred)-1) and
-    last.getASuccessor() = succ
-  )
-}
+predicate bb_successor = bb_successor_cached/2;
 
 /**
  * A basic block in the C/C++ control-flow graph.

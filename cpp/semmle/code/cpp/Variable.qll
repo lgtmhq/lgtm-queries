@@ -43,7 +43,7 @@ class Variable extends Declaration, @variable {
    * this variable, such as `const` and `volatile`, are instead accessed
    * through `this.getType().getASpecifier()`.
    */
-  Specifier getASpecifier() { varspecifiers(this,result) }
+  override Specifier getASpecifier() { varspecifiers(this,result) }
 
   /** Gets an attribute of this variable. */
   Attribute getAnAttribute() { varattributes(this,result) }
@@ -55,7 +55,7 @@ class Variable extends Declaration, @variable {
   predicate isVolatile() { this.getType().isVolatile() }
 
   /** Gets the name of this variable. */
-  string getName() { none() }
+  override string getName() { none() }
 
   /** Gets the type of this variable. */
   Type getType() { none() }

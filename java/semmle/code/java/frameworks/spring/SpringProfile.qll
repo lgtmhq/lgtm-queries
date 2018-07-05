@@ -29,7 +29,7 @@ class SpringProfileExpr extends string {
   }
 
   /**
-   * The profile described in this profile expression.
+   * Gets the profile described in this profile expression.
    */
   string getProfile() {
     result = this
@@ -57,7 +57,7 @@ class NotSpringProfileExpr extends SpringProfileExpr {
   }
 
   /**
-   * The profile described in this profile expression.
+   * Gets the profile described in this profile expression.
    */
   override string getProfile() {
     result = this.substring(1, this.length())

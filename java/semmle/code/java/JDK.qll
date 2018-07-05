@@ -358,7 +358,7 @@ class EqualsMethod extends Method {
     this.getParameter(0).getType().(RefType).hasQualifiedName("java.lang", "Object")
   }
 
-  /** The single parameter of this method. */
+  /** Gets the single parameter of this method. */
   Parameter getParameter() {
     result = this.getAParameter()
   }

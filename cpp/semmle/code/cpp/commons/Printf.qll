@@ -270,6 +270,12 @@ class FormatLiteral extends Literal {
 
   // these predicates gets a regular expressions to match each individual
   // parts of a conversion specifier.
+  private string getParameterFieldRegexp() {
+    // the parameter field is a posix extension, for example `%5$i` uses the fifth
+    // parameter as an integer, regardless of the position of this substring in the
+    // format string.
+    result = "(?:[1-9][0-9]*\\$)?"
+  }
   private string getFlagRegexp() {
     if isMicrosoft() then (
       result = "[-+ #0']*"
@@ -303,41 +309,52 @@ class FormatLiteral extends Literal {
    */
   string getConvSpecRegexp() {
     // capture groups: 1 - entire conversion spec, including "%"
-    //                 2 - flags
-    //                 3 - minimum field width
-    //                 4 - precision
-    //                 5 - length
-    //                 6 - conversion character
+    //                 2 - parameters
+    //                 3 - flags
+    //                 4 - minimum field width
+    //                 5 - precision
+    //                 6 - length
+    //                 7 - conversion character
     // NB: this matches "%%" with conversion character "%"
-    result = "(?s)(\\%("+this.getFlagRegexp()+")("+this.getFieldWidthRegexp()+")("+this.getPrecRegexp()+")("+this.getLengthRegexp()+")("+this.getConvCharRegexp()+")"+
-                 "|\\%\\%).*"
+    result =
+      "(?s)(\\%("+
+      this.getParameterFieldRegexp()+")(" +
+      this.getFlagRegexp()+")("+
+      this.getFieldWidthRegexp()+")("+
+      this.getPrecRegexp()+")("+
+      this.getLengthRegexp()+")("+
+      this.getConvCharRegexp()+")"+
+      "|\\%\\%).*"
   }
 
   /**
    * Holds if the arguments are a parsing of a conversion specifier to this format string. 
    *  @param n which conversion specifier to parse
    *  @param spec the whole conversion specifier
+   *  @param params the parameter field of the conversion specifier (empty string if none is given)
    *  @param flags the flags of the conversion specifier (empty string if none are given)
    *  @param width the minimum field width of the conversion specifier (empty string if none is given)
    *  @param prec the precision of the conversion specifier (empty string if none is given)
    *  @param len the length flag of the conversion specifier (empty string if none is given)
    *  @param conv the conversion character of the conversion specifier ("%" for specifier "%%")
    */
-  predicate parseConvSpec(int n, string spec, string flags, string width, string prec, string len, string conv) {
+  predicate parseConvSpec(int n, string spec, string params, string flags, string width, string prec, string len, string conv) {
     exists(int offset, string fmt, string rst, string regexp |
       offset = this.getConvSpecOffset(n) and
       fmt = this.getFormat() and
       rst = fmt.substring(offset, fmt.length()) and
       regexp = this.getConvSpecRegexp() and
         ((spec  = rst.regexpCapture(regexp, 1) and
-         flags = rst.regexpCapture(regexp, 2) and
-         width = rst.regexpCapture(regexp, 3) and
-         prec  = rst.regexpCapture(regexp, 4) and
-         len   = rst.regexpCapture(regexp, 5) and
-         conv  = rst.regexpCapture(regexp, 6))
+         params = rst.regexpCapture(regexp, 2) and
+         flags  = rst.regexpCapture(regexp, 3) and
+         width  = rst.regexpCapture(regexp, 4) and
+         prec   = rst.regexpCapture(regexp, 5) and
+         len    = rst.regexpCapture(regexp, 6) and
+         conv   = rst.regexpCapture(regexp, 7))
          or
          (spec = rst.regexpCapture(regexp, 1) and
           not exists(rst.regexpCapture(regexp, 2)) and
+          params = "" and
           flags = "" and
           width = "" and
           prec = "" and
@@ -358,10 +375,17 @@ class FormatLiteral extends Literal {
   }
 
   /**
+   * Gets the parameter field of the nth conversion specifier (for example, `1$`).
+   */
+  string getParameterField(int n) {
+    this.parseConvSpec(n, _, result, _, _, _, _, _)
+  }
+
+  /**
    * Gets the flags of the nth conversion specifier.
    */
   string getFlags(int n) {
-    exists(string spec, string width, string prec, string len, string conv | this.parseConvSpec(n, spec, result, width, prec, len, conv))
+    this.parseConvSpec(n, _, _, result, _, _, _, _)
   }
 
   /** 
@@ -404,7 +428,7 @@ class FormatLiteral extends Literal {
    * Gets the minimum field width of the nth conversion specifier
    * (empty string if none is given).
    */
-  string getMinFieldWidthOpt(int n) { exists(string spec, string flags, string prec, string len, string conv | this.parseConvSpec(n, spec, flags, result, prec, len, conv)) }
+  string getMinFieldWidthOpt(int n) { this.parseConvSpec(n, _, _, _, result, _, _, _) }
 
   /** 
    * Holds if the nth conversion specifier has a minimum field width.
@@ -431,7 +455,7 @@ class FormatLiteral extends Literal {
   /**
    * Gets the precision of the nth conversion specifier (empty string if none is given).
    */
-  string getPrecisionOpt(int n) { exists(string spec, string flags, string width, string len, string conv | this.parseConvSpec(n, spec, flags, width, result, len, conv)) }
+  string getPrecisionOpt(int n) { this.parseConvSpec(n, _, _, _, _, result, _, _) }
 
   /**
    * Holds if the nth conversion specifier has a precision.
@@ -462,12 +486,12 @@ class FormatLiteral extends Literal {
   /**
    * Gets the length flag of the nth conversion specifier.
    */
-  string getLength(int n) { exists(string spec, string flags, string width, string prec, string conv | this.parseConvSpec(n, spec, flags, width, prec, result, conv)) }
+  string getLength(int n) { this.parseConvSpec(n, _, _, _, _, _, result, _) }
 
   /**
    * Gets the conversion character of the nth conversion specifier.
    */
-  string getConversionChar(int n) { exists(string spec, string flags, string width, string prec, string len | this.parseConvSpec(n, spec, flags, width, prec, len, result)) }
+  string getConversionChar(int n) { this.parseConvSpec(n, _, _, _, _, _, _, result) }
 
   /**
    * Gets the size of pointers in the target this formatting function is
@@ -621,7 +645,7 @@ class FormatLiteral extends Literal {
    *    type character to effectively 'C' or 'c' respectively.
    */
   private string getEffectiveCharConversionChar(int n) {
-    exists(string len, string conv | this.parseConvSpec(n, _, _, _, _, len, conv) and (conv = "c" or conv = "C") |
+    exists(string len, string conv | this.parseConvSpec(n, _, _, _, _, _, len, conv) and (conv = "c" or conv = "C") |
       (len = "l" and result = "C") or
       (len = "w" and result = "C") or
       (len = "h" and result = "c") or
@@ -671,7 +695,7 @@ class FormatLiteral extends Literal {
    *    type character to effectively 'S' or 's' respectively.
    */
   private string getEffectiveStringConversionChar(int n) {
-    exists(string len, string conv | this.parseConvSpec(n, _, _, _, _, len, conv) and (conv = "s" or conv = "S") |
+    exists(string len, string conv | this.parseConvSpec(n, _, _, _, _, _, len, conv) and (conv = "s" or conv = "S") |
       (len = "l" and result = "S") or
       (len = "w" and result = "S") or
       (len = "h" and result = "s") or
@@ -752,7 +776,13 @@ class FormatLiteral extends Literal {
    * Gets the number of arguments needed by this format string.
    */
   int getNumArgNeeded() {
-    result = sum(int n, int toSum | (toSum = this.getNumArgNeeded(n)) | toSum)
+    if this.getParameterField(_) != "" then (
+      // At least one conversion specifier has a parameter field, in which case,
+      // they all should have.
+      result = max(string s | this.getParameterField(_) = s + "$" | s.toInt())
+  	) else (
+      result = sum(int n, int toSum | (toSum = this.getNumArgNeeded(n)) | toSum)
+    )
   }
 
   /**

@@ -179,6 +179,11 @@ class Module extends Module_, Scope, AstNode {
         Scope.super.containsInScope(inner)
     }
 
+    override
+    predicate contains(AstNode inner) {
+        Scope.super.contains(inner)
+    }
+
     /** Gets the kind of this module. */
     string getKind() {
         if this.isPackage() then

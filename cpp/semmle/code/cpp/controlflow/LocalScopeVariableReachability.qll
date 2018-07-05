@@ -247,7 +247,7 @@ abstract class LocalScopeVariableReachabilityWithReassignment extends LocalScope
    * In addition to using a better performing implementation, this analysis
    * accounts for loops where the condition is provably true upon entry.
    */
-  predicate reaches(ControlFlowNode source, SemanticStackVariable v, ControlFlowNode sink) {
+  override predicate reaches(ControlFlowNode source, SemanticStackVariable v, ControlFlowNode sink) {
     reachesTo(source, v, sink, _)
   }
 

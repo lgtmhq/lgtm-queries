@@ -88,14 +88,14 @@ class Copy extends @duplication_or_similarity
 
 class DuplicateBlock extends Copy, @duplication
 {
-  string toString() {
+  override string toString() {
     result = "Duplicate code: " + sourceLines() + " duplicated lines."
   }
 }
 
 class SimilarBlock extends Copy, @similarity
 {
-  string toString() {
+  override string toString() {
     result = "Similar code: " + sourceLines() + " almost duplicated lines."
   }
 }

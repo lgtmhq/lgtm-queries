@@ -20,22 +20,22 @@ class SpringMap extends SpringMergable {
     this.getName() = "map"
   }
 
-  /** The value of the `key-type` attribute. */
+  /** Gets the value of the `key-type` attribute. */
   string getKeyTypeName() {
     result = this.getAttributeValue("key-type")
   }
 
-  /** The Java `RefType` (class or interface) that is referred to by the `key-type` attribute. */
+  /** Gets the Java `RefType` (class or interface) that is referred to by the `key-type` attribute. */
   RefType getKeyType() {
     result.getQualifiedName() = this.getKeyTypeName()
   }
 
-  /** The value of the `value-type` attribute. */
+  /** Gets the value of the `value-type` attribute. */
   string getValueTypeName() {
     result = this.getAttributeValue("value-type")
   }
 
-  /** The Java `RefType` (class or interface) that is referred to by the `value-type` attribute. */
+  /** Gets the Java `RefType` (class or interface) that is referred to by the `value-type` attribute. */
   RefType getValueType() {
     result.getQualifiedName() = this.getValueTypeName()
   }

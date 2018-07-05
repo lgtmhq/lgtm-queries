@@ -26,23 +26,13 @@
 import javascript
 
 /**
- * Gets an expression that creates a route handler that parses cookies.
+ * Checks if `expr` is preceded by the cookie middleware `cookie`.
  *
  * A router handler following after cookie parsing is assumed to depend on
  * cookies, and thus require CSRF protection.
  */
-DataFlow::CallNode cookieMiddlewareCreation() {
-  exists (DataFlow::ModuleImportNode mod | result = mod.getACall() |
-    mod.getPath() = "cookie-parser" or
-    mod.getPath() = "cookie-session" or
-    mod.getPath() = "express-session")
-}
-
-/**
- * Checks if `expr` is preceded by the cookie middleware `cookie`.
- */
 predicate hasCookieMiddleware(Express::RouteHandlerExpr expr, Express::RouteHandlerExpr cookie) {
-  cookieMiddlewareCreation().flowsToExpr(cookie) and
+  any(HTTP::CookieMiddlewareInstance i).flowsToExpr(cookie) and
   expr.getAMatchingAncestor() = cookie
 }
 

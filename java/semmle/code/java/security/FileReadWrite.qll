@@ -63,7 +63,7 @@ class FileReadExpr extends Expr {
   }
 
   /**
-   * The `VarAccess` representing the file that is read.
+   * Gets the `VarAccess` representing the file that is read.
    */
   VarAccess getFileVarAccess() {
     fileRead(result, this)

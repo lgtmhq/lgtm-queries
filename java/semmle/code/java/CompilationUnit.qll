@@ -27,7 +27,7 @@ class CompilationUnit extends Element, File {
     cupackage(this,_)
   }
 
-  /** The name of the compilation unit (not including its extension). */
+  /** Gets the name of the compilation unit (not including its extension). */
   override string getName() {
     result = Element.super.getName()
   }
@@ -44,11 +44,11 @@ class CompilationUnit extends Element, File {
     result = Element.super.toString()
   }
 
-  /** The declared package of this compilation unit. */
+  /** Gets the declared package of this compilation unit. */
   Package getPackage() { cupackage(this,result) }
 
   /**
-   * The module associated with this compilation unit, if any.
+   * Gets the module associated with this compilation unit, if any.
    */
   Module getModule() { cumodule(this, result) }
 }

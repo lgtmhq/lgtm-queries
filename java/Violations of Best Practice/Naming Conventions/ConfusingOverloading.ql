@@ -26,7 +26,7 @@
  */
 import java
 
-private
+private pragma[nomagic]
 predicate confusingPrimitiveBoxedTypes(Type t, Type u) {
   t.(PrimitiveType).getBoxedType() = u or
   u.(PrimitiveType).getBoxedType() = t

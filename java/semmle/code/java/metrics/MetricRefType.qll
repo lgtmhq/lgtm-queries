@@ -22,7 +22,7 @@ import semmle.code.java.UnitTests
 
 /** This class provides access to metrics information for reference types. */
 class MetricRefType extends RefType, MetricElement {
-  /** The percentage of lines in this reference type that consist of comments. */
+  /** Gets the percentage of lines in this reference type that consist of comments. */
   override float getPercentageOfComments() {
     exists(float n |
       n = this.getTotalNumberOfLines() and
@@ -31,25 +31,25 @@ class MetricRefType extends RefType, MetricElement {
     )
   }
 
-  /** The number of callables declared in this type. */
+  /** Gets the number of callables declared in this type. */
   int getNumberOfCallables() {
     result = count(this.getACallable())
   }
 
-  /** The number of fields declared in this type. */
+  /** Gets the number of fields declared in this type. */
   int getNumberOfFields() {
     result = count(this.getAField())
   }
 
   /**
-   * The number of fields declared in this type, excluding enum constants.
+   * Gets the number of fields declared in this type, excluding enum constants.
    */
   int getNumberOfExplicitFields() {
     result = count(Field f | f = this.getAField() and not f instanceof EnumConstant | f)
   }
 
   /**
-   * The number of immediate descendants of a reference type.
+   * Gets the number of immediate descendants of a reference type.
    */
   int getNumberOfChildren() {
     result = count(this.getASubtype())
@@ -94,7 +94,7 @@ class MetricRefType extends RefType, MetricElement {
   }
 
   /**
-   * A dependency of this element, for use with John Lakos's "level metric".
+   * Gets a dependency of this element, for use with John Lakos's "level metric".
    */
   override MetricElement getADependency() {
     depends(this,result) and this != result
@@ -236,7 +236,7 @@ class MetricRefType extends RefType, MetricElement {
     )
   }
 
-  /** The length of _some_ path to the root of the hierarchy. */
+  /** Gets the length of _some_ path to the root of the hierarchy. */
   int getADepth() {
     (this.hasQualifiedName("java.lang", "Object") and result = 0)
     or
@@ -260,7 +260,7 @@ class MetricRefType extends RefType, MetricElement {
     result = max(this.getADepth())
   }
 
-  /** The length of _some_ path to the specified reference type. */
+  /** Gets the length of _some_ path to the specified reference type. */
   int getADepth(RefType reference) {
     (this = reference and result=0)
     or
@@ -269,12 +269,12 @@ class MetricRefType extends RefType, MetricElement {
 
   private predicate cyclic() { getASupertype+() = this }
 
-  /** The depth of inheritance metric relative to the specified reference type. */
+  /** Gets the depth of inheritance metric relative to the specified reference type. */
   int getInheritanceDepth(RefType reference) {
     result = max(this.getADepth(reference))
   }
 
-  /** The number of (direct or indirect) supertypes. */
+  /** Gets the number of (direct or indirect) supertypes. */
   int getNumberOfAncestors() {
     result = count(this.getASupertype+())
   }
@@ -310,14 +310,14 @@ class MetricRefType extends RefType, MetricElement {
     or c.hasStringSignature("clone()")
   }
 
-  /** A method that overrides a non-abstract method in a super type. */
+  /** Gets a method that overrides a non-abstract method in a super type. */
   Method  getOverrides() {
     this.getAMethod() = result and
     exists(Method c | result.overrides(c) and not(c.isAbstract())) and
     not(this.ignoreOverride(result))
   }
 
-  /** The number of methods that are overridden by this class. */
+  /** Gets the number of methods that are overridden by this class. */
   int getNumberOverridden() {
     result = count(this.getOverrides())
   }
@@ -338,27 +338,27 @@ class MetricRefType extends RefType, MetricElement {
              ((float)this.getNumberOfCallables())
   }
 
-  /** The Halstead length of a type is estimated as the sum of the Halstead lengths of its callables. */
+  /** Gets the Halstead length of a type, estimated as the sum of the Halstead lengths of its callables. */
   override int getHalsteadLength() {
     result = sum(Callable c, int toSum | (c = this.getACallable()) and (toSum = c.getMetrics().getHalsteadLength()) | toSum)
   }
 
-  /** The Halstead vocabulary of a type is estimated as the sum of the Halstead vocabularies of its callables. */
+  /** Gets the Halstead vocabulary of a type, estimated as the sum of the Halstead vocabularies of its callables. */
   override int getHalsteadVocabulary() {
     result = sum(Callable c, int toSum | (c = this.getACallable()) and (toSum = c.getMetrics().getHalsteadVocabulary()) | toSum)
   }
 
-  /** The cyclomatic complexity of a type is estimated as the sum of the cyclomatic complexities of its callables. */
+  /** Gets the cyclomatic complexity of a type, estimated as the sum of the cyclomatic complexities of its callables. */
   override int getCyclomaticComplexity() {
     result = sum(Callable c, int toSum | (c = this.getACallable()) and (toSum = c.getMetrics().getCyclomaticComplexity()) | toSum)
   }
 
-  /** The number of lines of code in this reference type. */
+  /** Gets the number of lines of code in this reference type. */
   override int getNumberOfLinesOfCode() { numlines(this, _, result, _) }
 
-  /** The number of lines of comments in this reference type. */
+  /** Gets the number of lines of comments in this reference type. */
   override int getNumberOfCommentLines() { numlines(this, _, _, result) }
 
-  /** The total number of lines in this reference type, including code, comments and whitespace-only lines. */
+  /** Gets the total number of lines in this reference type, including code, comments and whitespace-only lines. */
   override int getTotalNumberOfLines() { numlines(this, result, _, _) }
 }

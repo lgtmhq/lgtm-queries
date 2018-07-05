@@ -23,7 +23,7 @@
 import semmle.code.cpp.security.Security
 
 class CustomSecurityOptions extends SecurityOptions {
-  predicate sqlArgument(string function, int arg) {
+  override predicate sqlArgument(string function, int arg) {
     SecurityOptions.super.sqlArgument(function, arg) or
     // --- custom functions that access SQL code via one of their arguments:
     // 'arg' is the 0-based index of the argument that contains an SQL string
@@ -31,7 +31,7 @@ class CustomSecurityOptions extends SecurityOptions {
     none() // rules to match custom functions replace this line
   }
 
-  predicate userInputArgument(FunctionCall functionCall, int arg)
+  override predicate userInputArgument(FunctionCall functionCall, int arg)
   {
     SecurityOptions.super.userInputArgument(functionCall, arg) or
     exists(string fname |
@@ -45,7 +45,7 @@ class CustomSecurityOptions extends SecurityOptions {
     )
   }
 
-  predicate userInputReturned(FunctionCall functionCall)
+  override predicate userInputReturned(FunctionCall functionCall)
   {
     SecurityOptions.super.userInputReturned(functionCall) or 
     exists(string fname |

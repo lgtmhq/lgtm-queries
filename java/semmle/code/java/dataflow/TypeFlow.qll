@@ -154,17 +154,28 @@ private predicate exactType(TypeFlowNode n, RefType t) {
   exactTypeJoin(lastRank(n), n, t)
 }
 
-/** Holds if `e` occurs in a position where type information is discarded. */
-private predicate upcast(Expr e) {
-  exists(RefType t1, RefType t2 |
-    e.getType().getErasure() = t1 and
-    t1.getASourceSupertype+() = t2
-    |
+/**
+ * Holds if `e` occurs in a position where type information might be discarded;
+ * `t1` is the erased type of `e`, and `t2` is the erased type of the implicit
+ * or explicit cast.
+ */
+pragma[noinline]
+private predicate upcastCand(Expr e, RefType t1, RefType t2) {
+  e.getType().getErasure() = t1 and
+  (
     exists(Variable v | v.getAnAssignedValue() = e and t2 = v.getType().getErasure()) or
     exists(CastExpr c | c.getExpr() = e and t2 = c.getType().getErasure()) or
     exists(ReturnStmt ret | ret.getResult() = e and t2 = ret.getEnclosingCallable().getReturnType().getErasure()) or
     exists(Parameter p | privateParamArg(p, e) and t2 = p.getType().getErasure()) or
     exists(ConditionalExpr cond | cond.getTrueExpr() = e or cond.getFalseExpr() = e | t2 = cond.getType().getErasure())
+  )
+}
+
+/** Holds if `e` occurs in a position where type information is discarded. */
+private predicate upcast(Expr e) {
+  exists(RefType t1, RefType t2 |
+    upcastCand(e, t1, t2) and
+    t1.getASourceSupertype+() = t2
   )
 }
 

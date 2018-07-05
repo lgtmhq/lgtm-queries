@@ -49,7 +49,7 @@ class RegisteredManagedBeanImpl extends Class {
   }
 
   /**
-   * The managed beans that this registered bean class implements.
+   * Gets a managed bean that this registered bean class implements.
    */
   ManagedBean getAnImplementedManagedBean() {
     result = getAnAncestor()
@@ -65,7 +65,7 @@ class JMXRegistrationCall extends MethodAccess {
   }
 
   /**
-   * The argument that represents the object in the registration call.
+   * Gets the argument that represents the object in the registration call.
    */
   Expr getObjectArgument() {
     result = getArgument(getCallee().(JMXRegistrationMethod).getObjectPosition())
@@ -99,7 +99,7 @@ class JMXRegistrationMethod extends Method {
   }
 
   /**
-   * The position of parameter through which the "object" to be registered is passed.
+   * Gets the position of the parameter through which the "object" to be registered is passed.
    */
   int getObjectPosition() {
     (

@@ -155,6 +155,26 @@ abstract class PromiseDefinition extends DataFlow::DefaultSourceNode {
   }
 }
 
+/** Holds if the `i`th callback handler is installed by method `m`. */
+private predicate hasHandler(DataFlow::InvokeNode promise, string m, int i) {
+  exists(promise.getAMethodCall(m).getCallback(i))
+}
+
+/**
+ * A call that looks like a Promise.
+ *
+ * For example, this could be the call `promise(f).then(function(v){...})`
+ */
+class PromiseCandidate extends DataFlow::InvokeNode {
+
+  PromiseCandidate() {
+    hasHandler(this, "then", [0..1]) or
+    hasHandler(this, "catch", 0) or
+    hasHandler(this, "finally", 0)
+  }
+
+}
+
 /**
  * A promise object created by the standard ECMAScript 2015 `Promise` constructor.
  */

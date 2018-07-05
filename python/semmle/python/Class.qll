@@ -223,5 +223,10 @@ class Class extends Class_, Scope, AstNode {
         Scope.super.containsInScope(inner)
     }
 
+    override
+    predicate contains(AstNode inner) {
+        Scope.super.contains(inner)
+    }
+
 }
 

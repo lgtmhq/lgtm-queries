@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * A QL library for JSF "Application Configuration Resources File", usually called `faces-config.xml`.
+ * Provides classes for JSF "Application Configuration Resources File", usually called `faces-config.xml`.
  */
 import default
 
@@ -37,7 +37,7 @@ class FacesConfigXMLElement extends XMLElement {
   }
 
   /**
-   * Return the value for this element, with leading and trailing whitespace trimmed.
+   * Gets the value for this element, with leading and trailing whitespace trimmed.
    */
   string getValue() {
     result = allCharactersString().trim()
@@ -63,7 +63,7 @@ class FacesConfigManagedBeanClass extends FacesConfigXMLElement {
   }
 
   /**
-   * Get the `Class` of the managed bean.
+   * Gets the `Class` of the managed bean.
    */
   Class getManagedBeanClass() {
     result.getQualifiedName() = getValue()
@@ -89,7 +89,7 @@ class FacesConfigComponentClass extends FacesConfigXMLElement {
   }
 
   /**
-   * Get the `Class` of the faces component.
+   * Gets the `Class` of the faces component.
    */
   Class getFacesComponentClass() {
     result.getQualifiedName() = getValue()

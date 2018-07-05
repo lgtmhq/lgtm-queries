@@ -30,7 +30,7 @@ class WebXMLFile extends XMLFile {
   }
 
   /**
-   * The value of the context parameter with the given name.
+   * Gets the value of the context parameter with the given name.
    */
   string getContextParamValue(string name) {
     exists(WebContextParameter parameter |
@@ -52,7 +52,7 @@ class WebXMLElement extends XMLElement {
   }
 
   /**
-   * Return the value for this element, with leading and trailing whitespace trimmed.
+   * Gets the value for this element, with leading and trailing whitespace trimmed.
    */
   string getValue() {
     result = allCharactersString().trim()
@@ -68,14 +68,14 @@ class WebContextParameter extends WebXMLElement {
   }
 
   /**
-   * The `<param-name>` element of this `<context-param>`.
+   * Gets the `<param-name>` element of this `<context-param>`.
    */
   WebContextParamName getParamName() {
     result = getAChild()
   }
 
   /**
-   * The `<param-value>` element of this `<context-param>`.
+   * Gets the `<param-value>` element of this `<context-param>`.
    */
   WebContextParamValue getParamValue() {
     result = getAChild()
@@ -165,7 +165,7 @@ class WebListenerClass extends WebXMLElement {
   }
 
   /**
-   * The `Class` instance associated with this element.
+   * Gets the `Class` instance associated with this element.
    */
   Class getClass() {
     result.getQualifiedName() = getValue()

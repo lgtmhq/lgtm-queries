@@ -19,12 +19,10 @@ import python
 
 import semmle.python.security.TaintTracking
 import semmle.python.security.strings.Basic
+import semmle.python.web.flask.General
 
 FunctionObject flask_redirect() {
-    exists(ModuleObject flask |
-        flask.getName() = "flask" and
-        flask.getAttribute("redirect") = result
-    )
+    result = theFlaskModule().getAttribute("redirect")
 }
 
 /**

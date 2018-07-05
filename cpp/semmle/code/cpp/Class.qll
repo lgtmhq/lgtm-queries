@@ -29,7 +29,7 @@ class Class extends UserType {
   }
 
   /** Gets a child declaration of this class. */
-  Declaration getADeclaration() { result = this.getAMember() }
+  override Declaration getADeclaration() { result = this.getAMember() }
 
   /** Gets a type declared in this class. */
   UserType getANestedType() { result = this.getAMember() }

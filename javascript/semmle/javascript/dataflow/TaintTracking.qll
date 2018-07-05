@@ -210,9 +210,6 @@ module TaintTracking {
           or
           // awaiting a tainted expression gives a tainted result
           e.(AwaitExpr).getOperand() = f
-          or
-          // comparing a tainted expression against a constant gives a tainted result
-          e.(Comparison).hasOperands(f, any(ConstantExpr c))
         )
         or
         // `array.map(function (elt, i, ary) { ... })`: if `array` is tainted, then so are

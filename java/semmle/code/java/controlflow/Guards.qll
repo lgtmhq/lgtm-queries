@@ -22,17 +22,17 @@ class ConditionBlock extends BasicBlock {
     this.getLastNode() instanceof ConditionNode
   }
 
-  /** The last node of this basic block. */
+  /** Gets the last node of this basic block. */
   ConditionNode getConditionNode() {
     result = this.getLastNode()
   }
 
-  /** The condition of the last node of this basic block. */
+  /** Gets the condition of the last node of this basic block. */
   Expr getCondition() {
     result = this.getConditionNode().getCondition()
   }
 
-  /** A `true`- or `false`-successor of the last node of this basic block. */
+  /** Gets a `true`- or `false`-successor of the last node of this basic block. */
   BasicBlock getTestSuccessor(boolean testIsTrue) {
     result = this.getConditionNode().getABranchSuccessor(testIsTrue)
   }

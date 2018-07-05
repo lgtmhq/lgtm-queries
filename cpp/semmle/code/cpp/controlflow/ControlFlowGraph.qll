@@ -83,50 +83,55 @@ class ControlFlowNode extends Locatable, @cfgnode {
   }
 }
 
-/**
- * Holds if the control-flow node `n` is reachable, meaning that either
- * it is an entry point, or there exists a path in the control-flow
- * graph of its function that connects an entry point to it.
- * Compile-time constant conditions are taken into account, so that
- * the call to `f` is not reachable in `if (0) f();` even if the
- * `if` statement as a whole is reachable.
- */
-cached
-predicate reachable(ControlFlowNode n)
-{
-  exists(Function f | f.getEntryPoint() = n)
-  or
-  // Okay to use successors_extended directly here
-  (not successors_extended(_,n) and not successors_extended(n,_))
-  or
-  reachable(n.getAPredecessor())
-  or
-  n instanceof CatchBlock
+import Cached
+private cached module Cached {
+  /**
+   * Holds if the control-flow node `n` is reachable, meaning that either
+   * it is an entry point, or there exists a path in the control-flow
+   * graph of its function that connects an entry point to it.
+   * Compile-time constant conditions are taken into account, so that
+   * the call to `f` is not reachable in `if (0) f();` even if the
+   * `if` statement as a whole is reachable.
+   */
+  cached
+  predicate reachable(ControlFlowNode n)
+  {
+    exists(Function f | f.getEntryPoint() = n)
+    or
+    // Okay to use successors_extended directly here
+    (not successors_extended(_,n) and not successors_extended(n,_))
+    or
+    reachable(n.getAPredecessor())
+    or
+    n instanceof CatchBlock
+  }
+
+  /** Holds if `condition` always evaluates to a nonzero value. */
+  cached
+  predicate conditionAlwaysTrue(Expr condition) {
+    conditionAlways(condition, true)
+  }
+
+  /** Holds if `condition` always evaluates to zero. */
+  cached
+  predicate conditionAlwaysFalse(Expr condition) {
+    conditionAlways(condition, false)
+    or
+    // If a loop condition evaluates to false upon entry, it will always
+    // be false
+    loopConditionAlwaysUponEntry(_, condition, false)
+  }
+
+  /**
+   * The condition `condition` for the loop `loop` is provably `true` upon entry.
+   * That is, at least one iteration of the loop is guaranteed.
+   */
+  cached
+  predicate loopConditionAlwaysTrueUponEntry(ControlFlowNode loop, Expr condition) {
+    loopConditionAlwaysUponEntry(loop, condition, true)
+  }
 }
 
-/** Holds if `condition` always evaluates to a nonzero value. */
-predicate conditionAlwaysTrue(Expr condition) {
-  conditionAlways(condition, true)
-}
-
-/** Holds if `condition` always evaluates to zero. */
-predicate conditionAlwaysFalse(Expr condition) {
-  conditionAlways(condition, false)
-  or
-  // If a loop condition evaluates to false upon entry, it will always
-  // be false
-  loopConditionAlwaysUponEntry(_, condition, false)
-}
-
-/**
- * The condition `condition` for the loop `loop` is provably `true` upon entry.
- * That is, at least one iteration of the loop is guaranteed.
- */
-predicate loopConditionAlwaysTrueUponEntry(ControlFlowNode loop, Expr condition) {
-  loopConditionAlwaysUponEntry(loop, condition, true)
-}
-
-cached
 private predicate conditionAlways(Expr condition, boolean b) {
   exists(ConditionEvaluator x, int val |
     val = x.getValue(condition) |
@@ -136,7 +141,6 @@ private predicate conditionAlways(Expr condition, boolean b) {
   )
 }
 
-cached
 private predicate loopConditionAlwaysUponEntry(ControlFlowNode loop, Expr condition, boolean b) {
   exists(LoopEntryConditionEvaluator x, int val |
     x.isLoopEntry(condition, loop) and

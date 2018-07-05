@@ -23,7 +23,7 @@ import MetricCallable
 
 /** This class provides access to metrics information for packages. */
 class MetricPackage extends Package, MetricElement  {
-  /** The percentage of lines in this package that consist of comments. */
+  /** Gets the percentage of lines in this package that consist of comments. */
   override float getPercentageOfComments() {
     exists(float n |
       n = this.getTotalNumberOfLines() and
@@ -32,7 +32,7 @@ class MetricPackage extends Package, MetricElement  {
     )
   }
 
-  /** The number of lines of code in this package. */
+  /** Gets the number of lines of code in this package. */
   override int getNumberOfLinesOfCode() {
     // Refer to `numlines(...)` directly to avoid invalid recursive aggregate.
     result = sum(CompilationUnit cu, int lines |
@@ -40,26 +40,26 @@ class MetricPackage extends Package, MetricElement  {
                  lines)
   }
 
-  /** The number of lines of comments in this package. */
+  /** Gets the number of lines of comments in this package. */
   override int getNumberOfCommentLines() {
     result = sum(CompilationUnit cu, int lines |
                  cu.getPackage() = this and numlines(cu, _, _, lines) |
                  lines)
   }
 
-  /** The total number of lines in this package, including code, comments and whitespace-only lines. */
+  /** Gets the total number of lines in this package, including code, comments and whitespace-only lines. */
   override int getTotalNumberOfLines() {
     result = sum(CompilationUnit cu, int lines |
                  cu.getPackage() = this and numlines(cu, lines, _, _) |
                  lines)
   }
 
-  /** The total number of reference types in this package. */
+  /** Gets the total number of reference types in this package. */
   int getNumberOfTypes() {
     result = count(RefType t | t.getPackage() = this)
   }
 
-  /** The total number of callables declared in a type in this package. */
+  /** Gets the total number of callables declared in a type in this package. */
   int getNumberOfCallables() {
     result = count(Callable m | m.getDeclaringType().getPackage()=this)
   }
@@ -72,7 +72,7 @@ class MetricPackage extends Package, MetricElement  {
     result = sum(MetricRefType t, int toSum | (t.getPackage() = this) and (toSum = t.getNumberOfPublicCallables()) | toSum)
   }
 
-  /** The total number of fields declared in a type in this package. */
+  /** Gets the total number of fields declared in a type in this package. */
   int getNumberOfFields() {
     result = count(Field f | f.getDeclaringType().getPackage() = this)
   }
@@ -223,7 +223,7 @@ class MetricPackage extends Package, MetricElement  {
   }
 
   /**
-   * A dependency of this element, for use with John Lakos's "level metric".
+   * Gets a dependency of this element, for use with John Lakos's "level metric".
    */
   override MetricElement getADependency() {
     exists(RefType s, RefType t |

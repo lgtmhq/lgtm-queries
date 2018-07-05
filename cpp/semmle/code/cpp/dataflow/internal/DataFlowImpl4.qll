@@ -486,17 +486,17 @@
     abstract string toString();
   }
   private class CallContextAny extends CallContext, TAnyCallContext {
-    string toString() { result = "CcAny" }
+    override string toString() { result = "CcAny" }
   }
   private abstract class CallContextCall extends CallContext { }
   private class CallContextSpecificCall extends CallContextCall, TSpecificCall {
-    string toString() { result = "CcCall" }
+    override string toString() { result = "CcCall" }
   }
   private class CallContextSomeCall extends CallContextCall, TSomeCall {
-    string toString() { result = "CcSomeCall" }
+    override string toString() { result = "CcSomeCall" }
   }
   private class CallContextReturn extends CallContext, TReturn {
-    string toString() { result = "CcReturn" }
+    override string toString() { result = "CcReturn" }
   }
 
   bindingset[cc, m]
@@ -551,7 +551,7 @@
   abstract class PathNode extends TPathNode {
     /** Gets a textual representation of this element. */
     string toString() { result = getNode().toString() }
-    /** The source location for this element. */
+    /** Gets the source location for this element. */
     Location getLocation() { result = getNode().getLocation() }
     /** Gets the underlying `Node`. */
     abstract Node getNode();

@@ -87,7 +87,7 @@ class JaxRsResourceClass extends Class {
   }
 
   /**
-   * Get a resource method on this resource class.
+   * Gets a resource method on this resource class.
    *
    * Resource methods may be executed in response to web requests which match the `@Path`
    * annotations leading to this resource method.
@@ -98,7 +98,7 @@ class JaxRsResourceClass extends Class {
   }
 
   /**
-   * Get a "sub-resource locator" on this resource class, which is a method annotated with `@Path`,
+   * Gets a "sub-resource locator" on this resource class, which is a method annotated with `@Path`,
    * but is not a resource method e.g. it is not annotated with `@GET` etc.
    */
   Callable getASubResourceLocator() {
@@ -115,7 +115,7 @@ class JaxRsResourceClass extends Class {
   }
 
   /**
-   * Get a `Constructor` that may be called by a JaxRS container to construct this class reflectively.
+   * Gets a `Constructor` that may be called by a JaxRS container to construct this class reflectively.
    *
    * This only considers which constructors adhere to the rules for injectable constructors. In the
    * case of multiple matching constructors, the container will choose the constructor with the most
@@ -139,7 +139,7 @@ class JaxRsResourceClass extends Class {
   }
 
   /**
-   * Get a Callable that may be executed by the JaxRs container, injecting parameters as required.
+   * Gets a Callable that may be executed by the JaxRs container, injecting parameters as required.
    */
   Callable getAnInjectableCallable() {
     result = getAResourceMethod() or
@@ -148,7 +148,7 @@ class JaxRsResourceClass extends Class {
   }
 
   /**
-   * Get a Field that may be injected with a value by the JaxRs container.
+   * Gets a Field that may be injected with a value by the JaxRs container.
    */
   Field getAnInjectableField() {
     result = getAField() and

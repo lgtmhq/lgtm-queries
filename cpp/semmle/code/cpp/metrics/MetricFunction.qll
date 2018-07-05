@@ -19,7 +19,7 @@ import cpp
 class MetricFunction extends Function {
 
   /** Gets the number of parameters. */
-  int getNumberOfParameters() {
+  override int getNumberOfParameters() {
     result = count(this.getAParameter())
   }
 

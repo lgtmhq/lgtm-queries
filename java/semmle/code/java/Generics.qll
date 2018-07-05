@@ -73,17 +73,17 @@ class GenericType extends RefType {
   RawType getRawType() { result.getErasure() = this }
 
   /**
-   * The `i`-th type parameter of this generic type.
+   * Gets the `i`-th type parameter of this generic type.
    */
   TypeVariable getTypeParameter(int i) { typeVars(result, _, i, _, this) }
 
   /**
-   * A type parameter of this generic type.
+   * Gets a type parameter of this generic type.
    */
   TypeVariable getATypeParameter() { result = getTypeParameter(_) }
 
   /**
-   * The number of type parameters of this generic type.
+   * Gets the number of type parameters of this generic type.
    */
   int getNumberOfTypeParameters() { result = strictcount(getATypeParameter()) }
 }
@@ -136,10 +136,10 @@ abstract class BoundedType extends RefType, @boundedtype {
  * `class X<T> { }` and in `<T> void m() { }`.
  */
 class TypeVariable extends BoundedType, @typevariable {
-  /** The generic type that is parameterized by this type parameter, if any. */
+  /** Gets the generic type that is parameterized by this type parameter, if any. */
   RefType getGenericType() { typeVars(this,_,_,_,result) }
 
-  /** The generic callable that is parameterized by this type parameter, if any. */
+  /** Gets the generic callable that is parameterized by this type parameter, if any. */
   GenericCallable getGenericCallable() { typeVars(this,_,_,_,result) }
 
   /**
@@ -166,7 +166,7 @@ class TypeVariable extends BoundedType, @typevariable {
       result instanceof TypeObject
   }
 
-  /** The lexically enclosing package of this type parameter, if any. */
+  /** Gets the lexically enclosing package of this type parameter, if any. */
   override Package getPackage() {
     result = getGenericType().getPackage() or
     result = getGenericCallable().getDeclaringType().getPackage()
@@ -217,7 +217,7 @@ class Wildcard extends BoundedType, @wildcard {
     wildcards(this, _, 2)
   }
 
-  /** The upper bound for this wildcard, if any. */
+  /** Gets the upper bound for this wildcard, if any. */
   TypeBound getUpperBound() {
     this.hasUpperBound() and result = this.getATypeBound()
   }
@@ -244,7 +244,7 @@ class Wildcard extends BoundedType, @wildcard {
       result instanceof TypeObject
   }
 
-  /** The lower bound of this wildcard, if any. */
+  /** Gets the lower bound of this wildcard, if any. */
   TypeBound getLowerBound() {
     this.hasLowerBound() and result = this.getATypeBound()
   }
@@ -350,13 +350,13 @@ class ParameterizedType extends RefType {
     typeVars(result,_,_,_,this)
   }
 
-  /** The type argument of this parameterized type at the specified position. */
+  /** Gets the type argument of this parameterized type at the specified position. */
   RefType getTypeArgument(int pos) {
     typeArgs(result,pos,this) or
     typeVars(result,_,pos,_,this)
   }
 
-  /** The number of type arguments of this parameterized type. */
+  /** Gets the number of type arguments of this parameterized type. */
   int getNumberOfTypeArguments() {
     result = count(int pos |
       typeArgs(_,pos,this) or
@@ -422,17 +422,17 @@ class GenericCallable extends Callable {
   }
 
   /**
-   * The `i`-th type parameter of this generic callable.
+   * Gets the `i`-th type parameter of this generic callable.
    */
   TypeVariable getTypeParameter(int i) { typeVars(result, _, i, _, this.getSourceDeclaration()) }
 
   /**
-   * A type parameter of this generic callable.
+   * Gets a type parameter of this generic callable.
    */
   TypeVariable getATypeParameter() { result = getTypeParameter(_) }
 
   /**
-   * The number of type parameters of this generic callable.
+   * Gets the number of type parameters of this generic callable.
    */
   int getNumberOfTypeParameters() { result = strictcount(getATypeParameter()) }
 }

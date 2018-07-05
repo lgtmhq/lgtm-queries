@@ -125,8 +125,8 @@ class OpenCreationExpr extends FileCreationExpr {
     and
     sets(this.getArgument(1).getValue().toInt(), o_creat())
   }
-  Expr getPath() { result = this.getArgument(0) }
-  int getMode() {
+  override Expr getPath() { result = this.getArgument(0) }
+  override int getMode() {
     if exists(this.getArgument(2))
     then result = this.getArgument(2).getValue().toInt()
     else // assume anything is permitted
@@ -136,8 +136,8 @@ class OpenCreationExpr extends FileCreationExpr {
 
 class CreatCreationExpr extends FileCreationExpr {
   CreatCreationExpr() { this.getTarget().getName() = "creat" }
-  Expr getPath() { result = this.getArgument(0) }
-  int getMode() { result = this.getArgument(1).getValue().toInt() }
+  override Expr getPath() { result = this.getArgument(0) }
+  override int getMode() { result = this.getArgument(1).getValue().toInt() }
 }
 
 class OpenatCreationExpr extends FileCreationExpr {
@@ -145,8 +145,8 @@ class OpenatCreationExpr extends FileCreationExpr {
     this.getTarget().getName() = "openat" and
     this.getNumberOfArguments() = 4
   }
-  Expr getPath() { result = this.getArgument(1) }
-  int getMode() { result = this.getArgument(3).getValue().toInt() }
+  override Expr getPath() { result = this.getArgument(1) }
+  override int getMode() { result = this.getArgument(3).getValue().toInt() }
 }
 
 private int fopenMode() {
@@ -167,8 +167,8 @@ class FopenCreationExpr extends FileCreationExpr {
            and
            this.getArgument(1).getValue().matches(mode+"%"))
   }
-  Expr getPath() { result = this.getArgument(0) }
-  int getMode() { result = fopenMode() }
+  override Expr getPath() { result = this.getArgument(0) }
+  override int getMode() { result = fopenMode() }
 }
 
 class FopensCreationExpr extends FileCreationExpr {
@@ -184,8 +184,8 @@ class FopensCreationExpr extends FileCreationExpr {
            this.getArgument(2).getValue().matches(mode+"%")
     )
   }
-  Expr getPath() { result = this.getArgument(1) }
-  int getMode() {
+  override Expr getPath() { result = this.getArgument(1) }
+  override int getMode() {
     // fopen_s has restrictive permissions unless you have "u" in the mode
     if this.getArgument(2).getValue().charAt(_) = "u"
     then result = fopenMode()

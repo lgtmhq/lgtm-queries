@@ -60,6 +60,12 @@ module ConditionalBypass {
       super.isSanitizer(node) or
       node instanceof Sanitizer
     }
+
+    override
+    predicate isAdditionalTaintStep(DataFlow::Node src, DataFlow::Node dst) {
+      // comparing a tainted expression against a constant gives a tainted result
+      dst.asExpr().(Comparison).hasOperands(src.asExpr(), any(ConstantExpr c))
+    }
   }
 
   /**

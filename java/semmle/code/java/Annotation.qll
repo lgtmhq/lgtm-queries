@@ -36,26 +36,26 @@ class Annotation extends @annotation, Expr {
   /** Holds if this annotation applies to a type. */
   predicate isTypeAnnotation() { this instanceof TypeAnnotation }
 
-  /** The element being annotated. */
+  /** Gets the element being annotated. */
   Element getAnnotatedElement() { this.getParent() = result }
 
-  /** The annotation type declaration for this annotation. */
+  /** Gets the annotation type declaration for this annotation. */
   override AnnotationType getType() { result = Expr.super.getType() }
 
-  /** The annotation element with the specified `name`. */
+  /** Gets the annotation element with the specified `name`. */
   AnnotationElement getAnnotationElement(string name) {
     result = this.getType().getAnnotationElement(name)
   }
 
-  /** A value of an annotation element. */
+  /** Gets a value of an annotation element. */
   Expr getAValue() { filteredAnnotValue(this, _, result) }
 
-  /** The value of the annotation element with the specified `name`. */
+  /** Gets the value of the annotation element with the specified `name`. */
   Expr getValue(string name) {
     filteredAnnotValue(this, this.getAnnotationElement(name), result)
   }
 
-  /** The element being annotated. */
+  /** Gets the element being annotated. */
   Element getTarget() {
     exprs(this, _, _, result, _)
   }
@@ -119,7 +119,7 @@ class Annotatable extends Element {
     exists(AnnotationType at | at = getAnAnnotation().getType() | at.nestedName() = name and at.getPackage().getName() = package)
   }
 
-  /** An annotation that applies to this element. */
+  /** Gets an annotation that applies to this element. */
   Annotation getAnAnnotation() { result.getAnnotatedElement() = this }
 
   /**
@@ -143,12 +143,12 @@ class Annotatable extends Element {
 class AnnotationType extends Interface {
   AnnotationType() { isAnnotType(this) }
 
-  /** The annotation element with the specified `name`. */
+  /** Gets the annotation element with the specified `name`. */
   AnnotationElement getAnnotationElement(string name) {
     methods(result,_,_,_,this,_) and result.hasName(name)
   }
 
-  /** An annotation element that is a member of this annotation type. */
+  /** Gets an annotation element that is a member of this annotation type. */
   AnnotationElement getAnAnnotationElement() {
     methods(result,_,_,_,this,_)
   }
@@ -166,6 +166,6 @@ class AnnotationType extends Interface {
 class AnnotationElement extends Member {
   AnnotationElement() { isAnnotElem(this) }
 
-  /** The type of this annotation element. */
+  /** Gets the type of this annotation element. */
   Type getType() { methods(this,_,_,result,_,_) }
 }

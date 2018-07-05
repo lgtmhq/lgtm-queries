@@ -24,7 +24,7 @@ class SetWritable extends Method {
 }
 
 /**
- * Get an `EnumConstant` that may be in the `Set` of `Enum`s represented by `enumSetRef`.
+ * Gets an `EnumConstant` that may be in the `Set` of `Enum`s represented by `enumSetRef`.
  */
 private EnumConstant getAContainedEnumConstant(Expr enumSetRef) {
   enumSetRef.getType().(RefType).getASupertype*().getSourceDeclaration().hasQualifiedName("java.util", "Set") and
@@ -60,7 +60,7 @@ private EnumConstant getAContainedEnumConstant(Expr enumSetRef) {
 }
 
 /**
- * Get a `File` `VarAccess` which has been converted to a `Path` by `pathExpr`.
+ * Gets a `VarAccess` to a `File` that is converted to a `Path` by `pathExpr`.
  */
 private VarAccess getFileForPathConversion(Expr pathExpr) {
   pathExpr.getType().(RefType).hasQualifiedName("java.nio.file", "Path") and
@@ -143,7 +143,7 @@ class SetFileWorldWritable extends Expr {
   }
 
   /**
-   * The `VarAccess` representing the file that is set world writable.
+   * Gets the `VarAccess` representing the file that is set world writable.
    */
   VarAccess getFileVarAccess() {
     fileSetWorldWritable(result, this)

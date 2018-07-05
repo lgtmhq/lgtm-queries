@@ -15,12 +15,11 @@ import python
 
 import semmle.python.security.TaintTracking
 import semmle.python.web.Http
+import semmle.python.web.flask.General
 
 private Object theFlaskRequestObject() {
-    exists(ModuleObject flask |
-        flask.getName() = "flask" and
-        result = flask.getAttribute("request")
-    )
+    result = theFlaskModule().getAttribute("request")
+
 }
 
 /** Holds if `attr` is an access of attribute `name` of the flask request object */

@@ -20,7 +20,7 @@ class SpringImport extends SpringXMLElement {
     this.getName() = "import"
   }
 
-  /** The value of the `resource` attribute. */
+  /** Gets the value of the `resource` attribute. */
   string getResourceString() {
     result = this.getAttributeValue("resource")
   }

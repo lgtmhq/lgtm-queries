@@ -27,7 +27,7 @@ class SpringAbstractRef extends SpringXMLElement {
     this.hasAttribute("bean")
   }
 
-  /** The value of the bean attribute. */
+  /** Gets the value of the bean attribute. */
   string getBeanName() {
     result = this.getAttributeValue("bean")
   }
@@ -37,12 +37,12 @@ class SpringAbstractRef extends SpringXMLElement {
     this.hasAttribute("local")
   }
 
-  /** The value of the local attribute. */
+  /** Gets the value of the local attribute. */
   string getBeanLocalName() {
     result = this.getAttributeValue("local")
   }
 
-  /** The bean pointed to by this reference. */
+  /** Gets the bean pointed to by this reference. */
   SpringBean getBean() {
     if this.hasBeanLocalName()
     then result.getBeanId() = this.getBeanLocalName()

@@ -37,7 +37,7 @@ class SuppressWarningsAnnotation extends Annotation {
     this.getType().hasQualifiedName("java.lang", "SuppressWarnings")
   }
 
-  /** The name of a warning suppressed by this annotation. */
+  /** Gets the name of a warning suppressed by this annotation. */
   string getASuppressedWarning() {
     result = this.getAValue().(StringLiteral).getLiteral() or
     result = this.getAValue().(ArrayInit).getAnInit().(StringLiteral).getLiteral()

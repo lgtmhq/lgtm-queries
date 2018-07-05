@@ -24,7 +24,7 @@ class PersistentEntity extends RefType {
   }
 
   /**
-   * Return the access type for this entity.
+   * Gets the access type for this entity.
    *
    * The access type is either FIELD or METHOD. In the former case, persistence is achieved by
    * reading and writing the fields directly. In the latter case, setters and getters are used

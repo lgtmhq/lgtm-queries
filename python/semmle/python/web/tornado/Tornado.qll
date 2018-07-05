@@ -16,10 +16,7 @@ import python
 import semmle.python.security.TaintTracking
 
 private ClassObject theTornadoRequestHandlerClass() {
-    exists(ModuleObject web |
-        web.getName() = "tornado.web" and
-        result = web.getAttribute("RequestHandler")
-    )
+    result = any(ModuleObject m | m.getName() = "tornado.web").getAttribute("RequestHandler")
 }
 
 ClassObject aTornadoRequestHandlerClass() {

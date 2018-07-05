@@ -23,14 +23,14 @@ class MapType extends RefType {
     )
   }
 
-  /** The type of keys stored in this map. */
+  /** Gets the type of keys stored in this map. */
   RefType getKeyType() {
     exists (GenericInterface map | map.hasQualifiedName("java.util", "Map") |
       indirectlyInstantiates(this, map, 0, result)
     )
   }
 
-  /** The type of values stored in this map. */
+  /** Gets the type of values stored in this map. */
   RefType getValueType() {
     exists (GenericInterface map | map.hasQualifiedName("java.util", "Map") |
       indirectlyInstantiates(this, map, 1, result)
@@ -44,12 +44,12 @@ class MapMethod extends Method {
     this.getDeclaringType() instanceof MapType
   }
 
-  /** The type of keys of the map to which this method belongs. */
+  /** Gets the type of keys of the map to which this method belongs. */
   RefType getReceiverKeyType() {
     result = this.getDeclaringType().(MapType).getKeyType()
   }
 
-  /** The type of values of the map to which this method belongs. */
+  /** Gets the type of values of the map to which this method belongs. */
   RefType getReceiverValueType() {
     result = this.getDeclaringType().(MapType).getValueType()
   }

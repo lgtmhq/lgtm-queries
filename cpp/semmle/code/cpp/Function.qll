@@ -43,7 +43,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    * To test whether a function has a particular name in the global
    * namespace, use `hasGlobalName`.
    */
-  string getName() { functions(this,result,_) }
+  override string getName() { functions(this,result,_) }
 
   /**
    * Gets the full signature of this function, including return type, parameter
@@ -82,7 +82,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
   }
 
   /** Gets a specifier of this function. */
-  Specifier getASpecifier() {
+  override Specifier getASpecifier() {
     funspecifiers(this,result)
     or result.hasName(getADeclarationEntry().getASpecifier())
   }
@@ -195,7 +195,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    * relationship between `Declaration` and `DeclarationEntry` is explained
    * in `Declaration.qll`.
    */
-  FunctionDeclarationEntry getADeclarationEntry() {
+  override FunctionDeclarationEntry getADeclarationEntry() {
     if fun_decls(_,this,_,_,_) then
       declEntry(result)
     else
@@ -215,7 +215,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    * Gets the location of a `FunctionDeclarationEntry` corresponding to this
    * declaration.
    */
-  Location getADeclarationLocation() {
+  override Location getADeclarationLocation() {
     result = getADeclarationEntry().getLocation()
   }
 
@@ -229,13 +229,13 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
    * Gets the declaration entry corresponding to this declaration that is a
    * definition, if any.
    */
-  FunctionDeclarationEntry getDefinition() {
+  override FunctionDeclarationEntry getDefinition() {
     result = getADeclarationEntry() and
     result.isDefinition()
   }
 
   /** Gets the location of the definition, if any. */
-  Location getDefinitionLocation() {
+  override Location getDefinitionLocation() {
     if exists(getDefinition()) then
       result = getDefinition().getLocation()
     else
@@ -506,25 +506,25 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
  */
 class FunctionDeclarationEntry extends DeclarationEntry, @fun_decl {
   /** Gets the function which is being declared or defined. */
-  Function getDeclaration() { result = getFunction() }
+  override Function getDeclaration() { result = getFunction() }
 
   /** Gets the function which is being declared or defined. */
   Function getFunction() { fun_decls(this,result,_,_,_) }
 
   /** Gets the name of the function. */
-  string getName() { fun_decls(this,_,_,result,_) }
+  override string getName() { fun_decls(this,_,_,result,_) }
 
   /**
    * Gets the return type of the function which is being declared or
    * defined.
    */
-  Type getType() { fun_decls(this,_,unresolve(result),_,_) }
+  override Type getType() { fun_decls(this,_,unresolve(result),_,_) }
 
   /** Gets the location of this declaration entry. */
   override Location getLocation() { fun_decls(this,_,_,_,result) }
 
   /** Gets a specifier associated with this declaration entry. */
-  string getASpecifier() { fun_decl_specifiers(this,result) }
+  override string getASpecifier() { fun_decl_specifiers(this,result) }
 
   /**
    * Implements `Element.getEnclosingElement`. A function declaration does
@@ -636,7 +636,7 @@ class FunctionDeclarationEntry extends DeclarationEntry, @fun_decl {
   }
 
   /** Holds if this declaration is also a definition of its function. */
-  predicate isDefinition() {
+  override predicate isDefinition() {
     fun_def(this)
   }
 
@@ -857,10 +857,10 @@ class ConversionConstructor extends Constructor, ImplicitConversionFunction {
   }
 
   /** Gets the type this `ConversionConstructor` takes as input. */
-  Type getSourceType() { result = this.getParameter(0).getType() }
+  override Type getSourceType() { result = this.getParameter(0).getType() }
 
   /** Gets the type this `ConversionConstructor` is a constructor of. */
-  Type getDestType()   { result = this.getDeclaringType() }
+  override Type getDestType()   { result = this.getDeclaringType() }
 }
 
 private predicate hasCopySignature(MemberFunction f) {
@@ -1016,8 +1016,8 @@ class ConversionOperator extends MemberFunction, ImplicitConversionFunction {
 
   ConversionOperator() { functions(this,_,4) }
 
-  Type getSourceType() { result = this.getDeclaringType() }
-  Type getDestType() { result = this.getType() }
+  override Type getSourceType() { result = this.getDeclaringType() }
+  override Type getDestType() { result = this.getType() }
 
 }
 

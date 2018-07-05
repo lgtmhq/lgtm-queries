@@ -195,7 +195,7 @@ class Folder extends Container, @folder {
   }
 
   /** Gets the URL of this folder. */
-  string getURL() {
+  override string getURL() {
     result = "folder://" + getAbsolutePath()
   }
 
@@ -264,7 +264,7 @@ class File extends Container, @file, Locatable {
   }
 
   /** Gets the URL of this file. */
-  string getURL() {
+  override string getURL() {
     result = "file://" + this.getAbsolutePath() + ":0:0:0:0"
   }
 
@@ -330,14 +330,14 @@ class File extends Container, @file, Locatable {
    * except the dummy file, whose name is the empty string, which contains
    * declarations that are built into the compiler.
    */
-  predicate fromSource() { numlines(this,_,_,_) }
+  override predicate fromSource() { numlines(this,_,_,_) }
 
   /**
    * Holds if this file may be from a library.
    *
    * DEPRECATED: For historical reasons this is true for any file.
    */
-  deprecated
+  deprecated override
   predicate fromLibrary() { any() }
 
   /** Gets the metric file. */

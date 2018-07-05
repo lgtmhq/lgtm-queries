@@ -98,35 +98,35 @@ private import Completion
 
 /** A node in the expression-level control-flow graph. */
 class ControlFlowNode extends Top, @exprparent {
-  /** The statement containing this node, if any. */
+  /** Gets the statement containing this node, if any. */
   Stmt getEnclosingStmt() {
     result = this or
     result = this.(Expr).getEnclosingStmt()
   }
 
-  /** The immediately enclosing callable whose body contains this node. */
+  /** Gets the immediately enclosing callable whose body contains this node. */
   Callable getEnclosingCallable() {
     result = this or
     result = this.(Stmt).getEnclosingCallable() or
     result = this.(Expr).getEnclosingCallable()
   }
 
-  /** An immediate successor of this node. */
+  /** Gets an immediate successor of this node. */
   ControlFlowNode getASuccessor() {
     result = succ(this)
   }
 
-  /** An immediate predecessor of this node. */
+  /** Gets an immediate predecessor of this node. */
   ControlFlowNode getAPredecessor() {
     this = succ(result)
   }
 
-  /** An exception successor of this node. */
+  /** Gets an exception successor of this node. */
   ControlFlowNode getAnExceptionSuccessor() {
     result = succ(this, ThrowCompletion(_))
   }
 
-  /** A successor of this node that is neither an exception successor nor a jump (break, continue, return). */
+  /** Gets a successor of this node that is neither an exception successor nor a jump (break, continue, return). */
   ControlFlowNode getANormalSuccessor() {
     result = succ(this, BooleanCompletion(_, _)) or
     result = succ(this, NormalCompletion())
@@ -137,7 +137,7 @@ class ControlFlowNode extends Top, @exprparent {
   }
 }
 
-/** The intra-procedural successor of `n`. */
+/** Gets the intra-procedural successor of `n`. */
 private ControlFlowNode succ(ControlFlowNode n) {
   result = succ(n, _)
 }
@@ -145,7 +145,7 @@ private ControlFlowNode succ(ControlFlowNode n) {
 private cached module ControlFlowGraphImpl {
 
   /**
-   * Get a label that applies to this statement.
+   * Gets a label that applies to this statement.
    */
   private Label getLabel(Stmt s) {
     exists (LabeledStmt l | s = l.getStmt() |
@@ -223,7 +223,7 @@ private cached module ControlFlowGraphImpl {
   }
 
   /**
-   * Get an exception type that may be thrown during execution of the
+   * Gets an exception type that may be thrown during execution of the
    * body or the resources (if any) of `try`.
    */
   private ThrowableType thrownInBody(TryStmt try) {
@@ -307,7 +307,7 @@ private cached module ControlFlowGraphImpl {
   }
 
   /**
-   * A non-overridable method that always throws an exception or calls `exit`.
+   * Gets a non-overridable method that always throws an exception or calls `exit`.
    */
   private Method nonReturningMethod() {
     result instanceof MethodExit or
@@ -322,7 +322,7 @@ private cached module ControlFlowGraphImpl {
   }
 
   /**
-   * A statement that always throws an exception or calls `exit`.
+   * Gets a statement that always throws an exception or calls `exit`.
    */
   private Stmt nonReturningStmt() {
     result instanceof ThrowStmt or
@@ -377,7 +377,7 @@ private cached module ControlFlowGraphImpl {
       this instanceof AssertStmt
     }
 
-    /** Get child nodes in their order of execution. Indexing starts at either -1 or 0. */
+    /** Gets child nodes in their order of execution. Indexing starts at either -1 or 0. */
     ControlFlowNode getChildNode(int index) {
       exists (ArrayAccess e | e = this |
         index = 0 and result = e.getArray() or
@@ -419,7 +419,7 @@ private cached module ControlFlowGraphImpl {
       index = 0 and result = this.(AssertStmt).getExpr()
     }
 
-    /** The first child node, if any. */
+    /** Gets the first child node, if any. */
     ControlFlowNode firstChild() {
       result = getChildNode(-1) or
       result = getChildNode(0) and not exists(getChildNode(-1))
@@ -873,7 +873,7 @@ private cached module ControlFlowGraphImpl {
    */
 
   /**
-   * Get the _resumption_ for cfg node `n`, that is, the completion according
+   * Gets the _resumption_ for cfg node `n`, that is, the completion according
    * to which control flow is determined if `n` completes normally.
    *
    * In most cases, the resumption is simply the normal completion, except if
@@ -913,7 +913,7 @@ private cached module ControlFlowGraphImpl {
     )
   }
 
-  /** A true- or false-successor of `n`. */
+  /** Gets a true- or false-successor of `n`. */
   cached
   ControlFlowNode branchSuccessor(ControlFlowNode n, boolean branch) {
     result = mainBranchSucc(n, branch) or
@@ -929,22 +929,22 @@ class ConditionNode extends ControlFlowNode {
     exists (branchSuccessor(this, _))
   }
 
-  /** A true- or false-successor of the `ConditionNode`. */
+  /** Gets a true- or false-successor of the `ConditionNode`. */
   ControlFlowNode getABranchSuccessor(boolean branch) {
     result = branchSuccessor(this, branch)
   }
 
-  /** A true-successor of the `ConditionNode`. */
+  /** Gets a true-successor of the `ConditionNode`. */
   ControlFlowNode getATrueSuccessor() {
     result = getABranchSuccessor(true)
   }
 
-  /** A false-successor of the `ConditionNode`. */
+  /** Gets a false-successor of the `ConditionNode`. */
   ControlFlowNode getAFalseSuccessor() {
     result = getABranchSuccessor(false)
   }
 
-  /** The condition of this `ConditionNode`. This is equal to the node itself. */
+  /** Gets the condition of this `ConditionNode`. This is equal to the node itself. */
   Expr getCondition() {
     result = this
   }

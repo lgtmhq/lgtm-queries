@@ -21,17 +21,17 @@ class SpringAlias extends SpringXMLElement {
     this.getName() = "alias"
   }
 
-  /** The value of the `alias` attribute. */
+  /** Gets the value of the `alias` attribute. */
   string getBeanAlias() {
     result = this.getAttributeValue("alias")
   }
 
-  /** The value of the `name` attribute. */
+  /** Gets the value of the `name` attribute. */
   string getBeanName() {
     result = this.getAttributeValue("name")
   }
 
-  /** The bean referred to by the alias. */
+  /** Gets the bean referred to by the alias. */
   SpringBean getBean() {
     exists(SpringBean b |
       b.getBeanIdentifier() = this.getBeanName() and

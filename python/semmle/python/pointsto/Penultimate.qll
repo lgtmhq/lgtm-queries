@@ -1391,18 +1391,10 @@ module PenultimatePointsTo {
             or
             /* Classes */
             exists(ClassObject cls |
-                not class_overrides_new(cls) and
-                points_to(call.getFunction(), caller, cls, _, _) and
+                instantiation(call, caller, cls) and
                 Types::class_attribute_lookup(cls, "__init__", func, _, _) and
                 parameter_offset = 1 and
                 callee.fromCall(call, caller)
-            )
-        }
-
-        private predicate class_overrides_new(ClassObject cls) {
-            exists(ClassObject s |
-                s = Layer0PointsTo::Types::get_an_improper_super_type(cls) and not s = theObjectType() |
-                class_declares_attribute(s, "__new__")
             )
         }
 
@@ -2330,48 +2322,14 @@ module PenultimatePointsTo {
            or
            exists(ClassObject baseN |
                baseN = class_base_type(cls, n) |
-               true = class_has_attribute_bool(baseN, name) and result = true
+               true = class_has_non_object_attribute_bool(baseN, name) and result = true
                or
                true = class_has_attribute_from_base(cls, n+1, name) and result = true
                or
-               false = class_has_attribute_bool(baseN, name) and false = class_has_attribute_from_base(cls, n+1, name) and result = false
+               false = class_has_non_object_attribute_bool(baseN, name) and false = class_has_attribute_from_base(cls, n+1, name) and result = false
+               or
+               baseN = theObjectType() and result = class_has_attribute_from_base(cls, n+1, name)
            )
-        }
-
-        /** Mostly holds when all `first` precedes `second` in mro of `cls` and both declare `name`.
-         * If this holds then then `first` precedes `second`. If this predicate doesn't hold, then
-         * for sufficiently complex class hierarchies, it is still possible for `first` to precede `second`.
-         * For example take the classes `X(A)`, `Y(B)` and `Z(X, Y)` then `precedes_in_mro(Z, A, B)` may not hold
-         * even though `A` will precede `B` in the MRO of `Z`.
-         */
-        pragma [noinline, nomagic]
-        
-        predicate precedes_in_mro(ClassObject cls, ClassObject first, ClassObject second) {
-            first = get_an_improper_super_type(cls) and
-            second = get_a_super_type(cls) and
-            not second = theObjectType() and
-            not first.getPyClass() = second.getPyClass() and
-            (
-                cls = first
-                or
-                second = get_a_super_type(first)
-                or
-                class_base_type(cls, 0) = first
-                or
-                /* first and second are both base types */
-                exists(int i, int j |
-                    class_base_type(cls, i) = first and
-                    get_an_improper_super_type(class_base_type(cls, j)) = second |
-                    i < j
-                )
-           )
-        }
-
-        private pragma[noinline, nomagic]
-        private predicate declaration_precedes_in_mro(ClassObject cls, string name, ClassObject first, ClassObject second) {
-            precedes_in_mro(cls, first, second) and
-            class_declares_attribute(first, name) and
-            class_declares_attribute(second, name)
         }
 
         /** Holds if the class `cls` has an attribute called `name` */
@@ -2380,132 +2338,70 @@ module PenultimatePointsTo {
             class_declares_attribute(get_an_improper_super_type(cls), name)
         }
 
+        /** Holds if `cls` has an attribute `name` that is not derived from `object` */
         pragma [noinline]
-        private
-        boolean class_has_attribute_bool(ClassObject cls, string name) {
-            cls = theObjectType() and possible_attribute(cls, name) and result = false
-            or
+        private boolean class_has_non_object_attribute_bool(ClassObject cls, string name) {
             class_declares_attribute(cls, name) and not cls = theObjectType() and result = true
             or
             not class_declares_attribute(cls, name) and result = class_has_attribute_from_base(cls, 0, name)
         }
 
-        /** Gets the number of declarations of `name` in the inheritance *tree* of `cls`, excluding `object`.
-         * Note that since the inheritance is treated as a tree not a DAG, it is possible that a single declaration
-         * may be counted multiple times.
+        /** Holds if `defn` is the class containing the definition of attribute `name` when considering only the base classes
+         * number `n` and upward of class `cls`. For example given `class C(B0, B1): pass` where both `B1` and `B2` defined `name`
+         * then `(C, name, 1, B1)` and `(C, name, 0, B0)` both hold. Penultimate is a conservative approximation.
          */
-        pragma [noinline, nomagic]
-        
-        int declarations_in_tree(ClassObject cls, string name) {
-            cls = theObjectType() and possible_attribute(cls, name) and result = 0
-            or
-            class_declares_attribute(cls, name) and not cls = theObjectType() and  result = declarations_in_tree_to_base_n(cls, 0, name)+1
-            or
-            not class_declares_attribute(cls, name) and result = declarations_in_tree_to_base_n(cls, 0, name)
+        pragma [noopt]
+        private predicate class_attribute_defining_class_for_base(ClassObject cls, string name, int n, ClassObject defn) {
+            exists(ClassObject baseN |
+                baseN = class_base_type(cls, n)
+                |
+                class_declares_attribute(baseN, name) and defn = baseN
+                or
+                exists(int np1 |
+                    np1 = n + 1 and
+                    class_attribute_defining_class_for_base(cls, name, np1, defn)
+                ) and
+                false = class_has_non_object_attribute_bool(baseN, name)
+                or
+                exists(int np1 |
+                    np1 = n + 1 and
+                    false = class_has_attribute_from_base(cls, np1, name)
+                ) and
+                class_attribute_defining_class(baseN, name, defn)
+            )
         }
 
-        pragma [noinline, nomagic]
-        private
-        int declarations_in_tree_to_base_n(ClassObject cls, int n, string name) {
-            possible_attribute(cls, name) and n = class_base_count(cls) and result = 0
-            or
-            result = declarations_in_tree_to_base_n(cls, n+1, name) + declarations_in_tree(class_base_type(cls, n), name)
+        /** Holds if `defn` is the class containing the definition of attribute `name` for class `cls`. 
+         * Penultimate is a conservative approximation.
+         */
+        pragma [noinline] 
+        private predicate class_attribute_defining_class(ClassObject cls, string name, ClassObject defn) {
+            if class_declares_attribute(cls, name) then
+                defn = cls
+            else
+                class_attribute_defining_class_for_base(cls, name, 0, defn)
         }
 
          /** INTERNAL -- Use `ClassObject.attributeRefersTo(name, value, vlcs, origin). instead.
           */
          
          predicate class_attribute_lookup(ClassObject cls, string name, Object value, ClassObject vcls, ObjectOrCfg origin) {
-            /* Built-in attribute */
-            value = builtin_class_attribute(cls, name) and vcls = builtin_object_type(value) and origin = value
+            exists(ClassObject defn |
+                class_attribute_defining_class(cls, name, defn) and
+                class_declared_attribute(defn, name, value, vcls, origin)
+            )
             or
-            /* Attribute declared in this class */
-            class_declared_attribute(cls, name, value, vcls, origin)
-            or
-            /* Attribute not declared in this class, but declared in first base class (which must be second in MRO) */
-            not cls.declaresAttribute(name) and
-            class_declared_attribute(class_base_type(cls, 0), name, value, vcls, origin)
-            or
-            /* Attribute not declared in inheritance tree, but is defined by `object` */
-            declarations_in_tree(cls,name) = 0 and
+            false = class_has_non_object_attribute_bool(cls, name) and
             class_declared_attribute(theObjectType(), name, value, vcls, origin)
             or
-            /* Attribute declared exactly once in inheritance tree */
-            declarations_in_tree(cls,name) = 1 and
-             exists(ClassObject decl |
-                decl = get_a_super_type(cls) and not decl = theObjectType() and
-                class_declared_attribute(decl, name, value, vcls, origin)
-            )
-            or
-            /* Attribute declared exactly twice in inheritance tree and both declare the same attribute.
-             *  */
-            declarations_in_tree(cls,name) = 2 and
-            exists(ClassObject decl1, ClassObject decl2 |
-                decl1 = get_a_super_type(cls) and
-                decl2 = get_a_super_type(cls) and
-                decl1 != decl2 and
-                not decl1 = theObjectType() and not decl2 = theObjectType() and
-                class_declared_attribute(decl1, name, value, vcls, origin) and
-                class_declared_attribute(decl2, name, value, vcls, origin)
-            )
-            or
-            /* Attribute declared exactly twice in the inheritance tree and chosen class is known to precede the other in the MRO */
-            declarations_in_tree(cls,name) = 2 and
-            exists(ClassObject decl |
-                declaration_precedes_in_mro(cls, name, decl, _) and class_declared_attribute(decl, name, value, vcls, origin)
-            )
-            or
-            /* Attribute declared exactly thrice in the inheritance tree and chosen class is known to precede both of the others in the MRO */
-            declarations_in_tree(cls,name) = 3 and
-            exists(ClassObject decl, ClassObject c1, ClassObject c2 |
-                c1 != c2 and
-                declaration_precedes_in_mro(cls, name, decl, c1) and
-                declaration_precedes_in_mro(cls, name, decl, c2) and
-                class_declared_attribute(decl, name, value, vcls, origin)
-            )
-            or
-            /* Attribute declared exactly four times in the inheritance tree and chosen class is known to precede all three of the others in the MRO */
-            declarations_in_tree(cls,name) = 4 and
-            exists(ClassObject decl, ClassObject c1, ClassObject c2, ClassObject c3 |
-                c1 != c2 and c1 != c3 and c2 != c3 and
-                declaration_precedes_in_mro(cls, name, decl, c1) and
-                declaration_precedes_in_mro(cls, name, decl, c2) and
-                declaration_precedes_in_mro(cls, name, decl, c3) and
-                class_declared_attribute(decl, name, value, vcls, origin)
-            )
-            or
-            /* Class has exactly two base classes and the class does not declare the attribute */
+            /* Exactly two base classes and both define the same attribute.
+             */
             class_base_count(cls) = 2 and
-            not cls.declaresAttribute(name) and
-            (
-                /* The first base class has the attribute and the second base class does not */
-                class_has_attribute_bool(class_base_type(cls, 1), name) = false and class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin)
-                or
-                /* The first base class does not inherit the attribute, but the second base class does */
-                class_has_attribute_bool(class_base_type(cls, 0), name) = false and class_attribute_lookup(class_base_type(cls, 1), name, value, vcls, origin)
-                or
-                /* Both base classes have same attribute */
-                class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin) and class_attribute_lookup(class_base_type(cls, 1), name, value, vcls, origin)
-                or
-                /* Occurs exactly twice in tree and first base class has the attribute. Either both occur in first subtree or the inheritance graph is actually a tree. */
-                declarations_in_tree(cls,name) = 2 and class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin)
-            )
-            or
-            /* Class has exactly three base classes and the class does not declare the attribute */
-            class_base_count(cls) = 3 and
-            not cls.declaresAttribute(name) and
-            (
-                /* The first base class has the attribute and the others do not */
-                class_has_attribute_bool(class_base_type(cls, 1), name) = false and class_has_attribute_bool(class_base_type(cls, 2), name) = false and
-                class_attribute_lookup(class_base_type(cls, 0), name, value, vcls, origin)
-                or
-                /* The second base class has the attribute and the others do not */
-                class_has_attribute_bool(class_base_type(cls, 0), name) = false and class_has_attribute_bool(class_base_type(cls, 2), name) = false and
-                class_attribute_lookup(class_base_type(cls, 1), name, value, vcls, origin)
-                or
-                /* The third base class has the attribute and the others do not */
-                class_has_attribute_bool(class_base_type(cls, 0), name) = false and class_has_attribute_bool(class_base_type(cls, 1), name) = false and
-                class_attribute_lookup(class_base_type(cls, 2), name, value, vcls, origin)
+            exists(ClassObject base1, ClassObject base2 |
+                base1 = class_base_type(cls, 0) and
+                base2 = class_base_type(cls, 1) and
+                class_attribute_lookup(base1, name, value, vcls, origin) and
+                class_attribute_lookup(base2, name, value, vcls, origin)
             )
          }
 

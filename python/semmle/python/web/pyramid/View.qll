@@ -13,15 +13,15 @@
 
 import python
 
-ModuleObject viewModule() {
+ModuleObject thePyramidViewModule() {
     result.getName() = "pyramid.view"
 }
 
-Object viewConfig() {
-    result = viewModule().getAttribute("view_config")
+Object thePyramidViewConfig() {
+    result = thePyramidViewModule().getAttribute("view_config")
 }
 
-predicate is_view_function(Function func) {
-    func.getADecorator().refersTo(_, viewConfig(), _)
+predicate is_pyramid_view_function(Function func) {
+    func.getADecorator().refersTo(_, thePyramidViewConfig(), _)
 }
 

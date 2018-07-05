@@ -25,7 +25,7 @@ class InitializingBeanClass extends Class {
   }
 
   /**
-   * Get the `afterPropertiesSet()` method, which is called after the bean has been initialized.
+   * Gets the `afterPropertiesSet()` method, which is called after the bean has been initialized.
    */
   Method getAfterPropertiesSet() {
     inherits(result) and

@@ -615,7 +615,7 @@ class StringBuilderVar extends LocalVariableDecl {
   }
 
   /**
-   * A call that adds something to this string builder, from the argument at the given index.
+   * Gets a call that adds something to this string builder, from the argument at the given index.
    */
   MethodAccess getAnInput(int arg) {
     result.getQualifier() = getAChainedReference()
@@ -628,7 +628,7 @@ class StringBuilderVar extends LocalVariableDecl {
   }
 
   /**
-   * A call that appends something to this string builder.
+   * Gets a call that appends something to this string builder.
    */
   MethodAccess getAnAppend() {
     result.getQualifier() = getAChainedReference()
@@ -650,7 +650,7 @@ class StringBuilderVar extends LocalVariableDecl {
   }
 
   /**
-   * A call that converts this string builder to a string.
+   * Gets a call that converts this string builder to a string.
    */
   MethodAccess getToStringCall() {
     result.getQualifier() = getAChainedReference()
@@ -666,7 +666,7 @@ class StringBuilderVar extends LocalVariableDecl {
   }
 
   /**
-   * An expression that refers to this `StringBuilder`, possibly after some chained calls.
+   * Gets an expression that refers to this `StringBuilder`, possibly after some chained calls.
    */
   Expr getAChainedReference() {
     result = getAChainedReference(_)

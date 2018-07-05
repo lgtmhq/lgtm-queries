@@ -16,7 +16,7 @@ import semmle.code.java.frameworks.struts.StrutsConventions
 import semmle.code.java.frameworks.struts.StrutsXML
 
 /**
- * Get the custom struts mapper class used for this `refType`, if any.
+ * Gets the custom struts mapper class used for this `refType`, if any.
  */
 private string getStrutsMapperClass(RefType refType) {
   result = getRootXMLFile(refType).getConstantValue("struts.mapper.class")
@@ -49,7 +49,7 @@ class Struts2ActionClass extends Class {
   }
 
   /**
-   * Get the method called when the action is activated.
+   * Gets the method called when the action is activated.
    */
   Method getActionMethod() {
     this.inherits(result) and
@@ -111,7 +111,7 @@ class Struts2ActionClass extends Class {
   }
 
   /**
-   * Get a prepare method, called before the action method.
+   * Gets a prepare method, called before the action method.
    *
    * For a given action method named "foo", the prepare method is named "prepareFoo". Prepare
    * methods only exist if the class `isPreparable()`.

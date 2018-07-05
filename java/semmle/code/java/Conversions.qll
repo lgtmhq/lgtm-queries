@@ -27,12 +27,12 @@ import semmle.code.java.arithmetic.Overflow
  */
 abstract class ConversionSite extends Expr {
   /**
-   * The type that is converted to.
+   * Gets the type that is converted to.
    */
   abstract Type getConversionTarget();
 
   /**
-   * The type that is converted from.
+   * Gets the type that is converted from.
    */
   Type getConversionSource() {
     result = this.getType()

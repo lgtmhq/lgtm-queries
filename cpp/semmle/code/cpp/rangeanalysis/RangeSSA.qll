@@ -44,7 +44,7 @@ library class RangeSSA extends SSAHelper {
     /**
      * Add a phi node on the out-edge of a guard.
      */
-    predicate custom_phi_node(LocalScopeVariable v, BasicBlock b) { guard_defn(v.getAnAccess(),_,b,_) }
+    override predicate custom_phi_node(LocalScopeVariable v, BasicBlock b) { guard_defn(v.getAnAccess(),_,b,_) }
 }
 
 private predicate guard_defn(

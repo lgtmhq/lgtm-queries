@@ -243,7 +243,7 @@ class XMLAttribute extends @xmlattribute, XMLLocatable {
   string getValue() { xmlAttrs(this,_,_,result,_,_) }
 
   /** A printable representation of this XML attribute. */
-  string toString() { result = this.getName() + "=" + this.getValue() }
+  override string toString() { result = this.getName() + "=" + this.getValue() }
 }
 
 /** A namespace used in an XML file */
@@ -273,7 +273,7 @@ class XMLComment extends @xmlcomment, XMLLocatable {
   XMLParent getParent() { xmlComments(this,_,result,_) }
 
   /** A printable representation of this XML comment. */
-  string toString() { result = this.getText() }
+  override string toString() { result = this.getText() }
 }
 
 /**
@@ -291,5 +291,5 @@ class XMLCharacters extends @xmlcharacters, XMLLocatable {
   predicate isCDATA() { xmlChars(this,_,_,_,1,_) }
 
   /** A printable representation of this XML character sequence. */
-  string toString() { result = this.getCharacters() }
+  override string toString() { result = this.getCharacters() }
 }

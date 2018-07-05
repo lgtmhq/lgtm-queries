@@ -753,15 +753,15 @@ class Decltype extends Type, @decltype {
     result = getBaseType().resolveTypedefs()
   }
 
-  Location getLocation() {
+  override Location getLocation() {
     result = getExpr().getLocation()
   }
 
-  string toString() {
+  override string toString() {
     result = "decltype(...)"
   }
 
-  string getName() {
+  override string getName() {
     none()
   }
 
@@ -1077,10 +1077,10 @@ class FunctionPointerIshType extends DerivedType {
  */
 class PointerToMemberType extends Type, @ptrtomember {
   /** a printable representation of this named element */
-  string toString() { result = this.getName() }
+  override string toString() { result = this.getName() }
 
   /** the name of this type */
-  string getName() { result = "..:: *" }
+  override string getName() { result = "..:: *" }
 
   /** the base type of this pointer to member type */
   Type getBaseType() { ptrtomembers(this,unresolve(result),_) }
@@ -1111,9 +1111,9 @@ class PointerToMemberType extends Type, @ptrtomember {
  */
 class RoutineType extends Type, @routinetype {
   /** a printable representation of this named element */
-  string toString() { result = this.getName() }
+  override string toString() { result = this.getName() }
 
-  string getName() { result = "..()(..)" }
+  override string getName() { result = "..()(..)" }
 
   Type getParameterType(int n) { routinetypeargs(this,n,unresolve(result)) }
 
@@ -1168,7 +1168,7 @@ class TemplateParameter extends UserType
 {
   TemplateParameter() { usertypes(this, _, 7) or usertypes(this, _, 8) }
 
-  string getName() { usertypes(this, result, _) }
+  override string getName() { usertypes(this, result, _) }
 
   override predicate involvesTemplateParameter() {
     any()
@@ -1190,7 +1190,7 @@ class AutoType extends TemplateParameter
 {
   AutoType() { usertypes(this, "auto", 7) }
 
-  Location getLocation() {
+  override Location getLocation() {
     suppressUnusedThis(this) and
     result instanceof UnknownDefaultLocation
   }
@@ -1217,7 +1217,7 @@ private predicate suppressUnusedThis(Type t) { any() }
 
 /** A source code location referring to a type */
 class TypeMention extends Locatable, @type_mention {
-  string toString() {result = "mention of " + getMentionedType()}
+  override string toString() {result = "mention of " + getMentionedType()}
   
   /**
    * Gets the type being referenced by this type mention.

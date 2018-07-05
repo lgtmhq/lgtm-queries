@@ -25,10 +25,7 @@ class DjangoDbCursor extends DbCursor {
 }
 
 private Object theDjangoConnectionObject() {
-    exists(ModuleObject db |
-        db.getName() = "django.db" and
-        db.getAttribute("connection") = result
-    )
+    any(ModuleObject m | m.getName() = "django.db").getAttribute("connection") = result
 }
 
 /** A kind of taint source representing sources of django cursor objects.

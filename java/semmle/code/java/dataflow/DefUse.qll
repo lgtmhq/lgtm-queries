@@ -12,7 +12,7 @@
 // permissions and limitations under the License.
 
 /**
- * Library for def-use and use-use pairs. Built on top of the SSA library for
+ * Provides classes and predicates for def-use and use-use pairs. Built on top of the SSA library for
  * maximal precision.
  */
 

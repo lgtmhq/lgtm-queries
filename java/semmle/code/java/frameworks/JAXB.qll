@@ -80,7 +80,7 @@ class JaxbType extends Class {
   }
 
   /**
-   * Return the `XmlAccessType` associated with this class.
+   * Gets the `XmlAccessType` associated with this class.
    */
   XmlAccessType getXmlAccessType() {
     if (exists(getDeclaredAccessType())) then
@@ -183,14 +183,14 @@ library class GetterOrSetterMethod extends Method {
   }
 
   /**
-   * Return the "pair" method, if one exists. That is, return the getter if this is a setter, and vice versa.
+   * Gets the "pair" method, if one exists; that is, the getter if this is a setter, and vice versa.
    */
   GetterOrSetterMethod getPair() {
     result.getField() = this.getField() and not result = this
   }
 
   /**
-   * Return either this method or its pair.
+   * Gets either this method or its pair.
    */
   GetterOrSetterMethod getThisOrPair() {
     result.getField() = this.getField()

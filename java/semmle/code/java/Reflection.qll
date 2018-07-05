@@ -92,7 +92,7 @@ library class ReflectiveClassIdentifierMethodAccess extends ReflectiveClassIdent
 }
 
 /**
- * A `ReflectiveClassIdentifier` that we believe may represent the value of `expr`.
+ * Gets a `ReflectiveClassIdentifier` that we believe may represent the value of `expr`.
  */
 private ReflectiveClassIdentifier pointsToReflectiveClassIdentifier(Expr expr) {
     // If this is an expression creating a `Class<T>`, return the inferred `T` from the creation expression.
@@ -108,7 +108,7 @@ private ReflectiveClassIdentifier pointsToReflectiveClassIdentifier(Expr expr) {
 }
 
 /**
- * A type that is considered to be "overly" generic.
+ * Holds if `type` is considered to be "overly" generic.
  */
 private predicate overlyGenericType(Type type) {
   type instanceof TypeObject or
@@ -237,7 +237,7 @@ class NewInstance extends MethodAccess {
   }
 
   /**
-   * Return the `Constructor` that we believe will be invoked when this `newInstance()` method is
+   * Gets the `Constructor` that we believe will be invoked when this `newInstance()` method is
    * called.
    */
   Constructor getInferredConstructor() {
@@ -278,7 +278,7 @@ class NewInstance extends MethodAccess {
   }
 
   /**
-   * Return an inferred type for the constructed class.
+   * Gets an inferred type for the constructed class.
    *
    * To infer the constructed type we infer a type `T` for `Class<T>` or `Constructor<T>`, by inspecting
    * points to results.
@@ -328,7 +328,7 @@ class ClassMethodAccess extends MethodAccess {
   }
 
   /**
-   * Return an inferred type for the `Class` represented by this expression.
+   * Gets an inferred type for the `Class` represented by this expression.
    */
   RefType getInferredClassType() {
     // `TypeVariable`s do not have methods themselves.
@@ -348,7 +348,7 @@ class ReflectiveMethodAccess extends ClassMethodAccess {
   }
 
   /**
-   * A `Method` that is inferred to be accessed by this reflective use of `getMethod(..)`.
+   * Gets a `Method` that is inferred to be accessed by this reflective use of `getMethod(..)`.
    */
   Method inferAccessedMethod() {
     (
@@ -374,7 +374,7 @@ class ReflectiveAnnotationAccess extends ClassMethodAccess {
   }
 
   /**
-   * Return a possible annotation type for this reflective annotation access.
+   * Gets a possible annotation type for this reflective annotation access.
    */
   AnnotationType getAPossibleAnnotationType() {
     result = inferClassParameterType(getArgument(0))

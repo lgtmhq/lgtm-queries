@@ -21,7 +21,7 @@ private import semmle.code.cpp.internal.Type
  */
 class Element extends @element {
   Element() {
-    isClass(this) implies this = resolve(_)
+    isElement(this)
   }
 
   /** Gets a textual representation of this element. */
@@ -243,13 +243,13 @@ private predicate isFromTemplateInstantiationRec(Element e, Element instantiatio
 }
 
 private predicate isFromUninstantiatedTemplateRec(Element e, Element template) {
-  class_instantiation(_, template) and
+  is_class_template(template) and
   e = template
   or
-  function_instantiation(_, template) and
+  is_function_template(template) and
   e = template
   or
-  variable_instantiation(_, template) and
+  is_variable_template(template) and
   e = template
   or
   isFromUninstantiatedTemplateRec(e.getEnclosingElement(), template) and

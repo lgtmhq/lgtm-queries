@@ -22,7 +22,7 @@ class Macro extends PreprocessorDirective, @ppd_define {
    * Gets the head of this macro. For example, `MAX(x,y)` in
    * `#define MAX(x,y) (((x)>(y))?(x):(y))`.
    */
-  string getHead() { preproctext(this,result,_) }
+  override string getHead() { preproctext(this,result,_) }
 
   /**
    * Gets the body of this macro. For example, `(((x)>(y))?(x):(y))` in

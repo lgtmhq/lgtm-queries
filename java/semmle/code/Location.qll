@@ -48,7 +48,7 @@ predicate hasName(Element e, string name) {
  * methods for obtaining locations and a standard `toString()` method.
  */
 class Top extends @top {
-  /** The source location for this element. */
+  /** Gets the source location for this element. */
   Location getLocation() { fixedHasLocation(this, result, _) }
 
   /**
@@ -65,7 +65,7 @@ class Top extends @top {
     )
   }
 
-  /** Returns the file associated with this element. */
+  /** Gets the file associated with this element. */
   File getFile() {
     fixedHasLocation(this, _, result)
   }
@@ -78,12 +78,12 @@ class Top extends @top {
     numlines(this, result, _, _)
   }
 
-  /** The number of lines of code that this element ranges over. */
+  /** Gets the number of lines of code that this element ranges over. */
   int getNumberOfLinesOfCode() {
     numlines(this, _, result, _)
   }
 
-  /** The number of comment lines that this element ranges over. */
+  /** Gets the number of comment lines that this element ranges over. */
   int getNumberOfCommentLines() {
     numlines(this, _, _, result)
   }
@@ -94,16 +94,16 @@ class Top extends @top {
 
 /** A location maps language elements to positions in source files. */
 class Location extends @location {
-  /** The line number where this location starts. */
+  /** Gets the line number where this location starts. */
   int getStartLine() { locations_default(this,_,result,_,_,_) }
 
-  /** The column number where this location starts. */
+  /** Gets the column number where this location starts. */
   int getStartColumn() { locations_default(this,_,_,result,_,_) }
 
-  /** The line number where this location ends. */
+  /** Gets the line number where this location ends. */
   int getEndLine() { locations_default(this,_,_,_,result,_) }
 
-  /** The column number where this location ends. */
+  /** Gets the column number where this location ends. */
   int getEndColumn() { locations_default(this,_,_,_,_,result) }
 
   /**
@@ -117,7 +117,7 @@ class Location extends @location {
     )
   }
 
-  /** The number of lines of code that this location ranges over. */
+  /** Gets the number of lines of code that this location ranges over. */
   int getNumberOfLinesOfCode() {
     exists(@sourceline s | hasLocation(s, this) |
       numlines(s,_,result,_) or
@@ -125,7 +125,7 @@ class Location extends @location {
     )
   }
 
-  /** The number of comment lines that this location ranges over. */
+  /** Gets the number of comment lines that this location ranges over. */
   int getNumberOfCommentLines() {
     exists(@sourceline s | hasLocation(s, this) |
       numlines(s,_,_,result) or
@@ -133,10 +133,10 @@ class Location extends @location {
     )
   }
 
-  /** The file containing this location. */
+  /** Gets the file containing this location. */
   File getFile() { locations_default(this,result,_,_,_,_) }
 
-  /** A string representation containing the file and range for this location. */
+  /** Gets a string representation containing the file and range for this location. */
   string toString() {
     exists(File f, int startLine, int endLine | locations_default(this,f,startLine,_,endLine,_) |
       if endLine = startLine then
