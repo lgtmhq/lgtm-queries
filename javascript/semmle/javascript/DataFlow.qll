@@ -252,6 +252,7 @@ private deprecated class IifeParameterFlow extends VarDefFlow {
   ImmediatelyInvokedFunctionExpr iife;
 
   IifeParameterFlow() {
+    this instanceof SimpleParameter and
     iife.argumentPassing(this, _)
   }
 

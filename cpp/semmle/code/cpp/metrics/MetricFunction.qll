@@ -50,7 +50,6 @@ class MetricFunction extends Function {
   int getNumberOfCalls() {
     // Checking that the name of the target exists is a workaround for a DB inconsistency
     result = count(FunctionCall c | c.getEnclosingFunction() = this and not (c.getTarget() instanceof Operator) and exists(c.getTarget().getName()))
-           + count(MessageExpr me | me.getEnclosingFunction() = this)
   }
 
    /**

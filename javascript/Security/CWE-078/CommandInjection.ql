@@ -28,6 +28,7 @@
 import javascript
 import semmle.javascript.security.dataflow.CommandInjection::CommandInjection
 
-from Configuration cfg, DataFlow::Node source, DataFlow::Node sink
-where cfg.hasFlow(source, sink)
-select sink, "This command depends on $@.", source, "a user-provided value"
+from Configuration cfg, DataFlow::Node source, DataFlow::Node sink, DataFlow::Node highlight
+where cfg.hasFlow(source, sink) and
+      if cfg.isSink(sink, _) then cfg.isSink(sink, highlight) else highlight = sink
+select highlight, "This command depends on $@.", source, "a user-provided value"

@@ -12,23 +12,19 @@
 // permissions and limitations under the License.
 
 /**
- * @name Self comparison
- * @description Comparing a variable to itself always produces the
-                same result, unless the purpose is to check for
-                integer overflow or floating point NaN.
+ * @name Disabling Electron webSecurity
+ * @description Disabling webSecurity can cause critical security vulnerabilities.
  * @kind problem
- * @problem.severity warning
- * @precision high
- * @id cpp/comparison-of-identical-expressions
- * @tags readability
- *       maintainability
+ * @problem.severity error
+ * @precision very-high
+ * @tags security
+ *       frameworks/electron
+ * @id js/disabling-electron-websecurity
  */
 
-import cpp
-import PointlessSelfComparison
+import javascript
 
-from ComparisonOperation cmp
-where pointlessSelfComparison(cmp)
-  and not nanTest(cmp)
-  and not overflowTest(cmp)
-select cmp, "Self comparison."
+from DataFlow::PropWrite webSecurity, Electron::WebPreferences preferences
+where webSecurity = preferences.getAPropertyWrite("webSecurity")
+  and webSecurity.getRhs().mayHaveBooleanValue(false)
+select webSecurity, "Disabling webSecurity is strongly discouraged."

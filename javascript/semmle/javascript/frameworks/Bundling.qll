@@ -94,7 +94,7 @@ private predicate isBrowserifyBundledModule(Property p) {
  */
 private predicate isBrowserifyModuleFactoryFunction(FunctionExpr factory) {
   forex (Parameter parm | parm = factory.getAParameter() |
-    parm.(SimpleParameter).getName().regexpMatch("require|module|exports|_dereq_")
+    parm.getName().regexpMatch("require|module|exports|_dereq_")
   )
 }
 
@@ -121,7 +121,7 @@ private predicate isBrowserifyDependencyMap(ObjectExpr deps) {
  */
 private predicate isWebpackModule(FunctionExpr m) {
   forex (Parameter parm | parm = m.getAParameter() |
-    exists (string name | name = parm.(SimpleParameter).getName() |
+    exists (string name | name = parm.getName() |
       name.regexpMatch("module|exports|.*webpack_require.*|.*webpack_module_template_argument.*")
     )
   )

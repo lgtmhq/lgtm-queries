@@ -37,7 +37,7 @@ class SpringLookupMethod extends SpringXMLElement {
   }
 
   /**
-   * The Java method referred to by the lookup-method element.
+   * Gets the Java method referred to by the lookup-method element.
    *
    * This always looks up the method using the declaring bean of the `<lookup-method>` element.
    * To find the Java method in a child bean, see `getMethod(SpringBean)`.
@@ -50,7 +50,7 @@ class SpringLookupMethod extends SpringXMLElement {
   }
 
   /**
-   * The Java method referred to by the `lookup-method` element, within a context.
+   * Gets the Java method referred to by the `lookup-method` element, within a context.
    * This method uses the "class" attribute of the context as the declaring
    * class of the Java method. The parameter context must be the same as or a
    * child bean of the declaring bean of this lookup-method.

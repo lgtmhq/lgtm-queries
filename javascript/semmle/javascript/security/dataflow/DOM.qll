@@ -58,7 +58,7 @@ private DataFlow::SourceNode domElementCreationOrQuery() {
 
 private DataFlow::SourceNode domValueSource() {
   result.asExpr().(VarAccess).getVariable() instanceof DOMGlobalVariable or
-  result = domValueSource().getAPropertyAccess(_) or
+  result = domValueSource().getAPropertyRead(_) or
   result = domElementCreationOrQuery() or
   result = domElementCollection()
 }
@@ -172,7 +172,7 @@ class WebStorageWrite extends Expr {
       webStorage = DataFlow::globalVarRef("localStorage") or
       webStorage = DataFlow::globalVarRef("sessionStorage") |
       // an assignment to `window.localStorage[someProp]`
-      webStorage.hasPropertyWrite(_, DataFlow::valueNode(this))
+      this = webStorage.getAPropertyWrite().getRhs().asExpr()
       or
       // an invocation of `window.localStorage.setItem`
       this = webStorage.getAMethodCall("setItem").getArgument(1).asExpr()

@@ -19,6 +19,7 @@
  * @problem.severity recommendation
  * @precision high
  * @id java/jdk-internal-api-access
+ * @tags maintainability
  */
 import java
 import JdkInternals

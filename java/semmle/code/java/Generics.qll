@@ -55,7 +55,7 @@ class GenericType extends RefType {
   GenericType() { typeVars(_,_,_,_,this) }
 
   /**
-   * A parameterization of this generic type, where each use of
+   * Gets a parameterization of this generic type, where each use of
    * a formal type parameter has been replaced by its argument.
    *
    * For example, `List<Number>` is a parameterization of
@@ -64,6 +64,8 @@ class GenericType extends RefType {
   ParameterizedType getAParameterizedType() { result.getErasure() = this }
 
   /**
+   * Gets the raw type corresponding to this generic type.
+   *
    * The raw version of this generic type is the type that is formed by
    * using the name of this generic type without specifying its type arguments.
    *
@@ -250,7 +252,7 @@ class Wildcard extends BoundedType, @wildcard {
   }
 
   /**
-   * The lower bound type for this wildcard,
+   * Gets the lower bound type for this wildcard,
    * if an explicit lower bound is present.
    */
   Type getLowerBoundType() {
@@ -279,7 +281,7 @@ class Wildcard extends BoundedType, @wildcard {
  */
 class TypeBound extends @typebound {
   /**
-   * The type variable that is bounded by this type bound.
+   * Gets the type variable that is bounded by this type bound.
    *
    * For example, `T` is the type variable bounded by the
    * type `Number` in `T extends Number`.
@@ -287,7 +289,7 @@ class TypeBound extends @typebound {
   BoundedType getBoundedType() { typeBounds(this,_,_,result) }
 
   /**
-   * The type of this bound.
+   * Gets the type of this bound.
    *
    * For example, `Number` is the type of the bound (of
    * the type variable `T`) in `T extends Number`.
@@ -295,7 +297,7 @@ class TypeBound extends @typebound {
   RefType getType() { typeBounds(this,result,_,_) }
 
   /**
-   * The (zero-indexed) position of this bound.
+   * Gets the (zero-indexed) position of this bound.
    *
    * For example, in
    *
@@ -334,14 +336,14 @@ class ParameterizedType extends RefType {
   override RefType getErasure() { erasure(this,result) or this.(GenericType) = result }
 
   /**
-   * The generic type corresponding to this parameterized type.
+   * Gets the generic type corresponding to this parameterized type.
    *
    * For example, the generic type for both `X<Number>` and `X<Integer>` is `X<T>`.
    */
   GenericType getGenericType() { result.getAParameterizedType() = this }
 
   /**
-   * A type argument for this parameterized type.
+   * Gets a type argument for this parameterized type.
    *
    * For example, `Number` in `List<Number>`.
    */

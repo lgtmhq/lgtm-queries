@@ -64,8 +64,7 @@ cached private module Cached {
   }
 
   /**
-   * Holds if `t` is a struct, class, union, template, or Objective-C class,
-   * protocol, or category.
+   * Holds if `t` is a struct, class, union, or template.
    */
   cached predicate isClass(@usertype t) {
     (usertypes(t,_,1) or usertypes(t,_,2) or usertypes(t,_,3) or usertypes(t,_,6)

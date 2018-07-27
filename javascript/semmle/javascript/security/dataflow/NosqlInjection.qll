@@ -58,7 +58,7 @@ module NosqlInjection {
       exists (NoSQL::Query query, DataFlow::SourceNode queryObj |
         queryObj.flowsToExpr(query) and
         queryObj.flowsTo(succ) and
-        queryObj.hasPropertyWrite(_, pred)
+        pred = queryObj.getAPropertyWrite().getRhs()
       )
     }
   }

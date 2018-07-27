@@ -62,3 +62,25 @@ predicate nanTest(EqualityOperation cmp) {
   | t instanceof FloatingPointType or
     t instanceof TemplateParameter)
 }
+
+/**
+ * Holds if `cmp` looks like a test to see whether a value would fit in a
+ * smaller type. The type may not be smaller on the platform where we the code
+ * was extracted, but it could be smaller on a different platform.
+ *
+ * For example, `cmp` might be `x == (long)x`. If `x` already has type `long`,
+ * and `long` does not come from a macro expansion that could be
+ * platform-dependent, then `cmp` is _not_ and overflow test.
+ */
+predicate overflowTest(EqualityOperation cmp) {
+  pointlessSelfComparison(cmp) and
+  exists(Cast cast |
+    cast = cmp.getAnOperand().getConversion+() and
+    not cast.isCompilerGenerated() and
+    (
+      cast.getType() != cast.getExpr().getType()
+      or
+      cast.isAffectedByMacro()
+    )
+  )
+}

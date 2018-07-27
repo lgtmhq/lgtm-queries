@@ -20,6 +20,8 @@
  * @problem.severity warning
  * @precision very-high
  * @id java/iterator-implements-iterable
+ * @tags correctness
+ *       reliability
  */
 import java
 import IterableClass

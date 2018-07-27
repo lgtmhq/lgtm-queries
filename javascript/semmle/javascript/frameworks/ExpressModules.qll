@@ -23,7 +23,7 @@ module ExpressLibraries {
   * Holds if `headerName` and `headerValue` corresponds to a default "X-Frame-Options" HTTP header.
   */
   private predicate xFrameOptionsDefaultImplicitHeaderDefinition(string headerName, string headerValue) {
-    headerName = "X-Frame-Options" and headerValue = "DENY"
+    headerName = "x-frame-options" and headerValue = "DENY"
   }
 
   /**

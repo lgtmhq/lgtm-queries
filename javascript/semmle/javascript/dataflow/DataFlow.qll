@@ -38,7 +38,10 @@ module DataFlow {
      TValueNode(AST::ValueNode nd)
   or TSsaDefNode(SsaDefinition d)
   or TPropNode(@property p)
-  or TRestPatternNode(ObjectPattern op, Expr rest) { rest = op.getRest() }
+  or TRestPatternNode(DestructuringPattern dp, Expr rest) { rest = dp.getRest() }
+  or TDestructuringPatternNode(DestructuringPattern dp)
+  or TElementPatternNode(ArrayPattern ap, Expr p) { p = ap.getElement(_) }
+  or TElementNode(ArrayExpr arr, Expr e) { e = arr.getAnElement() }
 
   /**
    * A node in the data flow graph.
@@ -120,7 +123,7 @@ module DataFlow {
     /**
      * Holds if this expression may refer to the initial value of parameter `p`.
      */
-    predicate mayReferToParameter(SimpleParameter p) {
+    predicate mayReferToParameter(Parameter p) {
       parameterNode(p).(SourceNode).flowsTo(this)
     }
 
@@ -168,8 +171,8 @@ module DataFlow {
   }
 
   /**
-   * An expression, property, or a function/class/namespace/enum declaration,
-   * viewed as a node in a data flow graph.
+   * An expression or a declaration of a function, class, namespace or enum,
+   * viewed as a node in the data flow graph.
    */
   class ValueNode extends Node, TValueNode {
     AST::ValueNode astNode;
@@ -260,10 +263,11 @@ module DataFlow {
   }
 
   /**
-   * A node in the data flow graph which corresponds to the rest pattern of an object pattern.
+   * A node in the data flow graph which corresponds to the rest pattern of a
+   * destructuring pattern.
    */
   private class RestPatternNode extends Node, TRestPatternNode {
-    ObjectPattern pattern;
+    DestructuringPattern pattern;
     Expr rest;
 
     RestPatternNode() { this = TRestPatternNode(pattern, rest) }
@@ -278,11 +282,100 @@ module DataFlow {
     }
 
     override string toString() {
-      result = rest.toString()
+      result = "..." + rest.toString()
     }
 
     override ASTNode getAstNode() {
       result = rest
+    }
+  }
+
+  /**
+   * A node in the data flow graph which corresponds to the value destructured by an
+   * object or array pattern.
+   */
+  private class DestructuringPatternNode extends Node, TDestructuringPatternNode {
+    DestructuringPattern pattern;
+
+    DestructuringPatternNode() { this = TDestructuringPatternNode(pattern) }
+
+    override BasicBlock getBasicBlock() {
+      result = pattern.getBasicBlock()
+    }
+
+    override predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                       int endline, int endcolumn) {
+      pattern.getLocation().hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
+    }
+
+    override string toString() {
+      result = pattern.toString()
+    }
+
+    override ASTNode getAstNode() {
+      result = pattern
+    }
+  }
+
+  /**
+   * A node in the data flow graph which corresponds to an element pattern of an
+   * array pattern.
+   */
+  private class ElementPatternNode extends Node, TElementPatternNode {
+    ArrayPattern pattern;
+    Expr elt;
+
+    ElementPatternNode() { this = TElementPatternNode(pattern, elt) }
+
+    override BasicBlock getBasicBlock() {
+      result = elt.getBasicBlock()
+    }
+
+    override predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                       int endline, int endcolumn) {
+      elt.getLocation().hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
+    }
+
+    override string toString() {
+      result = elt.toString()
+    }
+
+    override ASTNode getAstNode() {
+      result = elt
+    }
+  }
+
+  /**
+   * A node in the data flow graph which represents the (implicit) write of an element
+   * in an array expression to the underlying array.
+   *
+   * That is, for an array expression `["first", ,"third"]`, we have two array element nodes,
+   * one representing the write of expression `"first"` into the 0th element of the array,
+   * and one representing the write of `"third"` into its second element.
+   */
+  private class ElementNode extends Node, TElementNode {
+    ArrayExpr arr;
+    Expr elt;
+
+    ElementNode() {
+      this = TElementNode(arr, elt)
+    }
+
+    override BasicBlock getBasicBlock() {
+      result = elt.getBasicBlock()
+    }
+
+    override predicate hasLocationInfo(string filepath, int startline, int startcolumn,
+                                       int endline, int endcolumn) {
+      elt.getLocation().hasLocationInfo(filepath, startline, startcolumn, endline, endcolumn)
+    }
+
+    override string toString() {
+      result = elt.toString()
+    }
+
+    override ASTNode getAstNode() {
+      result = elt
     }
   }
 
@@ -512,21 +605,13 @@ module DataFlow {
   private class PropPatternAsPropRead extends PropRead, PropNode {
     override PropertyPattern prop;
 
-    /** Gets the object pattern to which this property pattern belongs. */
-    ObjectPattern getObjectPattern() {
-      result = prop.getObjectPattern()
-    }
-
     /** Gets the value pattern of this property pattern. */
     Expr getValuePattern() {
       result = prop.getValuePattern()
     }
 
     override Node getBase() {
-      exists (VarDef d |
-        d.getTarget() = prop.getObjectPattern() and
-        result = valueNode(d.getSource())
-      )
+      result = TDestructuringPatternNode(prop.getObjectPattern())
     }
 
     override Expr getPropertyNameExpr() {
@@ -540,19 +625,61 @@ module DataFlow {
 
   /**
    * A rest pattern viewed as a property read; for instance, in
-   * `var { ...ps } = o`, `ps` is a read of all properties of `o`.
+   * `var { ...ps } = o`, `ps` is a read of all properties of `o`, and similar
+   * for `[ ...elts ] = arr`.
    */
   private class RestPatternAsPropRead extends PropRead, RestPatternNode {
     override Node getBase() {
-      exists (VarDef d |
-        d.getTarget() = pattern and
-        result = valueNode(d.getSource())
-      )
+      result = TDestructuringPatternNode(pattern)
     }
 
     override Expr getPropertyNameExpr() { none() }
 
     override string getPropertyName() { none() }
+  }
+
+  /**
+   * An array element pattern viewed as a property read; for instance, in
+   * `var [ x, y ] = arr`, `x` is a read of property 0 of `arr` and similar
+   * for `y`.
+   *
+   * Note: We currently do not expose the array index as the property name,
+   * instead treating it as a read of an unknown property.
+   */
+  private class ElementPatternAsPropRead extends PropRead, ElementPatternNode {
+    override Node getBase() {
+      result = TDestructuringPatternNode(pattern)
+    }
+
+    override Expr getPropertyNameExpr() { none() }
+
+    override string getPropertyName() { none() }
+  }
+
+  /**
+   * An array element viewed as a property write; for instance, in
+   * `var arr = ["first", , "third"]`, `"first"` is a write of property 0 of `arr`
+   * and `"third"` is a write of property 2 of `arr`.
+   *
+   * Note: We currently do not expose the array index as the property name,
+   * instead treating it as a write of an unknown property.
+   */
+  private class ElementNodeAsPropWrite extends PropWrite, ElementNode {
+    override Expr getPropertyNameExpr() {
+      none()
+    }
+
+    override string getPropertyName() {
+      none()
+    }
+
+    override Node getRhs() {
+      result = valueNode(elt)
+    }
+
+    override Node getBase() {
+      result = valueNode(arr)
+    }
   }
 
   /**
@@ -569,8 +696,21 @@ module DataFlow {
   }
 
   /** Gets the node corresponding to the initialization of parameter `p`. */
-  ParameterNode parameterNode(SimpleParameter p) {
+  ParameterNode parameterNode(Parameter p) {
     result.getParameter() = p
+  }
+
+  /**
+   * INTERNAL: Use `parameterNode(Parameter)` instead.
+   */
+  predicate parameterNode(DataFlow::Node nd, Parameter p) {
+    exists (SsaExplicitDefinition ssa |
+      nd = ssaDefinitionNode(ssa) and
+      p = ssa.getDef() and
+      p instanceof SimpleParameter
+    )
+    or
+    nd = TDestructuringPatternNode(p)
   }
 
   /**
@@ -608,12 +748,11 @@ module DataFlow {
   }
 
   /**
-   * Holds if some call passes `arg` as the value of `parm`, which refers to `v`, and this
+   * Holds if some call passes `arg` as the value of `parm`, and this
    * call should be tracked by local data flow.
    */
-  private predicate localArgumentPassing(Expr arg, SimpleParameter parm, SsaSourceVariable v) {
-    any(ImmediatelyInvokedFunctionExpr iife).argumentPassing(parm, arg) and
-    parm.getVariable() = v
+  private predicate localArgumentPassing(Expr arg, Parameter parm) {
+    any(ImmediatelyInvokedFunctionExpr iife).argumentPassing(parm, arg)
   }
 
   /**
@@ -671,6 +810,20 @@ module DataFlow {
         localCall(succExpr, f)
       )
     )
+    or
+    exists (VarDef def |
+      // from `e` to `{ p: x }` in `{ p: x } = e`
+      pred = valueNode(defSourceNode(def)) and
+      succ = TDestructuringPatternNode(def.getTarget())
+    )
+  }
+
+  /**
+   * Gets the data flow node representing the source of definition `def`, taking
+   * flow through IIFE calls into account.
+   */
+  private AST::ValueNode defSourceNode(VarDef def) {
+    result = def.getSource() or localArgumentPassing(result, def)
   }
 
   /**
@@ -678,19 +831,19 @@ module DataFlow {
    * if any.
    */
   private Node defSourceNode(VarDef def, SsaSourceVariable v) {
-    // follow one step of the def-use chain if the lhs is a simple variable reference
-    result = TValueNode(def.getSource()) and
-    def.getTarget() = v.getAReference()
-    or
-    // handle simple destructuring assignments
-    exists (PropPatternAsPropRead pp |
-      pp.getObjectPattern() = def.getTarget() and
-      pp.getValuePattern() = v.getAReference() and
-      result = pp
+    exists (BindingPattern lhs, VarRef r |
+      lhs = def.getTarget() and r = lhs.getABindingVarRef() and r.getVariable() = v |
+      // follow one step of the def-use chain if the lhs is a simple variable reference
+      lhs = r and
+      result = TValueNode(defSourceNode(def))
+      or
+      // handle destructuring assignments
+      exists (PropertyPattern pp | r = pp.getValuePattern() |
+        result = TPropNode(pp)
+      )
+      or
+      result = TElementPatternNode(_, r)
     )
-    or
-    // handle IIFE argument passing
-    localArgumentPassing(result.asExpr(), def, v)
   }
 
   /**
@@ -753,7 +906,7 @@ module DataFlow {
    */
   private predicate defIsIncomplete(VarDef def, Incompleteness cause) {
     def instanceof Parameter and
-    not localArgumentPassing(_, def, _) and
+    not localArgumentPassing(_, def) and
     cause = "call"
     or
     def instanceof ImportSpecifier and

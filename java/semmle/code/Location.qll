@@ -71,7 +71,7 @@ class Top extends @top {
   }
 
   /**
-   * The total number of lines that this element ranges over,
+   * Gets the total number of lines that this element ranges over,
    * including lines of code, comment and whitespace-only lines.
    */
   int getTotalNumberOfLines() {
@@ -107,7 +107,7 @@ class Location extends @location {
   int getEndColumn() { locations_default(this,_,_,_,_,result) }
 
   /**
-   * The total number of lines that this location ranges over,
+   * Gets the total number of lines that this location ranges over,
    * including lines of code, comment and whitespace-only lines.
    */
   int getNumberOfLines() {

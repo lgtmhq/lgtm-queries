@@ -16,7 +16,7 @@ import semmle.code.cpp.Declaration
 import semmle.code.cpp.metrics.MetricFile
 
 /** A file or folder. */
-abstract class Container extends @container {
+abstract class Container extends Locatable, @container {
   /**
    * Gets the absolute, canonical path of this container, using forward slashes
    * as path separator.
@@ -254,7 +254,7 @@ class Folder extends Container, @folder {
  * The base name further decomposes into the _stem_ and _extension_ -- see
  * `getStem` and `getExtension`. To get the full path, use `getAbsolutePath`.
  */
-class File extends Container, @file, Locatable {
+class File extends Container, @file {
   override string getAbsolutePath() {
     files(this, result, _, _, _)
   }
@@ -278,14 +278,20 @@ class File extends Container, @file, Locatable {
     fileannotations(this,1,"compiled as c++","1")
   }
 
-  /** Holds if this file was compiled as Objective C (at any point). */
-  predicate compiledAsObjC() {
-    fileannotations(this,1,"compiled as obj c","1")
+  /**
+   * DEPRECATED: Objective-C is no longer supported.
+   * Holds if this file was compiled as Objective C (at any point).
+   */
+  deprecated predicate compiledAsObjC() {
+    none()
   }
 
-  /** Holds if this file was compiled as Objective C++ (at any point). */
-  predicate compiledAsObjCpp() {
-    fileannotations(this,1,"compiled as obj c++","1")
+  /**
+   * DEPRECATED: Objective-C is no longer supported.
+   * Holds if this file was compiled as Objective C++ (at any point).
+   */
+  deprecated predicate compiledAsObjCpp() {
+    none()
   }
 
   /** Holds if this file was compiled by a Microsoft compiler (at any point). */
@@ -475,35 +481,23 @@ class CppFile extends File {
 }
 
 /**
+ * DEPRECATED: Objective-C is no longer supported.
  * An Objective C source file, as determined by file extension.
  *
  * For the related notion of whether a file is compiled as Objective C
  * code, use `File.compiledAsObjC`.
  */
-class ObjCFile extends File {
-
-  ObjCFile() {
-    exists(string ext | ext = this.getExtension().toLowerCase() |
-      ext = "m" or ext = "mi"
-    )
-  }
-
+deprecated class ObjCFile extends File {
+  ObjCFile() { none() }
 }
 
 /**
+ * DEPRECATED: Objective-C is no longer supported.
  * An Objective C++ source file, as determined by file extension.
  *
  * For the related notion of whether a file is compiled as Objective C++
  * code, use `File.compiledAsObjCpp`.
  */
-class ObjCppFile extends File {
-
-  ObjCppFile() {
-    exists(string ext | ext = this.getExtension().toLowerCase() |
-      ext = "mm" or ext = "mii"
-      // Note: .M files are indistinguishable from .m files on some
-      // file systems, so we just treat them as ObjCFile's.
-    )
-  }
-
+deprecated class ObjCppFile extends File {
+  ObjCppFile() { none() }
 }

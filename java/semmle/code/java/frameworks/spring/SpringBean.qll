@@ -95,7 +95,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * The `autowire` value for the bean, taking any default values from the
+   * Gets the `autowire` value for the bean, taking any default values from the
    * enclosing `<beans>` element.
    */
   string getAutowire() {
@@ -143,7 +143,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * The `dependency-check` value for the bean, taking any default values declared
+   * Gets the `dependency-check` value for the bean, taking any default values declared
    * in the enclosing `<beans>` element.
    */
   string getDependencyCheck() {
@@ -178,7 +178,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * The `destroy-method` name of the bean, taking bean inheritance and `<beans>`
+   * Gets the `destroy-method` name of the bean, taking bean inheritance and `<beans>`
    * defaults into account.
    */
   string getDestroyMethodName() {
@@ -255,7 +255,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * The `init-method` name of the bean, taking bean inheritance and `<beans>`
+   * Gets the `init-method` name of the bean, taking bean inheritance and `<beans>`
    * defaults into account.
    */
   string getInitMethodName() {
@@ -380,7 +380,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * A `<constructor-arg>` element that applies to this bean
+   * Gets a `<constructor-arg>` element that applies to this bean
    * (including those inherited from the parent bean).
    */
   SpringConstructorArg getAConstructorArg() {
@@ -405,7 +405,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * A `<lookup-method>` element that applies to this bean
+   * Gets a `<lookup-method>` element that applies to this bean
    * (including those inherited from the parent bean).
    */
   SpringLookupMethod getALookupMethod() {
@@ -430,7 +430,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * A `<replaced-method>` element that applies to this bean
+   * Gets a `<replaced-method>` element that applies to this bean
    * (including those inherited from the parent bean).
    */
   SpringLookupMethod getAReplacedMethod() {
@@ -468,7 +468,7 @@ class SpringBean extends SpringXMLElement {
   }
 
   /**
-   * The qualifier value for this `SpringBean`, defaulting to
+   * Gets the qualifier value for this `SpringBean`, defaulting to
    * the bean identifier if no qualifier is specified.
    */
   string getQualifierValue() {

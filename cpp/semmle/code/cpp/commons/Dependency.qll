@@ -56,8 +56,8 @@ class DependsSource extends Element {
     not exists(Element other | isFromTemplateInstantiation(other)) or
 
     // allow DeclarationEntrys of template specializations
-    function_instantiation(this.(DeclarationEntry).getDeclaration(), _) or
-    class_instantiation(this.(DeclarationEntry).getDeclaration(), _)
+    this.(DeclarationEntry).getDeclaration().(Function).isConstructedFrom(_) or
+    this.(DeclarationEntry).getDeclaration().(Class).isConstructedFrom(_)
   }
 }
 
@@ -115,8 +115,8 @@ cached predicate getDeclarationEntries(Declaration decl, DeclarationEntry de)
 {
   (
     decl = de.getDeclaration() or
-    function_instantiation(decl, de.getDeclaration()) or
-    class_instantiation(decl, de.getDeclaration())
+    decl.(Function).isConstructedFrom(de.getDeclaration()) or
+    decl.(Class).isConstructedFrom(de.getDeclaration())
   ) and
   /*
    * ParameterDeclarationEntries are special, as (a) they can only be accessed
@@ -497,7 +497,7 @@ predicate dependency_outOfLineDeclaration(DeclarationEntry src, DeclarationEntry
     // also permit out of line declarations to jump from the declaration of a specialized
     // function to it's definition in the primary template.  Note that the specialization
     // in this case may be on a template class parameter.
-    function_instantiation(src.getDeclaration(), dest.getDeclaration())
+    src.getDeclaration().(Function).isConstructedFrom(dest.getDeclaration())
   ) and
   not dest.isDefinition()
 }

@@ -85,6 +85,36 @@ module FinalPointsTo {
             Calls::plain_method_call(func, context, call)
             or
             Calls::super_method_call(context, call, _, func)
+            or
+            class_method_call(_, _, func, context, call)
+        }
+
+        /** INTERNAL -- Use `ClassMethod.getACall()` instead */
+         cached 
+        pragma [noinline]
+        predicate class_method_call(Object cls_method, ControlFlowNode attr, FunctionObject func, FinalContext context, CallNode call) {
+            exists(ClassObject cls, string name |
+                attr = call.getFunction() and
+                Types::class_attribute_lookup(cls, name, cls_method, _, _) |
+                Calls::receiver_type_for(cls, name, attr, context)
+                or
+                points_to(attr.(AttrNode).getObject(name), context, cls, _, _)
+            ) and
+            class_method(cls_method, func)
+        }
+
+        /** INTERNAL -- Use `ClassMethod` instead */
+         cached 
+        predicate class_method(Object cls_method, FunctionObject method) {
+            decorator_call(cls_method, theClassMethodType(), method)
+        }
+
+        private predicate decorator_call(Object method, ClassObject decorator, FunctionObject func) {
+            exists(CallNode f, FinalContext imp |
+                method = f and imp.isImport() and
+                points_to(f.getFunction(), imp, decorator, _, _) and
+                points_to(f.getArg(0), imp, func, _, _)
+            )
         }
 
         /** INTERNAL -- Use `f.refersTo(value, cls, origin)` instead. */
@@ -596,7 +626,7 @@ module FinalPointsTo {
     pragma [noinline]
     private predicate class_or_module_attribute(Object obj, string name, Object value, ClassObject cls, ObjectOrCfg orig) {
         /* Normal class attributes */
-        Types::class_attribute_lookup(obj, name, value, cls, orig) and not cls = theStaticMethodType()
+        Types::class_attribute_lookup(obj, name, value, cls, orig) and not cls = theStaticMethodType() and not cls = theClassMethodType()
         or
         /* Static methods of the class */
         exists(CallNode sm | Types::class_attribute_lookup(obj, name, sm, theStaticMethodType(), _) and sm.getArg(0) = value and cls = thePyFunctionType() and orig = value)
@@ -1061,15 +1091,26 @@ module FinalPointsTo {
 
          /** Holds if call is to an object that always returns its first argument.
           * Typically, this is for known decorators and the like.
-          * The current implementation only accounts for instances of `zope.interface.declarations.implementer`.
+          * The current implementation only accounts for instances of `zope.interface.declarations.implementer` and
+          * calls to `functools.wraps(fn)`.
           */
-         private predicate annotation_call(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
-            exists(ClassObject implementer |
-                points_to(f.getArg(0), context, value, cls, origin) and
-                points_to(f.getFunction(), context, _, implementer, _) |
-                implementer.getName() = "implementer" and
-                implementer.getPyClass().getEnclosingModule().getName() = "zope.interface.declarations"
+        private predicate annotation_call(CallNode f, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+            points_to(f.getArg(0), context, value, cls, origin) and
+            (
+                points_to(f.getFunction(), context, _, zopeInterfaceImplementer(), _)
+                or
+                points_to(f.getFunction().(CallNode).getFunction(), context, functoolsWraps(), _, _)
             )
+         }
+
+         private ClassObject zopeInterfaceImplementer() {
+             result.getName() = "implementer" and
+             result.getPyClass().getEnclosingModule().getName() = "zope.interface.declarations"
+         }
+
+         private PyFunctionObject functoolsWraps() {
+             result.getName() = "wraps" and
+             result.getFunction().getEnclosingModule().getName() = "functools"
          }
 
          private predicate call_to_isinstance(CallNode f, FinalContext context, Object value) {
@@ -1306,7 +1347,10 @@ module FinalPointsTo {
                 |
                 succ_context.isRuntime() and succ_context = pred_context
                 or
-                pred_context.isImport() and pred_scope instanceof ImportTimeScope and succ_context.fromRuntime()
+                pred_context.isImport() and pred_scope instanceof ImportTimeScope and
+                (succ_context.fromRuntime() or
+                /* A call made at import time, but from another module. Assume this module has been fully imported. */
+                succ_context.isCall() and exists(CallNode call | succ_context.fromCall(call, _) and call.getEnclosingModule() != pred_scope))
                 or
                 /* If predecessor scope is main, then we assume that any global defined exactly once
                  * is available to all functions. Although not strictly true, this gives less surprising
@@ -1542,12 +1586,12 @@ module FinalPointsTo {
             self.isSelf() and
             exists(CallNode call, PyFunctionObject meth |
                 meth.getParameter(0) = self and
-                callee.fromCall(call, meth, caller) |
+                callee.fromCall(call, caller) |
                 Calls::plain_method_call(meth, caller, call) and
                 obj.getASourceUse() = call.getFunction().(AttrNode).getObject()
                 or
                 Calls::super_method_call(caller, call, obj, meth)
-            )
+             )
         }
 
         /** Points-to for self parameter: `def meth(self, ...): ...`. */
@@ -1572,6 +1616,30 @@ module FinalPointsTo {
             exists(EssaVariable obj, FinalContext caller |
                 ssa_variable_points_to(obj, caller, value, cls, origin) and
                 callsite_self_argument_transfer(obj, caller, def, context)
+            )
+            or
+            cls_parameter_points_to(def, context, value, cls, origin)
+        }
+
+        pragma [noinline]
+        private predicate cls_parameter_points_to(ParameterDefinition def, FinalContext context, Object value, ClassObject cls, ControlFlowNode origin) {
+            def.isSelf() and
+            exists(CallNode call, PyFunctionObject meth, Object obj, ClassObject objcls, FinalContext caller |
+                context.fromCall(call, caller) and
+                cls_method_object_points_to(call, caller, meth, obj, objcls, origin) and
+                def.getScope() = meth.getFunction()
+                |
+                obj instanceof ClassObject and value = obj and cls = objcls
+                or
+                not obj instanceof ClassObject and value = objcls and cls = Types::class_get_meta_class(objcls)
+             )
+        }
+
+        pragma [noinline]
+        private predicate cls_method_object_points_to(CallNode call, FinalContext context, PyFunctionObject meth, Object value, ClassObject cls, ControlFlowNode origin) {
+            exists(AttrNode attr |
+                class_method_call(_, attr, meth, context, call) and
+                points_to(attr.getObject(), context, value, cls, origin)
             )
         }
 
@@ -1625,6 +1693,15 @@ module FinalPointsTo {
                 def.getSourceVariable() instanceof LocalVariable and (context.isImport() or context.isRuntime() or context.isMain())
             ) and
             value = undefinedVariable() and cls = theUnknownType() and origin = def.getDefiningNode()
+            or
+            /* Builtin not defined in outer scope */
+            exists(Module mod, GlobalVariable var |
+                var = def.getSourceVariable() and
+                mod = def.getScope().getEnclosingModule() and
+                context.appliesToScope(def.getScope()) and
+                not exists(EssaVariable v | v.getSourceVariable() = var and v.getScope() = mod) and
+                builtin_name_points_to(var.getId(), value, cls) and origin = value
+            )
         }
 
         /** Points-to for a variable (possibly) redefined by a call:

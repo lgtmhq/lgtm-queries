@@ -34,4 +34,10 @@ where init.getDeclaration() = v
     exists (CrementOperation crement | crement.getAnOperand() = va)
   )
   and not va.isUnevaluated()
+  and not (
+    va.getParent() = init and
+    exists(MacroInvocation mi |
+      va = mi.getExpr()
+    )
+  )
 select va, v.getName() + " is used in its own initializer."

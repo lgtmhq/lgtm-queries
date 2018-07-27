@@ -59,7 +59,7 @@ class UserType extends Type, Declaration, NameQualifyingElement, AccessHolder, @
     if type_decls(_, unresolve(this), _) then
       type_decls(result, unresolve(this), _)
     else
-      exists(UserType t | class_instantiation(this, t) and result = t.getADeclarationEntry())
+      exists(Class t | this.(Class).isConstructedFrom(t) and result = t.getADeclarationEntry())
   }
 
   override Location getADeclarationLocation() {
@@ -76,7 +76,7 @@ class UserType extends Type, Declaration, NameQualifyingElement, AccessHolder, @
     if exists(getDefinition()) then
       result = getDefinition().getLocation()
     else
-      exists(UserType t | class_instantiation(this,t) and result = t.getDefinition().getLocation())
+      exists(Class t | this.(Class).isConstructedFrom(t) and result = t.getDefinition().getLocation())
   }
 
   /** Gets the function that directly encloses this type (if any). */

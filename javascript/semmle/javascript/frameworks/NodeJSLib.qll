@@ -236,9 +236,10 @@ module NodeJSLib {
     }
 
     override predicate definesExplicitly(string headerName, Expr headerValue) {
-      exists (DataFlow::SourceNode headers |
+      exists (DataFlow::SourceNode headers, string header |
         headers.flowsToExpr(astNode.getLastArgument()) and
-        headers.hasPropertyWrite(headerName, DataFlow::valueNode(headerValue))
+        headers.hasPropertyWrite(header, DataFlow::valueNode(headerValue)) and
+        headerName = header.toLowerCase()
       )
     }
   }
@@ -398,6 +399,19 @@ module NodeJSLib {
       // all of the above methods take the command as their first argument
       result = getArgument(0)
     }
+
+    override DataFlow::Node getArgumentList() {
+      (
+       methodName = "execFile" or
+       methodName = "execFileSync" or
+       methodName = "fork" or
+       methodName = "spawn" or
+       methodName = "spawnSync"
+      )
+      and
+      // all of the above methods take the argument list as their second argument
+      result = getArgument(1)
+    }
   }
 
   /**
@@ -415,8 +429,8 @@ module NodeJSLib {
         (response = "response" or response = "res") and
         // heuristic: parameter names match the Node.js documentation
         astNode.getNumParameter() = 2 and
-        astNode.getParameter(0).(SimpleParameter).getName() = request and
-        astNode.getParameter(1).(SimpleParameter).getName() = response |
+        astNode.getParameter(0).getName() = request and
+        astNode.getParameter(1).getName() = response |
         not (
           // heuristic: not a class method (Node.js invokes this with a function call)
           astNode = any(MethodDefinition def).getBody() or

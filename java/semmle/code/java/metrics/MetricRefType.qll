@@ -121,7 +121,7 @@ class MetricRefType extends RefType, MetricElement {
   }
 
   /**
-   * The Henderson-Sellers lack of cohesion metric.
+   * Gets the Henderson-Sellers lack of cohesion metric.
    *
    * The aim of this metric is to try to determine whether a class
    * represents one abstraction (good) or multiple abstractions (bad).
@@ -191,7 +191,7 @@ class MetricRefType extends RefType, MetricElement {
   }
 
   /**
-   * The Chidamber-Kemerer lack of cohesion metric.
+   * Gets the Chidamber-Kemerer lack of cohesion metric.
    *
    * The aim of this metric is to try and determine whether a class
    * represents one abstraction (good) or multiple abstractions (bad).
@@ -244,7 +244,7 @@ class MetricRefType extends RefType, MetricElement {
   }
 
   /**
-   * The depth of the inheritance tree.
+   * Gets the depth of the inheritance tree.
    *
    * This metric measures the maximum distance from `Object` in the type
    * hierarchy. It is sometimes considered that classes that are very
@@ -280,7 +280,7 @@ class MetricRefType extends RefType, MetricElement {
   }
 
   /**
-   * The response for a type.
+   * Gets the response for a type.
    *
    * This estimates the number of different callables that can be executed when
    * a callable is invoked on this type. In an ideal world, one would compute a

@@ -32,7 +32,7 @@ class SpringXMLElement extends XMLElement {
   }
 
   /**
-   * The value of the attribute with name `attributeName`, or "default" if the
+   * Gets the value of the attribute with name `attributeName`, or "default" if the
    * attribute is not present.
    */
   string getAttributeValueWithDefault(string attributeName) {

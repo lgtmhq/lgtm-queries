@@ -611,7 +611,10 @@ module Express {
     }
 
     override predicate definesExplicitly(string headerName, Expr headerValue) {
-      getAHeaderSource().hasPropertyWrite(headerName, DataFlow::valueNode(headerValue))      
+      exists (string header |
+        getAHeaderSource().hasPropertyWrite(header, DataFlow::valueNode(headerValue)) and
+        headerName = header.toLowerCase()
+      )
     }
 
     override RouteHandler getRouteHandler() {
@@ -674,10 +677,9 @@ module Express {
     RouteHandler rh;
 
     TemplateInput() {
-      exists (MethodCallExpr render, DataFlow::SourceNode locals |
-        render.calls(rh.getAResponseExpr(), "render") and
-        locals.flowsToExpr(render.getArgument(1)) and
-        locals.hasPropertyWrite(_, this.flow())
+      exists (DataFlow::MethodCallNode render |
+        render.calls(rh.getAResponseExpr().flow(), "render") and
+        this = render.getOptionArgument(1, _).asExpr()
       )
     }
 

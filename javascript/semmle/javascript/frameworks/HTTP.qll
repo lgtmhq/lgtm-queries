@@ -31,15 +31,20 @@ module HTTP {
 
   /**
    * An expression that sets HTTP response headers.
+   *
+   * Note that header names are case-insensitive, so this class
+   * always normalizes them to lower case: arguments representing
+   * header names are expected to be lower case, and similarly
+   * results representing header names are always lower case.
    */
   abstract class HeaderDefinition extends DataFlow::Node {
     /**
-     * Gets the name of a header set by this definition.
+     * Gets the (lower-case) name of a header set by this definition.
      */
     abstract string getAHeaderName();
 
     /**
-     * Holds if the header named `headerName` is set to `headerValue`.
+     * Holds if the header with (lower-case) name `headerName` is set to `headerValue`.
      */
     abstract predicate defines(string headerName, string headerValue);
 
@@ -77,7 +82,7 @@ module HTTP {
     }
 
     /**
-     * Holds if the header named `headerName` is set to the value of `headerValue`.
+     * Holds if the header with (lower-case) name `headerName` is set to the value of `headerValue`.
      */
     abstract predicate definesExplicitly(string headerName, Expr headerValue);
     
@@ -181,11 +186,11 @@ module HTTP {
 
     SetCookieHeader() {
       this = header.asExpr() and
-      header.getAHeaderName() = "Set-Cookie"
+      header.getAHeaderName() = "set-cookie"
     }
 
     override Expr getHeaderArgument() {
-      header.(ExplicitHeaderDefinition).definesExplicitly("Set-Cookie", result)
+      header.(ExplicitHeaderDefinition).definesExplicitly("set-cookie", result)
     }
 
     override RouteHandler getRouteHandler() {
@@ -209,6 +214,9 @@ module HTTP {
   abstract class RouteHandler extends DataFlow::Node {
     /**
      * Gets a header this handler sets.
+     *
+     * Note that header names are case-insensitive; this predicate always converts
+     * header names to lower case.
      */
     abstract HeaderDefinition getAResponseHeader(string name);
 
@@ -349,7 +357,7 @@ module HTTP {
       override MethodCallExpr astNode;
 
       override predicate definesExplicitly(string headerName, Expr headerValue) {
-        headerName = getNameExpr().(ConstantString).getStringValue() and
+        headerName = getNameExpr().getStringValue().toLowerCase() and
         headerValue = astNode.getArgument(1)
       }
       

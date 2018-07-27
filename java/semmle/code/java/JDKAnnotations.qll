@@ -51,7 +51,7 @@ class TargetAnnotation extends Annotation {
   }
 
   /**
-   * A target expression within this annotation.
+   * Gets a target expression within this annotation.
    *
    * For example, the field access `ElementType.FIELD` is a target expression in
    * `@Target({ElementType.FIELD, ElementType.METHOD})`.
@@ -63,7 +63,7 @@ class TargetAnnotation extends Annotation {
   }
 
   /**
-   * The name of a target element type.
+   * Gets the name of a target element type.
    *
    * For example, `METHOD` is the name of a target element type in
    * `@Target({ElementType.FIELD, ElementType.METHOD})`.
@@ -83,7 +83,7 @@ class RetentionAnnotation extends Annotation {
   }
 
   /**
-   * The retention policy expression within this annotation.
+   * Gets the retention policy expression within this annotation.
    *
    * For example, the field access `RetentionPolicy.RUNTIME` is the
    * retention policy expression in `@Retention(RetentionPolicy.RUNTIME)`.
@@ -93,7 +93,7 @@ class RetentionAnnotation extends Annotation {
   }
 
   /**
-   * The name of the retention policy of this annotation.
+   * Gets the name of the retention policy of this annotation.
    *
    * For example, `RUNTIME` is the name of the retention policy
    * in `@Retention(RetentionPolicy.RUNTIME)`.

@@ -73,7 +73,7 @@ class SpringConstructorArg extends SpringXMLElement {
   }
 
   /**
-   * The value of the `value` attribute.
+   * Gets the value of the `value` attribute.
    *
    * Note that this does not take into consideration any
    * nested `<value>` elements. (See also `getArgValue()`.)
@@ -83,7 +83,7 @@ class SpringConstructorArg extends SpringXMLElement {
   }
 
   /**
-   * The value of the `value` attribute, or the content of a child `<value>`
+   * Gets the value of the `value` attribute, or the content of a child `<value>`
    * element, whichever is present.
    */
   string getArgValue() {

@@ -239,7 +239,7 @@ class Dependency extends ProtoPom {
   Dependency() {this.getName()="dependency" }
 
   /**
-   * An XML element with the same Maven short coordinate
+   * Gets an XML element with the same Maven short coordinate
    * (of the form `groupId:artifactId`) as this element.
    */
   Pom getPom() {

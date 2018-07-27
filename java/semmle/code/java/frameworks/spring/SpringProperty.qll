@@ -64,7 +64,7 @@ class SpringProperty extends SpringXMLElement {
   }
 
   /**
-   * The value of the `value` attribute, or a nested `<value>` element,
+   * Gets the value of the `value` attribute, or a nested `<value>` element,
    * whichever is present.
    */
   string getPropertyValue() {

@@ -188,14 +188,20 @@ class Expr extends StmtParent, @expr {
    * `hasLValueToRvalueConversion()` holds.
    */
   string getValueCategoryString() {
-    if isLValueCategory() then
+  	(
+      isLValueCategory() and
       result = "lvalue"
-    else if isXValueCategory() then
+    ) or (
+      isXValueCategory() and
       result = "xvalue"
-    else if hasLValueToRValueConversion() then
-      result = "prvalue(load)"
-    else
-      result = "prvalue"
+    ) or (
+      isPRValueCategory() and
+      if hasLValueToRValueConversion() then
+        result = "prvalue(load)"
+      else
+        result = "prvalue"
+        
+    )
   }
 
   /**

@@ -306,6 +306,8 @@ class VarRef extends @varref, Identifier, BindingPattern, LexicalRef {
   /** Gets the variable this identifier refers to. */
   Variable getVariable() { none() } // Overriden in VarAccess and VarDecl
 
+  override string getName() { result = Identifier.super.getName() }
+
   override VarRef getABindingVarRef() { result = this }
 
   override predicate isImpure() { none() }
@@ -411,6 +413,9 @@ class GlobalVarAccess extends VarAccess {
  * the ECMAScript standard for more details.
  */
 class BindingPattern extends @pattern, Expr {
+  /** Gets the name of this binding pattern if it is an identifier. */
+  string getName() { none() }
+
   /** Gets a variable reference in binding position within this pattern. */
   VarRef getABindingVarRef() { none() }
 
@@ -441,6 +446,8 @@ class BindingPattern extends @pattern, Expr {
 
 /** A destructuring pattern, that is, either an array pattern or an object pattern. */
 abstract class DestructuringPattern extends BindingPattern {
+  /** Gets the rest pattern of this destructuring pattern, if any. */
+  abstract Expr getRest();
 }
 
 /** An identifier that declares a variable. */
@@ -490,7 +497,7 @@ class ArrayPattern extends DestructuringPattern, @arraypattern {
   }
 
   /** Gets the rest pattern of this array pattern, if any. */
-  Expr getRest() {
+  override Expr getRest() {
     result = getChildExpr(-1)
   }
 
@@ -548,7 +555,7 @@ class ObjectPattern extends DestructuringPattern, @objectpattern {
   }
 
   /** Gets the rest property pattern of this object pattern, if any. */
-  Expr getRest() {
+  override Expr getRest() {
     result = getChildExpr(-1)
   }
 

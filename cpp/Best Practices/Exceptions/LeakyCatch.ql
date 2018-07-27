@@ -58,5 +58,4 @@ where cb.getParameter().getType().getUnderlyingType() instanceof PointerType
 and not exists(Expr e | e.getEnclosingBlock().getParent*() = cb |
   deletesException(e, cb.getParameter())
 )
-and not is_objc_try_stmt(cb.getTryStmt())
 select cb, "This catch block does not free the caught exception, thereby leaking memory."

@@ -19,14 +19,17 @@
 
 import javascript
 
-/** A data flow node corresponding to a (non-destructuring) parameter. */
-class ParameterNode extends DataFlow::SsaDefinitionNode, DataFlow::DefaultSourceNode {
-  override SsaExplicitDefinition ssa;
-  SimpleParameter p;
+/** A data flow node corresponding to a parameter. */
+class ParameterNode extends DataFlow::DefaultSourceNode {
+  Parameter p;
 
-  ParameterNode() { p = ssa.getDef() }
+  ParameterNode() { DataFlow::parameterNode(this, p) }
 
-  SimpleParameter getParameter() { result = p }
+  /** Gets the parameter to which this data flow node corresponds. */
+  Parameter getParameter() { result = p }
+
+  /** Gets the name of this parameter. */
+  string getName() { result = p.getName() }
 }
 
 /** A data flow node corresponding to a function invocation (with or without `new`). */
@@ -154,8 +157,18 @@ class FunctionNode extends DataFlow::ValueNode, DataFlow::DefaultSourceNode {
     result = DataFlow::parameterNode(astNode.getParameter(i))
   }
 
+  /** Gets a parameter of this function. */
+  ParameterNode getAParameter() {
+    result = getParameter(_)
+  }
+
   /** Gets the name of this function, if it has one. */
   string getName() { result = astNode.getName() }
+
+  /** Gets a data flow node corresponding to a return value of this function. */
+  DataFlow::Node getAReturn() {
+    result = astNode.getAReturnedExpr().flow()
+  }
 
   /**
    * Gets the function this node corresponds to.
@@ -253,7 +266,7 @@ ModuleImportNode moduleImport(string path) {
  * namespace import from `path`.
  */
 DataFlow::SourceNode moduleMember(string path, string m) {
-  result = moduleImport(path).getAPropertyAccess(m)
+  result = moduleImport(path).getAPropertyRead(m)
   or
   exists (ImportDeclaration id, ImportSpecifier is, SsaExplicitDefinition ssa |
     id.getImportedPath().getValue() = path and

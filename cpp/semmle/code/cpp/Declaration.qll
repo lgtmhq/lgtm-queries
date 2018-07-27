@@ -321,63 +321,11 @@ abstract class AccessHolder extends Declaration {
     // care to avoid a combinatorial explosion.
     isDirectPublicBaseOf*(base, derived)
     or
-    // Derivations using (4.2) or (4.3) at least once.
-    this.thisCanAccessClassTrans(base, derived)
-  }
-
-  /**
-   * Holds if a base class `base` of `derived` _is accessible at_ `this` when
-   * the derivation of that fact uses rule (4.2) and (4.3) of N4140 11.2/4 at
-   * least once. In other words, the `this` parameter is not ignored. This
-   * restriction makes it feasible to fully enumerate this predicate even on
-   * large code bases.
-   */
-  private predicate thisCanAccessClassTrans(Class base, Class derived) {
-    // This implementation relies on the following property of our predicates:
-    // if `this.thisCanAccessClassStep(b, d)` and
-    // `isDirectPublicBaseOf(b2, b)`, then
-    // `this.thisCanAccessClassStep(b2, d)`. In other words, if a derivation
-    // uses (4.2) or (4.3) somewhere and uses (4.1) directly above that in the
-    // transitive chain, then the use of (4.1) is redundant. This means we only
-    // need to consider derivations that use (4.2) or (4.3) as the "first"
-    // step, that is, towards `base`, so this implementation is essentially a
-    // transitive closure with a restricted base case.
-    this.thisCanAccessClassStep(base, derived)
-    or
-    exists(Class between | thisCanAccessClassTrans(base, between) |
-      isDirectPublicBaseOf(between, derived) or
-      this.thisCanAccessClassStep(between, derived)
+    exists(DirectAccessHolder n |
+      this.getEnclosingAccessHolder*() = n and
+      // Derivations using (4.2) or (4.3) at least once.
+      n.thisCanAccessClassTrans(base, derived)
     )
-
-    // It is possible that this predicate could be computed faster for deep
-    // hierarchies if we can prove and exploit that all derivations of 11.2/4
-    // can be broken down into steps where `base` is a _direct_ base of
-    // `derived` in each step.
-  }
-
-  /**
-   * Holds if a base class `base` of `derived` _is accessible at_ `this` using
-   * only a single application of rule (4.2) and (4.3) of N4140 11.2/4.
-   */
-  private predicate thisCanAccessClassStep(Class base, Class derived) {
-    exists(AccessSpecifier public | public.hasName("public") |
-      // Rules (4.2) and (4.3) are implemented together as one here with
-      // reflexive-transitive inheritance, where (4.3) is the transitive case,
-      // and (4.2) is the reflexive case.
-      exists(Class p | p = derived.getADerivedClass*() |
-        this.inMemberOrFriendOf(p) and
-        // Note: it's crucial that this is `!=` rather than `not =` since
-        // accessOfBaseMember does not have a result when the member would be
-        // inaccessible.
-        p.accessOfBaseMember(base, public) != public
-      )
-    ) and
-    // This is the only case that doesn't in itself guarantee that
-    // `derived` < `base`, so we add the check here. The standard suggests
-    // computing `canAccessClass` only for derived classes, but that seems
-    // incompatible with the execution model of QL, so we instead construct
-    // every case to guarantee `derived` < `base`.
-    derived = base.getADerivedClass+()
   }
 
   /**
@@ -443,8 +391,84 @@ abstract class AccessHolder extends Declaration {
     // take care to avoid a combinatorial explosion.
     everyoneCouldAccessMember(memberClass, memberAccess, derived)
     or
-    // Any other derivation.
-    this.thisCouldAccessMember(memberClass, memberAccess, derived)
+    exists(DirectAccessHolder n |
+      this.getEnclosingAccessHolder*() = n and
+      // Any other derivation.
+      n.thisCouldAccessMember(memberClass, memberAccess, derived)
+    )
+  }
+}
+
+/**
+ * A declaration that very likely has more C++ access rights than its
+ * enclosing element. This comprises `Class` (they have access to their own
+ * private members) along with any target of a `friend` declaration.
+ *
+ * Most access rights are computed for `DirectAccessHolder` instead of
+ * `AccessHolder` -- that's more efficient because there are fewer
+ * `DirectAccessHolder`s. If a `DirectAccessHolder` contains an `AccessHolder`,
+ * then the contained `AccessHolder` inherits its access rights.
+ */
+private class DirectAccessHolder extends @declaration {
+  DirectAccessHolder() {
+    this instanceof Class
+    or
+    exists(FriendDecl fd | fd.getFriend() = this)
+  }
+
+  /**
+   * Holds if a base class `base` of `derived` _is accessible at_ `this` when
+   * the derivation of that fact uses rule (4.2) and (4.3) of N4140 11.2/4 at
+   * least once. In other words, the `this` parameter is not ignored. This
+   * restriction makes it feasible to fully enumerate this predicate even on
+   * large code bases.
+   */
+  predicate thisCanAccessClassTrans(Class base, Class derived) {
+    // This implementation relies on the following property of our predicates:
+    // if `this.thisCanAccessClassStep(b, d)` and
+    // `isDirectPublicBaseOf(b2, b)`, then
+    // `this.thisCanAccessClassStep(b2, d)`. In other words, if a derivation
+    // uses (4.2) or (4.3) somewhere and uses (4.1) directly above that in the
+    // transitive chain, then the use of (4.1) is redundant. This means we only
+    // need to consider derivations that use (4.2) or (4.3) as the "first"
+    // step, that is, towards `base`, so this implementation is essentially a
+    // transitive closure with a restricted base case.
+    this.thisCanAccessClassStep(base, derived)
+    or
+    exists(Class between | thisCanAccessClassTrans(base, between) |
+      isDirectPublicBaseOf(between, derived) or
+      this.thisCanAccessClassStep(between, derived)
+    )
+
+    // It is possible that this predicate could be computed faster for deep
+    // hierarchies if we can prove and utilize that all derivations of 11.2/4
+    // can be broken down into steps where `base` is a _direct_ base of
+    // `derived` in each step.
+  }
+
+  /**
+   * Holds if a base class `base` of `derived` _is accessible at_ `this` using
+   * only a single application of rule (4.2) and (4.3) of N4140 11.2/4.
+   */
+  private predicate thisCanAccessClassStep(Class base, Class derived) {
+    exists(AccessSpecifier public | public.hasName("public") |
+      // Rules (4.2) and (4.3) are implemented together as one here with
+      // reflexive-transitive inheritance, where (4.3) is the transitive case,
+      // and (4.2) is the reflexive case.
+      exists(Class p | p = derived.getADerivedClass*() |
+        this.isFriendOfOrEqualTo(p) and
+        // Note: it's crucial that this is `!=` rather than `not =` since
+        // accessOfBaseMember does not have a result when the member would be
+        // inaccessible.
+        p.accessOfBaseMember(base, public) != public
+      )
+    ) and
+    // This is the only case that doesn't in itself guarantee that
+    // `derived` < `base`, so we add the check here. The standard suggests
+    // computing `canAccessClass` only for derived classes, but that seems
+    // incompatible with the execution model of QL, so we instead construct
+    // every case to guarantee `derived` < `base`.
+    derived = base.getADerivedClass+()
   }
 
   /**
@@ -455,9 +479,9 @@ abstract class AccessHolder extends Declaration {
    * part of (5.3), since this further limits the number of tuples produced by
    * this predicate.
    */
-  private predicate thisCouldAccessMember(Class memberClass,
-                                          AccessSpecifier memberAccess,
-                                          Class derived)
+  predicate thisCouldAccessMember(Class memberClass,
+                                  AccessSpecifier memberAccess,
+                                  Class derived)
   {
     // Only (5.4) is recursive, and chains of invocations of (5.4) can always
     // be collapsed to one invocation by the transitivity of 11.2/4.
@@ -475,10 +499,10 @@ abstract class AccessHolder extends Declaration {
     )
     or
     // Rule (5.4) followed by Rule (5.2)
-    exists(Class between | this.canAccessClass(between, derived) |
+    exists(Class between | this.(AccessHolder).canAccessClass(between, derived) |
         between.accessOfBaseMember(memberClass, memberAccess)
                .hasName("private") and
-        this.inMemberOrFriendOf(between)
+        this.isFriendOfOrEqualTo(between)
     )
     or
     // Rule (5.4) followed by Rule (5.3), integrating 11.4. We integrate 11.4
@@ -488,11 +512,11 @@ abstract class AccessHolder extends Declaration {
 
     // Rule (5.4) requires that `this.canAccessClass(between, derived)`
     // (implying that `derived <= between` in the class hierarchy) and that
-    // `p <= between`. Rule 11.4 additionally requires `derived <= p`, but just
-    // requiring that directly will trigger an optimizer bug (CORE-154).
-    // Instead, we split into three cases for how `between` as a base of
-    // `derived` is accessible at `this`, where `this` is the implementation of
-    // `p`:
+    // `p <= between`. Rule 11.4 additionally requires `derived <= p`, but
+    // all these rules together result in too much freedom and overlap between
+    // cases. Therefore, for performance, we split into three cases for how
+    // `between` as a base of `derived` is accessible at `this`, where `this`
+    // is the implementation of `p`:
     // 1. `between` is an accessible base of `derived` by going through `p` as
     //    an intermediate step.
     // 2. `this` is part of the implementation of `derived` because it's a
@@ -504,7 +528,7 @@ abstract class AccessHolder extends Declaration {
       exists(Class between, Class p |
         between.accessOfBaseMember(memberClass, memberAccess)
                .hasName("protected") and
-        this.inMemberOrFriendOf(p) and
+        this.isFriendOfOrEqualTo(p) and
         (
           // This is case 1 from above. If `p` derives privately from `between`
           // then the member we're trying to access is private or inaccessible
@@ -517,7 +541,7 @@ abstract class AccessHolder extends Declaration {
           // implementation of a base class can access itself as a base.
           p.accessOfBaseMember(between, public).getName() >= "protected" and
           derived.accessOfBaseMember(p, public) = public
-        or
+          or
           // This is case 3 above.
           derived.accessOfBaseMember(between, public) = public and
           derived = p.getADerivedClass*() and
@@ -527,6 +551,13 @@ abstract class AccessHolder extends Declaration {
     )
   }
 
+  private predicate isFriendOfOrEqualTo(Class c) {
+    exists(FriendDecl fd | fd.getDeclaringClass() = c | this = fd.getFriend())
+    or
+    this = c
+  }
+
+  string toString() { result = this.(Declaration).toString() }
 }
 
 /**

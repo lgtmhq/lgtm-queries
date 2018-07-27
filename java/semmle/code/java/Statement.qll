@@ -26,7 +26,7 @@ class Stmt extends StmtParent, ExprParent, @stmt {
   string pp() { result = "stmt" }
 
   /**
-   * The immediately enclosing callable (method or constructor)
+   * Gets the immediately enclosing callable (method or constructor)
    * whose body contains this statement.
    */
   Callable getEnclosingCallable() { stmts(this,_,_,_,result) }
@@ -103,7 +103,7 @@ abstract class ConditionalStmt extends Stmt {
   abstract Expr getCondition();
 
   /**
-   * The statement that is executed whenever the condition
+   * Gets the statement that is executed whenever the condition
    * of this branch statement evaluates to `true`.
    *
    * DEPRECATED: use `ConditionNode.getATrueSuccessor()` instead.
@@ -120,7 +120,7 @@ class IfStmt extends ConditionalStmt,@ifstmt {
   Stmt getThen() { result.isNthChildOf(this, 1) }
 
   /**
-   * The statement that is executed whenever the condition
+   * Gets the statement that is executed whenever the condition
    * of this branch statement evaluates to `true`.
    */
   override Stmt getTrueSuccessor() { result = getThen() }
@@ -142,7 +142,7 @@ class IfStmt extends ConditionalStmt,@ifstmt {
 /** A `for` loop. */
 class ForStmt extends ConditionalStmt,@forstmt {
   /**
-   * An initializer expression of the loop.
+   * Gets an initializer expression of the loop.
    *
    * This may be an assignment expression or a
    * local variable declaration expression.
@@ -175,13 +175,13 @@ class ForStmt extends ConditionalStmt,@forstmt {
   Stmt getStmt() { result.getParent() = this and result.getIndex() = 2 }
 
   /**
-   * The statement that is executed whenever the condition
+   * Gets the statement that is executed whenever the condition
    * of this branch statement evaluates to true.
    */
   override Stmt getTrueSuccessor() { result = getStmt() }
 
   /**
-   * A variable that is used as an iteration variable: it is defined,
+   * Gets a variable that is used as an iteration variable: it is defined,
    * updated or tested in the head of the `for` statement.
    *
    * This only returns variables that are quite certainly loop variables;
@@ -239,7 +239,7 @@ class WhileStmt extends ConditionalStmt,@whilestmt {
   Stmt getStmt() { result.getParent() = this }
 
   /**
-   * The statement that is executed whenever the condition
+   * Gets the statement that is executed whenever the condition
    * of this branch statement evaluates to true.
    */
   override Stmt getTrueSuccessor() { result = getStmt() }
@@ -262,7 +262,7 @@ class DoStmt extends ConditionalStmt,@dostmt {
   Stmt getStmt() { result.getParent() = this }
 
   /**
-   * The statement that is executed whenever the condition
+   * Gets the statement that is executed whenever the condition
    * of this branch statement evaluates to `true`.
    */
   override Stmt getTrueSuccessor() { result = getStmt() }
@@ -313,7 +313,7 @@ class TryStmt extends Stmt,@trystmt {
   CatchClause getACatchClause() { result.getParent() = this }
 
   /**
-   * The `catch` clause at the specified (zero-based) position
+   * Gets the `catch` clause at the specified (zero-based) position
    * in this `try` statement.
    */
   CatchClause getCatchClause(int index) {
@@ -410,13 +410,13 @@ class SwitchStmt extends Stmt,@switchstmt {
   Stmt getAStmt() { result.getParent() = this }
 
   /**
-   * The immediate child statement of this `switch` statement
+   * Gets the immediate child statement of this `switch` statement
    * that occurs at the specified (zero-based) position.
    */
   Stmt getStmt(int index) { result = this.getAStmt() and result.getIndex() = index }
 
   /**
-   * A case of this `switch` statement,
+   * Gets a case of this `switch` statement,
    * which may be either a normal `case` or a `default`.
    */
   Stmt getACase() { result = getAConstCase() or result = getDefaultCase() }
@@ -524,7 +524,7 @@ class ThrowStmt extends Stmt,@throwstmt {
   RefType getThrownExceptionType() { result = getExpr().getType() }
 
   /**
-   * The `catch` clause that catches the exception
+   * Gets the `catch` clause that catches the exception
    * thrown by this `throws` statement and occurs
    * in the same method as this `throws` statement,
    * provided such a `catch` exists.
@@ -558,7 +558,7 @@ class JumpStmt extends Stmt {
   }
 
   /**
-   * The labeled statement that this `break` or
+   * Gets the labeled statement that this `break` or
    * `continue` statement refers to, if any.
    */
   LabeledStmt getTargetLabel() {

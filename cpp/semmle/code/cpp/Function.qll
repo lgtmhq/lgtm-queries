@@ -199,7 +199,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
     if fun_decls(_,this,_,_,_) then
       declEntry(result)
     else
-      exists(Function f | function_instantiation(this,f) and fun_decls(result,f,_,_,_))
+      exists(Function f | this.isConstructedFrom(f) and fun_decls(result,f,_,_,_))
   }
 
   private predicate declEntry(FunctionDeclarationEntry fde) {
@@ -239,7 +239,7 @@ class Function extends Declaration, ControlFlowNode, AccessHolder, @function {
     if exists(getDefinition()) then
       result = getDefinition().getLocation()
     else
-      exists(Function f | function_instantiation(this,f) and result = f.getDefinition().getLocation())
+      exists(Function f | this.isConstructedFrom(f) and result = f.getDefinition().getLocation())
   }
 
   /**
@@ -838,7 +838,7 @@ class Constructor extends MemberFunction {
    * to be evaluated.
    */
   ConstructorInit getInitializer(int i) {
-    exists(@ctorinit ci | result = ci and exprparents(ci, i, this))
+    exprparents(result, i, this)
   }
 }
 
@@ -1005,7 +1005,7 @@ class Destructor extends MemberFunction {
    * be evaluated.
    */
   DestructorDestruction getDestruction(int i) {
-    exists(@dtordestruct dd | result = dd and exprparents(dd, i, this))
+    exprparents(result, i, this)
   }
 }
 
@@ -1093,7 +1093,7 @@ class TemplateFunction extends Function {
    * Gets a compiler-generated instantiation of this function template.
    */
   Function getAnInstantiation() {
-    function_instantiation(result, this)
+    result.isConstructedFrom(this)
     and not result.isSpecialization()
   }
 
@@ -1150,7 +1150,7 @@ class FunctionTemplateSpecialization extends Function {
    * this specializes).
    */
   TemplateFunction getPrimaryTemplate() {
-    function_instantiation(this, result)
+    this.isConstructedFrom(result)
   }
 }
 

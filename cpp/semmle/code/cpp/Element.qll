@@ -229,13 +229,13 @@ class Element extends @element {
 }
 
 private predicate isFromTemplateInstantiationRec(Element e, Element instantiation) {
-  function_instantiation(instantiation, _) and
+  instantiation.(Function).isConstructedFrom(_) and
   e = instantiation
   or
-  class_instantiation(instantiation, _) and
+  instantiation.(Class).isConstructedFrom(_) and
   e = instantiation
   or
-  variable_instantiation(instantiation, _) and
+  instantiation.(Variable).isConstructedFrom(_) and
   e = instantiation
   or
   isFromTemplateInstantiationRec(e.getEnclosingElement(), instantiation) and

@@ -192,7 +192,8 @@ module TaintTracking {
   private class HeapTaintStep extends AdditionalTaintStep {
     HeapTaintStep() {
       this = DataFlow::valueNode(_) or
-      this = DataFlow::parameterNode(_)
+      this = DataFlow::parameterNode(_) or
+      this instanceof DataFlow::PropRead
     }
 
     override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
@@ -204,9 +205,6 @@ module TaintTracking {
           exists (Property prop | e.(ObjectExpr).getAProperty() = prop |
             prop.isComputed() and f = prop.getNameExpr()
           )
-          or
-          // reading from a tainted object yields a tainted result
-          e.(PropAccess).getBase() = f
           or
           // awaiting a tainted expression gives a tainted result
           e.(AwaitExpr).getOperand() = f
@@ -223,6 +221,10 @@ module TaintTracking {
           pred.asExpr() = m.getReceiver()
         )
       )
+      or
+      // reading from a tainted object yields a tainted result
+      this = succ and
+      succ.(DataFlow::PropRead).getBase() = pred
       or
       // iterating over a tainted iterator taints the loop variable
       exists (EnhancedForLoop efl, SsaExplicitDefinition ssa |
@@ -423,21 +425,6 @@ module TaintTracking {
 
     override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
       pred = getArgument(0) and succ = this
-    }
-  }
-
-  /**
-   * A taint-propagating data flow edge arising from a destructuring assignment.
-   */
-  private class DestructuringAssignTaintStep extends AdditionalTaintStep, DataFlow::SsaDefinitionNode {
-    override SsaExplicitDefinition ssa;
-
-    DestructuringAssignTaintStep() {
-      ssa.getDef().getTarget() instanceof DestructuringPattern
-    }
-
-    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
-      pred = DataFlow::valueNode(ssa.getDef().getSource()) and succ = this
     }
   }
 

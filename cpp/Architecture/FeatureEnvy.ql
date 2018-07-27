@@ -36,16 +36,10 @@ predicate functionUsesFunction(Function source, Function f, File target) {
   f.getFile() = target
 }
 
-predicate functionSendsMessage(Function source, MemberFunction f, File target) {
-  exists(MessageExpr me | me.getEnclosingFunction() = source and me.getStaticTarget() = f) and
-  f.getFile() = target
-}
-
 predicate dependencyCount(Function source, File target, int res) {
   res = strictcount(Declaration d |
     functionUsesVariable(source, d, target) or
-    functionUsesFunction(source, d, target) or
-    functionSendsMessage(source, d, target)
+    functionUsesFunction(source, d, target)
   )
 }
 

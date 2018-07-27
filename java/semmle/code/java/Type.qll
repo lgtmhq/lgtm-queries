@@ -291,21 +291,21 @@ class Type extends Element, @type {
  */
 class Array extends RefType, @array {
   /**
-   * The component type of an array type is the type of its components.
+   * Gets the type of the components of this array type.
    *
    * For example, the component type of `Object[][]` is `Object[]`.
    */
   Type getComponentType() { arrays(this, _, _, _, result) }
 
   /**
-   * The element type of an array type is the base type used to construct the array.
+   * Gets the type of the elements used to construct this array type.
    *
    * For example, the element type of `Object[][]` is `Object`.
    */
   Type getElementType() { arrays(this, _, result, _, _) }
 
   /**
-   * The arity of the array type.
+   * Gets the arity of this array type.
    *
    * For example, the dimension of `Object[][]` is 2.
    */
@@ -354,7 +354,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   RefType getAnAncestor() { hasSubtypeStar(result, this) }
 
   /**
-   * The source declaration of a direct supertype of this type, excluding itself.
+   * Gets the source declaration of a direct supertype of this type, excluding itself.
    *
    * Note, that a generic type is the source declaration of a direct supertype
    * of itself, namely the corresponding raw type, and this case is thus
@@ -547,7 +547,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   }
 
   /**
-   * The source declaration of this type.
+   * Gets the source declaration of this type.
    *
    * For parameterized instances of generic types and raw types, the
    * source declaration is the corresponding generic type.
@@ -596,7 +596,7 @@ class Class extends RefType, @class {
   override RefType getSourceDeclaration() { classes(this,_,_,result) }
 
   /**
-   * An annotation that applies to this class.
+   * Gets an annotation that applies to this class.
    *
    * Note that a class may inherit annotations from super-classes.
    */
@@ -628,7 +628,7 @@ class AnonymousClass extends NestedClass {
   }
 
   /**
-   * The JVM descriptor for this type, as used in bytecode.
+   * Gets the JVM descriptor for this type, as used in bytecode.
    *
    * For an anonymous class, the type descriptor is the descriptor of the
    * enclosing type followed by a (1-based) counter of anonymous classes
@@ -650,7 +650,7 @@ class AnonymousClass extends NestedClass {
   override string toString() { result = "new " + this.getClassInstanceExpr().getTypeName() + "(...) { ... }" }
 
   /**
-   * The qualified name of this type.
+   * Gets the qualified name of this type.
    *
    * Anonymous classes do not have qualified names, so we use
    * the string `"<anonymous class>"` as a placeholder.
@@ -813,7 +813,7 @@ class PrimitiveType extends Type, @primitive {
   }
 
   /**
-   * A default value for this primitive type, as assigned by the compiler
+   * Gets a default value for this primitive type, as assigned by the compiler
    * for variables that are declared but not initialized explicitly.
    * Typically zero for numeric and character types and `false` for `boolean`.
    *
@@ -925,7 +925,7 @@ class EnumConstant extends Field {
 }
 
 /**
- * The erasure of a type.
+ * Gets the erasure of a type.
  *
  * See JLS v8, section 4.6 (Type Erasure).
  */

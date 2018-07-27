@@ -29,11 +29,7 @@ string kindstr(Class c)
   exists(int kind | usertypes(c, _, kind) |
     (kind = 1 and result = "Struct") or
     (kind = 2 and result = "Class") or
-    (kind = 6 and result = "Template class") or
-    (kind = 10 and result = "Objective C class") or
-    (kind = 11 and result = "Protocol") or
-    (kind = 12 and not c instanceof ClassExtension and result = "Category") or
-    (kind = 12 and c instanceof ClassExtension and result = "This class extension")
+    (kind = 6 and result = "Template class")
   )
 }
 
@@ -123,7 +119,7 @@ where n = strictcount(string fieldName
                              // purposes of this query.
                              not (f.getType().getAnAttribute().hasName("iboutlet")))) and
       n > 15 and
-      not class_instantiation(c, _) and
+      not c.isConstructedFrom(_) and
       c = vdg.getClass() and
       if c.hasOneVariableGroup() then suffix = "" else suffix = " - see $@"
 select c, kindstr(c) + " " + c.getName() + " has " + n + " fields, which is too many" + suffix + ".",

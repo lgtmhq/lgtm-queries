@@ -45,7 +45,7 @@ class SpringEntry extends SpringXMLElement {
   }
 
   /**
-   * The bean pointed to by the `key-ref` attribute, or a nested
+   * Gets the bean pointed to by the `key-ref` attribute, or a nested
    * `<ref>` or `<idref>` element.
    */
   SpringBean getKeyRefBean() {
@@ -69,7 +69,7 @@ class SpringEntry extends SpringXMLElement {
   }
 
   /**
-   * The value of the `value` attribute, or a nested `<value>` element, whichever
+   * Gets the value of the `value` attribute, or a nested `<value>` element, whichever
    * is present.
    */
   string getValueString() {
@@ -92,7 +92,7 @@ class SpringEntry extends SpringXMLElement {
   }
 
   /**
-   * The bean pointed to by either the `value-ref` attribute, or a nested
+   * Gets the bean pointed to by either the `value-ref` attribute, or a nested
    * `<ref> or `<idref>` element, whichever is present.
    */
   SpringBean getValueRefBean() {
