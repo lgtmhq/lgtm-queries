@@ -930,7 +930,8 @@ class ForStmt extends Loop, @stmt_for {
 pragma[noopt]
 private predicate inForCondition(Expr forCondition, Expr child) {
    exists (ForStmt for | forCondition = for.getCondition() and
-                         child = forCondition)
+                         child = forCondition and
+                         for instanceof ForStmt)
    or
    exists (Expr mid | inForCondition(forCondition, mid) and
                       child.getParent() = mid)
@@ -1562,12 +1563,14 @@ class Handler extends Stmt, @stmt_handler {
 }
 
 /**
+ * DEPRECATED: Objective-C is no longer supported.
  * The end of a 'finally' clause.
  *
  * This has no concrete representation in the source, but makes the
  * control flow graph easier to use.
  */
-class FinallyEnd extends Stmt, @stmt_finally_end {
+deprecated class FinallyEnd extends Stmt {
+  FinallyEnd() { none() }
 
   override string toString() { result = "<finally end>" }
 

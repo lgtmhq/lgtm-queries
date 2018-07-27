@@ -47,7 +47,9 @@ predicate mutates_globals(PythonModuleObject m) {
     exists(Object enum_convert |
         enum_convert.hasLongName("enum.Enum._convert") and
         exists(CallNode call |
-            call.getScope() = m.getModule() and
+            call.getScope() = m.getModule()
+            |
+            enum_convert.(FunctionObject).getACall() = call or
             call.getFunction().refersTo(enum_convert)
         )
     )

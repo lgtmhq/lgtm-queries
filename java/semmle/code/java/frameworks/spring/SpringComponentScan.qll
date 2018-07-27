@@ -209,7 +209,7 @@ class SpringComponent extends RefType {
   }
 
   /**
-   * A profile expression under which this component would be live, or nothing if there is
+   * Gets a profile expression under which this component would be live, or nothing if there is
    * no profile expression associated with this component.
    */
   string getAProfileExpr() {

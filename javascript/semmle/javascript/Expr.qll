@@ -154,7 +154,7 @@ class Expr extends @expr, ExprOrStmt, ExprOrType, AST::ValueNode {
   /**
    * Holds if this expression may refer to the initial value of parameter `p`.
    */
-  predicate mayReferToParameter(SimpleParameter p) {
+  predicate mayReferToParameter(Parameter p) {
     flow().mayReferToParameter(p)
   }
 
@@ -1658,7 +1658,7 @@ class ImmediatelyInvokedFunctionExpr extends Function {
    * conversely, arguments after a spread element do not have a corresponding
    * parameter.
    */
-  predicate argumentPassing(SimpleParameter p, Expr arg) {
+  predicate argumentPassing(Parameter p, Expr arg) {
     exists (int parmIdx, int argIdx |
       p = getParameter(parmIdx) and not p.isRestParameter() and
       argIdx = parmIdx + getArgumentOffset() and arg = getArgument(argIdx) and

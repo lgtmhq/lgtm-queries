@@ -153,7 +153,7 @@ class StrutsXMLInclude extends StrutsXMLElement {
   }
 
   /**
-   * The XMLFile that we believe is included by this include statement.
+   * Gets the XMLFile that we believe is included by this include statement.
    *
    * We have no notion of classpath, so we assume that any file that matches the path could
    * potentially be included.
@@ -209,7 +209,7 @@ class StrutsXMLAction extends StrutsXMLElement {
   }
 
   /**
-   * The `Method` which is referenced by this action.
+   * Gets the `Method` which is referenced by this action.
    *
    * If no method is specified in the attributes of this element, a method named `execute` is chosen.
    */

@@ -173,7 +173,7 @@ abstract class ReactComponent extends ASTNode {
       arg0.flowsTo(mce.getArgument(0)) and
       if arg0 instanceof DataFlow::FunctionNode then
         // setState with callback: `this.setState(() => {foo: 42})`
-        result.flowsToExpr(arg0.(DataFlow::FunctionNode).getFunction().getAReturnedExpr())
+        result.flowsTo(arg0.(DataFlow::FunctionNode).getAReturn())
       else
         // setState with object: `this.setState({foo: 42})`
         result = arg0
@@ -267,7 +267,7 @@ class FunctionalComponent extends ReactComponent, Function {
     // element is probably a component
     getNumParameter() = 1 and
     exists (Parameter p | p = getParameter(0) |
-      p.(SimpleParameter).getName().regexpMatch("(?i).*props.*") or
+      p.getName().regexpMatch("(?i).*props.*") or
       p instanceof ObjectPattern
     ) and
     alwaysReturnsJSXOrReactElements(this)
@@ -530,11 +530,9 @@ private class FactoryDefinition extends ReactElementDefinition {
  * However, since the function could be invoked in another way, we additionally
  * still infer the ordinary abstract value.
  */
-private class AnalyzedThisInBoundCallback extends AnalyzedValueNode {
+private class AnalyzedThisInBoundCallback extends AnalyzedValueNode, DataFlow::ThisNode {
 
   AnalyzedValueNode thisSource;
-
-  override ThisExpr astNode;
 
   AnalyzedThisInBoundCallback() {
     exists(DataFlow::CallNode bindingCall, string binderName |
@@ -543,7 +541,7 @@ private class AnalyzedThisInBoundCallback extends AnalyzedValueNode {
       binderName = "forEach" |
       bindingCall = react().getAPropertyRead("Children").getAMemberCall(binderName) and
       3 = bindingCall.getNumArgument() and
-      astNode.getBinder() = bindingCall.getCallback(1).getFunction() and
+      getBinder() = bindingCall.getCallback(1) and
       thisSource = bindingCall.getArgument(2)
     )
   }

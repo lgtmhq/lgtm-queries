@@ -139,7 +139,7 @@ predicate fileJarDependencyCount(File sourceFile, int total, string entity) {
     total = strictsum(RefType r, RefType dep, int num |
       r.getFile() = sourceFile and
       r.fromSource() and
-      dep.getFile().getParentContainer*().getStem() = jarStem and
+      dep.getFile().getParentContainer*() = targetJar and
       numDepends(r, dep, num) |
       num)
     and exists(string name, string version |

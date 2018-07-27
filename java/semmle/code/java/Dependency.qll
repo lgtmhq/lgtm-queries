@@ -111,7 +111,7 @@ predicate usesType(Type t, RefType dep) {
 }
 
 /**
- * A type argument of a parameterized type,
+ * Gets a type argument of a parameterized type,
  * the element type of an array type, or
  * a bound of a type variable or wildcard.
  */

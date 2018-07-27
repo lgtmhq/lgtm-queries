@@ -41,18 +41,9 @@ predicate remoteFunAccess(File source, File target, FunctionCall fc) {
   source != target
 }
 
-predicate remoteMessagePass(File source, File target, MessageExpr me) {
-  me.getFile() = source and
-  me.getStaticTarget().getFile() = target and
-  // Ignore targets with locations in multiple files
-  strictcount(File f | f = me.getTarget().getFile()) = 1 and
-  source != target
-}
-
 predicate candidateFilePair(File source, File target) {
   remoteVarAccess(source, target, _) or
-  remoteFunAccess(source, target, _) or
-  remoteMessagePass(source, target, _)
+  remoteFunAccess(source, target, _)
 }
 
 predicate variableDependencyCount(File source, File target, int res) {
@@ -65,17 +56,11 @@ predicate functionDependencyCount(File source, File target, int res) {
   res = count(FunctionCall fc | remoteFunAccess(source, target, fc))
 }
 
-predicate messageDependencyCount(File source, File target, int res) {
-  candidateFilePair(source, target) and
-  res = count(MessageExpr me | remoteMessagePass(source, target, me))
-}
-
 predicate highDependencyCount(File source, File target, int res) {
-  exists(int varCount, int funCount, int mesCount |
+  exists(int varCount, int funCount |
     variableDependencyCount(source, target, varCount) and
     functionDependencyCount(source, target, funCount) and
-    messageDependencyCount(source, target, mesCount) and
-    res = varCount + funCount + mesCount and
+    res = varCount + funCount and
     res > 20)
 }
 

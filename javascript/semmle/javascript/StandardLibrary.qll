@@ -72,11 +72,9 @@ class JsonParseCall extends MethodCallExpr {
  * However, since the function could be invoked in another way, we additionally
  * still infer the ordinary abstract value.
  */
-private class AnalyzedThisInArrayIterationFunction extends AnalyzedValueNode {
+private class AnalyzedThisInArrayIterationFunction extends AnalyzedValueNode, DataFlow::ThisNode {
 
   AnalyzedValueNode thisSource;
-
-  override ThisExpr astNode;
 
   AnalyzedThisInArrayIterationFunction() {
     exists(DataFlow::MethodCallNode bindingCall, string name |
@@ -87,7 +85,7 @@ private class AnalyzedThisInArrayIterationFunction extends AnalyzedValueNode {
       name = "every" |
       name = bindingCall.getMethodName() and
       2 = bindingCall.getNumArgument() and
-      astNode.getBinder() = bindingCall.getCallback(0).getFunction() and
+      getBinder() = bindingCall.getCallback(0) and
       thisSource = bindingCall.getArgument(1)
     )
   }
@@ -225,7 +223,7 @@ private predicate promiseTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
     succ = cb.getParameter(0)
     or
     // from `v` to `p.then(x => return v)`
-    pred = cb.getFunction().getAReturnedExpr().flow() and
+    pred = cb.getAReturn() and
     succ = thn
   )
 }

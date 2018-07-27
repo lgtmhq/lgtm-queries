@@ -27,7 +27,7 @@ Expr valueFlow(Expr src) {
 }
 
 /**
- * An access to an enum constant, where the reference to the constant may
+ * Gets an access to an enum constant, where the reference to the constant may
  * be stored and used by the enclosing program rather than just being
  * compared and discarded.
  */

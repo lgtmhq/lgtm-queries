@@ -27,7 +27,7 @@ import semmle.code.cpp.metrics.MetricNamespace
  * is never explicitly declared, but might correspond to a large proportion
  * of the source code.
  */
-class Namespace extends NameQualifyingElement, @namedscope, @namespace {
+class Namespace extends NameQualifyingElement, @namespace {
 
   /**
    * Gets the location of the namespace. Most namespaces do not have a

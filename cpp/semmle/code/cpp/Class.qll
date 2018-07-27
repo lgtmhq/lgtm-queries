@@ -450,7 +450,7 @@ class Class extends UserType {
 
   override predicate refersToDirectly(Type t) {
     t = this.getATemplateArgument() or
-    class_instantiation(this, t)
+    this.isConstructedFrom(t)
   }
 
   /**
@@ -884,7 +884,7 @@ class AbstractClass extends Class {
 class TemplateClass extends Class {
   TemplateClass() { usertypes(this,_,6) }
   Class getAnInstantiation() {
-    class_instantiation(result,this) and
+    result.isConstructedFrom(this) and
     exists(result.getATemplateArgument())
   }
 }

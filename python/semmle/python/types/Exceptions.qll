@@ -142,10 +142,12 @@ class RaisingNode extends ControlFlowNode {
             func.getACall() = this and
             func.neverReturns() and
             succ = this.getASuccessor() and
-            not succ = this.getAnExceptionalSuccessor()
+            not succ = this.getAnExceptionalSuccessor() and
+            // If result is yielded then func is likely to be some form of coroutine.
+            not succ.getNode() instanceof Yield
         )
         or
-        this.quits() and 
+        this.quits() and
         succ = this.getASuccessor() and
         not succ = this.getAnExceptionalSuccessor()
     }

@@ -25,7 +25,15 @@ import cpp
 
 class LocalVariableOrParameter extends VariableDeclarationEntry {
   LocalVariableOrParameter() {
-    this.getVariable() instanceof LocalScopeVariable
+    this.getVariable() instanceof LocalScopeVariable and
+    (
+      // we only need to report parameters hiding globals when the clash is with the parameter
+      // name as used in the function definition.  The parameter name used in any other function
+      // declaration is harmless.
+      this instanceof ParameterDeclarationEntry
+      implies
+      exists(this.(ParameterDeclarationEntry).getFunctionDeclarationEntry().getBlock())
+    )
   }
 
   string type() {

@@ -588,10 +588,15 @@ pragma [noinline]
 predicate potential_builtin_points_to(NameNode f, Object value, ClassObject cls, ControlFlowNode origin) {
     f.isGlobal() and f.isLoad() and origin = f and
     (
-        value = builtin_object(f.getId()) and py_cobjecttypes(value, cls)
+        builtin_name_points_to(f.getId(), value, cls)
         or
         not exists(builtin_object(f.getId())) and value = unknownValue() and cls = theUnknownType()
     )
+}
+
+pragma [noinline]
+predicate builtin_name_points_to(string name, Object value, ClassObject cls) {
+    value = builtin_object(name) and py_cobjecttypes(value, cls)
 }
 
 module BaseFlow {

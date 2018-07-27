@@ -25,7 +25,7 @@ class AntTarget extends XMLElement {
   override string getName() { result = this.getAttributeValue("name") }
 
   /**
-   * A string containing the dependencies of this Ant target,
+   * Gets a string containing the dependencies of this Ant target,
    * without whitespace and with a leading and trailing comma.
    *
    * This is a utility method used for extracting individual dependencies.

@@ -24,6 +24,29 @@
  *       external/cwe/cwe-481
  */
 import cpp
+import semmle.code.cpp.controlflow.LocalScopeVariableReachability
+
+class UndefReachability extends LocalScopeVariableReachability {
+  UndefReachability() {
+    this = "UndefReachability"
+  }
+  
+  override predicate isSource(ControlFlowNode node, LocalScopeVariable v) {
+    candidateVariable(v) and
+    node = v.getParentScope() and
+    not v instanceof Parameter and
+    not v.hasInitializer()
+  }
+  
+  override predicate isSink(ControlFlowNode node, LocalScopeVariable v) {
+    candidateVariable(v) and
+    node = v.getAnAccess()
+  }
+  
+  override predicate isBarrier(ControlFlowNode node, LocalScopeVariable v) {
+    node.(AssignExpr).getLValue() = v.getAnAccess()
+  }
+}
 
 abstract class BooleanControllingAssignment extends AssignExpr {
   abstract predicate isWhitelisted();
@@ -54,6 +77,26 @@ class BooleanControllingAssignmentInStmt extends BooleanControllingAssignment {
   }
 }
 
-from BooleanControllingAssignment ae
-where ae.getRValue().isConstant() and not ae.isWhitelisted()
+/**
+ * Holds if `ae` is a `BooleanControllingAssignment` that would be a result of this query,
+ * before checking for undef reachability.
+ */
+predicate candidateResult(BooleanControllingAssignment ae) {
+  ae.getRValue().isConstant() and
+  not ae.isWhitelisted()
+}
+
+/**
+ * Holds if `v` is a `Variable` that might be assigned to in a result of this query.
+ */
+predicate candidateVariable(Variable v) {
+  exists(BooleanControllingAssignment ae |
+    candidateResult(ae) and
+    ae.getLValue().(VariableAccess).getTarget() = v
+  )
+}
+
+from BooleanControllingAssignment ae, UndefReachability undef
+where candidateResult(ae)
+  and not undef.reaches(_, ae.getLValue().(VariableAccess).getTarget(), ae.getLValue())
 select ae, "Use of '=' where '==' may have been intended."

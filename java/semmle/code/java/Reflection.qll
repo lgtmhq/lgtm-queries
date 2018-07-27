@@ -41,7 +41,7 @@ predicate referencedInXmlFile(Field f) {
 }
 
 /**
- * An XML element with an attribute whose value is the name of `f`,
+ * Gets an XML element with an attribute whose value is the name of `f`,
  * suggesting that it might reference `f`.
  */
 private XMLElement elementReferencingField(Field f) {
@@ -50,7 +50,7 @@ private XMLElement elementReferencingField(Field f) {
 }
 
 /**
- * An XML element with an attribute whose value is the fully qualified
+ * Gets an XML element with an attribute whose value is the fully qualified
  * name of `rt`, suggesting that it might reference `rt`.
  */
 private XMLElement elementReferencingType(RefType rt) {

@@ -188,7 +188,7 @@ class Type extends Locatable, @type {
       not(c.isImplicit())
       and c.getType().refersTo(this)
       and result = c
-      and not function_instantiation(c.getEnclosingFunction(),_)
+      and not c.getEnclosingFunction().isConstructedFrom(_)
     )
 
     // A class derivation from a type referring to T uses T. We exclude class derivations within
@@ -208,7 +208,7 @@ class Type extends Locatable, @type {
       )
       and e.getType().refersTo(this)
       and result = e
-      and not function_instantiation(e.getEnclosingFunction(),_)
+      and not e.getEnclosingFunction().isConstructedFrom(_)
     )
 
     // The declaration of a function that returns a type referring to T uses T. We exclude
@@ -224,7 +224,7 @@ class Type extends Locatable, @type {
       )
       and t.refersTo(this)
       and result = fde
-      and not function_instantiation(fde.getDeclaration(),_)
+      and not fde.getDeclaration().isConstructedFrom(_)
       and not(fde.getDeclaration() instanceof Constructor)
       and not(fde.getDeclaration() instanceof Destructor)
     )
@@ -234,7 +234,7 @@ class Type extends Locatable, @type {
     or exists(FunctionCall c |
       c.getAnExplicitTemplateArgument().refersTo(this)
       and result = c
-      and not function_instantiation(c.getEnclosingFunction(),_)
+      and not c.getEnclosingFunction().isConstructedFrom(_)
     )
 
     // Qualifying an expression with a type that refers to T uses T. We exclude qualifiers
@@ -242,7 +242,7 @@ class Type extends Locatable, @type {
     or exists(NameQualifier nq |
       nq.getQualifyingElement().(Type).refersTo(this)
       and result = nq
-      and not function_instantiation(nq.getExpr().getEnclosingFunction(),_)
+      and not nq.getExpr().getEnclosingFunction().isConstructedFrom(_)
     )
 
     // Calculating the size of a type that refers to T uses T. We exclude sizeofs within
@@ -250,7 +250,7 @@ class Type extends Locatable, @type {
     or exists(SizeofTypeOperator soto |
       soto.getTypeOperand().refersTo(this)
       and result = soto
-      and not function_instantiation(soto.getEnclosingFunction(),_)
+      and not soto.getEnclosingFunction().isConstructedFrom(_)
     )
 
     // A typedef of a type that refers to T uses T.
@@ -270,7 +270,7 @@ class Type extends Locatable, @type {
     or exists(VariableDeclarationEntry vde |
       vde.getType().refersTo(this)
       and result = vde
-      and not exists(LocalScopeVariable sv | sv = vde.getDeclaration() and function_instantiation(sv.getFunction(),_))
+      and not exists(LocalScopeVariable sv | sv = vde.getDeclaration() and sv.getFunction().isConstructedFrom(_))
       and not exists(MemberVariable mv | mv = vde.getDeclaration() and mv.getDeclaringType() instanceof ClassTemplateInstantiation)
     )
   }
@@ -1046,17 +1046,17 @@ class FunctionPointerIshType extends DerivedType {
 
   /** the return type of this function pointer type */
   Type getReturnType() {
-    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypes(t, unresolve(result)))
+    exists(RoutineType t | derivedtypes(this,_,_,t) and result = t.getReturnType())
   }
 
   /** the type of the ith argument of this function pointer type */
   Type getParameterType(int i) {
-    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypeargs(t, i, unresolve(result)))
+    exists(RoutineType t | derivedtypes(this,_,_,t) and result = t.getParameterType(i))
   }
 
   /** the type of an argument of this function pointer type */
   Type getAParameterType() {
-    exists(@routinetype t | derivedtypes(this,_,_,t) and routinetypeargs(t, _, unresolve(result)))
+    exists(RoutineType t | derivedtypes(this,_,_,t) and result = t.getAParameterType())
   }
 
   /** the number of arguments of this function pointer type */

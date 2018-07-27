@@ -134,7 +134,7 @@ module ServerSideUrlRedirect {
    */
   class LocationHeaderSink extends Sink, DataFlow::ValueNode {
     LocationHeaderSink() {
-      any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("Location", astNode)
+      any(HTTP::ExplicitHeaderDefinition def).definesExplicitly("location", astNode)
     }
   }
 

@@ -50,7 +50,7 @@ class Member extends Element, Annotatable, Modifiable, @member {
 /** A callable is a method or constructor. */
 class Callable extends StmtParent, Member, @callable {
   /**
-   * The declared return type of this callable (`void` for
+   * Gets the declared return type of this callable (`void` for
    * constructors).
    */
   Type getReturnType() {
@@ -70,7 +70,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * The bytecode method descriptor, encoding parameter and return types,
+   * Gets the bytecode method descriptor, encoding parameter and return types,
    * but not the name of the callable.
    */
   string getMethodDescriptor() {
@@ -184,7 +184,7 @@ class Callable extends StmtParent, Member, @callable {
   Type getParameterType(int n) { params(_, result, n, this, _) }
 
   /**
-   * The signature of this callable, including its name and the types of all its parameters,
+   * Gets the signature of this callable, including its name and the types of all its parameters,
    * identified by their simple (unqualified) names.
    *
    * Use `getSignature` to obtain a signature including fully qualified type names.
@@ -204,7 +204,7 @@ class Callable extends StmtParent, Member, @callable {
   }
 
   /**
-   * A string containing the parameter types of this callable
+   * Gets a string containing the parameter types of this callable
    * from left to right, up to (and including) the `n`-th parameter.
    */
   private string paramUpTo(int n) {
@@ -233,7 +233,7 @@ class Callable extends StmtParent, Member, @callable {
   Block getBody() { result.getParent() = this }
 
   /**
-   * The source declaration of this callable.
+   * Gets the source declaration of this callable.
    *
    * For parameterized instances of generic methods, the
    * source declaration is the corresponding generic method.
@@ -256,7 +256,7 @@ class Callable extends StmtParent, Member, @callable {
   predicate isVarargs() { this.getAParameter().isVarargs() }
 
   /**
-   * The signature of this callable, where all types in the signature have a fully-qualified name.
+   * Gets the signature of this callable, where all types in the signature have a fully-qualified name.
    *
    * For example, method `void m(String s)` has the signature `m(java.lang.String)`.
    */
@@ -557,7 +557,7 @@ class Field extends Member, ExprParent, @field, Variable {
   override RefType getDeclaringType() { fields(this, _, _, result, _) }
 
   /**
-   * The field declaration in which this field is declared.
+   * Gets the field declaration in which this field is declared.
    *
    * Note that this declaration is only available if the field occurs in source code.
    */
@@ -575,7 +575,7 @@ class Field extends Member, ExprParent, @field, Variable {
   }
 
   /**
-   * The source declaration of this field.
+   * Gets the source declaration of this field.
    *
    * For fields that are members of a parameterized
    * instance of a generic type, the source declaration is the

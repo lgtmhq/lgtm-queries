@@ -53,10 +53,8 @@ abstract class SourceNode extends DataFlow::Node {
    * Gets a reference (read or write) of property `propName` on this node.
    */
   DataFlow::PropRef getAPropertyReference(string propName) {
-    exists (DataFlow::Node base |
-      result.accesses(base, propName) and
-      flowsTo(base)
-    )
+    result = getAPropertyReference() and
+    result.getPropertyName() = propName
   }
 
   /**
@@ -74,11 +72,13 @@ abstract class SourceNode extends DataFlow::Node {
   }
 
   /**
+   * DEPRECATED: Use `getAPropertyReference` instead.
+   *
    * Gets an access to property `propName` on this node, either through
    * a dot expression (as in `x.propName`) or through an index expression
    * (as in `x["propName"]`).
    */
-  DataFlow::PropRead getAPropertyAccess(string propName) {
+  deprecated DataFlow::PropRead getAPropertyAccess(string propName) {
     result = getAPropertyReference(propName) and
     result.asExpr() instanceof PropAccess
   }
@@ -89,6 +89,27 @@ abstract class SourceNode extends DataFlow::Node {
    */
   predicate hasPropertyWrite(string propName, DataFlow::Node rhs) {
     rhs = getAPropertyWrite(propName).getRhs()
+  }
+
+  /**
+   * Gets a reference (read or write) of any property on this node.
+   */
+  DataFlow::PropRef getAPropertyReference() {
+    flowsTo(result.getBase())
+  }
+
+  /**
+   * Gets a read of any property on this node.
+   */
+  DataFlow::PropRead getAPropertyRead() {
+    result = getAPropertyReference()
+  }
+
+  /**
+   * Gets a write of any property on this node.
+   */
+  DataFlow::PropWrite getAPropertyWrite() {
+    result = getAPropertyReference()
   }
 
   /**
@@ -185,8 +206,9 @@ class DefaultSourceNode extends SourceNode {
     or
     exists (SsaExplicitDefinition ssa, VarDef def |
       this = DataFlow::ssaDefinitionNode(ssa) and def = ssa.getDef() |
-      def instanceof SimpleParameter or
       def instanceof ImportSpecifier
     )
+    or
+    DataFlow::parameterNode(this, _)
   }
 }

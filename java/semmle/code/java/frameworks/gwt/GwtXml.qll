@@ -56,7 +56,7 @@ class GwtXmlFile extends XMLFile {
   }
 
   /**
-   * A GWT-translatable source sub-folder of this GWT module XML file.
+   * Gets a GWT-translatable source sub-folder of this GWT module XML file.
    * Either the default `client` folder or as specified by `<source>` tags.
    */
   string getASourceSubPath() {
@@ -65,7 +65,7 @@ class GwtXmlFile extends XMLFile {
   }
 
   /**
-   * A translatable source folder of this GWT module XML file.
+   * Gets a translatable source folder of this GWT module XML file.
    * Either the default `client` folder or as specified by `<source>` tags.
    * (Includes the full relative root folder path of the GWT module.)
    */

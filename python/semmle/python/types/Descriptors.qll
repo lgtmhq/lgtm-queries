@@ -44,11 +44,15 @@ private predicate decorator_call(Object method, ClassObject decorator, FunctionO
 class ClassMethodObject extends Object {
 
     ClassMethodObject() {
-        decorator_call(this, theClassMethodType(), _)
+        FinalPointsTo::class_method(this, _)
     }
 
     FunctionObject getFunction() {
-        decorator_call(this, theClassMethodType(), result)
+        FinalPointsTo::class_method(this, result)
+    }
+
+    CallNode getACall() {
+        FinalPointsTo::class_method_call(this, _, _, _, result)
     }
 
 }

@@ -58,7 +58,7 @@ module InsecureRandomness {
     override
     predicate isSanitizer(DataFlow::Node pred, DataFlow::Node succ) {
       // stop propagation at the sinks to avoid double reporting
-      isSink(pred) and
+      pred instanceof Sink and
       // constrain succ
       pred = succ.getAPredecessor()
 

@@ -25,10 +25,7 @@ class Expr extends ExprParent, @expr {
   /*abstract*/ override string toString() { result = "expr" }
 
   /**
-   * The callable in which this expression occurs.
-   *
-   * Since initializers and field init expressions are inlined in constructors
-   * and class initializers, every expression can be associated to a callable.
+   * Gets the callable in which this expression occurs, if any.
    */
   Callable getEnclosingCallable() {
     callableEnclosingExpr(this,result)
@@ -52,7 +49,7 @@ class Expr extends ExprParent, @expr {
   CompilationUnit getCompilationUnit() { result = this.getFile() }
 
   /**
-   * The kind of this expression.
+   * Gets the kind of this expression.
    *
    * Each kind of expression has a unique (integer) identifier.
    * This is an implementation detail that should not normally
@@ -423,7 +420,7 @@ class Assignment extends Expr,@assignment {
   Expr getDest() { result.isNthChildOf(this, 0) }
 
   /**
-   * The source (right-hand side) of the assignment.
+   * Gets the source (right-hand side) of the assignment.
    *
    * For assignments with an implicit operator such as `x += 23`,
    * the left-hand side is also a source.
@@ -452,7 +449,7 @@ class AssignExpr extends Assignment,@assignexpr { }
  */
 class AssignOp extends Assignment,@assignop {
   /**
-   * A source of the compound assignment, which includes both the right-hand side
+   * Gets a source of the compound assignment, which includes both the right-hand side
    * and the left-hand side of the assignment.
    */
   override Expr getSource() { result.getParent() = this }
@@ -684,7 +681,7 @@ abstract class ComparisonExpr extends BinaryExpr {
   }
 
   /**
-   * The lesser operand of this comparison expression.
+   * Gets the lesser operand of this comparison expression.
    *
    * For example, `x` is the lesser operand
    * in `x < 0`, and `0` is the
@@ -693,7 +690,7 @@ abstract class ComparisonExpr extends BinaryExpr {
   abstract Expr getLesserOperand();
 
   /**
-   * The greater operand of this comparison expression.
+   * Gets the greater operand of this comparison expression.
    *
    * For example, `x` is the greater operand
    * in `x > 0`, and `0` is the
@@ -809,7 +806,7 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   override Expr getAnArgument() { result.getIndex() >= 0 and result.getParent() = this }
 
   /**
-   * The argument provided to the constructor of this class instance creation expression
+   * Gets the argument provided to the constructor of this class instance creation expression
    * at the specified (zero-based) position.
    */
   override Expr getArgument(int index) {
@@ -818,14 +815,14 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   }
 
   /**
-   * A type argument provided to the constructor of this class instance creation expression.
+   * Gets a type argument provided to the constructor of this class instance creation expression.
    *
    * This is used for instantiations of parameterized classes.
    */
   Expr getATypeArgument() { result = this.getTypeName().(TypeAccess).getATypeArgument() }
 
   /**
-   * The type argument provided to the constructor of this class instance creation expression
+   * Gets the type argument provided to the constructor of this class instance creation expression
    * at the specified (zero-based) position.
    */
   Expr getTypeArgument(int index) { result = this.getTypeName().(TypeAccess).getTypeArgument(index) }
@@ -834,7 +831,7 @@ class ClassInstanceExpr extends Expr, ConstructorCall, @classinstancexpr {
   override Expr getQualifier() { result.isNthChildOf(this, -2) }
 
   /**
-   * The access to the type that is instantiated or subclassed by this
+   * Gets the access to the type that is instantiated or subclassed by this
    * class instance creation expression.
    */
   Expr getTypeName() { result.isNthChildOf(this, -3) }
@@ -882,7 +879,7 @@ abstract class FunctionalExpr extends ClassInstanceExpr {
  */
 class LambdaExpr extends FunctionalExpr, @lambdaexpr {
   /**
-   * The implicit method corresponding to this lambda expression.
+   * Gets the implicit method corresponding to this lambda expression.
    * The parameters of the lambda expression are the parameters of this method.
    */
   override Method asMethod() { result = getAnonymousClass().getAMethod() }
@@ -912,7 +909,7 @@ class LambdaExpr extends FunctionalExpr, @lambdaexpr {
  */
 class MemberRefExpr extends FunctionalExpr, @memberref {
   /**
-   * The implicit method corresponding to this member reference expression.
+   * Gets the implicit method corresponding to this member reference expression.
    * The body of this method is a return statement (enclosed in a block) whose expression
    * is either a method access (if the reference is to a method), a class instance creation expression
    * (if the reference is to a constructor) or an array creation expression (if the reference
@@ -938,13 +935,13 @@ class ConditionalExpr extends Expr,@conditionalexpr {
   Expr getCondition() { result.isNthChildOf(this, 0) }
 
   /**
-   * The expression that is evaluated if the condition of this
+   * Gets the expression that is evaluated if the condition of this
    * conditional expression evaluates to `true`.
    */
   Expr getTrueExpr() { result.isNthChildOf(this, 1) }
 
   /**
-   * The expression that is evaluated if the condition of this
+   * Gets the expression that is evaluated if the condition of this
    * conditional expression evaluates to `false`.
    */
   Expr getFalseExpr() { result.isNthChildOf(this, 2) }
@@ -1190,7 +1187,7 @@ class LValue extends VarAccess {
   LValue() { this.isLValue() }
 
   /**
-   * A source expression used in an assignment to this l-value.
+   * Gets a source expression used in an assignment to this l-value.
    *
    * For assignments using the `=` operator, the source expression
    * is simply the RHS of the assignment.
@@ -1256,7 +1253,7 @@ class MethodAccess extends Expr, Call, @methodaccess {
   }
 
   /**
-   * The type of the qualifier on which this method is invoked, or
+   * Gets the type of the qualifier on which this method is invoked, or
    * the enclosing type if there is no qualifier.
    */
   RefType getReceiverType() {
@@ -1315,7 +1312,7 @@ class TypeAccess extends Expr, Annotatable, @typeaccess {
 /** An array type access is a type access of the form `String[]`. */
 class ArrayTypeAccess extends Expr,@arraytypeaccess {
   /**
-   * The expression representing the component type of this array type access.
+   * Gets the expression representing the component type of this array type access.
    *
    * For example, in the array type access `String[][]`,
    * the component type is `String[]` and the
@@ -1363,7 +1360,7 @@ class IntersectionTypeAccess extends Expr, @intersectiontypeaccess {
    */
   Expr getABound() { result.getParent() = this }
   /**
-   * The bound at a specified (zero-based) position in this intersection type access expression.
+   * Gets the bound at a specified (zero-based) position in this intersection type access expression.
    *
    * For example, in the intersection type access expression
    * `Runnable & Cloneable`, the bound at position 0 is

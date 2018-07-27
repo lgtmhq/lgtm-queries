@@ -34,7 +34,8 @@ predicate loopModification(ForStmt for, Variable loopVariable, VariableAccess ac
 
 pragma[noopt]
 predicate stmtInForBody(Stmt stmt, ForStmt forStmt) {
-  forStmt.getStmt() = stmt or exists(StmtParent parent | parent = stmt.getParent() | stmtInForBody(parent, forStmt))
+  (forStmt.getStmt() = stmt or exists(StmtParent parent | parent = stmt.getParent() | stmtInForBody(parent, forStmt)))
+  and forStmt instanceof ForStmt
 }
 
 from ForStmt for, Variable loopVariable, VariableAccess acc

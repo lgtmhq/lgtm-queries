@@ -194,7 +194,7 @@ class FinalContext extends TFinalContext {
     }
 
     /** Holds if this context or one of its caller contexts is the default context. */
-    predicate fromRuntime() { 
+    predicate fromRuntime() {
         this.isRuntime()
         or
         this.getOuter().fromRuntime()

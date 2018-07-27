@@ -20,7 +20,7 @@ import semmle.code.java.Member
 /** This class provides access to metrics information for callables. */
 class MetricCallable extends Callable {
   /**
-   * A callable on which this callable depends.
+   * Gets a callable on which this callable depends.
    *
    * A callable `m` depends on another callable `n`
    * if there exists a call to `n` from within `m`,

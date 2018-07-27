@@ -26,7 +26,7 @@ class SpringBeanFile extends XMLFile {
   }
 
   /**
-   * A `<bean>` element that is found in this file.
+   * Gets a `<bean>` element that is found in this file.
    *
    * Note that this will also include `<bean>` elements nested
    * inside other spring elements (such as `value`).
@@ -45,7 +45,7 @@ class SpringBeanFile extends XMLFile {
   }
 
   /**
-   * A `profile` expression for which this beans file is enabled, or nothing if it is
+   * Gets a `profile` expression for which this beans file is enabled, or nothing if it is
    * applicable to any profile.
    */
   string getAProfileExpr() {

@@ -77,8 +77,8 @@ module ReflectedXss {
     HttpResponseSink() {
       exists (HTTP::ResponseSendArgument sendarg | sendarg = asExpr() |
         forall (HTTP::HeaderDefinition hd |
-          hd = sendarg.getRouteHandler().getAResponseHeader("Content-Type") |
-          exists (string tp | hd.defines("Content-Type", tp) |
+          hd = sendarg.getRouteHandler().getAResponseHeader("content-type") |
+          exists (string tp | hd.defines("content-type", tp) |
             tp.toLowerCase().matches("%html%")
           )
         )

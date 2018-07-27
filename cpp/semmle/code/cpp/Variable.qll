@@ -299,8 +299,6 @@ deprecated class StackVariable extends Variable {
  * scope [N4140 3.3.3], but is not a function parameter.
  */
 class LocalVariable extends LocalScopeVariable, @localvariable {
-  LocalVariable() { localvariables(this,_,_) }
-
   override string getName() { localvariables(this,_,result) }
 
   override Type getType() { localvariables(this,unresolve(result),_) }
@@ -314,8 +312,6 @@ class LocalVariable extends LocalScopeVariable, @localvariable {
  * A C/C++ variable which has global scope or namespace scope.
  */
 class GlobalOrNamespaceVariable extends Variable, @globalvariable {
-  GlobalOrNamespaceVariable() { globalvariables(this,_,_) }
-
   override string getName() { globalvariables(this,_,result) }
 
   override Type getType() { globalvariables(this,unresolve(result),_) }
@@ -409,7 +405,7 @@ class FunctionPointerMemberVariable extends MemberVariable {
  */
 class TemplateVariable extends Variable {
   TemplateVariable() { is_variable_template(this) }
-  Variable getAnInstantiation() { variable_instantiation(result, this) }
+  Variable getAnInstantiation() { result.isConstructedFrom(this) }
 }
 
 /**

@@ -86,11 +86,11 @@ private AbstractValue getDefaultReturnValue(ImmediatelyInvokedFunctionExpr f) {
 /**
  * Flow analysis for `this` expressions inside functions.
  */
-private abstract class AnalyzedThisExpr extends DataFlow::AnalyzedValueNode {
+private abstract class AnalyzedThisExpr extends DataFlow::AnalyzedValueNode, DataFlow::ThisNode {
   DataFlow::FunctionNode binder;
 
   AnalyzedThisExpr() {
-    binder.getFunction() = astNode.(ThisExpr).getBinder()
+    binder = getBinder()
   }
 }
 

@@ -215,10 +215,7 @@ class FormattingFunctionCall extends Expr {
 class FormatLiteral extends Literal {
   FormatLiteral() {
     exists(FormattingFunctionCall ffc | ffc.getFormat() = this) and
-    ( this instanceof StringLiteral
-      or
-      this instanceof ObjCLiteralString
-    )
+    this instanceof StringLiteral
   }
 
   /**
@@ -500,33 +497,58 @@ class FormatLiteral extends Literal {
   private int targetBitSize() { result = this.getFullyConverted().getType().getSize() }
 
   private LongType getLongType() {
-         if this.targetBitSize() = 4 then result.getSize() = min(LongType l | | l.getSize())
-    else if this.targetBitSize() = 8 then result.getSize() = max(LongType l | | l.getSize())
-    else any()
+  	(
+      this.targetBitSize() = 4 and result.getSize() = min(LongType l | | l.getSize())
+    ) or (
+      this.targetBitSize() = 8 and result.getSize() = max(LongType l | | l.getSize())
+    ) or (
+      this.targetBitSize() != 4 and
+      this.targetBitSize() != 8
+    )
   }
 
   private Intmax_t getIntmax_t() {
-         if this.targetBitSize() = 4 then result.getSize() = min(Intmax_t l | | l.getSize())
-    else if this.targetBitSize() = 8 then result.getSize() = max(Intmax_t l | | l.getSize())
-    else any()
+    (
+      this.targetBitSize() = 4 and result.getSize() = min(Intmax_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() = 8 and result.getSize() = max(Intmax_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() != 4 and
+      this.targetBitSize() != 8
+    )
   }
 
   private Size_t getSize_t() {
-         if this.targetBitSize() = 4 then result.getSize() = min(Size_t l | | l.getSize())
-    else if this.targetBitSize() = 8 then result.getSize() = max(Size_t l | | l.getSize())
-    else any()
+    (
+      this.targetBitSize() = 4 and result.getSize() = min(Size_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() = 8 and result.getSize() = max(Size_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() != 4 and
+      this.targetBitSize() != 8
+    )
   }
 
   private Ssize_t getSsize_t() {
-         if this.targetBitSize() = 4 then result.getSize() = min(Ssize_t l | | l.getSize())
-    else if this.targetBitSize() = 8 then result.getSize() = max(Ssize_t l | | l.getSize())
-    else any()
+    (
+      this.targetBitSize() = 4 and result.getSize() = min(Ssize_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() = 8 and result.getSize() = max(Ssize_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() != 4 and
+      this.targetBitSize() != 8
+    )
   }
 
   private Ptrdiff_t getPtrdiff_t() {
-         if this.targetBitSize() = 4 then result.getSize() = min(Ptrdiff_t l | | l.getSize())
-    else if this.targetBitSize() = 8 then result.getSize() = max(Ptrdiff_t l | | l.getSize())
-    else any()
+    (
+      this.targetBitSize() = 4 and result.getSize() = min(Ptrdiff_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() = 8 and result.getSize() = max(Ptrdiff_t l | | l.getSize())
+    ) or (
+      this.targetBitSize() != 4 and
+      this.targetBitSize() != 8
+    )
   }
 
   /**

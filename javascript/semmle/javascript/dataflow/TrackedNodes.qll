@@ -129,7 +129,7 @@ private module NodeTracking {
                                   DataFlow::Node pred, DataFlow::Node succ) {
     isRelevant(pred) and
     (
-     exists (SimpleParameter parm |
+     exists (Parameter parm |
        argumentPassing(invk, pred, f, parm) and
        succ = DataFlow::parameterNode(parm)
      )

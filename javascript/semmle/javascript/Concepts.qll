@@ -26,6 +26,12 @@ import javascript
 abstract class SystemCommandExecution extends DataFlow::Node {
   /** Gets an argument to this execution that specifies the command. */
   abstract DataFlow::Node getACommandArgument();
+
+  /**
+   * Gets an argument to this command execution that specifies the argument list
+   * to the command.
+   */
+  DataFlow::Node getArgumentList() { none() }
 }
 
 /**

@@ -485,9 +485,9 @@ class PhiFunction extends EssaDefinition, TPhiFunction {
     }
 }
 
-private class EssaNode extends EssaDefinition, TEssaNodeDefinition {
+library class EssaNode extends EssaDefinition, TEssaNodeDefinition {
 
-    string toString() {
+    override string toString() {
         result = "Essa node definition"
     }
 
@@ -500,28 +500,28 @@ private class EssaNode extends EssaDefinition, TEssaNodeDefinition {
         result = this.getDefiningNode().getLocation()
     }
 
-    ControlFlowNode getAUse() {
+    override ControlFlowNode getAUse() {
         exists(SsaSourceVariable v, BasicBlock b, int i |
             this = TEssaNodeDefinition(v, b, i) and
             SsaDefinitions::reachesUse(v, b, i, result)
         )
     }
 
-    predicate reachesEndOfBlock(BasicBlock b) {
+    override predicate reachesEndOfBlock(BasicBlock b) {
         exists(BasicBlock defb, int i |
             this = TEssaNodeDefinition(_, defb, i) and
             SsaDefinitions::reachesEndOfBlock(this.getSourceVariable(), defb, i, b)
         )
     }
 
-     predicate reachesExit() {
+    override predicate reachesExit() {
        exists(BasicBlock defb, int i |
             this = TEssaNodeDefinition(_, defb, i) and
             SsaDefinitions::reachesExit(this.getSourceVariable(), defb, i)
         )
     }
 
-    SsaSourceVariable getSourceVariable() {
+    override SsaSourceVariable getSourceVariable() {
         this = TEssaNodeDefinition(result, _, _)
     }
 
@@ -529,7 +529,7 @@ private class EssaNode extends EssaDefinition, TEssaNodeDefinition {
         result = this.getDefiningNode().toString()
     }
 
-    Scope getScope() {
+    override Scope getScope() {
         exists(BasicBlock defb |
             this = TEssaNodeDefinition(_, defb, _) and
             result = defb.getScope()
@@ -569,7 +569,7 @@ class EssaNodeRefinement extends EssaNode {
         )
     }
 
-    string toString() {
+    override string toString() {
         result = "SSA filter definition"
     }
 

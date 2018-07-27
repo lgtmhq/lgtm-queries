@@ -19,6 +19,8 @@
  * @problem.severity warning
  * @precision very-high
  * @id java/iterable-wraps-iterator
+ * @tags correctness
+ *       reliability
  */
 import java
 import IterableClass

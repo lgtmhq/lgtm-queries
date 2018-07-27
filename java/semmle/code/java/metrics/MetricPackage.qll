@@ -65,7 +65,7 @@ class MetricPackage extends Package, MetricElement  {
   }
 
   /**
-   * The number of public callables declared in a type in this package.
+   * Gets the number of public callables declared in a type in this package.
    * This is an indication of the size of the API provided by this package.
    */
   int getNumberOfPublicCallables() {

@@ -46,7 +46,7 @@ abstract class XMLLocatable extends @xmllocatable {
  */
 class XMLParent extends @xmlparent {
   /**
-   * A printable representation of this XML parent.
+   * Gets a printable representation of this XML parent.
    * (Intended to be overridden in subclasses.)
    */
   abstract string getName();

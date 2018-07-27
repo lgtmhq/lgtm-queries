@@ -98,7 +98,7 @@ predicate dereference(Expr e) {
 }
 
 /**
- * The `ControlFlowNode` in which the given SSA variable is being dereferenced.
+ * Gets the `ControlFlowNode` in which the given SSA variable is being dereferenced.
  *
  * The `VarAccess` is included for nicer error reporting.
  */

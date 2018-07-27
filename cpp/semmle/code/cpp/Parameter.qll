@@ -80,11 +80,11 @@ class Parameter extends LocalScopeVariable, @parameter {
    * own).
    */
   private VariableDeclarationEntry getAnEffectiveDeclarationEntry() {
-    if function_instantiation(getFunction(), _)
+    if getFunction().isConstructedFrom(_)
       then exists (Parameter prototype
            | prototype = result.getVariable() and
              prototype.getIndex() = getIndex() and
-             function_instantiation(getFunction(), prototype.getFunction()))
+             getFunction().isConstructedFrom(prototype.getFunction()))
       else result = getADeclarationEntry()
   }
 

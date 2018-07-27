@@ -100,7 +100,7 @@ class Parameter extends Element, @param, LocalScopeVariable {
   }
 
   /**
-   * An argument for this parameter in any call to the callable that declares this formal
+   * Gets an argument for this parameter in any call to the callable that declares this formal
    * parameter.
    *
    * Varargs parameters will have no results for this method.

@@ -88,7 +88,7 @@ module Koa {
     ContextSource() {
       this = DataFlow::parameterNode(rh.getContextParameter())
       or
-      DataFlow::valueNode(asExpr().(ThisExpr).getBinder()) = rh
+      this.(DataFlow::ThisNode).getBinder() = rh
     }
 
     /**

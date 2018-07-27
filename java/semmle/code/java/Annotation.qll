@@ -66,7 +66,7 @@ class Annotation extends @annotation, Expr {
   override string getHalsteadID() { result = "Annotation" }
 
   /**
-   * A value of the annotation element with the specified `name`, which must be declared as an array
+   * Gets a value of the annotation element with the specified `name`, which must be declared as an array
    * type.
    *
    * If the annotation element is defined with an array initializer, then the returned value will

@@ -413,7 +413,7 @@ private predicate callInputStep(Function f, DataFlow::Node invk,
                                 DataFlow::Configuration cfg) {
   isRelevant(pred, cfg) and
   (
-   exists (SimpleParameter parm |
+   exists (Parameter parm |
      argumentPassing(invk, pred, f, parm) and
      succ = DataFlow::parameterNode(parm)
    )

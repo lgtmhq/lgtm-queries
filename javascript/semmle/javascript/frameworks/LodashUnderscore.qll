@@ -23,11 +23,9 @@ import javascript
  * However, since the function could be invoked in another way, we additionally
  * still infer the ordinary abstract value.
  */
-private class AnalyzedThisInBoundCallback extends AnalyzedValueNode {
+private class AnalyzedThisInBoundCallback extends AnalyzedValueNode, DataFlow::ThisNode {
 
   AnalyzedValueNode thisSource;
-
-  override ThisExpr astNode;
 
   AnalyzedThisInBoundCallback() {
     exists(DataFlow::SourceNode binderBase, DataFlow::MethodCallNode bindingCall, string binderName, int callbackIndex, int contextIndex, int argumentCount |
@@ -38,7 +36,7 @@ private class AnalyzedThisInBoundCallback extends AnalyzedValueNode {
       ) and
       binderBase.getAMemberCall(binderName) = bindingCall and
       bindingCall.getNumArgument() = argumentCount and
-      astNode.getBinder() = bindingCall.getCallback(callbackIndex).getFunction() and
+      getBinder() = bindingCall.getCallback(callbackIndex) and
       thisSource = bindingCall.getArgument(contextIndex) |
       (
         (

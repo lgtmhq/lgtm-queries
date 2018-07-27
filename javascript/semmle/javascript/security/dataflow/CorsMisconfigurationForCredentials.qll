@@ -82,8 +82,8 @@ module CorsMisconfigurationForCredentials {
       exists (HTTP::RouteHandler routeHandler, HTTP::ExplicitHeaderDefinition origin, Expr credentialsValue |
         routeHandler.getAResponseHeader(_) = origin and
         routeHandler.getAResponseHeader(_) = credentials and
-        origin.definesExplicitly("Access-Control-Allow-Origin", this.asExpr()) and
-        credentials.definesExplicitly("Access-Control-Allow-Credentials", credentialsValue) |
+        origin.definesExplicitly("access-control-allow-origin", this.asExpr()) and
+        credentials.definesExplicitly("access-control-allow-credentials", credentialsValue) |
         credentialsValue.mayHaveBooleanValue(true) or
         credentialsValue.mayHaveStringValue("true")
       )
