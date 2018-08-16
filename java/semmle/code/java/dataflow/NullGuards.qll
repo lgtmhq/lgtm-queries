@@ -17,7 +17,7 @@
 
 import java
 import SSA
-private import semmle.code.java.controlflow.Guards
+private import semmle.code.java.controlflow.internal.GuardsLogic
 private import RangeUtils
 private import IntegerGuards
 
@@ -38,42 +38,61 @@ Expr enumConstEquality(Expr e, boolean polarity, EnumConstant c) {
 }
 
 /** Gets an expression that is provably not `null`. */
-Expr clearlyNotNullExpr() {
-  result instanceof ClassInstanceExpr or
-  result instanceof ArrayCreationExpr or
-  result instanceof TypeLiteral or
-  result instanceof ThisAccess or
-  result instanceof StringLiteral or
-  result instanceof AddExpr and result.getType() instanceof TypeString or
-  result.(ParExpr).getExpr() = clearlyNotNullExpr() or
-  result.(CastExpr).getExpr() = clearlyNotNullExpr() or
-  exists(ConditionalExpr c | c = result and c.getTrueExpr() = clearlyNotNullExpr() and c.getFalseExpr() = clearlyNotNullExpr()) or
-  exists(ConditionBlock cond, SsaVariable v, boolean branch, RValue rval |
-    cond.getCondition() = nullGuard(v, branch, false) and
-    cond.controls(rval.getBasicBlock(), branch) and
+Expr clearlyNotNullExpr(Expr reason) {
+  result instanceof ClassInstanceExpr and reason = result or
+  result instanceof ArrayCreationExpr and reason = result or
+  result instanceof TypeLiteral and reason = result or
+  result instanceof ThisAccess and reason = result or
+  result instanceof StringLiteral and reason = result or
+  result instanceof AddExpr and result.getType() instanceof TypeString and reason = result or
+  result.(ParExpr).getExpr() = clearlyNotNullExpr(reason) or
+  result.(CastExpr).getExpr() = clearlyNotNullExpr(reason) or
+  result.(AssignExpr).getSource() = clearlyNotNullExpr(reason) or
+  exists(ConditionalExpr c, Expr r1, Expr r2 |
+    c = result and
+    c.getTrueExpr() = clearlyNotNullExpr(r1) and
+    c.getFalseExpr() = clearlyNotNullExpr(r2) and
+    (reason = r1 or reason = r2)
+  ) or
+  exists(SsaVariable v, boolean branch, RValue rval, Guard guard |
+    guard = directNullGuard(v, branch, false) and
+    guard.controls(rval.getBasicBlock(), branch) and
+    reason = guard and
     rval = v.getAUse() and
     result = rval
   ) or
-  exists(SsaVariable v | clearlyNotNull(v) and result = v.getAUse())
+  exists(SsaVariable v | clearlyNotNull(v, reason) and result = v.getAUse())
 }
 
-/** An SSA variable that is provably not `null`. */
-predicate clearlyNotNull(SsaVariable v) {
+/** Holds if `v` is an SSA variable that is provably not `null`. */
+predicate clearlyNotNull(SsaVariable v, Expr reason) {
   exists(Expr src |
     src = v.(SsaExplicitUpdate).getDefiningExpr().(VariableAssign).getSource() and
-    src = clearlyNotNullExpr()
+    src = clearlyNotNullExpr(reason)
   ) or
-  exists(CatchClause cc |
-    cc.getVariable() = v.(SsaExplicitUpdate).getDefiningExpr()
+  exists(CatchClause cc, LocalVariableDeclExpr decl |
+    decl = cc.getVariable() and
+    decl = v.(SsaExplicitUpdate).getDefiningExpr() and
+    reason = decl
   ) or
   exists(SsaVariable captured |
     v.(SsaImplicitInit).captures(captured) and
-    clearlyNotNull(captured)
+    clearlyNotNull(captured, reason)
   )
 }
 
+/** Gets an expression that is provably not `null`. */
+Expr clearlyNotNullExpr() {
+  result = clearlyNotNullExpr(_)
+}
+
+/** Holds if `v` is an SSA variable that is provably not `null`. */
+predicate clearlyNotNull(SsaVariable v) {
+  clearlyNotNull(v, _)
+}
+
 /**
- * An expression that directly tests whether a given expression, `e`, is null or not.
+ * Gets an expression that directly tests whether a given expression, `e`, is null or not.
  *
  * If `result` evaluates to `branch`, then `e` is guaranteed to be null if `isnull`
  * is true, and non-null if `isnull` is false.
@@ -107,7 +126,17 @@ Expr basicNullGuard(Expr e, boolean branch, boolean isnull) {
     isnull = false and
     branch = eqtest.polarity()
   ) or
-  result = enumConstEquality(e, branch, _) and isnull = false or
+  result = enumConstEquality(e, branch, _) and isnull = false
+}
+
+/**
+ * Gets an expression that directly tests whether a given expression, `e`, is null or not.
+ *
+ * If `result` evaluates to `branch`, then `e` is guaranteed to be null if `isnull`
+ * is true, and non-null if `isnull` is false.
+ */
+Expr basicOrCustomNullGuard(Expr e, boolean branch, boolean isnull) {
+  result = basicNullGuard(e, branch, isnull) or
   exists(MethodAccess call, Method m, int ix |
     call = result and
     call.getArgument(ix) = e and
@@ -117,52 +146,24 @@ Expr basicNullGuard(Expr e, boolean branch, boolean isnull) {
 }
 
 /**
- * An expression that tests whether a given SSA variable is null or not.
+ * Gets an expression that directly tests whether a given SSA variable is null or not.
  *
  * If `result` evaluates to `branch`, then `v` is guaranteed to be null if `isnull`
  * is true, and non-null if `isnull` is false.
  */
-Expr nullGuard(SsaVariable v, boolean branch, boolean isnull) {
-  result = basicNullGuard(sameValue(v, _), branch, isnull) or
-  exists(SsaExplicitUpdate vbool, Expr boolinit |
-    result = vbool.getAUse() and
-    vbool.getDefiningExpr().(VariableAssign).getSource() = boolinit and
-    boolinit = nullGuard(v, branch, isnull)
-  ) or
-  result.(AndBitwiseExpr).getAnOperand() = nullGuard(v, branch, isnull) and branch = true or
-  result.(OrBitwiseExpr).getAnOperand() = nullGuard(v, branch, isnull) and branch = false or
-  // Note that the following four cases are only relevant because `nullGuard` is used in contexts that are not `ConditionNode`s.
-  result.(AndLogicalExpr).getAnOperand() = nullGuard(v, branch, isnull) and branch = true or
-  result.(OrLogicalExpr).getAnOperand() = nullGuard(v, branch, isnull) and branch = false or
-  result.(LogNotExpr).getExpr().getProperExpr() = nullGuard(v, branch.booleanNot(), isnull) or
-  result.(ParExpr).getExpr().getProperExpr() = nullGuard(v, branch, isnull) or
-  exists(EqualityTest eqtest, boolean branch0, boolean polarity, BooleanLiteral boollit |
-    eqtest = result and
-    eqtest.hasOperands(nullGuard(v, branch0, isnull), boollit) and
-    eqtest.polarity() = polarity and
-    branch = branch0.booleanXor(polarity).booleanXor(boollit.getBooleanValue())
-  ) or
-  exists(SsaExplicitUpdate v0, boolean branch1, ConditionalExpr c |
-    // If `v0 = ng ? k : ...` or `v0 = ng ? ... : k` then a guard
-    // proving `v0 != k` ensures that `ng` evaluates to `branch1`.  If `ng`
-    // in turn is a null guard for `v` then the guard for `v0` also becomes
-    // a null guard for `v`. The following two disjuncts handle the cases where
-    // `k` is either null or an integer constant, respectively.
-    v0.getDefiningExpr().(VariableAssign).getSource().getProperExpr() = c and
-    c.getCondition() = nullGuard(v, branch1, isnull)
-    |
-    result = nullGuard(v0, branch, false) and
-    (
-      c.getTrueExpr() = alwaysNullExpr() and branch1 = false or
-      c.getFalseExpr() = alwaysNullExpr() and branch1 = true
-    ) or
-    exists(int k |
-      result = integerGuard(v0.getAUse(), branch, k, false)
-      |
-      c.getTrueExpr() = any(ConstantIntegerExpr c0 | c0.getIntValue() = k) and branch1 = false or
-      c.getFalseExpr() = any(ConstantIntegerExpr c0 | c0.getIntValue() = k) and branch1 = true
-    )
-  )
+Expr directNullGuard(SsaVariable v, boolean branch, boolean isnull) {
+  result = basicOrCustomNullGuard(sameValue(v, _), branch, isnull)
+}
+
+/**
+ * Gets a `Guard` that tests (possibly indirectly) whether a given SSA variable is null or not.
+ *
+ * If `result` evaluates to `branch`, then `v` is guaranteed to be null if `isnull`
+ * is true, and non-null if `isnull` is false.
+ */
+Guard nullGuard(SsaVariable v, boolean branch, boolean isnull) {
+  result = directNullGuard(v, branch, isnull) or
+  exists(boolean branch0 | implies_v3(result, branch, nullGuard(v, branch0, isnull), branch0))
 }
 
 /**
@@ -176,26 +177,23 @@ private predicate validReturnInCustomNullGuard(ReturnStmt ret, Parameter p, bool
     m.getReturnType().(PrimitiveType).hasName("boolean")
   ) and
   exists(SsaImplicitInit ssa | ssa.isParameterDefinition(p) |
-    exists(ConditionBlock cond |
-      // lifted to assist join ordering
-      validReturnHelper(ret, ssa, cond, isnull) and
-      (retval = true or retval = false)
-    ) or
+    nullGuardedReturn(ret, ssa, isnull) and
+    (retval = true or retval = false)
+    or
     exists(Expr res | res = ret.getResult() |
       res = nullGuard(ssa, retval, isnull)
     )
   )
 }
 
-private predicate validReturnHelper(ReturnStmt ret, SsaImplicitInit ssa, ConditionBlock cond, boolean isnull) {
+private predicate nullGuardedReturn(ReturnStmt ret, SsaImplicitInit ssa, boolean isnull) {
   exists(boolean branch |
-    cond.controls(ret.getBasicBlock(), branch) and
-    cond.getCondition() = nullGuard(ssa, branch, isnull)
+    nullGuard(ssa, branch, isnull).directlyControls(ret.getBasicBlock(), branch)
   )
 }
 
 /**
- * A non-overridable method with a boolean return value that performs a null-check
+ * Gets a non-overridable method with a boolean return value that performs a null-check
  * on the `index`th parameter. A return value equal to `retval` allows us to conclude
  * that the argument either is null or non-null as specified by `isnull`.
  */
@@ -219,10 +217,8 @@ private Method customNullGuard(int index, boolean retval, boolean isnull) {
 /**
  * `guard` is a guard expression that suggests that `v` might be null.
  *
- * This is equivalent to `guard = basicNullGuard(sameValue(v, _), _, true)` but excludes custom
- * null guards, as they might be invoked solely for their side effects.
+ * This is equivalent to `guard = basicNullGuard(sameValue(v, _), _, true)`.
  */
 predicate guardSuggestsVarMaybeNull(Expr guard, SsaVariable v) {
-  guard = basicNullGuard(sameValue(v, _), _, true) and
-  not guard.(MethodAccess).getMethod().getSourceDeclaration() = customNullGuard(_, _, true)
+  guard = basicNullGuard(sameValue(v, _), _, true)
 }

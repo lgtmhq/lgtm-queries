@@ -22,7 +22,7 @@ class CallToObjectDefineProperty extends DataFlow::MethodCallNode {
   CallToObjectDefineProperty() {
     exists (GlobalVariable obj |
       obj.getName() = "Object" and
-      astNode.calls(obj.getAnAccess(), "defineProperty")
+      calls(DataFlow::valueNode(obj.getAnAccess()), "defineProperty")
     )
   }
 
@@ -57,8 +57,11 @@ class DirectEval extends CallExpr {
 }
 
 /**
+ * DEPRECATED. Use `JsonParserCall` and the data flow API instead.
+ *
  * A call to `JSON.parse`.
  */
+deprecated
 class JsonParseCall extends MethodCallExpr {
   JsonParseCall() {
     this = DataFlow::globalVarRef("JSON").getAMemberCall("parse").asExpr()

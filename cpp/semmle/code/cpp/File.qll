@@ -44,11 +44,12 @@ abstract class Container extends Locatable, @container {
   abstract string getAbsolutePath();
 
   /**
+   * DEPRECATED: Use `getLocation` instead.
    * Gets a URL representing the location of this container.
    *
    * For more information see https://lgtm.com/help/ql/locations#providing-urls.
    */
-  abstract string getURL();
+  deprecated abstract string getURL();
 
   /**
    * Gets the relative path of this file or folder from the root folder of the
@@ -194,8 +195,16 @@ class Folder extends Container, @folder {
     folders(this, result, _)
   }
 
-  /** Gets the URL of this folder. */
-  override string getURL() {
+  override Location getLocation() {
+    result.getContainer() = this and
+    result.hasLocationInfo(_, 0, 0, 0, 0)
+  }
+
+  /**
+   * DEPRECATED: Use `getLocation` instead.
+   * Gets the URL of this folder.
+   */
+  deprecated override string getURL() {
     result = "folder://" + getAbsolutePath()
   }
 
@@ -263,8 +272,16 @@ class File extends Container, @file {
     result = Container.super.toString()
   }
 
-  /** Gets the URL of this file. */
-  override string getURL() {
+  override Location getLocation() {
+    result.getContainer() = this and
+    result.hasLocationInfo(_, 0, 0, 0, 0)
+  }
+
+  /**
+   * DEPRECATED: Use `getLocation` instead.
+   * Gets the URL of this file.
+   */
+  deprecated override string getURL() {
     result = "file://" + this.getAbsolutePath() + ":0:0:0:0"
   }
 

@@ -34,6 +34,8 @@ private class NumericCastFlowConfig extends TaintTracking::Configuration {
   override predicate isSanitizer(DataFlow::Node node) {
     boundedRead(node.asExpr()) or
     castCheck(node.asExpr()) or
+    node.getType() instanceof SmallType or
+    smallExpr(node.asExpr()) or
     node.getEnclosingCallable() instanceof HashCodeMethod
   }
 }

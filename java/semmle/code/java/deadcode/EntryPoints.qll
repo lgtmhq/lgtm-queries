@@ -167,7 +167,7 @@ class JAXAnnotationReflectivelyConstructedClass extends ReflectivelyConstructedC
 class DeserializedClass extends ReflectivelyConstructedClass{
   DeserializedClass(){
     exists(CastExpr cast, ReadObjectMethod readObject | cast.getExpr().(MethodAccess).getMethod() = readObject |
-      hasSubtypeStar(cast.getType(), this)
+      hasSubtype*(cast.getType(), this)
     )
   }
 }
@@ -248,10 +248,10 @@ class JaxbXmlType extends AnnotationEntryPoint, JaxbType {
       // A bound getter or setter.
       result instanceof JaxbBoundGetterSetter or
       // Methods called by reflection when unmarshalling or marshalling.
-      result.hasStringSignature("afterUnmarshal(Unmarshaller, Object)") or
-      result.hasStringSignature("beforeUnmarshal(Unmarshaller, Object)") or
-      result.hasStringSignature("afterMarshal(Marshaller, Object)") or
-      result.hasStringSignature("beforeMarshal(Marshaller, Object)")
+      result.hasName("afterUnmarshal") and result.paramsString() = "(Unmarshaller, Object)" or
+      result.hasName("beforeUnmarshal") and result.paramsString() = "(Unmarshaller, Object)" or
+      result.hasName("afterMarshal") and result.paramsString() = "(Marshaller, Object)" or
+      result.hasName("beforeMarshal") and result.paramsString() = "(Marshaller, Object)"
     )
   }
 }

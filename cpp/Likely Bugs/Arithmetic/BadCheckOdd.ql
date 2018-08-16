@@ -17,7 +17,7 @@
  *              negative numbers.
  * @kind problem
  * @problem.severity warning
- * @precision high
+ * @precision medium
  * @id cpp/incomplete-parity-check
  * @tags reliability
  *       correctness

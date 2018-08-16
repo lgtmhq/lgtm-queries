@@ -266,6 +266,7 @@ class CompileTimeConstantExpr extends Expr {
    * - values of type `long`,
    * - `char` literals.
    */
+  cached
   int getIntValue() {
     exists(IntegralType t | this.getType() = t |
       t.getName().toLowerCase() != "long"

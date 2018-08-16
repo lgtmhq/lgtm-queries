@@ -84,7 +84,7 @@ class Object extends @py_object {
     predicate hasLocationInfo(string filepath, int bl, int bc, int el, int ec) {
         this.hasOrigin() and this.getOrigin().getLocation().hasLocationInfo(filepath, bl, bc, el, ec)
         or
-        not this.hasOrigin() and filepath = "Compiled Code" and bl = 0 and bc = 0 and el = 0 and ec = 0
+        not this.hasOrigin() and filepath = ":Compiled Code" and bl = 0 and bc = 0 and el = 0 and ec = 0
    }
 
     string toString() {

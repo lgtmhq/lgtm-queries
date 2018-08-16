@@ -13,6 +13,7 @@
 
 import java
 private import semmle.code.java.controlflow.Dominance
+private import semmle.code.java.controlflow.internal.GuardsLogic
 
 /**
  * A basic block that terminates in a condition, splitting the subsequent control flow.
@@ -37,7 +38,10 @@ class ConditionBlock extends BasicBlock {
     result = this.getConditionNode().getABranchSuccessor(testIsTrue)
   }
 
-  /** Basic blocks controlled by this condition, that is, those basic blocks for which the condition is `testIsTrue`. */
+  /**
+   * Holds if `controlled` is a basic block controlled by this condition, that
+   * is, a basic blocks for which the condition is `testIsTrue`.
+   */
   predicate controls(BasicBlock controlled, boolean testIsTrue) {
     /*
      * For this block to control the block `controlled` with `testIsTrue` the following must be true:
@@ -80,4 +84,163 @@ class ConditionBlock extends BasicBlock {
       )
     )
   }
+}
+
+/**
+ * A condition that can be evaluated to either true or false. This can either
+ * be an `Expr` of boolean type that isn't a boolean literal, or a case of a
+ * switch statement.
+ *
+ * Evaluating a switch case to true corresponds to taking that switch case, and
+ * evaluating it to false corresponds to taking some other branch.
+ */
+class Guard extends ExprParent {
+  Guard() {
+    this.(Expr).getType() instanceof BooleanType and not this instanceof BooleanLiteral or
+    this instanceof SwitchCase
+  }
+
+  /** Gets the immediately enclosing callable whose body contains this guard. */
+  Callable getEnclosingCallable() {
+    result = this.(Expr).getEnclosingCallable() or
+    result = this.(SwitchCase).getEnclosingCallable()
+  }
+
+  /** Gets the statement containing this guard. */
+  Stmt getEnclosingStmt() {
+    result = this.(Expr).getEnclosingStmt() or
+    result = this.(SwitchCase).getSwitch()
+  }
+
+  /**
+   * Holds if this guard is an equality test between `e1` and `e2`. The test
+   * can be either `==`, `!=`, `.equals`, or a switch case. If the test is
+   * negated, that is `!=`, then `polarity` is false, otherwise `polarity` is
+   * true.
+   */
+  predicate isEquality(Expr e1, Expr e2, boolean polarity) {
+    exists(Expr exp1, Expr exp2 |
+      equalityGuard(this, exp1, exp2, polarity)
+      |
+      e1 = exp1.getProperExpr() and e2 = exp2.getProperExpr() or
+      e2 = exp1.getProperExpr() and e1 = exp2.getProperExpr()
+    )
+  }
+
+  /**
+   * Holds if the evaluation of this guard to `branch` corresponds to the edge
+   * from `bb1` to `bb2`.
+   */
+  predicate hasBranchEdge(BasicBlock bb1, BasicBlock bb2, boolean branch) {
+    exists(ConditionBlock cb |
+      cb = bb1 and
+      cb.getCondition() = this and
+      bb2 = cb.getTestSuccessor(branch)
+    ) or
+    exists(SwitchCase sc, ControlFlowNode pred |
+      sc = this and
+      branch = true and
+      bb2.getFirstNode() = sc.getControlFlowNode() and
+      pred = sc.getControlFlowNode().getAPredecessor() and
+      pred.(Expr).getParent*() = sc.getSwitch().getExpr() and
+      bb1 = pred.getBasicBlock()
+    )
+  }
+
+  /**
+   * Holds if this guard evaluating to `branch` directly controls the block
+   * `controlled`. That is, the `true`- or `false`-successor of this guard (as
+   * given by `branch`) dominates `controlled`.
+   */
+  predicate directlyControls(BasicBlock controlled, boolean branch) {
+    exists(ConditionBlock cb |
+      cb.getCondition() = this and
+      cb.controls(controlled, branch)
+    ) or
+    switchCaseControls(this, controlled) and branch = true
+  }
+
+  /**
+   * Holds if this guard evaluating to `branch` directly or indirectly controls
+   * the block `controlled`. That is, the evaluation of `controlled` is
+   * dominated by this guard evaluating to `branch`.
+   */
+  predicate controls(BasicBlock controlled, boolean branch) {
+    guardControls_v3(this, controlled, branch)
+  }
+}
+
+private predicate switchCaseControls(SwitchCase sc, BasicBlock bb) {
+  exists(BasicBlock caseblock, SwitchStmt ss |
+    ss.getACase() = sc and
+    caseblock.getFirstNode() = sc.getControlFlowNode() and
+    caseblock.bbDominates(bb) and
+    forall(ControlFlowNode pred | pred = sc.getControlFlowNode().getAPredecessor() |
+      pred.(Expr).getParent*() = ss.getExpr()
+    )
+  )
+}
+
+/**
+ * INTERNAL: Use `Guards.controls` instead.
+ *
+ * Holds if `guard.controls(controlled, branch)`, except this only relies on
+ * BaseSSA-based reasoning.
+ */
+predicate guardControls_v1(Guard guard, BasicBlock controlled, boolean branch) {
+  guard.directlyControls(controlled, branch) or
+  exists(Guard g, boolean b |
+    guardControls_v1(g, controlled, b) and
+    implies_v1(g, b, guard, branch)
+  )
+}
+
+/**
+ * INTERNAL: Use `Guards.controls` instead.
+ *
+ * Holds if `guard.controls(controlled, branch)`, except this doesn't rely on
+ * RangeAnalysis.
+ */
+predicate guardControls_v2(Guard guard, BasicBlock controlled, boolean branch) {
+  guard.directlyControls(controlled, branch) or
+  exists(Guard g, boolean b |
+    guardControls_v2(g, controlled, b) and
+    implies_v2(g, b, guard, branch)
+  )
+}
+
+private predicate guardControls_v3(Guard guard, BasicBlock controlled, boolean branch) {
+  guard.directlyControls(controlled, branch) or
+  exists(Guard g, boolean b |
+    guardControls_v3(g, controlled, b) and
+    implies_v3(g, b, guard, branch)
+  )
+}
+
+private predicate equalityGuard(Guard g, Expr e1, Expr e2, boolean polarity) {
+  exists(EqualityTest eqtest |
+    eqtest = g and
+    polarity = eqtest.polarity() and
+    eqtest.hasOperands(e1, e2)
+  ) or
+  exists(MethodAccess ma |
+    ma = g and
+    ma.getMethod() instanceof EqualsMethod and
+    polarity = true and
+    ma.getAnArgument() = e1 and ma.getQualifier() = e2
+  ) or
+  exists(MethodAccess ma, Method equals |
+    ma = g and
+    ma.getMethod() = equals and
+    polarity = true and
+    equals.hasName("equals") and
+    equals.getNumberOfParameters() = 2 and
+    equals.getDeclaringType().hasQualifiedName("java.util", "Objects") and
+    ma.getArgument(0) = e1 and ma.getArgument(1) = e2
+  ) or
+  exists(ConstCase cc |
+    cc = g and
+    polarity = true and
+    cc.getSwitch().getExpr().getProperExpr() = e1 and cc.getValue() = e2
+  )
 }

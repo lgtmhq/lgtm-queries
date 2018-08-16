@@ -42,21 +42,9 @@ predicate isFixedArity(Function fn) {
  *
  * This is only defined if all potential callees have a fixed arity.
  */
-int maxArity(CallSite invk) {
+int maxArity(DataFlow::InvokeNode invk) {
   forall (Function callee | callee = invk.getACallee() | isFixedArity(callee)) and
   result = max(invk.getACallee().getNumParameter())
-}
-
-/**
- * Holds if call site `invk` has more arguments than the maximum arity
- * of any function that it may invoke, and the first of those
- * arguments is `arg`.
- *
- * This predicate is only defined for call sites where callee information is complete.
- */
-predicate firstSpuriousArgument(CallSite invk, Expr arg) {
-  arg = invk.getArgumentNode(maxArity(invk)).asExpr() and
-  not invk.isIncomplete()
 }
 
 /**
@@ -67,15 +55,18 @@ predicate firstSpuriousArgument(CallSite invk, Expr arg) {
  * defined to cover all subsequent arguments as well.
  */
 class SpuriousArguments extends Expr {
+  DataFlow::InvokeNode invk;
+
   SpuriousArguments() {
-    firstSpuriousArgument(_, this)
+    this = invk.getArgument(maxArity(invk)).asExpr() and
+    not invk.isIncomplete()
   }
 
   /**
    * Gets the call site at which the spurious arguments are passed.
    */
-  CallSite getCall() {
-    firstSpuriousArgument(result, this)
+  DataFlow::InvokeNode getCall() {
+    result = invk
   }
 
   /**
@@ -84,7 +75,7 @@ class SpuriousArguments extends Expr {
    * expected by any potential callee.
    */
   int getCount() {
-    result = getCall().(InvokeExpr).getNumArgument() - maxArity(getCall())
+    result = count(int i | exists(invk.getArgument(i)) and i >= maxArity(getCall()))
   }
 
   /**
@@ -95,14 +86,24 @@ class SpuriousArguments extends Expr {
    * [LGTM locations](https://lgtm.com/help/ql/locations).
    */
   predicate hasLocationInfo(string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    this.getLocation().hasLocationInfo(filepath, startline, startcolumn, _, _) and
-    exists (Expr lastArg | lastArg = getCall().(InvokeExpr).getLastArgument() |
-      lastArg.getLocation().hasLocationInfo(_, _, _, endline, endcolumn)
+    getLocation().hasLocationInfo(filepath, startline, startcolumn, _, _) and
+    exists (DataFlow::Node lastArg |
+      lastArg = max(DataFlow::Node arg, int i | arg = invk.getArgument(i) | arg order by i) |
+      lastArg.hasLocationInfo(_, _, _, endline, endcolumn)
     )
   }
 }
 
 from SpuriousArguments args, Function f, string arguments
 where f = args.getCall().getACallee() and
-      if args.getCount() = 1 then arguments = "argument" else arguments = "arguments"
+      if args.getCount() = 1 then arguments = "argument" else arguments = "arguments" and
+      (
+        // exclude empty functions, they are probably commented out debug utilities ...
+        exists(f.getABodyStmt()) or
+        // ... but include: constructors, arrows and externals/ambients
+        f instanceof Constructor or // unlikely to be a debug utility
+        f instanceof ArrowFunctionExpr or // cannot be empty
+        f instanceof ExternalFunction or // always empty
+        f.isAmbient() // always empty
+      )
 select args, "Superfluous " + arguments + " passed to $@.", f, f.describe()

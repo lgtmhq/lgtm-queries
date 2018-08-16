@@ -21,6 +21,7 @@
  * @id cpp/unsafe-strcat
  * @tags reliability
  *       correctness
+ *       security
  *       external/cwe/cwe-676
  *       external/cwe/cwe-120
  *       external/cwe/cwe-251

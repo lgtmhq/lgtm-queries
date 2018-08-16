@@ -13,6 +13,7 @@
 
 import java
 import semmle.code.java.dataflow.TypeFlow
+private import DispatchFlow as DispatchFlow
 private import semmle.code.java.dataflow.internal.BaseSSA
 private import semmle.code.java.controlflow.Guards
 
@@ -45,23 +46,27 @@ Callable viableCallable(Call c) {
   c instanceof ConstructorCall and result = c.getCallee().getSourceDeclaration()
 }
 
-/** A type that is the same as its source declaration. */
-class SrcRefType extends RefType {
-  SrcRefType() { this.isSourceDeclaration() }
-}
-
 /** A method that is the target of a call. */
 class CalledMethod extends Method {
   CalledMethod() { exists(MethodAccess ma | ma.getMethod() = this) }
 }
 
 cached private module Dispatch {
+  /** Gets a viable implementation of the method called in the given method access. */
+  cached Method viableImpl(MethodAccess ma) {
+    result = DispatchFlow::viableImpl_out(ma)
+  }
+
   private predicate qualType(VirtualMethodAccess ma, RefType t, boolean exact) {
     exprTypeFlow(ma.getQualifier(), t, exact)
   }
 
-  /** Gets a viable implementation of the method called in the given method access. */
-  cached Method viableImpl(MethodAccess ma) {
+  /**
+   * INTERNAL: Use `viableImpl` instead.
+   *
+   * Gets a viable implementation of the method called in the given method access.
+   */
+  cached Method viableImpl_v2(MethodAccess ma) {
     result = viableImpl_v1(ma) and
     (
       exists(Method def, RefType t, boolean exact |
@@ -149,11 +154,10 @@ cached private module Dispatch {
    */
   private predicate impossibleDispatchTarget(MethodAccess source, Method tgt) {
     tgt = viableImpl_v1_cand(source) and
-    exists(ConditionBlock cond, InstanceOfExpr ioe, BaseSsaVariable v, Expr q, RefType t |
+    exists(InstanceOfExpr ioe, BaseSsaVariable v, Expr q, RefType t |
       source.getQualifier() = q and
       v.getAUse() = q and
-      cond.getCondition() = ioe and
-      cond.controls(q.getBasicBlock(), false) and
+      guardControls_v1(ioe, q.getBasicBlock(), false) and
       ioe.getExpr() = v.getAUse() and
       ioe.getTypeName().getType().getErasure() = t and
       tgt.getDeclaringType().getSourceDeclaration().getASourceSupertype*() = t
@@ -235,11 +239,16 @@ cached private module Dispatch {
     }
   }
 
+  private RefType getPreciseType(Expr e) {
+    result = e.(FunctionalExpr).getConstructedType() or
+    not e instanceof FunctionalExpr and result = e.getType()
+  }
+
   private predicate hasQualifierType(VirtualMethodAccess ma, RefType t, boolean exact) {
     exists(Expr src | src = variableTrack(ma.getQualifier()) |
       // If we have a qualifier, then we track it through variable assignments
       // and take the type of the assigned value.
-      exists(RefType srctype | srctype = src.getType() |
+      exists(RefType srctype | srctype = getPreciseType(src) |
         exists(BoundedType bd | bd = srctype |
           t = bd.getAnUltimateUpperBoundType() or
           not exists(bd.getAnUltimateUpperBoundType()) and t = ma.getMethod().getDeclaringType()

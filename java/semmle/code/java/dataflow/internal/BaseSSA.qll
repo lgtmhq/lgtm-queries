@@ -345,18 +345,29 @@ class BaseSsaVariable extends TBaseSsaVariable {
     ssaDefReachesEndOfBlock(_, this, b)
   }
 
-  /**
-   * Gets an SSA variable whose value can flow to this one in one step. This
-   * includes inputs to phi nodes, the prior definition of uncertain updates,
-   * and the captured ssa variable for a closure variable.
-   */
+  /** Gets an input to the phi node defining the SSA variable. */
   private BaseSsaVariable getAPhiInput() {
     result = this.(BaseSsaPhiNode).getAPhiInput()
   }
 
-  /** Gets a definition that ultimately defines this variable and is not itself a phi node. */
+  /** Gets a definition in the same callable that ultimately defines this variable and is not itself a phi node. */
   BaseSsaVariable getAnUltimateLocalDefinition() {
     result = this.getAPhiInput*() and not result instanceof BaseSsaPhiNode
+  }
+
+  /**
+   * Gets an SSA variable whose value can flow to this one in one step. This
+   * includes inputs to phi nodes and the captured ssa variable for a closure
+   * variable.
+   */
+  private BaseSsaVariable getAPhiInputOrCapturedVar() {
+    result = this.(BaseSsaPhiNode).getAPhiInput() or
+    this.(BaseSsaImplicitInit).captures(result)
+  }
+
+  /** Gets a definition that ultimately defines this variable and is not itself a phi node. */
+  BaseSsaVariable getAnUltimateDefinition() {
+    result = this.getAPhiInputOrCapturedVar*() and not result instanceof BaseSsaPhiNode
   }
 }
 

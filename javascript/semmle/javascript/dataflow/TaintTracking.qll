@@ -174,7 +174,7 @@ module TaintTracking {
    * of the standard library. Override `Configuration::isAdditionalTaintStep`
    * for analysis-specific taint steps.
    */
-  abstract class AdditionalTaintStep extends DataFlow::Node {
+  abstract cached class AdditionalTaintStep extends DataFlow::Node {
     /**
      * Holds if `pred` &rarr; `succ` should be considered a taint-propagating
      * data flow edge.
@@ -220,6 +220,13 @@ module TaintTracking {
           this = DataFlow::parameterNode(p) and
           pred.asExpr() = m.getReceiver()
         )
+        or
+        // `array.map` with tainted return value in callback
+        exists (MethodCallExpr m, Function f |
+          this.asExpr() = m and
+          m.getMethodName() = "map" and
+          m.getArgument(0) = f and // Require the argument to be a closure to avoid spurious call/return flow
+          pred = f.getAReturnedExpr().flow())
       )
       or
       // reading from a tainted object yields a tainted result
@@ -378,7 +385,9 @@ module TaintTracking {
             name = "trimRight" or
             // sorted, interesting, properties of Object.prototype
             name = "toString" or
-            name = "valueOf"
+            name = "valueOf" or
+            // sorted, interesting, properties of Array.prototype
+            name = "join"
           ) or
           exists (int i | pred.asExpr() = astNode.(MethodCallExpr).getArgument(i) |
             name = "concat" or
@@ -413,18 +422,29 @@ module TaintTracking {
   }
 
   /**
-   * A taint propagating data flow edge arising from JSON parsing or unparsing.
+   * A taint propagating data flow edge arising from JSON unparsing.
    */
-  private class JsonManipulationTaintStep extends AdditionalTaintStep, DataFlow::MethodCallNode {
-    JsonManipulationTaintStep() {
-      exists (string methodName |
-        methodName = "parse" or methodName = "stringify" |
-        this = DataFlow::globalVarRef("JSON").getAMemberCall(methodName)
-      )
+  private class JsonStringifyTaintStep extends AdditionalTaintStep, DataFlow::MethodCallNode {
+    JsonStringifyTaintStep() {
+      this = DataFlow::globalVarRef("JSON").getAMemberCall("stringify")
     }
 
     override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
       pred = getArgument(0) and succ = this
+    }
+  }
+
+  /**
+   * A taint propagating data flow edge arising from JSON parsing.
+   */
+  private class JsonParserTaintStep extends AdditionalTaintStep, DataFlow::CallNode {
+    JsonParserCall call;
+
+    JsonParserTaintStep() { this = call }
+
+    override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
+      pred = call.getInput() and
+      succ = call.getOutput()
     }
   }
 

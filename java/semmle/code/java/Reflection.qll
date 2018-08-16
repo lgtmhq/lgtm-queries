@@ -313,7 +313,7 @@ class NewInstance extends MethodAccess {
          * sub-type of that type. Make sure we exclude overly generic types such as `Object`.
          */
         not overlyGenericType(cast.getType()) and
-        hasSubtypeStar(cast.getType(), result)
+        hasSubtype*(cast.getType(), result)
       )
     )
   }

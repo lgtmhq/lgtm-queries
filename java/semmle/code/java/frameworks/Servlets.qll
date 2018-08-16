@@ -118,6 +118,67 @@ class HttpServletRequestGetHeaderMethod extends Method {
 }
 
 /**
+ * The method `getHeaders(String)` declared in `javax.servlet.http.HttpServletRequest`.
+ */
+library
+class HttpServletRequestGetHeadersMethod extends Method {
+  HttpServletRequestGetHeadersMethod() {
+    getDeclaringType() instanceof HttpServletRequest and
+    hasName("getHeaders") and
+    getNumberOfParameters() = 1 and
+    getParameter(0).getType() instanceof TypeString
+  }
+}
+
+/**
+ * The method `getHeaderNames()` declared in `javax.servlet.http.HttpServletRequest`.
+ */
+library
+class HttpServletRequestGetHeaderNamesMethod extends Method {
+  HttpServletRequestGetHeaderNamesMethod() {
+    getDeclaringType() instanceof HttpServletRequest and
+    hasName("getHeaderNames") and
+    getNumberOfParameters() = 0
+  }
+}
+
+/**
+ * The method `getRequestURL()` declared in `javax.servlet.http.HttpServletRequest`.
+ */
+library
+class HttpServletRequestGetRequestURLMethod extends Method {
+  HttpServletRequestGetRequestURLMethod() {
+    getDeclaringType() instanceof HttpServletRequest and
+    hasName("getRequestURL") and
+    getNumberOfParameters() = 0
+  }
+}
+
+/**
+ * The method `getRequestURI()` declared in `javax.servlet.http.HttpServletRequest`.
+ */
+library
+class HttpServletRequestGetRequestURIMethod extends Method {
+  HttpServletRequestGetRequestURIMethod() {
+    getDeclaringType() instanceof HttpServletRequest and
+    hasName("getRequestURI") and
+    getNumberOfParameters() = 0
+  }
+}
+
+/**
+ * The method `getRemoteUser()` declared in `javax.servlet.http.HttpServletRequest`.
+ */
+library
+class HttpServletRequestGetRemoteUserMethod extends Method {
+  HttpServletRequestGetRemoteUserMethod() {
+    getDeclaringType() instanceof HttpServletRequest and
+    hasName("getRemoteUser") and
+    getNumberOfParameters() = 0
+  }
+}
+
+/**
  * The method `getInputStream()` or `getReader()` declared in `javax.servlet.ServletRequest`.
  */
 library
@@ -212,6 +273,32 @@ class CookieGetValueMethod extends Method {
     getDeclaringType() instanceof TypeCookie and
     hasName("getValue") and
     getReturnType() instanceof TypeString
+  }
+}
+
+/**
+ * The method `getName()` declared in `javax.servlet.http.Cookie`.
+ */
+library
+class CookieGetNameMethod extends Method {
+  CookieGetNameMethod() {
+    getDeclaringType() instanceof TypeCookie and
+    hasName("getName") and
+    getReturnType() instanceof TypeString and
+    getNumberOfParameters() = 0
+  }
+}
+
+/**
+ * The method `getComment()` declared in `javax.servlet.http.Cookie`.
+ */
+library
+class CookieGetCommentMethod extends Method {
+  CookieGetCommentMethod() {
+    getDeclaringType() instanceof TypeCookie and
+    hasName("getComment") and
+    getReturnType() instanceof TypeString and
+    getNumberOfParameters() = 0
   }
 }
 

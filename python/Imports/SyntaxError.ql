@@ -27,4 +27,4 @@ import python
 
 from SyntaxError error
 where not error instanceof EncodingError
-select error, error.getMessage()
+select error, error.getMessage() + " (in Python " +  major_version() + "." + minor_version() + ")."

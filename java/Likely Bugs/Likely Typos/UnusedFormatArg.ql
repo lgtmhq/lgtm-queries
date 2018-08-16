@@ -41,5 +41,6 @@ from FormattingCall fmtcall, int refs, int args
 where
   refs = getNumberOfReferencedIndices(fmtcall) and
   args = fmtcall.getVarargsCount() and
-  refs < args
+  refs < args and
+  not (fmtcall.hasTrailingThrowableArgument() and refs = args - 1)
 select fmtcall, "This format call refers to " + refs + " argument(s) but supplies " + args + " argument(s)."

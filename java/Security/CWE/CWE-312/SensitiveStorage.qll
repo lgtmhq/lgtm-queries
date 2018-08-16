@@ -41,7 +41,7 @@ private class SensitiveSourceFlowConfig extends TaintTracking::Configuration {
     sink.asExpr() = getInstanceInput(_, _)
   }
   override predicate isSanitizer(DataFlow::Node n) {
-    n.getType() instanceof NumericType
+    n.getType() instanceof NumericType or n.getType() instanceof BooleanType
   }
 }
 
@@ -194,6 +194,7 @@ private class ClassStoreFlowConfig extends DataFlow4::Configuration {
     serializableStore(sink, _) or
     marshallableStore(sink, _)
   }
+  override int fieldFlowBranchLimit() { result = 1 }
 }
 
 private predicate serializableStore(DataFlow::Node instance, Expr store) {

@@ -15,6 +15,7 @@ import java
 import semmle.code.java.arithmetic.Overflow
 import semmle.code.java.dataflow.SSA
 import semmle.code.java.controlflow.Guards
+import semmle.code.java.dataflow.RangeAnalysis
 
 class NumericNarrowingCastExpr extends CastExpr {
   NumericNarrowingCastExpr() {
@@ -59,5 +60,21 @@ predicate castCheck(RValue read) {
   exists(EqualityTest eq, CastExpr cast |
     cast.getExpr() = read and
     eq.hasOperands(cast, read.getVariable().getAnAccess())
+  )
+}
+
+class SmallType extends Type {
+  SmallType() {
+    this instanceof BooleanType or
+    this.(PrimitiveType).hasName("byte") or
+    this.(BoxedType).getPrimitiveType().hasName("byte")
+  }
+}
+
+predicate smallExpr(Expr e) {
+  exists(int low, int high |
+    bounded(e, any(ZeroBound zb), low, false, _) and
+    bounded(e, any(ZeroBound zb), high, true, _) and
+    high - low < 256
   )
 }

@@ -15,10 +15,19 @@ import java
 import dataflow.DefUse
 
 /**
+ * A library method that formats a number of its arguments according to a
+ * format string.
+ */
+private abstract class FormatMethod extends Method {
+  /** Gets the index of the format string argument. */
+  abstract int getFormatStringIndex();
+}
+
+/**
  * A library method that acts like `String.format` by formatting a number of
  * its arguments according to a format string.
  */
-class StringFormatMethod extends Method {
+class StringFormatMethod extends FormatMethod {
   StringFormatMethod() {
     (
       this.hasName("format") or
@@ -34,8 +43,7 @@ class StringFormatMethod extends Method {
     )
   }
 
-  /** Gets the index of the format string argument. */
-  int getFormatStringIndex() {
+  override int getFormatStringIndex() {
     result = 0 and this.getSignature() = "format(java.lang.String,java.lang.Object[])" or
     result = 0 and this.getSignature() = "printf(java.lang.String,java.lang.Object[])" or
     result = 1 and this.getSignature() = "format(java.util.Locale,java.lang.String,java.lang.Object[])" or
@@ -46,11 +54,43 @@ class StringFormatMethod extends Method {
 }
 
 /**
+ * A format method using the `org.slf4j.Logger` format string syntax. That is,
+ * the placeholder string is `"{}"`.
+ */
+class LoggerFormatMethod extends FormatMethod {
+  LoggerFormatMethod() {
+    (
+      this.hasName("debug") or
+      this.hasName("error") or
+      this.hasName("info") or
+      this.hasName("trace") or
+      this.hasName("warn")
+    ) and
+    this.getDeclaringType().getASourceSupertype*().hasQualifiedName("org.slf4j", "Logger")
+  }
+
+  override int getFormatStringIndex() {
+    (result = 0 or result = 1) and
+    this.getParameterType(result) instanceof TypeString
+  }
+}
+
+private newtype TFmtSyntax = TFmtPrintf() or TFmtLogger()
+
+/** A syntax for format strings. */
+class FmtSyntax extends TFmtSyntax {
+  string toString() {
+    result = "printf (%) syntax" and this = TFmtPrintf() or
+    result = "logger ({}) syntax" and this = TFmtLogger()
+  }
+}
+
+/**
  * Holds if `c` wraps a call to a `StringFormatMethod`, such that `fmtix` is
  * the index of the format string argument to `c` and the following and final
  * argument is the `Object[]` that holds the arguments to be formatted.
  */
-private predicate formatWrapper(Callable c, int fmtix) {
+private predicate formatWrapper(Callable c, int fmtix, FmtSyntax syntax) {
   exists(Parameter fmt, Parameter args, Call fmtcall, int i |
     fmt = c.getParameter(fmtix) and
     fmt.getType() instanceof TypeString and
@@ -58,7 +98,11 @@ private predicate formatWrapper(Callable c, int fmtix) {
     args.getType().(Array).getElementType() instanceof TypeObject and
     c.getNumberOfParameters() = fmtix+2 and
     fmtcall.getEnclosingCallable() = c and
-    (formatWrapper(fmtcall.getCallee(), i) or fmtcall.getCallee().(StringFormatMethod).getFormatStringIndex() = i) and
+    (
+      formatWrapper(fmtcall.getCallee(), i, syntax) or
+      fmtcall.getCallee().(StringFormatMethod).getFormatStringIndex() = i and syntax = TFmtPrintf() or
+      fmtcall.getCallee().(LoggerFormatMethod).getFormatStringIndex() = i and syntax = TFmtLogger()
+    ) and
     fmtcall.getArgument(i) = fmt.getAnAccess() and
     fmtcall.getArgument(i+1) = args.getAnAccess()
   )
@@ -69,14 +113,36 @@ private predicate formatWrapper(Callable c, int fmtix) {
  */
 class FormattingCall extends Call {
   FormattingCall() {
-    this.getCallee() instanceof StringFormatMethod or
-    formatWrapper(this.getCallee(), _)
+    this.getCallee() instanceof FormatMethod or
+    formatWrapper(this.getCallee(), _, _)
   }
 
   /** Gets the index of the format string argument. */
   private int getFormatStringIndex() {
-    this.getCallee().(StringFormatMethod).getFormatStringIndex() = result or
-    formatWrapper(this.getCallee(), result)
+    this.getCallee().(FormatMethod).getFormatStringIndex() = result or
+    formatWrapper(this.getCallee(), result, _)
+  }
+
+  FmtSyntax getSyntax() {
+    this.getCallee() instanceof StringFormatMethod and result = TFmtPrintf() or
+    this.getCallee() instanceof LoggerFormatMethod and result = TFmtLogger() or
+    formatWrapper(this.getCallee(), _, result)
+  }
+
+  private Expr getLastArg() {
+    exists(Expr last |
+      last = this.getArgument(this.getNumArgument() - 1)
+      |
+      if this.hasExplicitVarargsArray() then
+        result = last.(ArrayCreationExpr).getInit().getInit(getVarargsCount() - 1)
+      else
+        result = last
+    )
+  }
+
+  predicate hasTrailingThrowableArgument() {
+    getSyntax() = TFmtLogger() and
+    getLastArg().getType().(RefType).getASourceSupertype*() instanceof TypeThrowable
   }
 
   /** Gets the argument to this call in the position of the format string */
@@ -252,6 +318,24 @@ class FormatString extends string {
   }
 
   /**
+   * Gets the largest argument index (1-indexed) that is referred by a format
+   * specifier. Gets the value 0 if there are no format specifiers.
+   */
+  /*abstract*/ int getMaxFmtSpecIndex() { none() }
+
+  /**
+   * Gets an argument index (1-indexed) less than `getMaxFmtSpecIndex()` that
+   * is not referred by any format specifier.
+   */
+  /*abstract*/ int getASkippedFmtSpecIndex() { none() }
+}
+
+private class PrintfFormatString extends FormatString {
+  PrintfFormatString() {
+    this.getAFormattingUse().getSyntax() = TFmtPrintf()
+  }
+
+  /**
    * Gets a boolean value that indicates whether the `%` character at index `i`
    * is an escaped percentage sign or a format specifier.
    */
@@ -307,24 +391,45 @@ class FormatString extends string {
     not this.fmtSpecRefersToPrevious(i)
   }
 
-  /**
-   * Gets the largest argument index (1-indexed) that is referred by a format
-   * specifier. Gets the value 0 if there are no format specifiers.
-   */
-  int getMaxFmtSpecIndex() {
+  override int getMaxFmtSpecIndex() {
     result = max(int ix |
       ix = fmtSpecRefersToSpecificIndex(_) or
       ix = count(int i | fmtSpecRefersToSequentialIndex(i))
     )
   }
 
-  /**
-   * Gets an argument index (1-indexed) less than `getMaxFmtSpecIndex()` that
-   * is not referred by any format specifier.
-   */
-  int getASkippedFmtSpecIndex() {
+  override int getASkippedFmtSpecIndex() {
     result in [1..getMaxFmtSpecIndex()] and
     result > count(int i | fmtSpecRefersToSequentialIndex(i)) and
     not result = fmtSpecRefersToSpecificIndex(_)
+  }
+}
+
+private class LoggerFormatString extends FormatString {
+  LoggerFormatString() {
+    this.getAFormattingUse().getSyntax() = TFmtLogger()
+  }
+
+  /**
+   * Gets a boolean value that indicates whether the `\` character at index `i`
+   * is an unescaped backslash.
+   */
+  private boolean isUnescapedBackslash(int i) {
+    this.charAt(i) = "\\" and
+    if this.charAt(i-1) = "\\" then
+      result = this.isUnescapedBackslash(i-1).booleanNot()
+    else
+      result = true
+  }
+
+  /** Holds if an unescaped placeholder `{}` occurs at index `i`. */
+  private predicate fmtPlaceholder(int i) {
+    this.charAt(i) = "{" and
+    this.charAt(i+1) = "}" and
+    not true = isUnescapedBackslash(i-1)
+  }
+
+  override int getMaxFmtSpecIndex() {
+    result = count(int i | fmtPlaceholder(i))
   }
 }

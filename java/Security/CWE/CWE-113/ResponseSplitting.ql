@@ -25,8 +25,16 @@
 import java
 import ResponseSplitting
 
-from HeaderSplittingSink sink, RemoteUserInput source
-where source.flowsTo(sink)
-  and not source instanceof WhitelistedSource
+class ResponseSplittingConfig extends TaintTracking::Configuration {
+  ResponseSplittingConfig() { this = "ResponseSplittingConfig" }
+  override predicate isSource(DataFlow::Node source) {
+    source instanceof RemoteUserInput and
+    not source instanceof WhitelistedSource
+  }
+  override predicate isSink(DataFlow::Node sink) { sink instanceof HeaderSplittingSink }
+}
+
+from HeaderSplittingSink sink, RemoteUserInput source, ResponseSplittingConfig conf
+where conf.hasFlow(source, sink)
 select sink, "Response-splitting vulnerability due to this $@.",
   source, "user-provided value"

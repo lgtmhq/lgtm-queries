@@ -14,6 +14,7 @@
 import java
 private import DataFlowUtil
 private import semmle.code.java.dataflow.SSA
+private import semmle.code.java.dataflow.TypeFlow
 
   /**
    * A data flow node that occurs as the argument of a call and is passed as-is
@@ -84,4 +85,140 @@ private import semmle.code.java.dataflow.SSA
   predicate jumpStep(Node node1, Node node2) {
     staticFieldStep(node1, node2) or
     variableCaptureStep(node1, node2)
+  }
+
+  /**
+   * Holds if `fa` is an access to an instance field that occurs as the
+   * destination of an assignment of the value `src`.
+   */
+  predicate instanceFieldAssign(Expr src, FieldAccess fa) {
+    exists(AssignExpr a |
+      a.getSource() = src and
+      a.getDest() = fa and
+      fa.getField() instanceof InstanceField
+    )
+  }
+
+  /**
+   * Gets an upper bound on the type of `f`.
+   */
+  private Type getFieldTypeBound(Field f) {
+    fieldTypeFlow(f, result, _) or
+    not fieldTypeFlow(f, _, _) and result = f.getType()
+  }
+
+  private newtype TContent = TFieldContent(InstanceField f) or TCollectionContent() or TArrayContent()
+
+  /**
+   * A reference contained in an object. Examples include instance fields, the
+   * contents of a collection object, or the contents of an array.
+   */
+  class Content extends TContent {
+    /** Gets a textual representation of this element. */
+    abstract string toString();
+    predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+      path = "" and sl = 0 and sc = 0 and el = 0 and ec = 0
+    }
+    /** Gets the type of the object containing this content. */
+    abstract RefType getDeclaringType();
+    /** Gets the type of this content. */
+    abstract Type getType();
+    /**
+     * Holds if this content may contain an object of the same type as the one
+     * that contains this content, and if this fact should be used to compress
+     * access paths.
+     *
+     * Examples include the tail pointer in a linked list or the left and right
+     * pointers in a binary tree.
+     */
+    predicate isSelfRef() { none() }
+  }
+  private class FieldContent extends Content, TFieldContent {
+    InstanceField f;
+    FieldContent() { this = TFieldContent(f) }
+    InstanceField getField() { result = f }
+    override string toString() { result = f.toString() }
+    override predicate hasLocationInfo(string path, int sl, int sc, int el, int ec) {
+      f.getLocation().hasLocationInfo(path, sl, sc, el, ec)
+    }
+    override RefType getDeclaringType() { result = f.getDeclaringType() }
+    override Type getType() { result = getFieldTypeBound(f) }
+    override predicate isSelfRef() { compatibleTypes(getDeclaringType(), getType()) }
+  }
+  private class CollectionContent extends Content, TCollectionContent {
+    override string toString() { result = "collection" }
+    override RefType getDeclaringType() { none() }
+    override Type getType() { none() }
+  }
+  private class ArrayContent extends Content, TArrayContent {
+    override string toString() { result = "array" }
+    override RefType getDeclaringType() { none() }
+    override Type getType() { none() }
+  }
+
+  /**
+   * Holds if data can flow from `node1` to `node2` via an assignment to `f`.
+   * Thus, `node2` references an object with a field `f` that contains the
+   * value of `node1`.
+   */
+  predicate storeStep(Node node1, Content f, PostUpdateNode node2) {
+    exists(FieldAccess fa |
+      instanceFieldAssign(node1.asExpr(), fa) and
+      node2.getPreUpdateNode() = getFieldQualifier(fa) and
+      f.(FieldContent).getField() = fa.getField()
+    )
+  }
+
+  /**
+   * Holds if data can flow from `node1` to `node2` via a read of `f`.
+   * Thus, `node1` references an object with a field `f` whose value ends up in
+   * `node2`.
+   */
+  predicate readStep(Node node1, Content f, Node node2) {
+    exists(FieldRead fr |
+      node1 = getFieldQualifier(fr) and
+      fr.getField() = f.(FieldContent).getField() and
+      fr = node2.asExpr()
+    )
+  }
+
+  /**
+   * Gets a representative (boxed) type for `t` for the purpose of pruning
+   * possible flow. A single type is used for all numeric types to account for
+   * numeric conversions, and otherwise the erasure is used.
+   */
+  RefType getErasedRepr(Type t) {
+    exists(Type e | e = t.getErasure() |
+      if e instanceof NumericOrCharType then
+        result.(BoxedType).getPrimitiveType().getName() = "double"
+      else if e instanceof BooleanType then
+        result.(BoxedType).getPrimitiveType().getName() = "boolean"
+      else
+        result = e
+    )
+  }
+
+  private predicate canContainBool(Type t) {
+    t instanceof BooleanType or
+    any(BooleanType b).(RefType).getASourceSupertype+() = t
+  }
+
+  /**
+   * Holds if `t1` and `t2` are compatible, that is, whether data can flow from
+   * a node of type `t1` to a node of type `t2`.
+   */
+  pragma[inline]
+  predicate compatibleTypes(Type t1, Type t2) {
+    exists(Type e1, Type e2 |
+      e1 = getErasedRepr(t1) and
+      e2 = getErasedRepr(t2)
+      |
+      /*
+       * Because of `getErasedRepr`, `erasedHaveIntersection` is a sufficient
+       * compatibility check, but `conContainBool` is kept as a dummy disjunct
+       * to get the proper join-order.
+       */
+      erasedHaveIntersection(e1, e2) or
+      canContainBool(e1) and canContainBool(e2)
+    )
   }

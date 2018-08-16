@@ -47,7 +47,7 @@ abstract class ExternalStringKind extends TaintKind {
     }
 
     override ClassObject getClass() {
-        result = theStrType()
+        result = theStrType() or result = theUnicodeType()
     }
 
 }

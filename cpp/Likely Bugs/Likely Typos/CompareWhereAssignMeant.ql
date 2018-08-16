@@ -25,6 +25,8 @@
  */
 import cpp
 
-from EQExpr op
-where op instanceof ExprInVoidContext
+from ExprInVoidContext op
+where op instanceof EQExpr
+      or
+      op.(FunctionCall).getTarget().hasName("operator==")
 select op, "This '==' operator has no effect. The assignment ('=') operator was probably intended."

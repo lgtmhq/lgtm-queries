@@ -148,10 +148,13 @@ predicate overFlowTest(ComparisonExpr comp) {
 /**
  * Holds if `test` and `guard` are equality tests of the same integral variable v with constants `c1` and `c2`.
  */
-predicate guardedTest(EqualityTest test, EqualityTest guard, CompileTimeConstantExpr c1, CompileTimeConstantExpr c2) {
-  exists(SsaVariable v | 
-    guard.hasOperands(v.getAUse(), c1) and
+pragma[nomagic]
+predicate guardedTest(EqualityTest test, Guard guard, boolean isEq, int i1, int i2) {
+  exists(SsaVariable v, CompileTimeConstantExpr c1, CompileTimeConstantExpr c2 |
+    guard.isEquality(v.getAUse(), c1, isEq) and
     test.hasOperands(v.getAUse(), c2) and
+    i1 = c1.getIntValue() and
+    i2 = c2.getIntValue() and
     v.getSourceVariable().getType() instanceof IntegralType
   )
 }
@@ -159,17 +162,15 @@ predicate guardedTest(EqualityTest test, EqualityTest guard, CompileTimeConstant
 /**
  * Holds if `guard` implies that `test` always has the value `testIsTrue`.
  */
-predicate uselessEqTest(EqualityTest test, boolean testIsTrue, EqualityTest guard) {
-  exists(ConditionBlock cb, boolean guardIsTrue, CompileTimeConstantExpr c1, CompileTimeConstantExpr c2 |
-    guardedTest(test, guard, c1, c2) and
-    c1.getIntValue() = c2.getIntValue() and
-    cb.getCondition() = guard and
-    cb.controls(test.getBasicBlock(), guardIsTrue) and
-    testIsTrue = guardIsTrue.booleanXor(guard.polarity().booleanXor(test.polarity()))
+predicate uselessEqTest(EqualityTest test, boolean testIsTrue, Guard guard) {
+  exists(boolean guardIsTrue, boolean guardpolarity, int i |
+    guardedTest(test, guard, guardpolarity, i, i) and
+    guard.controls(test.getBasicBlock(), guardIsTrue) and
+    testIsTrue = guardIsTrue.booleanXor(guardpolarity.booleanXor(test.polarity()))
   )
 }
 
-from BinaryExpr test, boolean testIsTrue, string reason, Expr reasonElem
+from BinaryExpr test, boolean testIsTrue, string reason, ExprParent reasonElem
 where
   (
     if uselessEqTest(test, _, _) then

@@ -144,4 +144,4 @@ where
       componentDescriptionString = "Config methods"
     )
   )
-select request, "'" + name + "' is a dependency of kind '" + kind + "', and can not be injected here. " + componentDescriptionString + " can only be injected with dependencies of kind " + compatibleWithString + "."
+select request, "'" + name + "' is a dependency of kind '" + kind + "', and cannot be injected here. " + componentDescriptionString + " can only be injected with dependencies of kind " + compatibleWithString + "."

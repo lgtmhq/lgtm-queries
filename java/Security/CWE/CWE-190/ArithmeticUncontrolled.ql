@@ -54,16 +54,8 @@ class TaintSource extends DataFlow::ExprNode {
   }
 }
 
-class ArithmeticUncontrolledFlowConfig extends TaintTracking::Configuration {
-  ArithmeticUncontrolledFlowConfig() { this = "ArithmeticUncontrolledFlowConfig" }
-  override predicate isSource(DataFlow::Node source) { source instanceof TaintSource }
-  override predicate isSink(DataFlow::Node sink) { any() }
-}
-
-from ArithExpr exp, VarAccess tainted, TaintSource origin, string effect
-where
+predicate sink(ArithExpr exp, VarAccess tainted, string effect) {
   exp.getAnOperand() = tainted and
-  any(ArithmeticUncontrolledFlowConfig conf).hasFlow(origin, DataFlow::exprNode(tainted)) and
   (
     (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
     (not guardedAgainstOverflow(exp, tainted) and effect = "overflow")
@@ -73,5 +65,18 @@ where
   and narrowerThanOrEqualTo(exp, tainted.getType())
   and not overflowIrrelevant(exp)
   and not exp.getEnclosingCallable().getDeclaringType() instanceof NonSecurityTestClass
+}
+
+class ArithmeticUncontrolledFlowConfig extends TaintTracking::Configuration {
+  ArithmeticUncontrolledFlowConfig() { this = "ArithmeticUncontrolledFlowConfig" }
+  override predicate isSource(DataFlow::Node source) { source instanceof TaintSource }
+  override predicate isSink(DataFlow::Node sink) { sink(_, sink.asExpr(), _) }
+  override predicate isSanitizer(DataFlow::Node n) { n.getType() instanceof BooleanType }
+}
+
+from ArithExpr exp, VarAccess tainted, TaintSource origin, string effect, ArithmeticUncontrolledFlowConfig conf
+where
+  conf.hasFlow(origin, DataFlow::exprNode(tainted)) and
+  sink(exp, tainted, effect)
 select exp, "$@ flows to here and is used in arithmetic, potentially causing an " + effect + ".", 
   origin, "Uncontrolled value"

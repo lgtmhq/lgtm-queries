@@ -223,13 +223,13 @@ predicate typeArgumentContainsAux1(RefType s, RefType t, int n) {
     |
     exists (RefType tUpperBound | tUpperBound = t.(Wildcard).getUpperBound().getType() |
       // ? extends T <= ? extends S if T <: S
-      hasSubtypeStar(s.(Wildcard).getUpperBound().getType(), tUpperBound) or
+      hasSubtypeStar0(s.(Wildcard).getUpperBound().getType(), tUpperBound) or
       // ? extends T <= ?
       s.(Wildcard).isUnconstrained()
     ) or
     exists (RefType tLowerBound | tLowerBound = t.(Wildcard).getLowerBound().getType() |
       // ? super T <= ? super S if s <: T
-      hasSubtypeStar(tLowerBound, s.(Wildcard).getLowerBound().getType()) or
+      hasSubtypeStar0(tLowerBound, s.(Wildcard).getLowerBound().getType()) or
       // ? super T <= ?
       s.(Wildcard).isUnconstrained() or
       // ? super T <= ? extends Object
@@ -238,9 +238,9 @@ predicate typeArgumentContainsAux1(RefType s, RefType t, int n) {
     // T <= T
     s = t or
     // T <= ? extends T
-    hasSubtypeStar(s.(Wildcard).getUpperBound().getType(), t) or
+    hasSubtypeStar0(s.(Wildcard).getUpperBound().getType(), t) or
     // T <= ? super T
-    hasSubtypeStar(t, s.(Wildcard).getLowerBound().getType())
+    hasSubtypeStar0(t, s.(Wildcard).getLowerBound().getType())
   )
 }
 
@@ -249,12 +249,19 @@ private predicate wildcardExtendsObject(Wildcard wc) {
   wc.getUpperBound().getType() instanceof TypeObject
 }
 
-predicate hasSubtypeStar(RefType t, RefType sub) {
+/**
+ * DEPRECATED: Use `hasSubtype*` instead.
+ */
+deprecated predicate hasSubtypeStar(RefType t, RefType sub) {
+  hasSubtype*(t, sub)
+}
+
+private predicate hasSubtypeStar0(RefType t, RefType sub) {
   sub = t
   or
   hasSubtype(t, sub)
   or
-  exists (RefType mid | hasSubtypeStar(t, mid) and hasSubtype(mid, sub))
+  exists (RefType mid | hasSubtypeStar0(t, mid) and hasSubtype(mid, sub))
 }
 
 /** Holds if type `t` declares member `m`. */
@@ -351,7 +358,7 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   RefType getASupertype() { hasSubtype(result,this) }
 
   /** Gets a direct or indirect supertype of this type, including itself. */
-  RefType getAnAncestor() { hasSubtypeStar(result, this) }
+  RefType getAnAncestor() { hasSubtype*(result, this) }
 
   /**
    * Gets the source declaration of a direct supertype of this type, excluding itself.
@@ -585,6 +592,11 @@ class RefType extends Type, Annotatable, Modifiable, @reftype {
   }
 }
 
+/** A type that is the same as its source declaration. */
+class SrcRefType extends RefType {
+  SrcRefType() { this.isSourceDeclaration() }
+}
+
 /** A class declaration. */
 class Class extends RefType, @class {
   /** Holds if this class is an anonymous class. */
@@ -607,6 +619,24 @@ class Class extends RefType, @class {
       not exists(Annotation ann | ann = RefType.super.getAnAnnotation() | ann.getType() = tp) and
       result = this.getASupertype().(Class).getAnAnnotation()
     )
+  }
+}
+
+/** An intersection type. */
+class IntersectionType extends RefType, @class {
+  IntersectionType() {
+    exists(string shortname |
+      classes(this, shortname, _, _) and
+      shortname.matches("% & ...")
+    )
+  }
+  private RefType superType() { extendsReftype(this, result) }
+  private RefType superInterface() { implInterface(this, result) }
+  string getLongName() {
+    result = superType().toString() + concat(" & " + superInterface().toString())
+  }
+  RefType getFirstBound() {
+    extendsReftype(this, result)
   }
 }
 
@@ -930,7 +960,8 @@ class EnumConstant extends Field {
  * See JLS v8, section 4.6 (Type Erasure).
  */
 private cached Type erase(Type t) {
-  result = t.(Class).getSourceDeclaration() or
+  result = t.(Class).getSourceDeclaration() and not t instanceof IntersectionType or
+  result = erase(t.(IntersectionType).getFirstBound()) or
   result = t.(Interface).getSourceDeclaration() or
   result.(Array).getComponentType() = erase(t.(Array).getComponentType()) or
   result = erase(t.(BoundedType).getFirstUpperBoundType()) or
@@ -954,11 +985,18 @@ private cached Type erase(Type t) {
 pragma[inline]
 predicate haveIntersection(RefType t1, RefType t2) {
   exists(RefType e1, RefType e2 | e1 = erase(t1) and e2 = erase(t2) |
-    e1 instanceof TypeObject or e2 instanceof TypeObject
-    or
-    not e1 instanceof TypeObject and not e2 instanceof TypeObject and
-    exists(RefType commonSub | commonSub.getASourceSupertype*() = e1 and commonSub.getASourceSupertype*() = e2)
+    erasedHaveIntersection(e1, e2)
   )
+}
+
+/**
+ * Holds if there is a common (reflexive, transitive) subtype of the erased
+ * types `t1` and `t2`.
+ */
+predicate erasedHaveIntersection(RefType t1, RefType t2) {
+  exists(SrcRefType commonSub | commonSub.getASourceSupertype*() = t1 and commonSub.getASourceSupertype*() = t2) and
+  t1 = erase(_) and
+  t2 = erase(_)
 }
 
 /** An integral type, which may be either a primitive or a boxed type. */

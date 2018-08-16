@@ -39,6 +39,7 @@ class UncontrolledStringBuilderSourceFlowConfig extends TaintTracking::Configura
   UncontrolledStringBuilderSourceFlowConfig() { this = "SqlUnescaped::UncontrolledStringBuilderSourceFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src instanceof UncontrolledStringBuilderSource }
   override predicate isSink(DataFlow::Node sink) { sink instanceof QueryInjectionSink }
+  override predicate isSanitizer(DataFlow::Node node) { node.getType() instanceof PrimitiveType or node.getType() instanceof BoxedType }
 }
 
 from QueryInjectionSink query, Expr uncontrolled

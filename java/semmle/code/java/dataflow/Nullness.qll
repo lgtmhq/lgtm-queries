@@ -296,10 +296,8 @@ private predicate nullVarStep(SsaVariable midssa, BasicBlock mid, boolean midsto
   not assertFail(mid, _) and
   bb = mid.getABBSuccessor() and
   not impossibleEdge(mid, bb) and
-  not exists(ConditionBlock cond, boolean branch |
-    cond = mid and
-    cond.getTestSuccessor(branch) = bb and
-    cond.getCondition() = nullGuard(midssa, branch, false)
+  not exists(boolean branch |
+     nullGuard(midssa, branch, false).hasBranchEdge(mid, bb, branch)
   ) and
   not (leavingFinally(mid, bb, true) and midstoredcompletion = true) and
   if bb.getFirstNode() = any(TryStmt try | | try.getFinally()) then
@@ -513,7 +511,7 @@ private predicate trackingVar(SsaSourceVariable npecand, SsaExplicitUpdate track
 /** Gets an expression that tests the value of a given tracking variable. */
 private Expr trackingVarGuard(SsaVariable trackssa, SsaSourceVariable trackvar, TrackVarKind kind, boolean branch, boolean isA) {
   exists(Expr init | trackingVar(_, trackssa, trackvar, kind, init) |
-    result = basicNullGuard(trackvar.getAnAccess(), branch, isA) and kind = TrackVarKindNull() or
+    result = basicOrCustomNullGuard(trackvar.getAnAccess(), branch, isA) and kind = TrackVarKindNull() or
     result = trackvar.getAnAccess() and kind = TrackVarKindBool() and (branch = true or branch = false) and isA = branch or
     exists(boolean polarity, EnumConstant c, EnumConstant initc |
       initc.getAnAccess() = init and
@@ -669,9 +667,8 @@ predicate alwaysNullDeref(SsaSourceVariable v, VarAccess va) {
     forall(SsaVariable def | def = ssa.getAnUltimateDefinition() |
       def.(SsaExplicitUpdate).getDefiningExpr().(VariableAssign).getSource() = alwaysNullExpr()
     ) or
-    exists(ConditionBlock cond, boolean branch |
-      cond.controls(bb, branch) and
-      cond.getCondition() = nullGuard(ssa, branch, true) and
+    exists(boolean branch |
+      nullGuard(ssa, branch, true).directlyControls(bb, branch) and
       not clearlyNotNull(ssa)
     )
     |
@@ -679,20 +676,8 @@ predicate alwaysNullDeref(SsaSourceVariable v, VarAccess va) {
     not v.getVariable() instanceof Field and
     firstVarDereferenceInBlock(bb, ssa, va) and
     ssa.getSourceVariable() = v and
-    not exists(ConditionBlock cond, boolean branch |
-      cond.controls(bb, branch) and
-      cond.getCondition() = nullGuard(ssa, branch, false)
+    not exists(boolean branch |
+      nullGuard(ssa, branch, false).directlyControls(bb, branch)
     )
   )
 }
-
-/** Gets a `null` test on a variable that is not `null`. */
-Expr superfluousNullGuard(SsaVariable v) {
-  guardSuggestsVarMaybeNull(result, v) and
-  (result instanceof EqualityTest or result instanceof MethodAccess) and
-  not exists(TryStmt try |
-    try.getFinally() = result.getEnclosingStmt().getParent*()
-  ) and
-  clearlyNotNull(v)
-}
-

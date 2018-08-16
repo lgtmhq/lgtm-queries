@@ -12,8 +12,9 @@
 // permissions and limitations under the License.
 
 /**
- * @name Unused variable
- * @description Unused variables may be a symptom of a bug and should be examined carefully.
+ * @name Unused variable, import, function or class
+ * @description Unused variables, imports, functions or classes may be a symptom of a bug
+ *              and should be examined carefully.
  * @kind problem
  * @problem.severity recommendation
  * @id js/unused-local-variable

@@ -18,6 +18,7 @@
 import java
 import semmle.code.java.dataflow.DataFlow
 import semmle.code.java.dataflow.DataFlow2
+import semmle.code.java.dataflow.DataFlow3
 
 /**
  * The class `org.yaml.snakeyaml.constructor.Constructor`.
@@ -89,7 +90,7 @@ private class SnakeYamlParse extends MethodAccess {
   }
 }
 
-private class SafeYamlFlowConfig extends DataFlow::Configuration {
+private class SafeYamlFlowConfig extends DataFlow3::Configuration {
   SafeYamlFlowConfig() { this = "SnakeYaml::SafeYamlFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeYaml }
   override predicate isSink(DataFlow::Node sink) { sink = yamlParseQualifier(_) }

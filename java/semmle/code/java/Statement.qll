@@ -419,7 +419,7 @@ class SwitchStmt extends Stmt,@switchstmt {
    * Gets a case of this `switch` statement,
    * which may be either a normal `case` or a `default`.
    */
-  Stmt getACase() { result = getAConstCase() or result = getDefaultCase() }
+  SwitchCase getACase() { result = getAConstCase() or result = getDefaultCase() }
 
   /** Gets a (non-default) `case` of this `switch` statement. */
   ConstCase getAConstCase() { result.getParent() = this }
@@ -444,11 +444,12 @@ class SwitchStmt extends Stmt,@switchstmt {
  *
  * This includes both normal `case`s and the `default` case.
  */
-abstract class SwitchCase extends Stmt {
+class SwitchCase extends Stmt, @case {
+  SwitchStmt getSwitch() { result.getACase() = this }
 }
 
 /** A constant `case` of a switch statement. */
-class ConstCase extends SwitchCase, @case {
+class ConstCase extends SwitchCase {
   ConstCase() { exists(Expr e | e.getParent() = this) }
 
   /** Gets the expression of this `case`. */
@@ -464,7 +465,7 @@ class ConstCase extends SwitchCase, @case {
 }
 
 /** A `default` case of a `switch` statement */
-class DefaultCase extends SwitchCase, @case {
+class DefaultCase extends SwitchCase {
   DefaultCase() { not exists(Expr e | e.getParent() = this) }
 
   /** Gets a printable representation of this statement. May include more detail than `toString()`. */

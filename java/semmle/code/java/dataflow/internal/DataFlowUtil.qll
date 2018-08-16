@@ -15,7 +15,9 @@
  * Basic definitions for use in the data flow library.
  */
 private import java
+private import DataFlowPrivate
 private import semmle.code.java.dataflow.SSA
+private import semmle.code.java.dataflow.TypeFlow
 import semmle.code.java.dataflow.InstanceAccess
 
   cached
@@ -24,7 +26,12 @@ import semmle.code.java.dataflow.InstanceAccess
     TExplicitParameterNode(Parameter p) { exists(p.getCallable().getBody()) } or
     TImplicitVarargsArray(Call c) { c.getCallee().isVarargs() and not exists(Argument arg | arg.getCall() = c and arg.isExplicitVarargsArray()) } or
     TInstanceParameterNode(Callable c) { exists(c.getBody()) and not c.isStatic() } or
-    TImplicitInstanceAccess(InstanceAccessExt ia) { not ia.isExplicit(_) }
+    TImplicitInstanceAccess(InstanceAccessExt ia) { not ia.isExplicit(_) } or
+    TMallocNode(ClassInstanceExpr cie) or
+    TExplicitArgPostCall(Expr e) { explicitInstanceArgument(_, e) or e instanceof Argument } or
+    TImplicitArgPostCall(InstanceAccessExt ia) { implicitInstanceArgument(_, ia) } or
+    TExplicitStoreTarget(Expr e) { exists(FieldAccess fa | instanceFieldAssign(_, fa) and e = fa.getQualifier()) } or
+    TImplicitStoreTarget(InstanceAccessExt ia) { exists(FieldAccess fa | instanceFieldAssign(_, fa) and ia.isImplicitFieldQualifier(fa)) }
 
   /**
    * An element, viewed as a node in a data flow graph. Either an expression,
@@ -49,7 +56,9 @@ import semmle.code.java.dataflow.InstanceAccess
       result = this.asParameter().getType() or
       exists(Parameter p | result = p.getType() and p.isVarargs() and p = this.(ImplicitVarargsArray).getCall().getCallee().getAParameter()) or
       result = this.(InstanceParameterNode).getCallable().getDeclaringType() or
-      result = this.(ImplicitInstanceAccess).getInstanceAccess().getType()
+      result = this.(ImplicitInstanceAccess).getInstanceAccess().getType() or
+      result = this.(MallocNode).getClassInstanceExpr().getType() or
+      result = this.(ImplicitPostUpdateNode).getPreUpdateNode().getType()
     }
 
     /** Gets the callable in which this node occurs. */
@@ -58,7 +67,22 @@ import semmle.code.java.dataflow.InstanceAccess
       result = this.asParameter().getCallable() or
       result = this.(ImplicitVarargsArray).getCall().getEnclosingCallable() or
       result = this.(InstanceParameterNode).getCallable() or
-      result = this.(ImplicitInstanceAccess).getInstanceAccess().getEnclosingCallable()
+      result = this.(ImplicitInstanceAccess).getInstanceAccess().getEnclosingCallable() or
+      result = this.(MallocNode).getClassInstanceExpr().getEnclosingCallable() or
+      result = this.(ImplicitPostUpdateNode).getPreUpdateNode().getEnclosingCallable()
+    }
+
+    private Type getImprovedTypeBound() {
+      exprTypeFlow(this.asExpr(), result, _) or
+      result = this.(ImplicitPostUpdateNode).getPreUpdateNode().getImprovedTypeBound()
+    }
+
+    /**
+     * Gets an upper bound on the type of this node.
+     */
+    Type getTypeBound() {
+      result = getImprovedTypeBound() or
+      result = getType() and not exists(getImprovedTypeBound())
     }
   }
 
@@ -143,6 +167,66 @@ import semmle.code.java.dataflow.InstanceAccess
     override string toString() { result = ia.toString() }
     override Location getLocation() { result = ia.getLocation() }
     InstanceAccessExt getInstanceAccess() { result = ia }
+  }
+
+  /**
+   * A node that corresponds to the value of a `ClassInstanceExpr` before the
+   * constructor has run.
+   */
+  private class MallocNode extends Node, TMallocNode {
+    ClassInstanceExpr cie;
+    MallocNode() { this = TMallocNode(cie) }
+    override string toString() { result = cie.toString() + " [pre constructor]" }
+    override Location getLocation() { result = cie.getLocation() }
+    ClassInstanceExpr getClassInstanceExpr() { result = cie }
+  }
+
+  /**
+   * A node associated with an object after an operation that might have
+   * changed its state.
+   *
+   * This can be either the argument to a callable after the callable returns
+   * (which might have mutated the argument), or the qualifier of a field after
+   * an update to the field.
+   *
+   * Nodes corresponding to AST elements, for example `ExprNode`, usually refer
+   * to the value before the update with the exception of `ClassInstanceExpr`,
+   * which represents the value after the constructor has run.
+   */
+  abstract class PostUpdateNode extends Node {
+    /**
+     * Gets the node before the state update.
+     */
+    abstract Node getPreUpdateNode();
+  }
+
+  private class NewExpr extends PostUpdateNode, TExprNode {
+    NewExpr() { exists(ClassInstanceExpr cie | this = TExprNode(cie)) }
+    override Node getPreUpdateNode() { this = TExprNode(result.(MallocNode).getClassInstanceExpr()) }
+  }
+
+  /**
+   * A `PostUpdateNode` that is not a `ClassInstanceExpr`.
+   */
+  private abstract class ImplicitPostUpdateNode extends PostUpdateNode {
+    override Location getLocation() { result = getPreUpdateNode().getLocation() }
+    override string toString() { result = getPreUpdateNode().toString() + " [post update]" }
+  }
+
+  private class ExplicitArgPostCall extends ImplicitPostUpdateNode, TExplicitArgPostCall {
+    override Node getPreUpdateNode() { this = TExplicitArgPostCall(result.asExpr()) }
+  }
+
+  private class ImplicitArgPostCall extends ImplicitPostUpdateNode, TImplicitArgPostCall {
+    override Node getPreUpdateNode() { this = TImplicitArgPostCall(result.(ImplicitInstanceAccess).getInstanceAccess()) }
+  }
+
+  private class ExplicitStoreTarget extends ImplicitPostUpdateNode, TExplicitStoreTarget {
+    override Node getPreUpdateNode() { this = TExplicitStoreTarget(result.asExpr()) }
+  }
+
+  private class ImplicitStoreTarget extends ImplicitPostUpdateNode, TImplicitStoreTarget {
+    override Node getPreUpdateNode() { this = TImplicitStoreTarget(result.(ImplicitInstanceAccess).getInstanceAccess()) }
   }
 
   /** Holds if `n` is an access to an unqualified `this` at `cfgnode`. */
@@ -244,6 +328,8 @@ import semmle.code.java.dataflow.InstanceAccess
     not exists(FieldRead fr | hasNonlocalValue(fr) and fr.getField().isStatic() and fr = node1.asExpr())
     or
     ThisFlow::adjacentThisRefs(node1, node2) or
+    adjacentUseUse(node1.(PostUpdateNode).getPreUpdateNode().asExpr(), node2.asExpr()) or
+    ThisFlow::adjacentThisRefs(node1.(PostUpdateNode).getPreUpdateNode(), node2) or
     node2.asExpr().(ParExpr).getExpr() = node1.asExpr() or
     node2.asExpr().(CastExpr).getExpr() = node1.asExpr() or
     node2.asExpr().(ConditionalExpr).getTrueExpr() = node1.asExpr() or
@@ -262,12 +348,20 @@ import semmle.code.java.dataflow.InstanceAccess
     )
   }
 
+  private predicate explicitInstanceArgument(Call call, Expr instarg) {
+    call instanceof MethodAccess and instarg = call.getQualifier() and not call.getCallee().isStatic()
+  }
+
+  private predicate implicitInstanceArgument(Call call, InstanceAccessExt ia) {
+    ia.isImplicitMethodQualifier(call) or
+    ia.isImplicitThisConstructorArgument(call)
+  }
+
   /** Gets the instance argument of a non-static call. */
   Node getInstanceArgument(Call call) {
-    call instanceof ClassInstanceExpr and result.asExpr() = call or
-    call instanceof MethodAccess and result.asExpr() = call.getQualifier() and not call.getCallee().isStatic() or
-    result.(ImplicitInstanceAccess).getInstanceAccess().isImplicitMethodQualifier(call) or
-    result.(ImplicitInstanceAccess).getInstanceAccess().isImplicitThisConstructorArgument(call)
+    result.(MallocNode).getClassInstanceExpr() = call or
+    explicitInstanceArgument(call, result.asExpr()) or
+    implicitInstanceArgument(call, result.(ImplicitInstanceAccess).getInstanceAccess())
   }
 
 

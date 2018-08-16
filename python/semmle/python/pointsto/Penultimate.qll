@@ -40,7 +40,7 @@ import python
 private import PointsToContext
 private import Base
 private import semmle.python.types.Extensions
-private import Layer0
+private import None
 private import Filters as BaseFilters
 import semmle.dataflow.SSA
 
@@ -257,7 +257,7 @@ module PenultimatePointsTo {
          */
         
         predicate super_call(CallNode call, PenultimateContext context, EssaVariable self, ClassObject start) {
-            Layer0PointsTo::points_to(call.getFunction(), _, theSuperType(), _, _) and
+            NonePointsTo::points_to(call.getFunction(), _, theSuperType(), _, _) and
             (
                 points_to(call.getArg(0), context, start, _, _) and
                 self.getASourceUse() = call.getArg(1)
@@ -342,12 +342,12 @@ module PenultimatePointsTo {
               /* Use previous points-to here to avoid slowing down the recursion too much */
               exists(SubscriptNode sub, Object sys_modules |
                   sub.getValue() = sys_modules_flow and
-                  Layer0PointsTo::points_to(sys_modules_flow, _, sys_modules, _, _) and
+                  NonePointsTo::points_to(sys_modules_flow, _, sys_modules, _, _) and
                   builtin_module_attribute(theSysModuleObject(), "modules", sys_modules, _) and
                   sub.getIndex() = n and
                   n.getNode().(StrConst).getText() = name and
                   sub.(DefinitionNode).getValue() = mod and
-                  Layer0PointsTo::points_to(mod, _, m, _, _)
+                  NonePointsTo::points_to(mod, _, m, _, _)
               )
             )
         }
@@ -355,7 +355,7 @@ module PenultimatePointsTo {
         /** Holds if `call` is of the form `getattr(arg, "name")`. */
         
         predicate getattr(CallNode call, ControlFlowNode arg, string name) {
-            Layer0PointsTo::points_to(call.getFunction(), _, builtin_object("getattr"), _, _) and
+            NonePointsTo::points_to(call.getFunction(), _, builtin_object("getattr"), _, _) and
             call.getArg(1).getNode().(StrConst).getText() = name and
             arg = call.getArg(0)
         }
@@ -453,7 +453,7 @@ module PenultimatePointsTo {
             or
             exists(ClassObject cmeta | py_cobjecttypes(cls, cmeta) and is_c_metaclass(cmeta))
             or
-            Layer0PointsTo::Types::six_add_metaclass(_, cls, _)
+            NonePointsTo::Types::six_add_metaclass(_, cls, _)
         }
 
         ClassObject class_explicit_metaclass(ClassObject cls) {
@@ -497,7 +497,7 @@ module PenultimatePointsTo {
         (
             cls = Types::class_get_meta_class(value)
             or
-            not exists(Layer0PointsTo::Layer::class_get_meta_class_candidate(value)) and cls = theTypeType()
+            not exists(NonePointsTo::Layer::class_get_meta_class_candidate(value)) and cls = theTypeType()
         )
         or
         exists(boolean b |
@@ -1041,7 +1041,7 @@ module PenultimatePointsTo {
              /* Most builtin types "declare" __new__, such as `int`, yet are well behaved. */
              not cls.isBuiltin() and class_declares_attribute(cls, "__new__")
              or
-             callToClassMayNotReturnInstance(Layer0PointsTo::Types::get_an_improper_super_type(cls))
+             callToClassMayNotReturnInstance(NonePointsTo::Types::get_an_improper_super_type(cls))
          }
 
          pragma [noinline]
@@ -1119,21 +1119,21 @@ module PenultimatePointsTo {
                 BaseFilters::isinstance(f, clsNode, objNode) |
                 exists(ClassObject scls |
                     points_to(clsNode, _, scls, _, _) |
-                    scls = Layer0PointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
+                    scls = NonePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
                     or
-                    not scls = Layer0PointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
+                    not scls = NonePointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
                 )
                 or exists(TupleObject t, ClassObject scls |
-                    Layer0PointsTo::points_to(clsNode, _, t, _, _) and
+                    NonePointsTo::points_to(clsNode, _, t, _, _) and
                     (
                         scls = t.getBuiltinElement(_)
                         or
-                        Layer0PointsTo::points_to(t.getSourceElement(_), _, scls, _, _)
+                        NonePointsTo::points_to(t.getSourceElement(_), _, scls, _, _)
                     )
                     |
-                    scls = Layer0PointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
+                    scls = NonePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
                     or
-                    not scls = Layer0PointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
+                    not scls = NonePointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
                 )
                 or
                 objcls = theUnknownType() and (value = theTrueObject() or value = theFalseObject())
@@ -1146,9 +1146,9 @@ module PenultimatePointsTo {
                 BaseFilters::issubclass(f, clsNode, objNode) |
                 exists(ClassObject scls |
                     points_to(clsNode, _, scls, _, _) |
-                    scls = Layer0PointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
+                    scls = NonePointsTo::Types::get_an_improper_super_type(objcls) and value = theTrueObject()
                     or
-                    not scls = Layer0PointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
+                    not scls = NonePointsTo::Types::get_an_improper_super_type(objcls) and value = theFalseObject()
                 )
                 or
                 (objcls = unknownValue() or objcls = theUnknownType()) and
@@ -1603,14 +1603,14 @@ module PenultimatePointsTo {
                 def.getDefiningNode().getScope() = scope and
                 context.isRuntime() and context.appliesToScope(scope) and
                 scope.getScope() = cls.getPyClass() and
-                not Layer0PointsTo::Types::abstract_class(cls) and
+                not NonePointsTo::Types::abstract_class(cls) and
                 value = def.getDefiningNode() and origin = value and
                 /* We want to allow decorated function, otherwise we loose a lot of useful information.
                  * However, we want to exclude any function whose arguments are permutated by the decorator.
                  * In general we can't do that, but we can special case the most common ones.
                  */
-                not Layer0PointsTo::points_to(scope.getADecorator().getAFlowNode(), _, theStaticMethodType(), _, _) and
-                not Layer0PointsTo::points_to(scope.getADecorator().getAFlowNode(), _, theClassMethodType(), _, _)
+                not NonePointsTo::points_to(scope.getADecorator().getAFlowNode(), _, theStaticMethodType(), _, _) and
+                not NonePointsTo::points_to(scope.getADecorator().getAFlowNode(), _, theClassMethodType(), _, _)
             )
             or
             exists(EssaVariable obj, PenultimateContext caller |
@@ -1718,13 +1718,13 @@ module PenultimatePointsTo {
             ssa_variable_points_to(def.getInput(), context, value, cls, origin) and
             (
                 // There is no identifiable callee
-                not Layer0PointsTo::get_a_call(_, _) = def.getDefiningNode() or
+                not NonePointsTo::get_a_call(_, _) = def.getDefiningNode() or
                 // An identifiable callee is a builtin
-                exists(BuiltinCallable opaque | Layer0PointsTo::get_a_call(opaque, _) = def.getDefiningNode()) or
+                exists(BuiltinCallable opaque | NonePointsTo::get_a_call(opaque, _) = def.getDefiningNode()) or
                 // An identifiable callee is a Python function, that is not tracked and does not obviously modify the variable
                 context.untrackableCall(def.getCall()) and not
                 exists(PyFunctionObject modifier |
-                    Layer0PointsTo::get_a_call(modifier, _) = def.getDefiningNode() and
+                    NonePointsTo::get_a_call(modifier, _) = def.getDefiningNode() and
                     modifier.getFunction().getBody().contains(def.getSourceVariable().(Variable).getAStore())
                 )
             )
@@ -1756,7 +1756,7 @@ module PenultimatePointsTo {
         pragma [noinline]
         private predicate attribute_assignment_points_to(AttributeAssignment def, PenultimateContext context, Object value, ClassObject cls, ObjectOrCfg origin) {
             if def.getName() = "__class__" then
-                ssa_variable_points_to(def.getInput(), context, value, _, _) and Layer0PointsTo::points_to(def.getValue(), _, cls, _,_) and
+                ssa_variable_points_to(def.getInput(), context, value, _, _) and NonePointsTo::points_to(def.getValue(), _, cls, _,_) and
                 origin = def.getDefiningNode()
             else
                 ssa_variable_points_to(def.getInput(), context, value, cls, origin)
@@ -1858,7 +1858,7 @@ module PenultimatePointsTo {
         private predicate sets_attribute(ArgumentRefinement def, string name) {
             exists(CallNode call |
                 call = def.getDefiningNode() and
-                Layer0PointsTo::points_to(call.getFunction(), _, builtin_object("setattr"), _, _) and
+                NonePointsTo::points_to(call.getFunction(), _, builtin_object("setattr"), _, _) and
                 def.getInput().getAUse() = call.getArg(0) and
                 call.getArg(1).getNode().(StrConst).getText() = name
             )
@@ -2000,7 +2000,7 @@ module PenultimatePointsTo {
             o.(ControlFlowNode).getScope() instanceof Module and
             exists(ClassObject c |
                 c.isBuiltin() and
-                Layer0PointsTo::points_to(o.(CallNode).getFunction(), _, c, _, _)
+                NonePointsTo::points_to(o.(CallNode).getFunction(), _, c, _, _)
             )
         }
 
@@ -2020,27 +2020,27 @@ module PenultimatePointsTo {
         boolean evaluates_boolean_unbound(ControlFlowNode expr, ControlFlowNode use, Object val, ClassObject cls) {
             exists(ControlFlowNode clsNode, ClassObject scls |
                 BaseFilters::issubclass(expr, clsNode, use) and
-                Layer0PointsTo::points_to(clsNode, _, scls, _, _) |
-                scls = Layer0PointsTo::Types::get_an_improper_super_type(val) and result = true
+                NonePointsTo::points_to(clsNode, _, scls, _, _) |
+                scls = NonePointsTo::Types::get_an_improper_super_type(val) and result = true
                 or
-                not scls = Layer0PointsTo::Types::get_an_improper_super_type(val) and result = false
+                not scls = NonePointsTo::Types::get_an_improper_super_type(val) and result = false
             )
             or
             exists(ControlFlowNode clsNode |
                 BaseFilters::isinstance(expr, clsNode, use) |
                 exists(ClassObject scls |
-                    Layer0PointsTo::points_to(clsNode, _, scls, _, _) |
-                    scls = Layer0PointsTo::Types::get_an_improper_super_type(cls) and result = true
+                    NonePointsTo::points_to(clsNode, _, scls, _, _) |
+                    scls = NonePointsTo::Types::get_an_improper_super_type(cls) and result = true
                     or
-                    not scls = Layer0PointsTo::Types::get_an_improper_super_type(cls) and result = false
+                    not scls = NonePointsTo::Types::get_an_improper_super_type(cls) and result = false
                 )
                 or exists(TupleObject t, ClassObject scls |
-                    Layer0PointsTo::points_to(clsNode, _, t, _, _) and
-                    scls = Layer0PointsTo::Types::get_an_improper_super_type(cls) and result = true
+                    NonePointsTo::points_to(clsNode, _, t, _, _) and
+                    scls = NonePointsTo::Types::get_an_improper_super_type(cls) and result = true
                     |
                     scls = t.getBuiltinElement(_)
                     or
-                    Layer0PointsTo::points_to(t.getSourceElement(_), _, scls, _, _)
+                    NonePointsTo::points_to(t.getSourceElement(_), _, scls, _, _)
                 )
             )
             or
@@ -2049,7 +2049,7 @@ module PenultimatePointsTo {
                 exists(Object other |
                     /* Must be discrete values, not just types of things */
                     equatable_value(val) and equatable_value(other) and
-                    Layer0PointsTo::points_to(r, _, other, _, _) |
+                    NonePointsTo::points_to(r, _, other, _, _) |
                     other != val and result = sense.booleanNot()
                     or
                     other = val and result = sense
@@ -2071,14 +2071,14 @@ module PenultimatePointsTo {
             (
                 Types::class_has_attribute(cls, "__call__") and result = true
                 or
-                not Layer0PointsTo::Types::class_has_attribute(cls, "__call__") and result = false
+                not NonePointsTo::Types::class_has_attribute(cls, "__call__") and result = false
             )
             or
             exists(string name |
                 BaseFilters::hasattr(expr, use, name) |
                 Types::class_has_attribute(cls, name) and result = true
                 or
-                not Layer0PointsTo::Types::class_has_attribute(cls, name) and result = false
+                not NonePointsTo::Types::class_has_attribute(cls, name) and result = false
             )
             or
             expr = use and val.booleanValue() = result
@@ -2118,7 +2118,7 @@ module PenultimatePointsTo {
         /** Gets the simple integer value of `f` for numeric literals. */
         private int simple_int_value(ControlFlowNode f) {
             exists(NumericObject num |
-                Layer0PointsTo::points_to(f, _, num, _, _) and
+                NonePointsTo::points_to(f, _, num, _, _) and
                 result = num.intValue()
             )
         }
@@ -2129,7 +2129,7 @@ module PenultimatePointsTo {
         private int evaluates_int(ControlFlowNode expr, ControlFlowNode use, Object val) {
             exists(CallNode call |
                 call = expr and
-                Layer0PointsTo::points_to(call.getFunction(), _, theLenFunction(), _, _) and
+                NonePointsTo::points_to(call.getFunction(), _, theLenFunction(), _, _) and
                 use = call.getArg(0) and
                 val.(SequenceObject).getLength() = result
             )
@@ -2274,7 +2274,7 @@ module PenultimatePointsTo {
 
          /** INTERNAL -- Do not use */
          private predicate mro_sparse(ClassObject cls, ClassObject sup, int index) {
-             if Layer0PointsTo::Types::is_new_style(sup) then (
+             if NonePointsTo::Types::is_new_style(sup) then (
                  depth_first_indexed(cls, sup, index) and
                  not exists(int after | depth_first_indexed(cls, sup, after) and after > index)
              ) else (
@@ -2287,10 +2287,10 @@ module PenultimatePointsTo {
           * class are guaranteed not to clash with the superclasses of other base classes.  */
          private predicate class_base_offset(ClassObject cls, ClassObject base, int index) {
              exists(int n |
-                 Layer0PointsTo::Types::class_base_type(cls, n) = base |
+                 NonePointsTo::Types::class_base_type(cls, n) = base |
                  index = sum(ClassObject left_base |
-                     exists(int i | left_base = Layer0PointsTo::Types::class_base_type(cls, i) and i < n) |
-                     count (Layer0PointsTo::Types::get_an_improper_super_type(left_base))
+                     exists(int i | left_base = NonePointsTo::Types::class_base_type(cls, i) and i < n) |
+                     count (NonePointsTo::Types::get_an_improper_super_type(left_base))
                  )
              )
          }
@@ -2298,12 +2298,12 @@ module PenultimatePointsTo {
          /** Index all super-classes using depth-first search,
           * numbering parent nodes before their children. */
          private predicate depth_first_indexed(ClassObject cls, ClassObject sup, int index) {
-             not has_illegal_bases(cls) and Layer0PointsTo::Types::get_an_improper_super_type(cls) = sup and
+             not has_illegal_bases(cls) and NonePointsTo::Types::get_an_improper_super_type(cls) = sup and
              (
                  sup = cls and index = 0
                  or
                  exists(ClassObject base, int base_offset, int sub_index |
-                     base = Layer0PointsTo::Types::class_base_type(cls, _) and
+                     base = NonePointsTo::Types::class_base_type(cls, _) and
                      class_base_offset(cls, base, base_offset) and
                      depth_first_indexed(base, sup, sub_index) and
                      index = base_offset + sub_index + 1
@@ -2330,11 +2330,11 @@ module PenultimatePointsTo {
 
          /** Class `cls` has duplicate base classes. */
          private predicate has_duplicate_bases(ClassObject cls) {
-             exists(ClassObject base, int i, int j | i != j and base = Layer0PointsTo::Types::class_base_type(cls, i) and base = Layer0PointsTo::Types::class_base_type(cls, j))
+             exists(ClassObject base, int i, int j | i != j and base = NonePointsTo::Types::class_base_type(cls, i) and base = NonePointsTo::Types::class_base_type(cls, j))
          }
 
          private predicate has_illegal_bases(ClassObject cls) {
-             has_duplicate_bases(cls) or Layer0PointsTo::Types::get_an_improper_super_type(Layer0PointsTo::Types::class_base_type(cls, _)) = cls
+             has_duplicate_bases(cls) or NonePointsTo::Types::get_an_improper_super_type(NonePointsTo::Types::class_base_type(cls, _)) = cls
          }
 
          /** INTERNAL -- Use `ClassObject.getMroItem(index)` instead. */
@@ -2379,7 +2379,7 @@ module PenultimatePointsTo {
                  var.getSourceVariable() = src_var and
                  src_var.getId() = name and
                  var.getAUse() = owner.getImportTimeScope().getANormalExit() |
-                 Layer0PointsTo::ssa_variable_points_to(var, _, value, vcls, origin)
+                 NonePointsTo::ssa_variable_points_to(var, _, value, vcls, origin)
              )
              or
              value = builtin_class_attribute(owner, name) and class_declares_attribute(owner, name) and
@@ -2514,7 +2514,7 @@ module PenultimatePointsTo {
          ClassObject class_get_meta_class(ClassObject cls) {
              result = Layer::class_get_meta_class_candidate(cls) and
              forall(ClassObject meta |
-                 meta = Layer0PointsTo::Layer::class_get_meta_class_candidate(cls) |
+                 meta = NonePointsTo::Layer::class_get_meta_class_candidate(cls) |
                  meta = get_an_improper_super_type(result)
              )
          }
@@ -2563,7 +2563,7 @@ module PenultimatePointsTo {
                  meth = "__bool__" or meth = "__len__" or
                  meth = "__nonzero__" and major_version() = 2 |
                  not decl = theObjectType() and
-                 decl = Layer0PointsTo::Types::get_an_improper_super_type(cls) and
+                 decl = NonePointsTo::Types::get_an_improper_super_type(cls) and
                  class_declares_attribute(decl, meth)
              )
          }

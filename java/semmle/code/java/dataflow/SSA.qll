@@ -1090,6 +1090,13 @@ class SsaPhiNode extends SsaVariable, TSsaPhiNode {
       ssaDefReachesEndOfBlock(v, result, phiPred)
     )
   }
+
+  /** Holds if `inp` is an input to the phi node along the edge originating in `bb`. */
+  predicate hasInputFromBlock(SsaVariable inp, BasicBlock bb) {
+    this.getAPhiInput() = inp and
+    this.getBasicBlock().getABBPredecessor() = bb and
+    inp.isLiveAtEndOfBlock(bb)
+  }
 }
 
 library class RefTypeCastExpr extends CastExpr {

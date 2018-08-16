@@ -20,7 +20,7 @@ import javascript
 /**
  * Gets a data flow node that may refer to the jQuery `$` function.
  */
-private DataFlow::SourceNode jquery() {
+DataFlow::SourceNode jquery() {
   // either a reference to a global variable `$` or `jQuery`
   result = DataFlow::globalVarRef(any(string jq | jq = "$" or jq = "jQuery"))
   or

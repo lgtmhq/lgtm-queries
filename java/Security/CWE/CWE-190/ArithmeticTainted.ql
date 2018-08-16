@@ -27,10 +27,8 @@ import java
 import semmle.code.java.dataflow.FlowSources
 import ArithmeticCommon
 
-from ArithExpr exp, VarAccess tainted, RemoteUserInput origin, string effect
-where
+predicate sink(ArithExpr exp, VarAccess tainted, string effect) {
   exp.getAnOperand() = tainted and
-  origin.flowsTo(DataFlow::exprNode(tainted)) and
   (
     (not guardedAgainstUnderflow(exp, tainted) and effect = "underflow") or 
     (not guardedAgainstOverflow(exp, tainted) and effect = "overflow")
@@ -39,5 +37,18 @@ where
   // unless there is an enclosing cast down to a narrower type.
   and narrowerThanOrEqualTo(exp, tainted.getType())
   and not overflowIrrelevant(exp)
+}
+
+class RemoteUserInputConfig extends TaintTracking::Configuration {
+  RemoteUserInputConfig() { this = "ArithmeticTainted.ql:RemoteUserInputConfig" }
+  override predicate isSource(DataFlow::Node source) { source instanceof RemoteUserInput }
+  override predicate isSink(DataFlow::Node sink) { sink(_, sink.asExpr(), _) }
+  override predicate isSanitizer(DataFlow::Node n) { n.getType() instanceof BooleanType }
+}
+
+from ArithExpr exp, VarAccess tainted, RemoteUserInput origin, string effect, RemoteUserInputConfig conf
+where
+  conf.hasFlow(origin, DataFlow::exprNode(tainted)) and
+  sink(exp, tainted, effect)
 select exp, "$@ flows to here and is used in arithmetic, potentially causing an " + effect + ".", 
   origin, "User-provided value"

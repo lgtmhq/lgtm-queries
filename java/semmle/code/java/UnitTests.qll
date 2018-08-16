@@ -111,6 +111,15 @@ class JUnit4TestMethod extends Method {
 }
 
 /**
+ * A JUnit test method that is annotated with the `org.junit.jupiter.api.Test` annotation.
+ */
+class JUnitJupiterTestMethod extends Method {
+  JUnitJupiterTestMethod() {
+    this.getAnAnnotation().getType().hasQualifiedName("org.junit.jupiter.api", "Test")
+  }
+}
+
+/**
  * A JUnit `@Ignore` annotation.
  */
 class JUnitIgnoreAnnotation extends Annotation {
@@ -182,9 +191,10 @@ class TestNGTestMethod extends Method {
  */
 class TestMethod extends Method {
   TestMethod() {
-    this instanceof JUnit3TestMethod
-    or this instanceof JUnit4TestMethod
-    or this instanceof TestNGTestMethod
+    this instanceof JUnit3TestMethod or
+    this instanceof JUnit4TestMethod or
+    this instanceof JUnitJupiterTestMethod or
+    this instanceof TestNGTestMethod
   }
 }
 
