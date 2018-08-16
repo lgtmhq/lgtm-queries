@@ -79,7 +79,7 @@
 import java
 private import SSA
 private import RangeUtils
-private import semmle.code.java.controlflow.Guards
+private import semmle.code.java.controlflow.internal.GuardsLogic
 private import SignAnalysis
 private import ParityAnalysis
 private import semmle.code.java.Reflection
@@ -104,9 +104,9 @@ cached private module RangeAnalysisCache {
   }
 
   /**
-   * Holds if `cond = boundFlowCond(_, _, _, _, _) or cond = eqFlowCond(_, _, _, _, _)`.
+   * Holds if `guard = boundFlowCond(_, _, _, _, _) or guard = eqFlowCond(_, _, _, _, _)`.
    */
-  cached predicate possibleReason(Expr cond) { cond = boundFlowCond(_, _, _, _, _) or cond = eqFlowCond(_, _, _, _, _) }
+  cached predicate possibleReason(Guard guard) { guard = boundFlowCond(_, _, _, _, _) or guard = eqFlowCond(_, _, _, _, _) }
 
 }
 private import RangeAnalysisCache
@@ -119,20 +119,14 @@ import RangeAnalysisPublic
  * - `isEq = true`  : `v == e + delta`
  * - `isEq = false` : `v != e + delta`
  */
-private Expr eqFlowCond(SsaVariable v, Expr e, int delta, boolean isEq, boolean testIsTrue) {
-  exists(EqualityTest eq |
-    result = eq and
-    eq.hasOperands(ssaRead(v, delta), e) and
+private Guard eqFlowCond(SsaVariable v, Expr e, int delta, boolean isEq, boolean testIsTrue) {
+  exists(boolean eqpolarity |
+    result.isEquality(ssaRead(v, delta), e, eqpolarity) and
     (testIsTrue = true or testIsTrue = false) and
-    eq.polarity().booleanXor(testIsTrue).booleanNot() = isEq
+    eqpolarity.booleanXor(testIsTrue).booleanNot() = isEq
   )
   or
-  exists(SsaExplicitUpdate vbool, Expr boolinit |
-    result = vbool.getAUse() and
-    vbool.getDefiningExpr().(VariableAssign).getSource() = boolinit and
-    boolinit = eqFlowCond(v, e, delta, isEq, testIsTrue)
-  ) or
-  result.(ParExpr).getExpr() = eqFlowCond(v, e, delta, isEq, testIsTrue)
+  exists(boolean testIsTrue0 | implies_v2(result, testIsTrue, eqFlowCond(v, e, delta, isEq, testIsTrue0), testIsTrue0))
 }
 
 /**
@@ -175,7 +169,7 @@ private predicate boundCondition(ComparisonExpr comp, SsaVariable v, Expr e, int
  * - `upper = true`  : `v <= e + delta`
  * - `upper = false` : `v >= e + delta`
  */
-private Expr boundFlowCond(SsaVariable v, Expr e, int delta, boolean upper, boolean testIsTrue) {
+private Guard boundFlowCond(SsaVariable v, Expr e, int delta, boolean upper, boolean testIsTrue) {
   exists(ComparisonExpr comp, int d1, int d2, int d3, int strengthen, boolean compIsUpper, boolean resultIsStrict |
     comp = result and
     boundCondition(comp, v, e, d1, compIsUpper) and
@@ -195,18 +189,13 @@ private Expr boundFlowCond(SsaVariable v, Expr e, int delta, boolean upper, bool
     (resultIsStrict = true and d3 = strengthen or resultIsStrict = false and d3 = 0) and
     delta = d1 + d2 + d3
   ) or
-  exists(SsaExplicitUpdate vbool, Expr boolinit |
-    result = vbool.getAUse() and
-    vbool.getDefiningExpr().(VariableAssign).getSource() = boolinit and
-    boolinit = boundFlowCond(v, e, delta, upper, testIsTrue)
-  ) or
-  result.(ParExpr).getExpr() = boundFlowCond(v, e, delta, upper, testIsTrue) or
+  exists(boolean testIsTrue0 | implies_v2(result, testIsTrue, boundFlowCond(v, e, delta, upper, testIsTrue0), testIsTrue0)) or
   result = eqFlowCond(v, e, delta, true, testIsTrue) and (upper = true or upper = false)
 }
 
 private newtype TReason =
   TNoReason() or
-  TCondReason(Expr cond) { possibleReason(cond) }
+  TCondReason(Guard guard) { possibleReason(guard) }
 
 /**
  * A reason for an inferred bound. This can either be `CondReason` if the bound
@@ -220,7 +209,7 @@ class NoReason extends Reason, TNoReason {
   override string toString() { result = "NoReason" }
 }
 class CondReason extends Reason, TCondReason {
-  Expr getCond() { this = TCondReason(result) }
+  Guard getCond() { this = TCondReason(result) }
   override string toString() { result = getCond().toString() }
 }
 
@@ -238,23 +227,21 @@ private predicate boundFlowStepSsa(SsaVariable v, SsaReadPosition pos, Expr e, i
     upd.getDefiningExpr().(PreDecExpr).getExpr() = e and delta = -1 and (upper = true or upper = false) or
     upd.getDefiningExpr().(AssignOp) = e and delta = 0 and (upper = true or upper = false)
   ) or
-  exists(ConditionBlock cb, boolean testIsTrue, Expr cond |
+  exists(Guard guard, boolean testIsTrue |
     pos.hasReadOfVar(v) and
-    cb.getCondition() = cond and
-    cond = boundFlowCond(v, e, delta, upper, testIsTrue) and
-    condControlsSsaRead(cb, pos, testIsTrue) and
-    reason = TCondReason(cond)
+    guard = boundFlowCond(v, e, delta, upper, testIsTrue) and
+    guardDirectlyControlsSsaRead(guard, pos, testIsTrue) and
+    reason = TCondReason(guard)
   )
 }
 
 /** Holds if `v != e + delta` at `pos`. */
 private predicate unequalFlowStepSsa(SsaVariable v, SsaReadPosition pos, Expr e, int delta, Reason reason) {
-  exists(ConditionBlock cb, boolean testIsTrue, Expr cond |
+  exists(Guard guard, boolean testIsTrue |
     pos.hasReadOfVar(v) and
-    cb.getCondition() = cond and
-    cond = eqFlowCond(v, e, delta, false, testIsTrue) and
-    condControlsSsaRead(cb, pos, testIsTrue) and
-    reason = TCondReason(cond)
+    guard = eqFlowCond(v, e, delta, false, testIsTrue) and
+    guardDirectlyControlsSsaRead(guard, pos, testIsTrue) and
+    reason = TCondReason(guard)
   )
 }
 
@@ -634,6 +621,23 @@ private predicate lowerBoundZero(Expr e) {
 }
 
 /**
+ * Holds if `e` has an upper (for `upper = true`) or lower
+ * (for `upper = false`) bound of `b`.
+ */
+private predicate baseBound(Expr e, int b, boolean upper) {
+  lowerBoundZero(e) and b = 0 and upper = false or
+  exists(Method read |
+    e.(MethodAccess).getMethod().overrides*(read) and
+    read.getDeclaringType().hasQualifiedName("java.io", "InputStream") and
+    read.hasName("read") and
+    read.getNumberOfParameters() = 0
+    |
+    upper = true and b = 255 or
+    upper = false and b = -1
+  )
+}
+
+/**
  * Holds if the value being cast has an upper (for `upper = true`) or lower
  * (for `upper = false`) bound within the bounds of the resulting type.
  * For `upper = true` this means that the cast will not overflow and for
@@ -660,7 +664,7 @@ private predicate boundedCastExpr(NarrowingCastExpr cast, Bound b, int delta, bo
  */
 private predicate bounded(Expr e, Bound b, int delta, boolean upper, boolean fromBackEdge, int origdelta, Reason reason) {
   e = b.getExpr(delta) and (upper = true or upper = false) and fromBackEdge = false and origdelta = delta and reason = TNoReason() or
-  lowerBoundZero(e) and b instanceof ZeroBound and delta = 0 and upper = false and fromBackEdge = false and origdelta = 0 and reason = TNoReason() or
+  baseBound(e, delta, upper) and b instanceof ZeroBound and fromBackEdge = false and origdelta = delta and reason = TNoReason() or
   exists(SsaVariable v, SsaReadPositionBlock bb |
     boundedSsa(v, bb, b, delta, upper, fromBackEdge, origdelta, reason) and
     e = v.getAUse() and

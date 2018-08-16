@@ -47,13 +47,12 @@ predicate requiresInstanceOf(Expr e, VarAccess va, RefType t) {
  * `v` is not of type `sup`, which is a supertype of `t`.
  */
 predicate contradictoryTypeCheck(Expr e, Variable v, RefType t, RefType sup, Expr cond) {
-  exists(SsaVariable ssa, ConditionBlock cb |
+  exists(SsaVariable ssa |
     ssa.getSourceVariable().getVariable() = v and
     requiresInstanceOf(e, ssa.getAUse(), t) and
     sup = t.getASupertype*() and
-    cb.getCondition() = cond and
     instanceOfCheck(cond, ssa.getAUse(), sup) and
-    cb.controls(e.getBasicBlock(), false)
+    cond.(Guard).controls(e.getBasicBlock(), false)
   )
 }
 

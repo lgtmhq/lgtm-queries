@@ -61,17 +61,16 @@ class Parity extends boolean {
  * Gets a condition that performs a parity check on `v`, such that `v` has
  * the given parity if the condition evaluates to `testIsTrue`.
  */
-private Expr parityCheck(SsaVariable v, Parity parity, boolean testIsTrue) {
-  exists(EqualityTest eq, Mod2 rem, CompileTimeConstantExpr c, int r |
-    result = eq and
-    eq.hasOperands(rem, c) and
+private Guard parityCheck(SsaVariable v, Parity parity, boolean testIsTrue) {
+  exists(Mod2 rem, CompileTimeConstantExpr c, int r, boolean polarity |
+    result.isEquality(rem, c, polarity) and
     c.getIntValue() = r and
     (r = 0 or r = 1) and
     rem.getArg() = v.getAUse() and
     (testIsTrue = true or testIsTrue = false) and
     (
-      r = 0 and parity = testIsTrue.booleanXor(eq.polarity()) or
-      r = 1 and parity = testIsTrue.booleanXor(eq.polarity()).booleanNot()
+      r = 0 and parity = testIsTrue.booleanXor(polarity) or
+      r = 1 and parity = testIsTrue.booleanXor(polarity).booleanNot()
     )
   )
 }
@@ -88,10 +87,10 @@ private Parity certainExprParity(Expr e) {
   not exists(e.(ConstantIntegerExpr).getIntValue()) and
   (
     result = certainExprParity(e.(ParExpr).getExpr()) or
-    exists(ConditionBlock cond, SsaVariable v, boolean testIsTrue |
-      cond.getCondition() = parityCheck(v, result, testIsTrue) and
+    exists(Guard guard, SsaVariable v, boolean testIsTrue |
+      guard = parityCheck(v, result, testIsTrue) and
       e = v.getAUse() and
-      cond.controls(e.getBasicBlock(), testIsTrue)
+      guardControls_v2(guard, e.getBasicBlock(), testIsTrue)
     ) or
     exists(SsaVariable arr, int arrlen, FieldAccess len |
       e = len and

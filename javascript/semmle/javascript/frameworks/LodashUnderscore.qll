@@ -16,6 +16,23 @@
  */
 import javascript
 
+/** Provides a unified model of [lodash](https://lodash.com/) and [underscore](http://underscorejs.org/). */
+module LodashUnderscore {
+  /**
+   * Gets a data flow node that accesses the given member of `lodash` or `underscore`.
+   *
+   * In addition to normal imports, this supports per-method imports such as `require("lodash.map")` and `require("lodash/map")`.
+   * In addition, the global variable `_` is assumed to refer to `lodash` or `underscore`.
+   */
+  DataFlow::SourceNode member(string name) {
+    result = DataFlow::moduleMember("underscore", name) or
+    result = DataFlow::moduleMember("lodash", name) or
+    result = DataFlow::moduleImport("lodash/" + name) or
+    result = DataFlow::moduleImport("lodash." + name) or
+    result = DataFlow::globalVarRef("_").getAPropertyRead(name)
+  }
+}
+
 /**
  * Flow analysis for `this` expressions inside a function that is called with
  * `_.map` or a similar library function that binds `this` of a callback.
@@ -28,13 +45,8 @@ private class AnalyzedThisInBoundCallback extends AnalyzedValueNode, DataFlow::T
   AnalyzedValueNode thisSource;
 
   AnalyzedThisInBoundCallback() {
-    exists(DataFlow::SourceNode binderBase, DataFlow::MethodCallNode bindingCall, string binderName, int callbackIndex, int contextIndex, int argumentCount |
-      (
-        binderBase = DataFlow::globalVarRef("_") or
-        binderBase = DataFlow::moduleImport("lodash") or
-        binderBase = DataFlow::moduleImport("underscore")
-      ) and
-      binderBase.getAMemberCall(binderName) = bindingCall and
+    exists(DataFlow::CallNode bindingCall, string binderName, int callbackIndex, int contextIndex, int argumentCount |
+      bindingCall = LodashUnderscore::member(binderName).getACall() and
       bindingCall.getNumArgument() = argumentCount and
       getBinder() = bindingCall.getCallback(callbackIndex) and
       thisSource = bindingCall.getArgument(contextIndex) |

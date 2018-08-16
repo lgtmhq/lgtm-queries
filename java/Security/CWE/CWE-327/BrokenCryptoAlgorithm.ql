@@ -34,7 +34,9 @@ private class ShortStringLiteral extends StringLiteral {
 
 class BrokenAlgoLiteral extends ShortStringLiteral {
   BrokenAlgoLiteral() {
-    getLiteral().regexpMatch(algorithmBlacklistRegex())
+    getValue().regexpMatch(algorithmBlacklistRegex()) and
+    // Exclude German and French sentences.
+    not getValue().regexpMatch(".*\\p{IsLowercase} des \\p{IsLetter}.*")
   }
 }
 
@@ -46,6 +48,7 @@ class InsecureCryptoConfiguration extends TaintTracking::Configuration {
   override predicate isSink(Node n) {
     exists(CryptoAlgoSpec c | n.asExpr() = c.getAlgoSpec())
   }
+  override predicate isSanitizer(DataFlow::Node node) { node.getType() instanceof PrimitiveType or node.getType() instanceof BoxedType }
 }
 
 from CryptoAlgoSpec c, Expr a, BrokenAlgoLiteral s, InsecureCryptoConfiguration conf

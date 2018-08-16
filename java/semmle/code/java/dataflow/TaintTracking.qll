@@ -200,7 +200,7 @@ module TaintTracking {
    * local data flow steps. That is, `src` and `sink` are likely to represent
    * different objects.
    */
-  private predicate localAdditionalTaintStep(DataFlow::Node src, DataFlow::Node sink) {
+  predicate localAdditionalTaintStep(DataFlow::Node src, DataFlow::Node sink) {
     localAdditionalTaintExprStep(src.asExpr(), sink.asExpr()) or
     exists(Argument arg | src.asExpr() = arg and arg.isVararg() and sink.(DataFlow::ImplicitVarargsArray).getCall() = arg.getCall())
   }
@@ -211,8 +211,8 @@ module TaintTracking {
    * different objects.
    */
   private predicate localAdditionalTaintExprStep(Expr src, Expr sink) {
-    sink.(AddExpr).getAnOperand() = src or
-    sink.(AssignAddExpr).getSource() = src or
+    sink.(AddExpr).getAnOperand() = src and sink.getType() instanceof TypeString or
+    sink.(AssignAddExpr).getSource() = src and sink.getType() instanceof TypeString or
     sink.(ArrayCreationExpr).getInit() = src or
     sink.(ArrayInit).getAnInit() = src or
     sink.(ArrayAccess).getArray() = src or
@@ -228,7 +228,8 @@ module TaintTracking {
     argToQualifierStep(src, sink) or
     comparisonStep(src, sink) or
     stringBuilderStep(src, sink) or
-    serializationStep(src, sink)
+    serializationStep(src, sink) or
+    qualifierToArgStep(src, sink)
   }
 
   private class BulkData extends RefType {
@@ -295,7 +296,7 @@ module TaintTracking {
         s = "java.net.URI" and argi = 0 and sink.getNumArgument() = 1
       ) or
       exists(RefType t | t.getQualifiedName() = "java.lang.Number" |
-        hasSubtypeStar(t, sink.getConstructedType())
+        hasSubtype*(t, sink.getConstructedType())
       ) and argi = 0 or
       // wrappers constructed by extension
       exists(Constructor c, Parameter p, SuperConstructorInvocationStmt sup |
@@ -529,6 +530,28 @@ module TaintTracking {
   private predicate taintPreservingArgumentToQualifier(Method method, int arg) {
     method.getDeclaringType().hasQualifiedName("java.io", "ByteArrayOutputStream") and
     method.hasName("write") and arg = 0
+  }
+
+  /**
+   * Holds if `tracked` is a qualifier and `sink` is an argument 
+   * of a method that transfers taint from the qualifier to the argument.
+   */
+  private predicate qualifierToArgStep(Expr tracked, RValue sink) {
+    exists(MethodAccess ma, Method method, int i |
+      taintPreservingQualifierToArg(method, i) and
+      ma.getMethod() = method and
+      ma.getArgument(i) = sink and
+      ma.getQualifier() = tracked
+    )
+  }
+
+  /**
+   * Holds if `method` is a method that transfers taint from the qualifier
+   * to the `i`th argument.
+   */
+  private predicate taintPreservingQualifierToArg(Method method, int i) {
+    method.getDeclaringType().hasQualifiedName("java.io", "InputStream") and
+    method.hasName("read") and i = 0
   }
 
   /** A comparison or equality test with a constant. */

@@ -48,6 +48,7 @@ private class QueryInjectionFlowConfig extends TaintTracking::Configuration {
   QueryInjectionFlowConfig() { this = "SqlInjectionLib::QueryInjectionFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src instanceof UserInput }
   override predicate isSink(DataFlow::Node sink) { sink instanceof QueryInjectionSink }
+  override predicate isSanitizer(DataFlow::Node node) { node.getType() instanceof PrimitiveType or node.getType() instanceof BoxedType }
 }
 
 /**

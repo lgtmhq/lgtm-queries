@@ -41,21 +41,12 @@ class Top extends Element {
   predicate hasLocationInfo(string filepath,
                             int startline, int startcolumn,
                             int endline, int endcolumn) {
-    // Element
     exists(Location l | l = this.getLocation()
                     and filepath    = l.getFile().getAbsolutePath()
                     and startline   = l.getStartLine()
                     and startcolumn = l.getStartColumn()
                     and endline     = l.getEndLine()
                     and endcolumn   = l.getEndColumn())
-    or
-    // File (does not have a `.getLocation()`)
-    exists(File f | f = this
-                and filepath    = f.getAbsolutePath()
-                and startline   = 1
-                and startcolumn = 1
-                and endline     = 1
-                and endcolumn   = 1)
   }
 }
 

@@ -180,10 +180,9 @@ private predicate unknownSign(Expr e) {
  * to only include bounds for which we might determine a sign.
  */
 private predicate lowerBound(Expr lowerbound, SsaVariable v, SsaReadPosition pos, boolean isStrict) {
-  exists(ConditionBlock cond, boolean testIsTrue, ComparisonExpr comp |
+  exists(boolean testIsTrue, ComparisonExpr comp |
     pos.hasReadOfVar(v) and
-    condControlsSsaRead(cond, pos, testIsTrue) and
-    cond.getCondition() = comp and
+    guardControlsSsaRead(comp, pos, testIsTrue) and
     not unknownSign(lowerbound)
     |
     testIsTrue = true and
@@ -203,10 +202,9 @@ private predicate lowerBound(Expr lowerbound, SsaVariable v, SsaReadPosition pos
  * to only include bounds for which we might determine a sign.
  */
 private predicate upperBound(Expr upperbound, SsaVariable v, SsaReadPosition pos, boolean isStrict) {
-  exists(ConditionBlock cond, boolean testIsTrue, ComparisonExpr comp |
+  exists(boolean testIsTrue, ComparisonExpr comp |
     pos.hasReadOfVar(v) and
-    condControlsSsaRead(cond, pos, testIsTrue) and
-    cond.getCondition() = comp and
+    guardControlsSsaRead(comp, pos, testIsTrue) and
     not unknownSign(upperbound)
     |
     testIsTrue = true and
@@ -229,12 +227,11 @@ private predicate upperBound(Expr upperbound, SsaVariable v, SsaReadPosition pos
  *  - `isEq = false` : `v != eqbound`
  */
 private predicate eqBound(Expr eqbound, SsaVariable v, SsaReadPosition pos, boolean isEq) {
-  exists(ConditionBlock cond, boolean testIsTrue, EqualityTest eq |
+  exists(Guard guard, boolean testIsTrue, boolean polarity |
     pos.hasReadOfVar(v) and
-    condControlsSsaRead(cond, pos, testIsTrue) and
-    cond.getCondition() = eq and
-    eq.hasOperands(eqbound, ssaRead(v, 0)) and
-    isEq = eq.polarity().booleanXor(testIsTrue).booleanNot() and
+    guardControlsSsaRead(guard, pos, testIsTrue) and
+    guard.isEquality(eqbound, ssaRead(v, 0), polarity) and
+    isEq = polarity.booleanXor(testIsTrue).booleanNot() and
     not unknownSign(eqbound)
   )
 }
@@ -311,15 +308,18 @@ private Sign unguardedSsaSign(SsaVariable v, SsaReadPosition pos) {
   not hasGuard(v, pos, result)
 }
 
+private Sign guardedSsaSignOk(SsaVariable v, SsaReadPosition pos) {
+  result = TPos() and forex(Expr bound | posBound(bound, v, pos) | posBoundOk(bound, v, pos)) or
+  result = TNeg() and forex(Expr bound | negBound(bound, v, pos) | negBoundOk(bound, v, pos)) or
+  result = TZero() and forex(Expr bound | zeroBound(bound, v, pos) | zeroBoundOk(bound, v, pos))
+}
+
 /** Gets a possible sign for `v` at `pos`. */
 private Sign ssaSign(SsaVariable v, SsaReadPosition pos) {
-  result = unguardedSsaSign(v, pos) or
+  result = unguardedSsaSign(v, pos)
+  or
   result = guardedSsaSign(v, pos) and
-  (
-    result = TPos() and forex(Expr bound | posBound(bound, v, pos) | posBoundOk(bound, v, pos)) or
-    result = TNeg() and forex(Expr bound | negBound(bound, v, pos) | negBoundOk(bound, v, pos)) or
-    result = TZero() and forex(Expr bound | zeroBound(bound, v, pos) | zeroBoundOk(bound, v, pos))
-  )
+  result = guardedSsaSignOk(v, pos)
 }
 
 /** Gets a possible sign for `v`. */
@@ -399,8 +399,7 @@ private Sign exprSign(Expr e) {
       div.getRightOperand().(DoubleLiteral).getValue().toFloat() = 0
     ) or
     exists(Sign s1, Sign s2 |
-      s1 = binaryOpLhsSign(e) and
-      s2 = binaryOpRhsSign(e)
+      binaryOpSigns(e, s1, s2)
       |
       (e instanceof AssignAddExpr or e instanceof AddExpr) and result = s1.add(s2) or
       (e instanceof AssignSubExpr or e instanceof SubExpr) and result = s1.add(s2.neg()) or
@@ -426,6 +425,11 @@ private Sign binaryOpLhsSign(Expr e) {
 private Sign binaryOpRhsSign(Expr e) {
   result = exprSign(e.(BinaryExpr).getRightOperand()) or
   result = exprSign(e.(AssignOp).getRhs())
+}
+pragma[noinline]
+private predicate binaryOpSigns(Expr e, Sign lhs, Sign rhs) {
+  lhs = binaryOpLhsSign(e) and
+  rhs = binaryOpRhsSign(e)
 }
 
 /** Holds if `e` can be positive and cannot be negative. */

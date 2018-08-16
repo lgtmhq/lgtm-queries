@@ -13,6 +13,9 @@
 
 import semmle.code.java.Expr
 
+bindingset[result, i]
+private int unbindInt(int i) { i <= result and i >= result }
+
 /** Holds if the method `method` validates its `arg`-th argument in some way. */
 predicate validationMethod(Method method, int arg) {
   // The method examines the contents of the string argument.
@@ -30,7 +33,7 @@ predicate validationMethod(Method method, int arg) {
   or exists (Parameter param, MethodAccess call, int recursiveArg |
     method.getParameter(arg) = param and
     call.getArgument(recursiveArg) = param.getAnAccess() and
-    validationMethod(call.getMethod(), recursiveArg)
+    validationMethod(call.getMethod(), unbindInt(recursiveArg))
   )
 }
 

@@ -74,6 +74,11 @@ class Node extends TNode {
 
   /** Gets the location of this element. */
   Location getLocation() { none() } // overridden by subclasses
+
+  /**
+   * Gets an upper bound on the type of this node.
+   */
+  Type getTypeBound() { result = getType() }
 }
 
 /**
@@ -119,6 +124,26 @@ class UninitializedNode extends Node, TUninitializedNode {
   override Location getLocation() { result = v.getLocation() }
   /** Gets the uninitialized local variable corresponding to this node. */
   LocalVariable getLocalVariable() { result = v }
+}
+
+/**
+ * A node associated with an object after an operation that might have
+ * changed its state.
+ *
+ * This can be either the argument to a callable after the callable returns
+ * (which might have mutated the argument), or the qualifier of a field after
+ * an update to the field.
+ *
+ * Nodes corresponding to AST elements, for example `ExprNode`, usually refer
+ * to the value before the update with the exception of `ClassInstanceExpr`,
+ * which represents the value after the constructor has run.
+ */
+class PostUpdateNode extends Node {
+  PostUpdateNode() { none() } // stub implementation
+  /**
+   * Gets the node before the state update.
+   */
+  Node getPreUpdateNode() { none() } // stub implementation
 }
 
 /**

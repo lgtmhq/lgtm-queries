@@ -21,6 +21,7 @@
  * @id cpp/overflowing-snprintf
  * @tags reliability
  *       correctness
+ *       security
  */
 
 import cpp

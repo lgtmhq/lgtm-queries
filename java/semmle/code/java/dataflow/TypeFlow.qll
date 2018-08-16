@@ -146,6 +146,7 @@ private predicate exactType(TypeFlowNode n, RefType t) {
   exists(ClassInstanceExpr e |
     n.asExpr() = e and
     e.getType() = t and
+    not e instanceof FunctionalExpr and
     exists(RefType sub | sub.getASourceSupertype() = t.getSourceDeclaration())
   ) or
   exists(TypeFlowNode mid | exactType(mid, t) and step(mid, n)) or
@@ -224,12 +225,11 @@ private predicate downcastSuccessor(VarAccess va, RefType t) {
  * Holds if `va` is an access to a value that is guarded by `instanceof t`.
  */
 private predicate instanceOfGuarded(VarAccess va, RefType t) {
-  exists(ConditionBlock cond, InstanceOfExpr ioe, BaseSsaVariable v |
-    cond.getCondition() = ioe and
+  exists(InstanceOfExpr ioe, BaseSsaVariable v |
     ioe.getExpr() = v.getAUse() and
     t = ioe.getTypeName().getType() and
     va = v.getAUse() and
-    cond.controls(va.getBasicBlock(), true)
+    guardControls_v1(ioe, va.getBasicBlock(), true)
   )
 }
 
@@ -294,21 +294,45 @@ private predicate bestTypeFlow(TypeFlowNode n, RefType t) {
   not irrelevantBound(n, t.getErasure())
 }
 
-/**
- * Holds if the runtime type of `e` is bounded by `t` and if this bound is
- * likely to be better than the static type of `e`. The flag `exact` indicates
- * whether `t` is an exact bound or merely an upper bound.
- */
-predicate exprTypeFlow(Expr e, RefType t, boolean exact) {
-  exists(TypeFlowNode n, RefType srctype |
-    n.asExpr() = e and
-    (
-      exactType(n, srctype) and exact = true
-      or
-      not exactType(n, _) and bestTypeFlow(n, srctype) and exact = false
+cached private module TypeFlowBounds {
+  /**
+   * Holds if the runtime type of `f` is bounded by `t` and if this bound is
+   * likely to be better than the static type of `f`. The flag `exact` indicates
+   * whether `t` is an exact bound or merely an upper bound.
+   */
+  cached
+  predicate fieldTypeFlow(Field f, RefType t, boolean exact) {
+    exists(TypeFlowNode n, RefType srctype |
+      n.asField() = f and
+      (
+        exactType(n, srctype) and exact = true
+        or
+        not exactType(n, _) and bestTypeFlow(n, srctype) and exact = false
+      )
+      |
+      t = srctype.(BoundedType).getAnUltimateUpperBoundType() or
+      t = srctype and not srctype instanceof BoundedType
     )
-    |
-    t = srctype.(BoundedType).getAnUltimateUpperBoundType() or
-    t = srctype and not srctype instanceof BoundedType
-  )
+  }
+
+  /**
+   * Holds if the runtime type of `e` is bounded by `t` and if this bound is
+   * likely to be better than the static type of `e`. The flag `exact` indicates
+   * whether `t` is an exact bound or merely an upper bound.
+   */
+  cached
+  predicate exprTypeFlow(Expr e, RefType t, boolean exact) {
+    exists(TypeFlowNode n, RefType srctype |
+      n.asExpr() = e and
+      (
+        exactType(n, srctype) and exact = true
+        or
+        not exactType(n, _) and bestTypeFlow(n, srctype) and exact = false
+      )
+      |
+      t = srctype.(BoundedType).getAnUltimateUpperBoundType() or
+      t = srctype and not srctype instanceof BoundedType
+    )
+  }
 }
+import TypeFlowBounds

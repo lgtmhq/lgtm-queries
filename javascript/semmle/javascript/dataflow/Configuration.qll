@@ -265,7 +265,7 @@ private DotExpr nestedPropAccessOnSsaVar(SsaVariable v, string props) {
  * of the standard library. Override `Configuration::isAdditionalFlowStep`
  * for analysis-specific flow steps.
  */
-abstract class AdditionalFlowStep extends DataFlow::Node {
+abstract cached class AdditionalFlowStep extends DataFlow::Node {
   /**
    * Holds if `pred` &rarr; `succ` should be considered a data flow edge.
    */
@@ -420,7 +420,7 @@ private predicate callInputStep(Function f, DataFlow::Node invk,
    or
    exists (SsaDefinition prevDef, SsaDefinition def |
      pred = DataFlow::ssaDefinitionNode(prevDef) and
-     calls(invk.asExpr(), f) and captures(f, prevDef, def) and
+     calls(invk, f) and captures(f, prevDef, def) and
      succ = DataFlow::ssaDefinitionNode(def)
    )
   ) and

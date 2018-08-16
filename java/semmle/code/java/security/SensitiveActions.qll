@@ -88,10 +88,11 @@ class AuthMethod extends SensitiveExecutionMethod {
         s.matches("%login%") or
         s.matches("%auth%")
       )
-      and not 
+      and not
       (
         s.matches("get%") or
         s.matches("set%") or
+        s.matches("parse%") or
         s.matches("%loginfo%")
       )
     )

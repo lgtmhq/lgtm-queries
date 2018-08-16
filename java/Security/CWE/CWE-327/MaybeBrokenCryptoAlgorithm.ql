@@ -45,14 +45,6 @@ class InsecureAlgoLiteral extends ShortStringLiteral {
   }
 }
 
-predicate initialFlow(InsecureAlgoLiteral s, Node n) {
-  TaintTracking::localTaint(exprNode(s), n) and
-  (
-    exists(CryptoAlgoSpec c | n.asExpr() = c.getAlgoSpec()) or
-    localFlowExit(n, any(InsecureCryptoConfiguration conf))
-  )
-}
-
 predicate objectToString(MethodAccess ma) {
   exists(Method m |
     m = ma.getMethod() and
@@ -75,7 +67,7 @@ class StringContainer extends RefType {
 class InsecureCryptoConfiguration extends TaintTracking::Configuration {
   InsecureCryptoConfiguration() { this = "InsecureCryptoConfiguration" }
   override predicate isSource(Node n) {
-    initialFlow(_, n)
+    n.asExpr() instanceof InsecureAlgoLiteral
   }
   override predicate isSink(Node n) {
     exists(CryptoAlgoSpec c | n.asExpr() = c.getAlgoSpec())
@@ -86,10 +78,9 @@ class InsecureCryptoConfiguration extends TaintTracking::Configuration {
   }
 }
 
-from CryptoAlgoSpec c, Expr a, InsecureAlgoLiteral s, Node n, InsecureCryptoConfiguration conf
+from CryptoAlgoSpec c, Expr a, InsecureAlgoLiteral s, InsecureCryptoConfiguration conf
 where
   a = c.getAlgoSpec() and
-  initialFlow(s, n) and
-  conf.hasFlow(n, exprNode(a))
+  conf.hasFlow(exprNode(s), exprNode(a))
 select c, "Cryptographic algorithm $@ may not be secure, consider using a different algorithm.",
   s, s.getLiteral()

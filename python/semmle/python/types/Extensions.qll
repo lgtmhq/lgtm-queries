@@ -42,16 +42,6 @@ abstract class PenultimateCustomPointsToFact extends @py_flow_node {
 
 }
 
-class Layer0CustomPointsToFact extends @py_flow_node {
-
-    string toString() { none() }
-
-    predicate pointsTo(Layer0Context ctx, Object value, ClassObject cls, ControlFlowNode origin) {
-        none()
-    }
-
-}
-
 abstract class CustomPointsToFact extends FinalCustomPointsToFact {
 
 }

@@ -18,6 +18,7 @@ import semmle.code.java.dataflow.DataFlow
 import semmle.code.java.dataflow.DataFlow2
 import semmle.code.java.dataflow.DataFlow3
 import semmle.code.java.dataflow.DataFlow4
+import semmle.code.java.dataflow.DataFlow5
 private import semmle.code.java.dataflow.SSA
 
 /*
@@ -97,7 +98,7 @@ class DocumentBuilderParse extends XmlParserCall {
   }
 }
 
-private class SafeDocumentBuilderToDocumentBuilderParseFlowConfig extends DataFlow::Configuration {
+private class SafeDocumentBuilderToDocumentBuilderParseFlowConfig extends DataFlow2::Configuration {
   SafeDocumentBuilderToDocumentBuilderParseFlowConfig() { this = "XmlParsers::SafeDocumentBuilderToDocumentBuilderParseFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeDocumentBuilder }
   override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(DocumentBuilderParse dbp).getQualifier() }
@@ -118,6 +119,7 @@ private class SafeDocumentBuilderToDocumentBuilderParseFlowConfig extends DataFl
       m.getDeclaringType().getSourceDeclaration().hasQualifiedName("java.lang", "ThreadLocal")
     )
   }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /**
@@ -201,10 +203,11 @@ private class DocumentBuilderConstruction extends MethodAccess {
   }
 }
 
-private class SafeDocumentBuilderFactoryToDocumentBuilderConstructionFlowConfig extends DataFlow2::Configuration {
+private class SafeDocumentBuilderFactoryToDocumentBuilderConstructionFlowConfig extends DataFlow3::Configuration {
   SafeDocumentBuilderFactoryToDocumentBuilderConstructionFlowConfig() { this = "XmlParsers::SafeDocumentBuilderFactoryToDocumentBuilderConstructionFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeDocumentBuilderFactory }
   override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(DocumentBuilderConstruction dbc).getQualifier() }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /**
@@ -252,13 +255,14 @@ class XmlInputFactoryStreamReader extends XmlParserCall {
   }
 }
 
-private class SafeXmlInputFactoryToXmlInputFactoryReaderFlowConfig extends DataFlow::Configuration {
+private class SafeXmlInputFactoryToXmlInputFactoryReaderFlowConfig extends DataFlow2::Configuration {
   SafeXmlInputFactoryToXmlInputFactoryReaderFlowConfig() { this = "XmlParsers::SafeXmlInputFactoryToXmlInputFactoryReaderFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeXmlInputFactory }
   override predicate isSink(DataFlow::Node sink) {
     sink.asExpr() = any(XmlInputFactoryStreamReader xifsr).getQualifier() or
     sink.asExpr() = any(XmlInputFactoryEventReader xifer).getQualifier()
   }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /** A call to `XMLInputFactory.createEventReader`.*/
@@ -374,10 +378,11 @@ class SAXBuilderParse extends XmlParserCall {
   }
 }
 
-private class SafeSAXBuilderToSAXBuilderParseFlowConfig extends DataFlow::Configuration {
+private class SafeSAXBuilderToSAXBuilderParseFlowConfig extends DataFlow2::Configuration {
   SafeSAXBuilderToSAXBuilderParseFlowConfig() { this = "XmlParsers::SafeSAXBuilderToSAXBuilderParseFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeSAXBuilder }
   override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(SAXBuilderParse sax).getQualifier() }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /**
@@ -477,7 +482,7 @@ class SafeSAXParserFactory extends VarAccess {
   }
 }
 
-private class SafeSAXParserFactoryToNewSAXParserFlowConfig extends DataFlow4::Configuration {
+private class SafeSAXParserFactoryToNewSAXParserFlowConfig extends DataFlow5::Configuration {
   SafeSAXParserFactoryToNewSAXParserFlowConfig() { this = "XmlParsers::SafeSAXParserFactoryToNewSAXParserFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeSAXParserFactory }
   override predicate isSink(DataFlow::Node sink) {
@@ -488,14 +493,16 @@ private class SafeSAXParserFactoryToNewSAXParserFlowConfig extends DataFlow4::Co
       m.hasName("newSAXParser")
     )
   }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
-private class SafeSAXParserFlowConfig extends DataFlow3::Configuration {
+private class SafeSAXParserFlowConfig extends DataFlow4::Configuration {
   SafeSAXParserFlowConfig() { this = "XmlParsers::SafeSAXParserFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeSAXParser }
   override predicate isSink(DataFlow::Node sink) {
     exists(MethodAccess ma | sink.asExpr() = ma.getQualifier() and ma.getMethod().getDeclaringType() instanceof SAXParser)
   }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /** A `SAXParser` created from a safely configured `SAXParserFactory`.*/
@@ -550,12 +557,13 @@ class SAXReaderConfig extends ParserConfig {
   }
 }
 
-private class SafeSAXReaderFlowConfig extends DataFlow3::Configuration {
+private class SafeSAXReaderFlowConfig extends DataFlow4::Configuration {
   SafeSAXReaderFlowConfig() { this = "XmlParsers::SafeSAXReaderFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeSAXReader }
   override predicate isSink(DataFlow::Node sink) {
     exists(MethodAccess ma | sink.asExpr() = ma.getQualifier() and ma.getMethod().getDeclaringType() instanceof SAXReader)
   }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /** A safely configured `SAXReader`.*/
@@ -615,10 +623,11 @@ class XMLReaderConfig extends ParserConfig {
   }
 }
 
-private class ExplicitlySafeXMLReaderFlowConfig extends DataFlow2::Configuration {
+private class ExplicitlySafeXMLReaderFlowConfig extends DataFlow3::Configuration {
   ExplicitlySafeXMLReaderFlowConfig() { this = "XmlParsers::ExplicitlySafeXMLReaderFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof ExplicitlySafeXMLReader }
   override predicate isSink(DataFlow::Node sink) { sink.asExpr() instanceof SafeXMLReaderFlowSink }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 class SafeXMLReaderFlowSink extends Expr {
@@ -653,10 +662,11 @@ class ExplicitlySafeXMLReader extends VarAccess {
   }
 }
 
-private class CreatedSafeXMLReaderFlowConfig extends DataFlow2::Configuration {
+private class CreatedSafeXMLReaderFlowConfig extends DataFlow3::Configuration {
   CreatedSafeXMLReaderFlowConfig() { this = "XmlParsers::CreatedSafeXMLReaderFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof CreatedSafeXMLReader }
   override predicate isSink(DataFlow::Node sink) { sink.asExpr() instanceof SafeXMLReaderFlowSink }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /** An `XMLReader` that is obtained from a safe source.*/
@@ -821,10 +831,11 @@ class TransformerTransform extends XmlParserCall {
   }
 }
 
-private class SafeTransformerToTransformerTransformFlowConfig extends DataFlow::Configuration {
+private class SafeTransformerToTransformerTransformFlowConfig extends DataFlow2::Configuration {
   SafeTransformerToTransformerTransformFlowConfig() { this = "XmlParsers::SafeTransformerToTransformerTransformFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeTransformer }
   override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(TransformerTransform tt).getQualifier() }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /** A call to `Transformer.newTransformer` with source.*/
@@ -857,12 +868,13 @@ class TransformerFactoryConfig extends TransformerConfig {
   }
 }
 
-private class SafeTransformerFactoryFlowConfig extends DataFlow2::Configuration {
+private class SafeTransformerFactoryFlowConfig extends DataFlow3::Configuration {
   SafeTransformerFactoryFlowConfig() { this = "XmlParsers::SafeTransformerFactoryFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeTransformerFactory }
   override predicate isSink(DataFlow::Node sink) {
     exists(MethodAccess ma | sink.asExpr() = ma.getQualifier() and ma.getMethod().getDeclaringType() instanceof TransformerFactory)
   }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /** A safely configured `TransformerFactory`.*/
@@ -952,10 +964,11 @@ class SchemaFactoryNewSchema extends XmlParserCall {
   }
 }
 
-private class SafeSchemaFactoryToSchemaFactoryNewSchemaFlowConfig extends DataFlow::Configuration {
+private class SafeSchemaFactoryToSchemaFactoryNewSchemaFlowConfig extends DataFlow2::Configuration {
   SafeSchemaFactoryToSchemaFactoryNewSchemaFlowConfig() { this = "XmlParsers::SafeSchemaFactoryToSchemaFactoryNewSchemaFlowConfig" }
   override predicate isSource(DataFlow::Node src) { src.asExpr() instanceof SafeSchemaFactory }
   override predicate isSink(DataFlow::Node sink) { sink.asExpr() = any(SchemaFactoryNewSchema sfns).getQualifier() }
+  override int fieldFlowBranchLimit() { result = 0 }
 }
 
 /** A safely configured `SchemaFactory`.*/
@@ -1014,6 +1027,87 @@ class XPathEvaluate extends XmlParserCall {
       this.getMethod() = m and
       m.getDeclaringType() instanceof XPathExpression and
       m.hasName("evaluate")
+    )
+  }
+
+  override Expr getSink() {
+    result = this.getArgument(0)
+  }
+
+  override predicate isSafe() {
+    none()
+  }
+}
+
+// Sink methods in simplexml http://simple.sourceforge.net/home.php
+
+/** A call to `read` or `validate` in `Persister`. */
+class SimpleXMLPersisterCall extends XmlParserCall {
+  SimpleXMLPersisterCall() {
+    exists(Method m |
+      this.getMethod() = m and
+      (m.hasName("validate") or m.hasName("read")) and
+      m.getDeclaringType().hasQualifiedName("org.simpleframework.xml.core", "Persister")
+    )
+  }
+
+  override Expr getSink() {
+    result = this.getArgument(1)
+  }
+
+  override predicate isSafe() {
+    none()
+  }
+}
+
+/** A call to `provide` in `Provider`. */
+class SimpleXMLProviderCall extends XmlParserCall {
+  SimpleXMLProviderCall() {
+    exists(Method m |
+      this.getMethod() = m and
+      m.hasName("provide") and
+      (
+        m.getDeclaringType().hasQualifiedName("org.simpleframework.xml.stream", "DocumentProvider") or
+        m.getDeclaringType().hasQualifiedName("org.simpleframework.xml.stream", "StreamProvider")
+      )
+    )
+  }
+
+  override Expr getSink() {
+    result = this.getArgument(0)
+  }
+
+  override predicate isSafe() {
+    none()
+  }
+}
+
+/** A call to `read` in `NodeBuilder`. */
+class SimpleXMLNodeBuilderCall extends XmlParserCall {
+  SimpleXMLNodeBuilderCall() {
+    exists(Method m |
+      this.getMethod() = m and
+      m.hasName("read") and
+      m.getDeclaringType().hasQualifiedName("org.simpleframework.xml.stream", "NodeBuilder")
+    )
+  }
+
+  override Expr getSink() {
+    result = this.getArgument(0)
+  }
+
+  override predicate isSafe() {
+    none()
+  }
+}
+
+/** A call to the `format` method of the `Formatter`. */
+class SimpleXMLFormatterCall extends XmlParserCall {
+  SimpleXMLFormatterCall() {
+    exists(Method m |
+      this.getMethod() = m and
+      m.hasName("format") and
+      m.getDeclaringType().hasQualifiedName("org.simpleframework.xml.stream", "Formatter")
     )
   }
 

@@ -23,6 +23,7 @@
  * @id cpp/non-constant-format
  * @tags maintainability
  *       correctness
+ *       security
  *       external/cwe/cwe-134
  */
 import cpp

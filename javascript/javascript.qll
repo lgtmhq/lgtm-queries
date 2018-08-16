@@ -29,12 +29,15 @@ import semmle.javascript.DOM
 import semmle.javascript.Errors
 import semmle.javascript.ES2015Modules
 import semmle.javascript.Expr
+import semmle.javascript.Extend
 import semmle.javascript.Externs
 import semmle.javascript.Files
 import semmle.javascript.Functions
 import semmle.javascript.HTML
+import semmle.javascript.HtmlSanitizers
 import semmle.javascript.JSDoc
 import semmle.javascript.JSON
+import semmle.javascript.JsonParsers
 import semmle.javascript.JSX
 import semmle.javascript.Lines
 import semmle.javascript.Locations
@@ -42,6 +45,7 @@ import semmle.javascript.Modules
 import semmle.javascript.NodeJS
 import semmle.javascript.NPM
 import semmle.javascript.Paths
+import semmle.javascript.Promises
 import semmle.javascript.CanonicalNames
 import semmle.javascript.Regexp
 import semmle.javascript.SSA
@@ -72,6 +76,7 @@ import semmle.javascript.frameworks.HttpFrameworks
 import semmle.javascript.frameworks.NoSQL
 import semmle.javascript.frameworks.PkgCloud
 import semmle.javascript.frameworks.React
+import semmle.javascript.frameworks.ReactNative
 import semmle.javascript.frameworks.Request
 import semmle.javascript.frameworks.SQL
 import semmle.javascript.frameworks.UriLibraries

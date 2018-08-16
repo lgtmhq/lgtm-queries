@@ -13,7 +13,7 @@
 
 /**
  * @name Useless null check
- * @description Checking whether a variable is null when that variable cannot
+ * @description Checking whether an expression is null when that expression cannot
  *              possibly be null is useless.
  * @kind problem
  * @problem.severity warning
@@ -25,11 +25,17 @@
  */
 
 import java
-import semmle.code.java.dataflow.SSA
-private import semmle.code.java.dataflow.Nullness
+import semmle.code.java.dataflow.NullGuards
+import semmle.code.java.controlflow.Guards
 
-from Expr guard, SsaVariable ssa, Variable v
+from Expr guard, Expr e, Expr reason, string msg
 where
-  guard = superfluousNullGuard(ssa) and
-  v = ssa.getSourceVariable().getVariable()
-select guard, "This check is useless, since $@ cannot be null here", v, v.getName()
+  guard = basicNullGuard(e, _, true) and
+  e = clearlyNotNullExpr(reason) and
+  (if reason instanceof Guard then
+    msg = "This check is useless, $@ cannot be null here, since it is guarded by $@."
+  else if reason != e then
+    msg = "This check is useless, $@ cannot be null here, since $@ always is non-null."
+  else
+    msg = "This check is useless, since $@ always is non-null.")
+select guard, msg, e, e.toString(), reason, reason.toString()

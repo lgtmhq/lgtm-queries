@@ -77,11 +77,14 @@ class RemoteUserInput extends UserInput {
   }
 
   /**
+   * DEPRECATED: Use a configuration with a defined sink instead.
+   *
    * Holds if taint can flow from this `RemoteUserInput` to `sink`.
    *
    * In addition to the basic taint flow, this allows a path to end in a number
    * of steps through instance fields.
    */
+  deprecated
   predicate flowsTo(DataFlow::Node sink) {
     remoteUserInputFlow(this, sink)
   }
@@ -103,17 +106,34 @@ private predicate localInstanceFieldStep(DataFlow::Node node1, DataFlow::Node no
   )
 }
 
-private class RemoteUserInputConfig extends TaintTracking::Configuration {
-  RemoteUserInputConfig() { this = "FlowSources.qll:RemoteUserInputConfig" }
-  override
-  predicate isSource(DataFlow::Node source) { source instanceof RemoteUserInput }
-  override
-  predicate isSink(DataFlow::Node sink) { any() }
+private module RemoteUserInputFlow {
+  private import semmle.code.java.dataflow.internal.DataFlowImplDepr
+  private import semmle.code.java.security.SecurityTests
+  private import semmle.code.java.security.Validation
+
+  deprecated
+  class RemoteUserInputConfig extends Configuration {
+    RemoteUserInputConfig() { this = "FlowSources.qll:RemoteUserInputConfig" }
+    override
+    predicate isSource(DataFlow::Node source) { source instanceof RemoteUserInput }
+    override
+    predicate isSink(DataFlow::Node sink) { any() }
+    override int fieldFlowBranchLimit() { result = 0 }
+    override predicate isBarrier(DataFlow::Node node) {
+      // Ignore paths through test code.
+      node.getEnclosingCallable().getDeclaringType() instanceof NonSecurityTestClass or
+      exists(ValidatedVariable var | node.asExpr() = var.getAnAccess())
+    }
+    override predicate isAdditionalFlowStep(DataFlow::Node node1, DataFlow::Node node2) {
+      TaintTracking::localAdditionalTaintStep(node1, node2)
+    }
+  }
 }
 
 cached
+deprecated
 private predicate remoteUserInputFlow(RemoteUserInput src, DataFlow::Node sink) {
-  any(RemoteUserInputConfig config).hasFlow(src, sink) or
+  any(RemoteUserInputFlow::RemoteUserInputConfig config).hasFlow(src, sink) or
   exists(DataFlow::Node mid |
     remoteUserInputFlow(src, mid) and
     localInstanceFieldStep(mid, sink)
@@ -157,8 +177,15 @@ class RemoteTaintedMethod extends Method {
     this instanceof HttpServletRequestGetQueryStringMethod or
     this instanceof HttpServletRequestGetHeaderMethod or
     this instanceof HttpServletRequestGetPathMethod or
+    this instanceof HttpServletRequestGetHeadersMethod or
+    this instanceof HttpServletRequestGetHeaderNamesMethod or
+    this instanceof HttpServletRequestGetRequestURIMethod or
+    this instanceof HttpServletRequestGetRequestURLMethod or
+    this instanceof HttpServletRequestGetRemoteUserMethod or
     this instanceof ServletRequestGetBodyMethod or
     this instanceof CookieGetValueMethod or
+    this instanceof CookieGetNameMethod or
+    this instanceof CookieGetCommentMethod or
     this instanceof URLConnectionGetInputStreamMethod or
     this instanceof SocketGetInputStreamMethod or
     this instanceof ApacheHttpGetParams or

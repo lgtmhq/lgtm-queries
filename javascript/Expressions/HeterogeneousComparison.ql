@@ -194,7 +194,7 @@ where isHeterogeneousComparison(cmp, left, right, leftTypes, rightTypes) and
       rightExprDescription = getDescription(right.asExpr(), "an expression") and
       leftTypeCount = strictcount(left.getAType()) and
       rightTypeCount = strictcount(right.getAType()) and
-      leftTypeDescription = getTypeDescription("is of type " + leftTypes, "can not be of type " + rightTypes, leftTypeCount, rightTypeCount) and
-      rightTypeDescription = getTypeDescription("of type " + rightTypes, ", which can not be of type " + leftTypes, rightTypeCount, leftTypeCount)
+      leftTypeDescription = getTypeDescription("is of type " + leftTypes, "cannot be of type " + rightTypes, leftTypeCount, rightTypeCount) and
+      rightTypeDescription = getTypeDescription("of type " + rightTypes, ", which cannot be of type " + leftTypes, rightTypeCount, leftTypeCount)
 select left, leftExprDescription + " " + leftTypeDescription + ", but it is compared to $@ " + rightTypeDescription + ".",
        right, rightExprDescription

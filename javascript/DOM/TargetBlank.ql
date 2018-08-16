@@ -28,7 +28,7 @@ import javascript
 import semmle.javascript.frameworks.Templating
 
 /**
- * Holds if the href attribute contains a host that we can not determine statically.
+ * Holds if the href attribute contains a host that we cannot determine statically.
  */
 predicate hasDynamicHrefHostAttributeValue(DOM::ElementDefinition elem) {
   exists (DOM::AttributeDefinition attr |

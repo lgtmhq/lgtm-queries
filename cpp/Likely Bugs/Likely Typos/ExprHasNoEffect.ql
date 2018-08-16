@@ -108,6 +108,8 @@ from PureExprInVoidContext peivc, Locatable parent,
   Locatable info, string info_text, string tail
 where // EQExprs are covered by CompareWhereAssignMeant.ql
       not peivc instanceof EQExpr and
+      // as is operator==
+      not peivc.(FunctionCall).getTarget().hasName("operator==") and
       not accessInInitOfForStmt(peivc) and
       not peivc.isCompilerGenerated() and
       not exists(Macro m | peivc = m.getAnInvocation().getAnExpandedElement()) and

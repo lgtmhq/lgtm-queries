@@ -26,7 +26,14 @@ import java
 import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.security.XSS
 
-from XssSink sink, RemoteUserInput source
-where source.flowsTo(sink)
+class XSSConfig extends TaintTracking::Configuration2 {
+  XSSConfig() { this = "XSSConfig" }
+  override predicate isSource(DataFlow::Node source) { source instanceof RemoteUserInput }
+  override predicate isSink(DataFlow::Node sink) { sink instanceof XssSink }
+  override predicate isSanitizer(DataFlow::Node node) { node.getType() instanceof NumericType or node.getType() instanceof BooleanType }
+}
+
+from XssSink sink, RemoteUserInput source, XSSConfig conf
+where conf.hasFlow(source, sink)
 select sink, "Cross-site scripting vulnerability due to $@.",
   source, "user-provided value"

@@ -32,6 +32,9 @@ predicate dict_key(Dict d, Expr k, string s) {
     (
         s = ((Num)k).getN()
         or
+        // We use � to mark unrepresentable characters
+        // so two instances of � may represent different strings in the source code
+        not "�" = s.charAt(_) and
         exists(StrConst c |
             c = k |
             s = "u\"" + c.getText() + "\"" and c.isUnicode()

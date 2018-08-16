@@ -19,11 +19,16 @@ import semmle.code.cpp.File
  */
 class Location extends @location {
 
-  /** Gets the file corresponding to this location. */
-  File getFile() {
+  /** Gets the container corresponding to this location. */
+  Container getContainer() {
     locations_default(this,result,_,_,_,_) or
     locations_stmt(this,result,_,_,_,_) or
     locations_expr(this,result,_,_,_,_)
+  }
+
+  /** Gets the file corresponding to this location, if any. */
+  File getFile() {
+    result = this.getContainer()
   }
 
   /** Gets the start line of this location. */
@@ -119,7 +124,7 @@ class Location extends @location {
 library class LocationDefault extends Location, @location_default {
   override predicate hasLocationInfo(
     string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    exists(File f
+    exists(Container f
     | locations_default(this,f,startline,startcolumn,endline,endcolumn)
     | filepath = f.getAbsolutePath())
   }
@@ -129,7 +134,7 @@ library class LocationDefault extends Location, @location_default {
 library class LocationStmt extends Location, @location_stmt {
   override predicate hasLocationInfo(
     string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    exists(File f
+    exists(Container f
     | locations_stmt(this,f,startline,startcolumn,endline,endcolumn)
     | filepath = f.getAbsolutePath())
   }
@@ -139,7 +144,7 @@ library class LocationStmt extends Location, @location_stmt {
 library class LocationExpr extends Location, @location_expr {
   override predicate hasLocationInfo(
     string filepath, int startline, int startcolumn, int endline, int endcolumn) {
-    exists(File f
+    exists(Container f
     | locations_expr(this,f,startline,startcolumn,endline,endcolumn)
     | filepath = f.getAbsolutePath())
   }

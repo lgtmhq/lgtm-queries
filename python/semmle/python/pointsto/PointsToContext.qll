@@ -307,54 +307,6 @@ class ThisContext extends int {
 
 /** Contexts for earlier passes */
 
-class Layer0Context extends int {
-    Layer0Context() { this = 0 }
-
-    predicate appliesToScope(Scope s) {
-        s instanceof ImportTimeScope
-    }
-
-    predicate fromCall(CallNode call, Layer0Context caller) {
-        none()
-    }
-
-    /** Holds if `call` is the call-site from which this context was entered and `outer` is the caller's context */
-    predicate fromCall(CallNode call, FunctionObject callee, Layer0Context caller) {
-        none()
-    }
-
-    Layer0Context getOuter() {
-        none()
-    }
-
-    pragma [inline] 
-    predicate appliesTo(ControlFlowNode n) {
-        this.appliesToScope(n.getScope())
-    }
-
-    predicate isMain() {
-        none()
-    }
-
-    predicate isImport() { any() }
-
-    predicate isCall() { none() }
-
-    predicate isRuntime() { any() }
-
-    predicate fromRuntime() { any() }
-
-    predicate isFinal() { none() }
-
-    predicate predecessor(EssaDefinition def, EssaVariable pred_var) {
-        none()
-    }
-
-    /** Holds if a call would be too expensive to create a new context for */
-    predicate untrackableCall(CallNode call) { none() }
-
-}
-
 class PenultimateContext extends int {
     PenultimateContext() { this = 1 }
 

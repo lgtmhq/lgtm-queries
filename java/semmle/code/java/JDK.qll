@@ -421,14 +421,14 @@ class ArrayLengthField extends Field {
 /** A (reflexive, transitive) subtype of `java.lang.Throwable`. */
 class ThrowableType extends RefType {
   ThrowableType() {
-    exists (TypeThrowable throwable | hasSubtypeStar(throwable, this))
+    exists (TypeThrowable throwable | hasSubtype*(throwable, this))
   }
 }
 
 /** An unchecked exception. That is, a (reflexive, transitive) subtype of `java.lang.Error` or `java.lang.RuntimeException`. */
 class UncheckedThrowableType extends RefType {
   UncheckedThrowableType() {
-    exists (TypeError e | hasSubtypeStar(e, this)) or
-    exists (TypeRuntimeException e | hasSubtypeStar(e, this))
+    exists (TypeError e | hasSubtype*(e, this)) or
+    exists (TypeRuntimeException e | hasSubtype*(e, this))
   }
 }

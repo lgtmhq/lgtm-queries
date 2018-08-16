@@ -50,18 +50,6 @@ Method prunedViableImplInCallContext(MethodAccess ma, Call ctx) {
 }
 
 /**
- * Holds if data might flow from `ma` to a return statement in some
- * configuration.
- */
-private predicate maybeChainedReturn(MethodAccess ma) {
-  exists(ReturnStmt ret |
-    exists(ret.getExpr()) and
-    ret.getEnclosingFunction() = ma.getEnclosingFunction() and
-    not ma.getParent() instanceof ExprStmt
-  )
-}
-
-/**
  * Holds if flow returning from `m` to `ma` might return further and if
  * this path restricts the set of call sites that can be returned to.
  */
@@ -71,8 +59,7 @@ predicate reducedViableImplInReturn(Method m, MethodAccess ma) {
     ctxtgts = count(Call ctx | m = viableImplInCallContext(ma, ctx)) and
     tgts = strictcount(Call ctx | viableCallable(ctx) = ma.getEnclosingFunction()) and
     ctxtgts < tgts
-  ) and
-  maybeChainedReturn(ma)
+  )
 }
 
 /**

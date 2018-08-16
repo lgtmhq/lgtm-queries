@@ -17,7 +17,7 @@
 
 import java
 private import SSA
-private import semmle.code.java.controlflow.Guards
+private import semmle.code.java.controlflow.internal.GuardsLogic
 
 /** An expression that always has the same integer value. */
 pragma[nomagic]
@@ -66,19 +66,10 @@ Expr ssaRead(SsaVariable v, int delta) {
   result.(AssignExpr).getSource() = ssaRead(v, delta)
 }
 
-/**
- * Holds if `inp` is an input to `phi` along the edge originating in `bb`.
- */
-private predicate phiInputFromBlock(SsaPhiNode phi, SsaVariable inp, BasicBlock bb) {
-  phi.getAPhiInput() = inp and
-  phi.getBasicBlock().getABBPredecessor() = bb and
-  inp.isLiveAtEndOfBlock(bb)
-}
-
 private newtype TSsaReadPosition =
   TSsaReadPositionBlock(BasicBlock bb) { exists(SsaVariable v | bb = v.getAUse().getBasicBlock()) } or
   TSsaReadPositionPhiInputEdge(BasicBlock bbOrig, BasicBlock bbPhi) {
-    exists(SsaPhiNode phi | phiInputFromBlock(phi, _, bbOrig) and bbPhi = phi.getBasicBlock())
+    exists(SsaPhiNode phi | phi.hasInputFromBlock(_, bbOrig) and bbPhi = phi.getBasicBlock())
   }
 
 /**
@@ -117,14 +108,14 @@ class SsaReadPositionPhiInputEdge extends SsaReadPosition, TSsaReadPositionPhiIn
 
   override predicate hasReadOfVar(SsaVariable v) {
     exists(SsaPhiNode phi |
-      phiInputFromBlock(phi, v, getOrigBlock()) and
+      phi.hasInputFromBlock(v, getOrigBlock()) and
       getPhiBlock() = phi.getBasicBlock()
     )
   }
 
   /** Holds if `inp` is an input to `phi` along this edge. */
   predicate phiInput(SsaPhiNode phi, SsaVariable inp) {
-    phiInputFromBlock(phi, inp, getOrigBlock()) and
+    phi.hasInputFromBlock(inp, getOrigBlock()) and
     getPhiBlock() = phi.getBasicBlock()
   }
 
@@ -132,13 +123,24 @@ class SsaReadPositionPhiInputEdge extends SsaReadPosition, TSsaReadPositionPhiIn
 }
 
 /**
- * Holds if the condition of `cb` controls the position `controlled` with the
+ * Holds if `guard` directly controls the position `controlled` with the
  * value `testIsTrue`.
  */
-predicate condControlsSsaRead(ConditionBlock cb, SsaReadPosition controlled, boolean testIsTrue) {
-  cb.controls(controlled.(SsaReadPositionBlock).getBlock(), testIsTrue) or
+predicate guardDirectlyControlsSsaRead(Guard guard, SsaReadPosition controlled, boolean testIsTrue) {
+  guard.directlyControls(controlled.(SsaReadPositionBlock).getBlock(), testIsTrue) or
   exists(SsaReadPositionPhiInputEdge controlledEdge | controlledEdge = controlled |
-    cb.controls(controlledEdge.getOrigBlock(), testIsTrue) or
-    cb = controlledEdge.getOrigBlock() and cb.getTestSuccessor(testIsTrue) = controlledEdge.getPhiBlock()
+    guard.directlyControls(controlledEdge.getOrigBlock(), testIsTrue) or
+    guard.hasBranchEdge(controlledEdge.getOrigBlock(), controlledEdge.getPhiBlock(), testIsTrue)
+  )
+}
+
+/**
+ * Holds if `guard` controls the position `controlled` with the value `testIsTrue`.
+ */
+predicate guardControlsSsaRead(Guard guard, SsaReadPosition controlled, boolean testIsTrue) {
+  guardDirectlyControlsSsaRead(guard, controlled, testIsTrue) or
+  exists(Guard guard0, boolean testIsTrue0 |
+    implies_v2(guard0, testIsTrue0, guard, testIsTrue) and
+    guardControlsSsaRead(guard0, controlled, testIsTrue0)
   )
 }
